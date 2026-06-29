@@ -41,16 +41,16 @@ function AuthScreen({ onAuthed, go }) {
       {/* левая — бренд-визуал */}
       <div className="auth-aside" style={{ position: "relative", overflow: "hidden", padding: "clamp(36px,5vw,64px)", display: "flex", flexDirection: "column", justifyContent: "space-between", borderRight: "1px solid var(--hairline)" }}>
         <Img src={PHOTOS.deco} label="интерьер" style={{ position: "absolute", inset: 0 }} />
-        <div style={{ position: "absolute", inset: 0, background: "linear-gradient(160deg, rgba(14,10,16,.72), rgba(36,23,38,.9))" }} />
-        <div style={{ position: "relative", zIndex: 2 }}><Logo size={27} onClick={() => go("site")} /></div>
-        <div style={{ position: "relative", zIndex: 2 }}>
+        <div style={{ position: "absolute", inset: 0, background: "linear-gradient(160deg, rgba(46,42,38,.72), rgba(46,42,38,.9))" }} />
+        <div style={{ position: "relative", zIndex: 2, color: "#FCF6EE" }}><Logo size={27} onClick={() => go("site")} /></div>
+        <div style={{ position: "relative", zIndex: 2, color: "#FCF6EE" }}>
           <h2 className="display" style={{ fontSize: "clamp(30px,3.4vw,46px)", lineHeight: 1 }}>С возвращением<br />в студию</h2>
-          <p style={{ color: "var(--muted)", marginTop: 18, maxWidth: 380, fontSize: 15.5, lineHeight: 1.6 }}>
+          <p style={{ color: "rgba(252,246,238,.82)", marginTop: 18, maxWidth: 380, fontSize: 15.5, lineHeight: 1.6 }}>
             Ваши проекты, сметы и переписка с AI-дизайнером — синхронизированы и под рукой.
           </p>
           <div style={{ display: "flex", gap: 26, marginTop: 30 }}>
             {[["4", "проекта"], ["38", "AI-сессий"], ["12", "смет"]].map(([v, l]) => (
-              <div key={l}><div className="display" style={{ fontSize: 26 }}>{v}</div><div style={{ color: "var(--muted)", fontSize: 13 }}>{l}</div></div>
+              <div key={l}><div className="display" style={{ fontSize: 26 }}>{v}</div><div style={{ color: "rgba(252,246,238,.7)", fontSize: 13 }}>{l}</div></div>
             ))}
           </div>
         </div>
@@ -62,7 +62,7 @@ function AuthScreen({ onAuthed, go }) {
           <div style={{ display: "flex", gap: 4, padding: 4, background: "var(--glass-2)", border: "1px solid var(--hairline)", borderRadius: 99, marginBottom: 30 }}>
             {[["login", "Вход"], ["register", "Регистрация"]].map(([k, t]) => (
               <button key={k} onClick={() => setMode(k)} style={{ flex: 1, padding: "10px", borderRadius: 99, fontWeight: 700, fontSize: 14,
-                background: mode === k ? "var(--accent)" : "transparent", color: mode === k ? "#1a0d08" : "var(--muted)", transition: ".2s" }}>{t}</button>
+                background: mode === k ? "var(--accent)" : "transparent", color: mode === k ? "#FBF8F2" : "var(--muted)", transition: ".2s" }}>{t}</button>
             ))}
           </div>
 
@@ -127,7 +127,7 @@ function Cabinet({ user, onLogout, go }) {
 /* верхняя панель приложения (кабинет) */
 function AppTopBar({ user, onLogout, go, tabs, tab, setTab }) {
   return (
-    <header style={{ position: "fixed", top: 0, left: 0, right: 0, zIndex: 80, height: "var(--nav-h)", background: "rgba(14,10,16,.78)", backdropFilter: "blur(16px)", borderBottom: "1px solid var(--hairline)" }}>
+    <header style={{ position: "fixed", top: 0, left: 0, right: 0, zIndex: 80, height: "var(--nav-h)", background: "rgba(251,248,242,.85)", backdropFilter: "blur(16px)", borderBottom: "1px solid var(--hairline)" }}>
       <div className="container" style={{ height: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 20 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 28 }}>
           <Logo size={23} onClick={() => go("site")} />
@@ -156,7 +156,7 @@ function AppTopBar({ user, onLogout, go, tabs, tab, setTab }) {
 function Avatar({ user, size = 40 }) {
   const initials = user.name.split(" ").map((w) => w[0]).slice(0, 2).join("");
   return (
-    <div style={{ width: size, height: size, borderRadius: "50%", background: user.avatar || "var(--accent)", color: "#1a0d08",
+    <div style={{ width: size, height: size, borderRadius: "50%", background: user.avatar || "var(--accent)", color: "#FBF8F2",
       display: "grid", placeItems: "center", fontWeight: 800, fontSize: size * 0.36, flex: "none", fontFamily: "var(--font-display)" }}>{initials}</div>
   );
 }

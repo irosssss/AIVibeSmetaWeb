@@ -270,7 +270,7 @@ function RoomSpecOverlay({ data, onClose }) {
           <div className="pd-cart">
             <div style={{ display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
               <div style={{ display: "flex", alignItems: "center", gap: 11 }}>
-                <span style={{ width: 40, height: 40, borderRadius: 12, background: "var(--accent)", color: "#1a0d08", display: "grid", placeItems: "center", flex: "none" }}><I.layers size={20} /></span>
+                <span style={{ width: 40, height: 40, borderRadius: 12, background: "var(--accent)", color: "#FBF8F2", display: "grid", placeItems: "center", flex: "none" }}><I.layers size={20} /></span>
                 <div>
                   <div style={{ fontFamily: "var(--font-display)", fontWeight: 800, fontSize: 20, lineHeight: 1 }}>{fmtMoney(grand)}</div>
                   <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 3 }}>{itemsCount} позиций · {over ? <span style={{ color: "var(--accent)" }}>сверх бюджета</span> : <span style={{ color: "var(--accent-2)" }}>в рамках бюджета</span>}</div>
@@ -300,11 +300,11 @@ function StyleHero({ data, style }) {
   return (
     <div style={{ position: "relative", height: 188, overflow: "hidden", borderBottom: "1px solid var(--hairline)" }}>
       <Img src={PHOTOS[data.cover] || PHOTOS.living} label={data.room} style={{ position: "absolute", inset: 0 }} />
-      <div style={{ position: "absolute", inset: 0, background: "linear-gradient(90deg, rgba(14,10,16,.92) 0%, rgba(14,10,16,.55) 55%, rgba(14,10,16,.2) 100%)" }} />
-      <div style={{ position: "relative", height: "100%", display: "flex", flexDirection: "column", justifyContent: "center", gap: 8, padding: "0 clamp(16px,3vw,40px)", maxWidth: 560 }}>
-        <span style={{ fontSize: 12, fontWeight: 700, color: "var(--accent-2)", letterSpacing: ".06em" }}>{data.analysis.scannedAt}</span>
+      <div style={{ position: "absolute", inset: 0, background: "linear-gradient(90deg, rgba(46,42,38,.92) 0%, rgba(46,42,38,.55) 55%, rgba(46,42,38,.2) 100%)" }} />
+      <div style={{ position: "relative", height: "100%", display: "flex", flexDirection: "column", justifyContent: "center", gap: 8, padding: "0 clamp(16px,3vw,40px)", maxWidth: 560, color: "#FCF6EE" }}>
+        <span style={{ fontSize: 12, fontWeight: 700, color: "rgba(252,246,238,.74)", letterSpacing: ".06em" }}>{data.analysis.scannedAt}</span>
         <div className="display" style={{ fontSize: "clamp(22px,3vw,30px)", letterSpacing: "-0.02em" }}>Стиль: {style.name}</div>
-        <div style={{ color: "var(--muted)", fontSize: 14 }}>{style.mood}</div>
+        <div style={{ color: "rgba(252,246,238,.8)", fontSize: 14 }}>{style.mood}</div>
         <div style={{ display: "flex", gap: 7, marginTop: 4 }}>
           {style.palette.map((c, i) => <span key={i} title={c} style={{ width: 30, height: 30, borderRadius: 7, background: c, border: "1px solid rgba(255,255,255,.2)" }} />)}
         </div>
@@ -423,7 +423,7 @@ function StylePicker({ data, styleId, onPick, sref }) {
             <button key={s.id} className={"style-card" + (on ? " sel" : "")} onClick={() => onPick(s.id)} aria-pressed={on}>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
                 <span style={{ fontWeight: 800, fontFamily: "var(--font-display)", fontSize: 17 }}>{s.name}</span>
-                {on && <span style={{ width: 22, height: 22, borderRadius: "50%", background: "var(--accent)", color: "#1a0d08", display: "grid", placeItems: "center", flex: "none" }}><I.check size={13} /></span>}
+                {on && <span style={{ width: 22, height: 22, borderRadius: "50%", background: "var(--accent)", color: "#FBF8F2", display: "grid", placeItems: "center", flex: "none" }}><I.check size={13} /></span>}
               </div>
               <div style={{ fontSize: 12.5, color: "var(--muted)", marginTop: 4 }}>{s.mood}</div>
               <div className="sw">{s.palette.map((c, i) => <span key={i} style={{ background: c }} />)}</div>
@@ -453,13 +453,13 @@ function LayoutPicker({ layout, onPick }) {
             <button key={l.id} className={"style-card" + (on ? " sel" : "")} onClick={() => onPick(l.id)} aria-pressed={on}>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, marginBottom: 12 }}>
                 <span style={{ fontWeight: 800, fontFamily: "var(--font-display)", fontSize: 17 }}>{l.name}</span>
-                {on && <span style={{ width: 22, height: 22, borderRadius: "50%", background: "var(--accent)", color: "#1a0d08", display: "grid", placeItems: "center", flex: "none" }}><I.check size={13} /></span>}
+                {on && <span style={{ width: 22, height: 22, borderRadius: "50%", background: "var(--accent)", color: "#FBF8F2", display: "grid", placeItems: "center", flex: "none" }}><I.check size={13} /></span>}
               </div>
               <MiniLayout plan={l.plan} />
               <div style={{ fontSize: 13, color: "var(--muted)", marginTop: 12, lineHeight: 1.45 }}>{l.note}</div>
               <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 12 }}>
                 {l.pros.map((p) => (
-                  <span key={p} style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 11.5, fontWeight: 700, color: "var(--accent-2)", padding: "3px 9px", borderRadius: 99, background: "rgba(31,138,107,.12)", border: "1px solid rgba(31,138,107,.28)" }}>
+                  <span key={p} style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 11.5, fontWeight: 700, color: "var(--accent-2)", padding: "3px 9px", borderRadius: 99, background: "rgba(94,107,91,.12)", border: "1px solid rgba(94,107,91,.28)" }}>
                     <I.check size={12} />{p}
                   </span>
                 ))}
@@ -535,14 +535,14 @@ function BeforeAfter({ data, style, pins }) {
         <div style={{ position: "absolute", inset: 0 }}>
           <Img src={img} label="после" style={{ position: "absolute", inset: 0, filter: "saturate(1.2) contrast(1.06) brightness(1.05)" }} />
           <div style={{ position: "absolute", inset: 0, background: `linear-gradient(125deg, ${pal[0]}66 0%, transparent 42%), linear-gradient(305deg, ${(pal[1] || pal[0])}55 0%, transparent 46%)`, mixBlendMode: "soft-light" }} />
-          <div style={{ position: "absolute", inset: 0, background: "linear-gradient(180deg, transparent 50%, rgba(14,10,16,.55))" }} />
+          <div style={{ position: "absolute", inset: 0, background: "linear-gradient(180deg, transparent 50%, rgba(46,42,38,.55))" }} />
           {/* AR-метки расставленной мебели */}
           {arPins.map(([l, t, name], i) => (
-            <span key={i} className="glass" style={{ position: "absolute", left: l + "%", top: t + "%", transform: "translate(-50%,-50%)", padding: "6px 11px", borderRadius: 9, fontSize: 12, fontWeight: 700, display: "flex", alignItems: "center", gap: 6, borderColor: "rgba(31,138,107,.55)", background: "rgba(31,138,107,.18)", whiteSpace: "nowrap" }}>
+            <span key={i} className="glass" style={{ position: "absolute", left: l + "%", top: t + "%", transform: "translate(-50%,-50%)", padding: "6px 11px", borderRadius: 9, fontSize: 12, fontWeight: 700, display: "flex", alignItems: "center", gap: 6, borderColor: "rgba(94,107,91,.6)", background: "rgba(46,42,38,.58)", color: "#FCF6EE", whiteSpace: "nowrap" }}>
               <I.check size={13} style={{ color: "var(--accent-2)" }} />{name}
             </span>
           ))}
-          <span style={badge({ right: 14, top: 14, background: "rgba(31,138,107,.22)", border: "1px solid rgba(31,138,107,.5)", color: "var(--accent-2)" })}>
+          <span style={badge({ right: 14, top: 14, background: "rgba(94,107,91,.92)", border: "1px solid rgba(94,107,91,.5)", color: "#FCF6EE" })}>
             <I.spark size={13} />ПОСЛЕ · AIVibe
           </span>
           <div style={{ position: "absolute", left: 14, bottom: 14, display: "flex", gap: 6 }}>
@@ -553,16 +553,16 @@ function BeforeAfter({ data, style, pins }) {
         {/* ДО — верхний слой, обрезан по ползунку (показываем левую часть) */}
         <div style={{ position: "absolute", inset: 0, clipPath: `inset(0 ${100 - pos}% 0 0)` }}>
           <Img src={img} label="скан" style={{ position: "absolute", inset: 0, filter: "grayscale(.92) brightness(.58) contrast(1.06)" }} />
-          <div style={{ position: "absolute", inset: 0, background: "linear-gradient(180deg, rgba(14,10,16,.3), rgba(14,10,16,.5))" }} />
-          <div style={{ position: "absolute", inset: 0, backgroundImage: "linear-gradient(rgba(31,138,107,.22) 1px,transparent 1px),linear-gradient(90deg,rgba(31,138,107,.22) 1px,transparent 1px)", backgroundSize: "32px 32px" }} />
-          <span style={badge({ left: 14, top: 14, background: "rgba(14,10,16,.6)", border: "1px solid var(--hairline)", color: "var(--text)" })}>
+          <div style={{ position: "absolute", inset: 0, background: "linear-gradient(180deg, rgba(46,42,38,.3), rgba(46,42,38,.5))" }} />
+          <div style={{ position: "absolute", inset: 0, backgroundImage: "linear-gradient(rgba(94,107,91,.22) 1px,transparent 1px),linear-gradient(90deg,rgba(94,107,91,.22) 1px,transparent 1px)", backgroundSize: "32px 32px" }} />
+          <span style={badge({ left: 14, top: 14, background: "rgba(46,42,38,.6)", border: "1px solid rgba(252,246,238,.22)", color: "#FCF6EE" })}>
             <I.scan size={13} style={{ color: "var(--accent-2)" }} />ДО · исходное фото
           </span>
         </div>
 
         {/* разделитель + ручка */}
         <div style={{ position: "absolute", top: 0, bottom: 0, left: pos + "%", width: 2, background: "#fff", transform: "translateX(-1px)", boxShadow: "0 0 14px rgba(0,0,0,.55)" }}>
-          <div style={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%,-50%)", width: 42, height: 42, borderRadius: "50%", background: "#fff", color: "#1a0d08", display: "grid", placeItems: "center", boxShadow: "0 4px 18px rgba(0,0,0,.45)", cursor: "ew-resize" }}>
+          <div style={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%,-50%)", width: 42, height: 42, borderRadius: "50%", background: "#FBF8F2", color: "#2E2A26", display: "grid", placeItems: "center", boxShadow: "0 4px 18px rgba(46,42,38,.4)", cursor: "ew-resize" }}>
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M9 7l-4 5 4 5M15 7l4 5-4 5" /></svg>
           </div>
         </div>
@@ -580,7 +580,7 @@ function NormsCheck({ checks }) {
       <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
         <h3 className="pd-h" style={{ marginBottom: 0 }}>Эргономика расстановки</h3>
         <span className="glass" style={{ display: "inline-flex", alignItems: "center", gap: 7, padding: "6px 12px", borderRadius: 99, fontSize: 12.5, fontWeight: 700,
-          color: c.ok ? "var(--accent-2)" : "var(--accent)", borderColor: c.ok ? "rgba(31,138,107,.4)" : "rgba(226,85,43,.4)" }}>
+          color: c.ok ? "var(--accent-2)" : "var(--accent)", borderColor: c.ok ? "rgba(94,107,91,.4)" : "rgba(194,90,54,.4)" }}>
           <span style={{ width: 8, height: 8, borderRadius: "50%", background: c.ok ? "var(--accent-2)" : "var(--accent)", flex: "none" }} />
           {c.ok ? "Все нормы соблюдены" : c.warns + (c.warns === 1 ? " замечание" : c.warns < 5 ? " замечания" : " замечаний")}
         </span>
@@ -631,7 +631,7 @@ function BudgetPicker({ data, tier, onTier, total, onOptimize, sref }) {
           <span style={{ fontSize: 14, color: "var(--muted)" }}>Подобрано на</span>
           <span className="display" style={{ fontSize: 24 }}>{fmtMoney(total)} <span style={{ fontSize: 14, color: "var(--faint)", fontWeight: 500 }}>из {fmtMoney(budget)}</span></span>
         </div>
-        <div className="budget-bar"><i style={{ width: pct + "%", background: over ? "linear-gradient(90deg,#E2552B,#ff7849)" : "linear-gradient(90deg,var(--accent-2),#39b88c)" }} /></div>
+        <div className="budget-bar"><i style={{ width: pct + "%", background: over ? "linear-gradient(90deg,#C25A36,#ff7849)" : "linear-gradient(90deg,var(--accent-2),#39b88c)" }} /></div>
         <div style={{ display: "flex", justifyContent: "space-between", marginTop: 10, fontSize: 13 }}>
           <span style={{ color: over ? "var(--accent)" : "var(--accent-2)", fontWeight: 700 }}>
             {over ? `Превышение на ${fmtMoney(total - budget)}` : `Остаток ${fmtMoney(budget - total)}`}
@@ -682,7 +682,7 @@ function ProductCatalog({ data, sel, onPick, sref, adj, style, mats }) {
 
               {canSave && (
                 <button onClick={() => onPick(ci, cheapest.id)} className="save-banner">
-                  <span style={{ width: 30, height: 30, borderRadius: 9, background: "rgba(31,138,107,.18)", color: "var(--accent-2)", display: "grid", placeItems: "center", flex: "none" }}><I.spark size={16} /></span>
+                  <span style={{ width: 30, height: 30, borderRadius: 9, background: "rgba(94,107,91,.18)", color: "var(--accent-2)", display: "grid", placeItems: "center", flex: "none" }}><I.spark size={16} /></span>
                   <span style={{ flex: 1, textAlign: "left", fontSize: 13.5, lineHeight: 1.4 }}>
                     <b style={{ color: "var(--text)" }}>AI нашёл аналог дешевле на {fmtMoney(saving)}</b>
                     <span style={{ color: "var(--muted)" }}> — «{cheapest.title}», рейтинг {cheapest.rating}</span>
@@ -760,7 +760,7 @@ function CartBar({ items, total, oldTotal, budget, style, onExport }) {
     <div className="pd-cart">
       <div style={{ display: "flex", alignItems: "center", gap: 18, flexWrap: "wrap" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 11 }}>
-          <span style={{ width: 40, height: 40, borderRadius: 12, background: "var(--accent)", color: "#1a0d08", display: "grid", placeItems: "center", flex: "none" }}><I.layers size={20} /></span>
+          <span style={{ width: 40, height: 40, borderRadius: 12, background: "var(--accent)", color: "#FBF8F2", display: "grid", placeItems: "center", flex: "none" }}><I.layers size={20} /></span>
           <div>
             <div style={{ fontFamily: "var(--font-display)", fontWeight: 800, fontSize: 20, lineHeight: 1 }}>{fmtMoney(total)}</div>
             <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 3 }}>{items.length} предметов · {over ? <span style={{ color: "var(--accent)" }}>сверх бюджета</span> : <span style={{ color: "var(--accent-2)" }}>в рамках бюджета</span>}</div>
@@ -807,7 +807,7 @@ function AdvisorChat({ id, hello, onAction, onClose }) {
   return (
     <React.Fragment>
       <div className="pd-chat-head">
-        <span style={{ width: 38, height: 38, borderRadius: 11, background: "var(--accent)", color: "#1a0d08", display: "grid", placeItems: "center", flex: "none" }}><I.spark size={20} /></span>
+        <span style={{ width: 38, height: 38, borderRadius: 11, background: "var(--accent)", color: "#FBF8F2", display: "grid", placeItems: "center", flex: "none" }}><I.spark size={20} /></span>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontWeight: 800, fontSize: 15 }}>AI-дизайнер</div>
           <div style={{ fontSize: 12, color: "var(--accent-2)", display: "flex", alignItems: "center", gap: 6 }}><span style={{ width: 7, height: 7, borderRadius: "50%", background: "var(--accent-2)" }} />на связи · YandexGPT</div>

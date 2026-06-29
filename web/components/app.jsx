@@ -9,7 +9,7 @@ function App() {
   const [user, setUser] = useApp(null);
 
   // синтетический админ для прямого входа в админку из свитчера
-  const ADMIN = { id: "u_1", name: "Ирина Соколова", email: "irina@aivibe.ru", role: "admin", provider: "yandex", avatar: "#E2552B" };
+  const ADMIN = { id: "u_1", name: "Ирина Соколова", email: "irina@aivibe.ru", role: "admin", provider: "yandex", avatar: "#C25A36" };
 
   const go = (v) => {
     if (v === "cabinet") return setView(user ? "cabinet" : "auth");

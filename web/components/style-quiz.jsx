@@ -169,7 +169,7 @@ function QuizStep({ q, ans, onPick }) {
             const on = selected(o.v);
             return (
               <button key={o.v} className={"quiz-opt" + (on ? " on" : "")} onClick={() => onPick(q, o)} aria-pressed={on}>
-                <span style={{ width: 46, height: 46, borderRadius: 13, background: on ? "var(--accent)" : "var(--surface-2)", color: on ? "#1a0d08" : "var(--accent)", display: "grid", placeItems: "center", flex: "none", transition: ".18s" }}><Ico size={23} /></span>
+                <span style={{ width: 46, height: 46, borderRadius: 13, background: on ? "var(--accent)" : "var(--surface-2)", color: on ? "#FBF8F2" : "var(--accent)", display: "grid", placeItems: "center", flex: "none", transition: ".18s" }}><Ico size={23} /></span>
                 <span style={{ fontWeight: 700, fontSize: 16 }}>{o.v}</span>
                 {on && <span style={{ marginLeft: "auto" }}><I.check size={18} style={{ color: "var(--accent-2)" }} /></span>}
               </button>
@@ -204,7 +204,7 @@ function QuizStep({ q, ans, onPick }) {
             return (
               <button key={o.v} onClick={() => onPick(q, o)} aria-pressed={on}
                 style={{ padding: "11px 17px", borderRadius: 99, fontSize: 14.5, fontWeight: 700, border: "1.5px solid " + (on ? "var(--accent-2)" : "var(--hairline)"),
-                  background: on ? "rgba(31,138,107,.14)" : "var(--glass-2)", color: on ? "var(--text)" : "var(--muted)", transition: ".16s", display: "inline-flex", alignItems: "center", gap: 8 }}>
+                  background: on ? "rgba(94,107,91,.14)" : "var(--glass-2)", color: on ? "var(--text)" : "var(--muted)", transition: ".16s", display: "inline-flex", alignItems: "center", gap: 8 }}>
                 {on && <I.check size={15} style={{ color: "var(--accent-2)" }} />}{o.v}
               </button>
             );
@@ -231,7 +231,7 @@ function BudgetStep({ budget, setBudget }) {
       </div>
       <div style={{ display: "flex", gap: 8, marginTop: 22, flexWrap: "wrap", justifyContent: "center" }}>
         {[250000, 420000, 650000, 900000].map((b) => (
-          <button key={b} onClick={() => setBudget(b)} style={{ padding: "8px 15px", borderRadius: 99, fontSize: 13, fontWeight: 700, border: "1px solid " + (budget === b ? "var(--accent)" : "var(--hairline)"), background: budget === b ? "var(--accent)" : "var(--glass-2)", color: budget === b ? "#1a0d08" : "var(--muted)" }}>{fmtRange(b)}</button>
+          <button key={b} onClick={() => setBudget(b)} style={{ padding: "8px 15px", borderRadius: 99, fontSize: 13, fontWeight: 700, border: "1px solid " + (budget === b ? "var(--accent)" : "var(--hairline)"), background: budget === b ? "var(--accent)" : "var(--glass-2)", color: budget === b ? "#FBF8F2" : "var(--muted)" }}>{fmtRange(b)}</button>
         ))}
       </div>
     </div>
@@ -245,7 +245,7 @@ function QuizResult({ result, budget, room }) {
   return (
     <div className="reveal in" ref={useReveal()}>
       <div style={{ textAlign: "center", marginBottom: 18 }}>
-        <span style={{ display: "inline-flex", alignItems: "center", gap: 7, fontSize: 13, fontWeight: 700, color: "var(--accent-2)", padding: "6px 13px", borderRadius: 99, background: "rgba(31,138,107,.12)", border: "1px solid rgba(31,138,107,.28)" }}>
+        <span style={{ display: "inline-flex", alignItems: "center", gap: 7, fontSize: 13, fontWeight: 700, color: "var(--accent-2)", padding: "6px 13px", borderRadius: 99, background: "rgba(94,107,91,.12)", border: "1px solid rgba(94,107,91,.28)" }}>
           <I.spark size={14} />Ваш стиль по версии AI
         </span>
       </div>

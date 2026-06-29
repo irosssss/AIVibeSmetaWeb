@@ -64,11 +64,12 @@ function HowDesktop() {
                 const on = i === active;
                 return (
                   <div key={s.n} className="glass" style={{ borderRadius: "var(--r-lg)", padding: "20px 22px", display: "flex", gap: 16,
-                    borderColor: on ? "rgba(31,138,107,.45)" : "var(--hairline)",
-                    background: on ? "rgba(31,138,107,.08)" : "var(--glass-2)",
-                    opacity: on ? 1 : 0.5, transition: "all .45s ease" }}>
+                    borderColor: on ? "rgba(94,107,91,.5)" : "var(--hairline)",
+                    background: on ? "rgba(94,107,91,.08)" : "var(--surface)",
+                    boxShadow: on ? "var(--shadow-card)" : "none",
+                    opacity: on ? 1 : 0.55, transition: "all .45s ease" }}>
                     <div style={{ flex: "none", width: 44, height: 44, borderRadius: 12, display: "grid", placeItems: "center",
-                      background: on ? "var(--accent-2)" : "var(--surface-2)", color: on ? "#06140f" : "var(--muted)", transition: "all .45s" }}>
+                      background: on ? "var(--accent-2)" : "var(--surface-2)", color: on ? "#FBF8F2" : "var(--muted)", transition: "all .45s" }}>
                       <s.icon size={21} />
                     </div>
                     <div>
@@ -78,7 +79,7 @@ function HowDesktop() {
                       </div>
                       <p style={{ fontSize: 14.5, color: "var(--muted)", lineHeight: 1.55 }}>{on ? s.title : s.text}</p>
                       {on && !prefersReduced && (
-                        <div style={{ height: 3, borderRadius: 9, background: "var(--glass-2)", marginTop: 12, overflow: "hidden" }}>
+                        <div style={{ height: 3, borderRadius: 9, background: "var(--surface-2)", marginTop: 12, overflow: "hidden" }}>
                           <div style={{ height: "100%", width: sub * 100 + "%", background: "var(--accent-2)" }} />
                         </div>
                       )}
@@ -120,8 +121,8 @@ function HowMobile() {
             <div key={s.n} className="how-slide">
               <DemoStage active={i} sub={1} />
               <div className="glass" style={{ borderRadius: "var(--r-lg)", padding: "18px 20px", display: "flex", gap: 15,
-                borderColor: "rgba(31,138,107,.4)", background: "rgba(31,138,107,.07)" }}>
-                <div style={{ flex: "none", width: 44, height: 44, borderRadius: 12, display: "grid", placeItems: "center", background: "var(--accent-2)", color: "#06140f" }}>
+                borderColor: "rgba(94,107,91,.45)", background: "rgba(94,107,91,.07)" }}>
+                <div style={{ flex: "none", width: 44, height: 44, borderRadius: 12, display: "grid", placeItems: "center", background: "var(--accent-2)", color: "#FBF8F2" }}>
                   <s.icon size={21} />
                 </div>
                 <div>
@@ -146,39 +147,39 @@ function HowMobile() {
   );
 }
 
-/* центральная сцена: скан → AI-чат → AR-расстановка */
+/* центральная сцена: скан → AI-чат → расстановка (тёплая, спец-лист) */
 function DemoStage({ active, sub }) {
   const scanFill = active === 0 ? sub : 1;
   return (
     <div className="glass" style={{ position: "relative", borderRadius: "var(--r-xl)", overflow: "hidden", aspectRatio: "4/3.4", boxShadow: "var(--shadow-pop)" }}>
       <Img src={PHOTOS.living} label="визуализация комнаты" />
-      <div style={{ position: "absolute", inset: 0, background: "linear-gradient(180deg, rgba(14,10,16,.15), rgba(14,10,16,.6))" }} />
+      <div style={{ position: "absolute", inset: 0, background: "linear-gradient(180deg, rgba(46,42,38,.10), rgba(46,42,38,.5))" }} />
 
-      {/* СТАДИЯ 0 — скан */}
+      {/* СТАДИЯ 0 — скан (терракота) */}
       <div style={{ position: "absolute", inset: 0, opacity: active === 0 ? 1 : 0.25, transition: "opacity .5s" }}>
-        <div style={{ position: "absolute", inset: 0, backgroundImage: "linear-gradient(rgba(31,138,107,.22) 1px,transparent 1px),linear-gradient(90deg,rgba(31,138,107,.22) 1px,transparent 1px)", backgroundSize: "30px 30px",
+        <div style={{ position: "absolute", inset: 0, backgroundImage: "linear-gradient(rgba(194,90,54,.30) 1px,transparent 1px),linear-gradient(90deg,rgba(194,90,54,.30) 1px,transparent 1px)", backgroundSize: "30px 30px",
           clipPath: `inset(0 ${(1 - scanFill) * 100}% 0 0)`, transition: "clip-path .2s linear" }} />
-        <div style={{ position: "absolute", top: 0, bottom: 0, left: scanFill * 100 + "%", width: 2, background: "var(--accent-2)", boxShadow: "0 0 22px var(--accent-2)", opacity: active === 0 ? 1 : 0 }} />
+        <div style={{ position: "absolute", top: 0, bottom: 0, left: scanFill * 100 + "%", width: 2, background: "var(--accent)", boxShadow: "0 0 22px var(--accent)", opacity: active === 0 ? 1 : 0 }} />
       </div>
 
       {/* СТАДИЯ 1 — AI-чат */}
       <div style={{ position: "absolute", left: 18, right: 18, bottom: 18, display: "flex", flexDirection: "column", gap: 10,
         opacity: active === 1 ? 1 : 0, transform: active === 1 ? "none" : "translateY(14px)", transition: "all .5s", pointerEvents: "none" }}>
-        <div className="glass" style={{ alignSelf: "flex-end", maxWidth: "70%", padding: "11px 15px", borderRadius: "16px 16px 4px 16px", fontSize: 14, background: "rgba(226,85,43,.16)", borderColor: "rgba(226,85,43,.3)" }}>
+        <div className="glass" style={{ alignSelf: "flex-end", maxWidth: "70%", padding: "11px 15px", borderRadius: "16px 16px 4px 16px", fontSize: 14, background: "rgba(194,90,54,.14)", borderColor: "rgba(194,90,54,.35)" }}>
           Хочу уютную гостиную в тёплых тонах, бюджет 500к
         </div>
-        <div className="glass" style={{ alignSelf: "flex-start", maxWidth: "82%", padding: "13px 16px", borderRadius: "16px 16px 16px 4px", fontSize: 14, lineHeight: 1.5 }}>
+        <div className="glass" style={{ alignSelf: "flex-start", maxWidth: "82%", padding: "13px 16px", borderRadius: "16px 16px 16px 4px", fontSize: 14, lineHeight: 1.5, boxShadow: "var(--shadow-card)" }}>
           <span style={{ display: "block", color: "var(--accent-2)", fontWeight: 700, fontSize: 11.5, letterSpacing: ".06em", marginBottom: 5 }}>СМЕТА AIVIBE · YANDEXGPT 5</span>
           Собрал смету: 38 позиций — диван-терракота, дубовый стеллаж, тёплый свет. Итог 480 000 ₽, расстановка по нормам.
         </div>
       </div>
 
-      {/* СТАДИЯ 2 — AR-расстановка мебели */}
+      {/* СТАДИЯ 2 — расстановка мебели (олива = норма) */}
       <div style={{ position: "absolute", inset: 0, opacity: active === 2 ? 1 : 0, transition: "opacity .5s", pointerEvents: "none" }}>
         {[[34, 58, "Диван"], [66, 40, "Стеллаж"], [52, 72, "Лампа"]].map(([l, t, name], i) => (
           <div key={i} className="glass" style={{ position: "absolute", left: l + "%", top: t + "%", transform: "translate(-50%,-50%)",
             padding: "7px 12px", borderRadius: 10, fontSize: 12.5, fontWeight: 600, display: "flex", alignItems: "center", gap: 7,
-            borderColor: "rgba(31,138,107,.5)", background: "rgba(31,138,107,.16)",
+            borderColor: "rgba(94,107,91,.55)", background: "rgba(251,248,242,.92)",
             opacity: sub > i * 0.28 ? 1 : 0, transition: `opacity .4s ${i * 0.05}s` }}>
             <I.check size={14} style={{ color: "var(--accent-2)" }} /> {name}
           </div>
@@ -186,8 +187,8 @@ function DemoStage({ active, sub }) {
       </div>
 
       {/* верхний статус-бар сцены */}
-      <div className="glass" style={{ position: "absolute", top: 16, left: 16, padding: "8px 14px", borderRadius: 99, fontSize: 12.5, fontWeight: 700, display: "flex", alignItems: "center", gap: 9 }}>
-        <span style={{ width: 8, height: 8, borderRadius: "50%", background: "var(--accent-2)" }} />
+      <div className="glass" style={{ position: "absolute", top: 16, left: 16, padding: "8px 14px", borderRadius: 99, fontSize: 12.5, fontWeight: 700, display: "flex", alignItems: "center", gap: 9, boxShadow: "var(--shadow-card)" }}>
+        <span style={{ width: 8, height: 8, borderRadius: "50%", background: "var(--accent)" }} />
         {["План комнаты", "Подбор и смета", "Проверка норм"][active]}
       </div>
     </div>
@@ -195,7 +196,7 @@ function DemoStage({ active, sub }) {
 }
 
 /* --------------------------------------------------------------
-   BENTO — 4 возможности
+   BENTO — 4 возможности (асимметричная издательская сетка)
 -------------------------------------------------------------- */
 function Bento() {
   const ref = useReveal();
@@ -212,11 +213,11 @@ function Bento() {
             <Img src={PHOTOS.living} label="Смета по проекту" style={{ position: "absolute", inset: 0 }} />
             <div className="bento-shade" />
             <div className="bento-body">
-              <I.layers size={26} style={{ color: "var(--accent-2)" }} />
+              <I.layers size={26} style={{ color: "#FCF6EE" }} />
               <h3>Смета с артикулами</h3>
               <p>Готовая спецификация: предметы, количество, цены — сразу на выгрузку клиенту, без ручного Excel.</p>
             </div>
-            <span className="bento-badge" style={{ background: "rgba(31,138,107,.18)", borderColor: "rgba(31,138,107,.4)", color: "var(--accent-2)" }}>Спецификация</span>
+            <span className="bento-badge" style={{ background: "rgba(94,107,91,.92)", borderColor: "rgba(94,107,91,.5)", color: "#FCF6EE" }}>Спецификация</span>
           </article>
 
           {/* AI-дизайнер */}
@@ -256,7 +257,7 @@ function Bento() {
 }
 
 /* --------------------------------------------------------------
-   НОВОСТИ ДИЗАЙНА — лента карточек из mock-API
+   ЖУРНАЛ ДИЗАЙНА — лента карточек из mock-API
 -------------------------------------------------------------- */
 function NewsFeed() {
   const ref = useReveal();
@@ -275,13 +276,13 @@ function NewsFeed() {
         <div className="news-grid reveal">
           {!rows && Array.from({ length: 4 }).map((_, i) => <div key={i} className="glass skel" style={{ borderRadius: "var(--r-lg)", height: 320 }} />)}
           {rows && rows.map((n, i) => (
-            <article key={n.id} className="glass news-card" style={{ borderRadius: "var(--r-lg)", overflow: "hidden", display: "flex", flexDirection: "column", gridColumn: i === 0 ? "span 2" : "span 1" }}>
+            <article key={n.id} className="glass news-card" style={{ borderRadius: "var(--r-lg)", overflow: "hidden", display: "flex", flexDirection: "column", boxShadow: "var(--shadow-card)", gridColumn: i === 0 ? "span 2" : "span 1" }}>
               <div style={{ position: "relative", aspectRatio: i === 0 ? "16/8" : "16/10", overflow: "hidden" }}>
                 <Img src={PHOTOS[n.cover] || PHOTOS.warm} label={n.category} />
-                <span style={{ position: "absolute", top: 13, left: 13, padding: "5px 11px", borderRadius: 99, fontSize: 11.5, fontWeight: 700, background: "rgba(14,10,16,.6)", backdropFilter: "blur(6px)", border: "1px solid var(--hairline)" }}>{n.category}</span>
+                <span style={{ position: "absolute", top: 13, left: 13, padding: "5px 11px", borderRadius: 99, fontSize: 11.5, fontWeight: 700, color: "#FCF6EE", background: "rgba(46,42,38,.6)", backdropFilter: "blur(6px)", border: "1px solid rgba(252,246,238,.25)" }}>{n.category}</span>
               </div>
               <div style={{ padding: 22, display: "flex", flexDirection: "column", gap: 10, flex: 1 }}>
-                <h3 style={{ fontSize: i === 0 ? 24 : 19, fontWeight: 700, lineHeight: 1.25, letterSpacing: "-0.01em" }}>{n.title}</h3>
+                <h3 style={{ fontFamily: "var(--font-display)", fontSize: i === 0 ? 25 : 20, fontWeight: 600, lineHeight: 1.22, letterSpacing: "-0.01em" }}>{n.title}</h3>
                 <p style={{ color: "var(--muted)", fontSize: 14.5, lineHeight: 1.55, flex: 1 }}>{n.excerpt}</p>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", color: "var(--faint)", fontSize: 13, marginTop: 4 }}>
                   <span>{new Date(n.date).toLocaleDateString("ru-RU", { day: "numeric", month: "long" })}</span>

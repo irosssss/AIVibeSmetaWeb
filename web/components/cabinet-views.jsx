@@ -58,7 +58,7 @@ function Profile({ user }) {
                 <span style={{ width: 8, height: 8, borderRadius: "50%", background: user.provider === "yandex" ? "#FC3F1D" : "#0077FF" }} />
                 {user.provider === "yandex" ? "Яндекс ID" : "VK ID"}
               </span>
-              {user.role === "admin" && <span style={{ padding: "6px 13px", borderRadius: 99, fontSize: 12.5, fontWeight: 700, background: "rgba(226,85,43,.16)", color: "var(--accent)", border: "1px solid rgba(226,85,43,.32)" }}>Администратор</span>}
+              {user.role === "admin" && <span style={{ padding: "6px 13px", borderRadius: 99, fontSize: 12.5, fontWeight: 700, background: "rgba(194,90,54,.16)", color: "var(--accent)", border: "1px solid rgba(194,90,54,.32)" }}>Администратор</span>}
             </div>
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: 14, marginTop: 22 }}>
@@ -127,7 +127,7 @@ function Profile({ user }) {
             <h3 style={{ fontSize: 18, fontWeight: 700 }}>Последняя сессия с AI-дизайнером</h3>
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-            <div className="glass" style={{ alignSelf: "flex-end", maxWidth: "75%", padding: "11px 15px", borderRadius: "14px 14px 4px 14px", fontSize: 14, background: "rgba(226,85,43,.14)" }}>Сделай гостиную теплее, добавь текстиль</div>
+            <div className="glass" style={{ alignSelf: "flex-end", maxWidth: "75%", padding: "11px 15px", borderRadius: "14px 14px 4px 14px", fontSize: 14, background: "rgba(194,90,54,.14)" }}>Сделай гостиную теплее, добавь текстиль</div>
             <div className="glass" style={{ alignSelf: "flex-start", maxWidth: "82%", padding: "11px 15px", borderRadius: "14px 14px 14px 4px", fontSize: 14, lineHeight: 1.5 }}>Добавил шерстяной плед, льняные шторы и ковёр терракотового тона. Обновил расстановку и смету — посмотрите в проекте «Гостиная на Патриках».</div>
           </div>
         </div>
@@ -227,7 +227,7 @@ function Projects() {
           <article key={p.id} className="glass news-card" style={{ borderRadius: "var(--r-lg)", overflow: "hidden", display: "flex", flexDirection: "column", cursor: "pointer" }} onClick={() => setOpenId(p.id)}>
             <div style={{ position: "relative", aspectRatio: "16/10", overflow: "hidden" }}>
               <Img src={PHOTOS[p.cover] || PHOTOS.living} label={p.room} />
-              <span style={{ position: "absolute", top: 12, left: 12, padding: "5px 11px", borderRadius: 99, fontSize: 11.5, fontWeight: 700, background: "rgba(14,10,16,.62)", backdropFilter: "blur(6px)", border: "1px solid var(--hairline)", display: "flex", alignItems: "center", gap: 6 }}>
+              <span style={{ position: "absolute", top: 12, left: 12, padding: "5px 11px", borderRadius: 99, fontSize: 11.5, fontWeight: 700, color: "#FCF6EE", background: "rgba(46,42,38,.62)", backdropFilter: "blur(6px)", border: "1px solid rgba(252,246,238,.22)", display: "flex", alignItems: "center", gap: 6 }}>
                 <span style={{ width: 7, height: 7, borderRadius: "50%", background: statusColor[p.status] }} />{p.status}
               </span>
             </div>
@@ -322,7 +322,7 @@ function Favorites() {
       <div className="fav-chips" style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 20 }}>
         {rooms.map((r) => (
           <button key={r} onClick={() => setRoom(r)} aria-pressed={room === r} style={{ padding: "8px 15px", borderRadius: 99, fontSize: 13.5, fontWeight: 700, border: "1px solid var(--hairline)",
-            background: room === r ? "var(--accent)" : "var(--glass-2)", color: room === r ? "#1a0d08" : "var(--muted)", transition: ".18s" }}>{r}</button>
+            background: room === r ? "var(--accent)" : "var(--glass-2)", color: room === r ? "#FBF8F2" : "var(--muted)", transition: ".18s" }}>{r}</button>
         ))}
       </div>
 
@@ -386,8 +386,8 @@ function FavCard({ item, onRemove, ar }) {
     <div className="glass" style={{ breakInside: "avoid", marginBottom: 14, borderRadius: "var(--r-lg)", overflow: "hidden", position: "relative" }}>
       <div style={{ position: "relative", aspectRatio: ar || "3 / 4" }}>
         <Img src={item.img} label={item.room} style={{ position: "absolute", inset: 0 }} />
-        <div style={{ position: "absolute", inset: 0, background: "linear-gradient(180deg, transparent 45%, rgba(14,10,16,.78))" }} />
-        <button onClick={onRemove} aria-label="Убрать из избранного" style={{ position: "absolute", top: 10, right: 10, width: 34, height: 34, borderRadius: "50%", background: "rgba(14,10,16,.6)", backdropFilter: "blur(6px)", border: "1px solid var(--hairline)", color: "var(--accent)", display: "grid", placeItems: "center" }}>
+        <div style={{ position: "absolute", inset: 0, background: "linear-gradient(180deg, transparent 45%, rgba(46,42,38,.78))" }} />
+        <button onClick={onRemove} aria-label="Убрать из избранного" style={{ position: "absolute", top: 10, right: 10, width: 34, height: 34, borderRadius: "50%", background: "rgba(46,42,38,.6)", backdropFilter: "blur(6px)", border: "1px solid var(--hairline)", color: "var(--accent)", display: "grid", placeItems: "center" }}>
           <I.heart size={16} fill="var(--accent)" stroke="var(--accent)" />
         </button>
         <span className={"mp mp-badge " + item.mp} style={{ position: "absolute", top: 12, left: 12 }}>{FAV_MP[item.mp]}</span>
