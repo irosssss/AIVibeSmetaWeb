@@ -1,1 +1,22 @@
+# OS
 .DS_Store
+
+# Зависимости и сборка
+node_modules/
+dist/
+.vite/
+
+# Секреты — НИКОГДА не коммитим (ключи ЮKassa, OAuth и т.п.)
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.keystore
+secrets/
+
+# Логи / временное
+*.log
+npm-debug.log*
+.cache/

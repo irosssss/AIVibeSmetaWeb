@@ -1,0 +1,62 @@
+#!/usr/bin/env bash
+# AIVibe — страж секретов (pre-commit).
+# Останавливает коммит, если в изменениях есть похожее на РЕАЛЬНЫЙ секрет
+# (ключ ЮKassa, client_secret, приватный ключ, токен) или сам файл .env.
+# Плейсхолдеры в доках (... / <...> / YOUR_) не трогаются.
+#
+# Установка хука (один раз):  cp scripts/pre-commit .git/hooks/pre-commit && chmod +x .git/hooks/pre-commit
+# Осознанно обойти проверку:  git commit --no-verify
+
+red()    { printf '\033[31m%s\033[0m\n' "$1"; }
+yellow() { printf '\033[33m%s\033[0m\n' "$1"; }
+fail=0
+
+# 1) Файлы с секретами не должны попадать в индекс
+staged_files=$(git diff --cached --name-only --diff-filter=ACM)
+while IFS= read -r f; do
+  [ -n "$f" ] || continue
+  case "$f" in
+    .env|.env.*|*/.env|*/.env.*|*.pem|*.key|*.p12|*.keystore)
+      red "✋ В индекс попал файл с секретами: $f"; fail=1 ;;
+  esac
+done <<< "$staged_files"
+
+# Только добавленные строки изменений
+added=$(git diff --cached --diff-filter=ACM -U0 | grep -E '^\+' | grep -vE '^\+\+\+' || true)
+
+# 2) Паттерны высокой уверенности — это реальные значения, а не плейсхолдеры
+while IFS= read -r p; do
+  [ -n "$p" ] || continue
+  hits=$(printf '%s\n' "$added" | grep -E -- "$p" || true)
+  if [ -n "$hits" ]; then
+    red "✋ Похоже на реальный секрет в изменениях:"
+    printf '%s\n' "$hits" | sed 's/^+/   /' | head -5
+    fail=1
+  fi
+done <<'PATTERNS'
+-----BEGIN [A-Z ]*PRIVATE KEY-----
+(live|test)_[A-Za-z0-9_-]{24,}
+sk_(live|test)_[A-Za-z0-9]{16,}
+AKIA[0-9A-Z]{16}
+AIza[0-9A-Za-z_-]{35}
+eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}
+PATTERNS
+
+# 3) Присваивание секрета строковым значением (исключаем чтение из env и плейсхолдеры)
+assign=$(printf '%s\n' "$added" \
+  | grep -iE '(secret[_-]?key|client[_-]?secret|api[_-]?key|access[_-]?token|password)["'"'"' ]*[:=]' \
+  | grep -ivE '\.\.\.|<[^>]+>|your[_-]|xxx|example|placeholder|••|process\.env|import\.meta\.env|os\.environ|getenv|type="password"' \
+  | grep -E '["'"'"'=: ][A-Za-z0-9_/+-]{12,}' || true)
+if [ -n "$assign" ]; then
+  yellow "⚠ Возможно захардкоженный секрет (значения должны читаться из env):"
+  printf '%s\n' "$assign" | sed 's/^+/   /' | head -5
+  fail=1
+fi
+
+if [ "$fail" -ne 0 ]; then
+  echo
+  red "Коммит остановлен. Секреты — только в окружении (env / Yandex Lockbox), не в репозитории."
+  yellow "Если это ложное срабатывание: git commit --no-verify"
+  exit 1
+fi
+exit 0
