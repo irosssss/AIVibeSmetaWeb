@@ -86,39 +86,35 @@ function SiteNav({ go }) {
 }
 
 /* --------------------------------------------------------------
-   HERO — издательский разворот + рисованная сцена интерьера
+   HERO — издательский разворот + живая смета на бумаге (вариант B)
 -------------------------------------------------------------- */
 function Hero({ go }) {
   return (
     <header className="minh-screen" style={{ position: "relative", display: "flex", alignItems: "center", paddingTop: "var(--nav-h)", overflow: "hidden" }}>
-      <div className="container hero-grid" style={{ display: "grid", gridTemplateColumns: "1.08fr 0.92fr", gap: 56, alignItems: "center", position: "relative", zIndex: 2, paddingBlock: "clamp(40px,8vh,90px)" }}>
+      <div className="container hero-grid" style={{ display: "grid", gridTemplateColumns: "0.9fr 1.1fr", gap: 64, alignItems: "center", position: "relative", zIndex: 2, paddingBlock: "clamp(40px,7vh,84px)" }}>
         <div>
-          <div className="glass" style={{ display: "inline-flex", alignItems: "center", gap: 10, padding: "9px 16px", borderRadius: "var(--r-pill)", marginBottom: 30, fontSize: 13.5, boxShadow: "var(--shadow-card)" }}>
-            <span style={{ width: 8, height: 8, borderRadius: "50%", background: "var(--accent-2)" }} />
-            Для дизайнеров · смета и проверка норм
-          </div>
-          <h1 className="display hero-h1" style={{ fontSize: "clamp(44px, 5.7vw, 84px)", lineHeight: 1.0, letterSpacing: "-0.03em", textShadow: "3px 3px 0 rgba(194,90,54,0.14)" }}>
-            <span style={{ display: "block" }}>Спецификация,</span>
-            <span style={{ display: "block" }}>которая <span style={{ color: "var(--accent)", fontStyle: "italic" }}>сходится</span></span>
-            <span style={{ display: "block", color: "var(--faint)" }}>сама</span>
+          <span className="mono-eyebrow">живая смета · лист 1/1</span>
+          <h1 className="display hero-h1" style={{ fontSize: "clamp(40px, 5vw, 72px)", lineHeight: 1.04, letterSpacing: "-0.025em", marginTop: 22 }}>
+            <span style={{ display: "block" }}>Смета собирается</span>
+            <span style={{ display: "block" }}>у вас <span style={{ color: "var(--accent)", fontStyle: "italic" }}>на глазах</span></span>
           </h1>
-          <p style={{ marginTop: 28, color: "var(--muted)", maxWidth: 540, fontSize: 19, lineHeight: 1.7 }}>
-            Загрузите габариты комнаты, бюджет и стиль — AIVibe соберёт смету с артикулами и ценами и проверит расстановку по нормам эргономики. То, на что уходит вечер в таблицах, — за минуту.
+          <p style={{ marginTop: 24, color: "var(--muted)", maxWidth: 480, fontSize: 18, lineHeight: 1.7 }}>
+            Вставьте ссылку на товар или фото комнаты — AIVibe заполнит лист сметы строка за строкой, с артикулами, количеством и ценой. Не абстрактный экран, а привычный документ со штампом.
           </p>
-          <div style={{ marginTop: 36, display: "flex", gap: 14, flexWrap: "wrap" }} id="download">
-            <button className="btn btn-primary" style={{ padding: "16px 28px", fontSize: 16 }} onClick={() => go("auth")}><I.layers size={19} /> Собрать смету</button>
-            <a className="btn btn-ghost" style={{ padding: "16px 28px", fontSize: 16 }} href="#how">Как это работает <I.arrow size={17} /></a>
+          <div style={{ marginTop: 34, display: "flex", gap: 14, flexWrap: "wrap" }} id="download">
+            <button className="btn btn-primary" style={{ padding: "16px 26px", fontSize: 16 }} onClick={() => go("auth")}><I.layers size={19} /> Собрать смету</button>
+            <a className="btn btn-ghost" style={{ padding: "16px 26px", fontSize: 16 }} href="#how">Как это работает <I.arrow size={17} /></a>
           </div>
-          <div style={{ marginTop: 52, display: "flex", gap: 44, flexWrap: "wrap" }}>
-            {[["1 мин", "Смета вместо вечера"], ["100%", "Предметов с ценой"], ["3", "Бюджета на выбор"]].map(([v, l]) => (
+          <div style={{ marginTop: 46, display: "flex", gap: 38, flexWrap: "wrap" }}>
+            {[["1 мин", "вместо вечера в таблицах"], ["38", "позиций с ценой"], ["3", "бюджета на выбор"]].map(([v, l]) => (
               <div key={l}>
-                <div className="display" style={{ fontSize: 36 }}>{v}</div>
-                <div style={{ color: "var(--muted)", fontSize: 14, marginTop: 4 }}>{l}</div>
+                <div className="mono" style={{ fontWeight: 500, fontSize: 26 }}>{v}</div>
+                <div style={{ color: "var(--muted)", fontSize: 13, marginTop: 3 }}>{l}</div>
               </div>
             ))}
           </div>
         </div>
-        <HeroVisual />
+        <SmetaSheet />
       </div>
       <div style={{ position: "absolute", bottom: 26, left: "50%", transform: "translateX(-50%)", color: "var(--faint)", fontSize: 12, letterSpacing: ".2em", textTransform: "uppercase", display: "flex", flexDirection: "column", alignItems: "center", gap: 8 }}>
         прокрутите
@@ -128,53 +124,82 @@ function Hero({ go }) {
   );
 }
 
-/* fallback line-art (если Lottie/asset недоступен): рисуется штрихом через CSS */
-function HeroLineArt() {
+/* Живая смета на бумаге: лист со штампом, строки «впечатываются» при
+   попадании в экран, итог считается счётчиком. Респектит reduced-motion. */
+function SmetaSheet() {
   const ref = useRefS(null);
-  useEffectS(() => { const el = ref.current; if (el) { el.classList.remove("go"); void el.offsetWidth; el.classList.add("go"); } }, []);
+  const ROWS = [
+    ["01", "Демонтаж перегородок", "12 м²", "18 400 ₽"],
+    ["02", "Стяжка пола", "42 м²", "63 000 ₽"],
+    ["03", "Штукатурка стен", "96 м²", "51 200 ₽"],
+    ["04", "Электрика, точки", "38 шт", "47 500 ₽"],
+    ["05", "Плитка, санузел", "14 м²", "32 900 ₽"],
+  ];
+  const TARGET = 1240000;
+  useEffectS(() => {
+    const sheet = ref.current; if (!sheet) return;
+    const rows = sheet.querySelectorAll(".smeta-row:not(.head)");
+    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const STAGGER = 0.11, FIRST = 0.12;
+    rows.forEach((r, i) => { r.style.animationDelay = (FIRST + i * STAGGER) + "s"; });
+    const rowsDone = FIRST + (rows.length - 1) * STAGGER + 0.42;
+    const totalEl = sheet.querySelector(".smeta-total .val");
+    const noteEl = sheet.querySelector(".smeta-note");
+    const stampEl = sheet.querySelector(".smeta-stamp");
+    if (totalEl) totalEl.style.animationDelay = rowsDone + "s";
+    if (noteEl) noteEl.style.animationDelay = (rowsDone + 0.5) + "s";
+    if (stampEl) stampEl.style.animationDelay = (rowsDone + 0.15) + "s";
+    const fmt = new Intl.NumberFormat("ru-RU");
+    let raf, timer;
+    const countUp = () => {
+      if (reduce || !totalEl) { if (totalEl) totalEl.textContent = fmt.format(TARGET) + " ₽"; return; }
+      let start = null;
+      const step = (ts) => {
+        if (!start) start = ts;
+        const p = Math.min((ts - start) / 950, 1);
+        const eased = 1 - Math.pow(1 - p, 3);
+        totalEl.textContent = fmt.format(Math.round(TARGET * eased)) + " ₽";
+        if (p < 1) raf = requestAnimationFrame(step);
+      };
+      raf = requestAnimationFrame(step);
+    };
+    const play = () => { sheet.classList.add("play"); timer = setTimeout(countUp, reduce ? 0 : rowsDone * 1000); };
+    if (reduce) { play(); return () => { cancelAnimationFrame(raf); clearTimeout(timer); }; }
+    const io = new IntersectionObserver((entries) => {
+      entries.forEach((e) => { if (e.isIntersecting) { play(); io.disconnect(); } });
+    }, { threshold: 0.2, rootMargin: "0px 0px -8% 0px" });
+    io.observe(sheet);
+    return () => { io.disconnect(); cancelAnimationFrame(raf); clearTimeout(timer); };
+  }, []);
   return (
-    <svg ref={ref} className="line-art go" viewBox="0 0 340 340" width="100%" aria-hidden="true" style={{ maxWidth: 480, overflow: "visible", color: "var(--accent)" }}
-         fill="none" stroke="var(--accent)" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M20 300 H320" />
-      <ellipse cx="172" cy="312" rx="140" ry="16" stroke="var(--accent-2)" />
-      <path d="M210 44 H300 V128 H210 Z" />
-      <path stroke="var(--accent-2)" d="M255 44 V128 M210 86 H300 M306 60 l16 -10 M306 82 l18 -3 M306 104 l16 5" />
-      <path d="M40 62 H122 V130 H40 Z" />
-      <path stroke="var(--accent-2)" d="M50 116 q15 -20 30 -8 q12 9 26 -7 M50 124 H112" />
-      <path d="M64 250 L64 210 Q64 196 80 196 L244 196 Q260 196 260 210 L260 250 M50 250 H274 V272 H50 Z M74 272 V284 M250 272 V284" />
-      <path stroke="var(--accent-2)" d="M130 196 V224 M194 196 V224 M50 260 H274" />
-      <path d="M298 296 V150 M280 150 H316 L308 122 H288 Z" />
-      <path stroke="var(--accent-2)" d="M30 296 L34 256 H70 L66 296 Z M50 256 q-15 -34 -30 -44 M50 256 q11 -34 31 -46 M50 256 q0 -30 0 -52" />
-    </svg>
-  );
-}
-
-/* Рисованная сцена интерьера: Lottie line-art — рисуется штрихом, затем
-   AIVibe «обмеряет» комнату (бесшовный ambient-скан). Fallback — статичный SVG. */
-function HeroVisual() {
-  return (
-    <div className="hero-visual" style={{ position: "relative", height: 600, display: "flex", alignItems: "center", justifyContent: "center" }}>
-      <Lottie name="hero" intro={120}
-              ariaLabel="AIVibe собирает смету по комнате и проверяет нормы эргономики"
-              fallback={<HeroLineArt />}
-              style={{ width: "100%", maxWidth: 500, aspectRatio: "520 / 440" }} />
-
-      {/* пришпиленная заметка-смета (бумага, лёгкий поворот) */}
-      <div className="glass float-b" style={{ position: "absolute", bottom: 40, right: -6, width: 250, padding: 16, borderRadius: "var(--r-lg)", boxShadow: "var(--shadow-pop)", transform: "rotate(-1.6deg)" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 9 }}>
-          <I.layers size={16} style={{ color: "var(--accent)" }} />
-          <span style={{ fontSize: 11.5, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", color: "var(--accent)" }}>Смета AIVibe</span>
+    <div className="smeta-sheet" ref={ref} style={{ marginInline: "auto" }}>
+      <span className="smeta-grain" aria-hidden="true" />
+      <div className="smeta-head">
+        <div>
+          <div className="ttl">Смета ремонта</div>
+          <div className="sub">Квартира · 42 м² · черновой + чистовой</div>
         </div>
-        <p style={{ fontFamily: "var(--font-display)", fontSize: 18, fontWeight: 600, letterSpacing: "-.01em" }}>38 позиций · 1 240 000 ₽</p>
-        <div style={{ display: "flex", alignItems: "center", gap: 7, marginTop: 10, fontSize: 12.5, color: "var(--accent-2)", fontWeight: 600 }}>
-          <I.check size={15} /> проход у дивана 78 см — в норме
-        </div>
+        <div className="meta">№ 024<br />от 30.06.2026</div>
       </div>
-
-      {/* статус-чип эргономики */}
-      <div className="glass float-a" style={{ position: "absolute", top: 36, left: -4, padding: "11px 16px", borderRadius: "var(--r-pill)", display: "flex", alignItems: "center", gap: 10, fontSize: 13.5, fontWeight: 600, boxShadow: "var(--shadow-card)" }}>
-        <span style={{ width: 9, height: 9, borderRadius: "50%", background: "var(--accent-2)" }} />
-        Эргономика · проверено
+      <div className="smeta-rows">
+        <div className="smeta-row head"><span>№</span><span className="pos">Позиция</span><span className="qty">Кол-во</span><span className="sum">Сумма</span></div>
+        {ROWS.map(([i, p, q, s]) => (
+          <div className="smeta-row" key={i}><span className="idx">{i}</span><span className="pos">{p}</span><span className="qty">{q}</span><span className="sum">{s}</span></div>
+        ))}
+        <div className="smeta-row more"><span className="idx">—</span><span className="pos">ещё 33 позиции</span><span className="qty">—</span><span className="sum">1 027 000 ₽</span></div>
+      </div>
+      <div className="smeta-total"><span className="lab">Итого</span><span className="val">0 ₽</span></div>
+      <div className="smeta-note">
+        <svg width="40" height="20" viewBox="0 0 40 20" aria-hidden="true"><path d="M38 4 C18 -2 6 8 4 17 M4 17 l-1 -7 M4 17 l7 -2" /></svg>
+        <span>с НДС и логистикой</span>
+      </div>
+      <div className="smeta-stamp">
+        <div><div className="k">Объект</div><div className="v">Квартира</div></div>
+        <div><div className="k">Площадь</div><div className="v">42 м²</div></div>
+        <div><div className="k">Стадия</div><div className="v">Рабочая</div></div>
+        <div><div className="k">Дата</div><div className="v">30.06.2026</div></div>
+        <div><div className="k">Сметчик</div><div className="v">AIVibe AI</div></div>
+        <div><div className="k">Лист</div><div className="v">1 / 1</div></div>
       </div>
     </div>
   );

@@ -258,8 +258,8 @@ function RoomSpecOverlay({ data, onClose }) {
                       <div key={i} style={{ display: "flex", alignItems: "baseline", gap: 10, padding: "7px 0", borderTop: i ? "1px solid var(--hairline)" : "none", fontSize: 13.5 }}>
                         <span style={{ flex: 1, color: "var(--text)", lineHeight: 1.4 }}>{it.title}</span>
                         <span style={{ color: "var(--faint)", whiteSpace: "nowrap", fontSize: 12 }}>{it.cat}</span>
-                        <span style={{ color: "var(--muted)", whiteSpace: "nowrap", width: 28, textAlign: "right" }}>×{it.qty || 1}</span>
-                        <span style={{ fontWeight: 700, whiteSpace: "nowrap", width: 96, textAlign: "right" }}>{fmtMoney(it.price * (it.qty || 1))}</span>
+                        <span className="mono" style={{ color: "var(--muted)", whiteSpace: "nowrap", width: 30, textAlign: "right", fontSize: 12.5 }}>×{it.qty || 1}</span>
+                        <span className="mono" style={{ fontWeight: 600, whiteSpace: "nowrap", width: 100, textAlign: "right" }}>{fmtMoney(it.price * (it.qty || 1))}</span>
                       </div>
                     ))}
                   </div>
@@ -274,11 +274,11 @@ function RoomSpecOverlay({ data, onClose }) {
               <div style={{ display: "flex", alignItems: "center", gap: 11 }}>
                 <span style={{ width: 40, height: 40, borderRadius: 12, background: "var(--accent)", color: "var(--on-accent)", display: "grid", placeItems: "center", flex: "none" }}><I.layers size={20} /></span>
                 <div>
-                  <div style={{ fontFamily: "var(--font-display)", fontWeight: 800, fontSize: 20, lineHeight: 1 }}>{fmtMoney(grand)}</div>
+                  <div className="mono" style={{ fontWeight: 600, fontSize: 21, lineHeight: 1 }}>{fmtMoney(grand)}</div>
                   <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 3 }}>{itemsCount} позиций · {over ? <span style={{ color: "var(--accent)" }}>сверх бюджета</span> : <span style={{ color: "var(--accent-2)" }}>в рамках бюджета</span>}</div>
                 </div>
               </div>
-              <span className="glass" style={{ padding: "7px 12px", borderRadius: 99, fontSize: 12.5, fontWeight: 700, color: "var(--accent-2)" }}>Клиенту (+{markup}%): {fmtMoney(client)}</span>
+              <span className="glass mono" style={{ padding: "7px 12px", borderRadius: 99, fontSize: 12, fontWeight: 500, color: "var(--accent-2)" }}>Клиенту (+{markup}%): {fmtMoney(client)}</span>
               <div style={{ marginLeft: "auto", display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
                 <div className="spec-mode" role="group" aria-label="Режим выгрузки">
                   <span className="spec-mode-cap">Выгрузка</span>

@@ -82,7 +82,7 @@ function HowDesktop() {
                     <StepGlyph step={s} on={on} />
                     <div>
                       <div style={{ display: "flex", gap: 9, alignItems: "baseline", marginBottom: 4 }}>
-                        <span className="display" style={{ fontSize: 14, color: on ? "var(--accent-2)" : "var(--faint)" }}>{s.n}</span>
+                        <span className="mono" style={{ fontSize: 13, fontWeight: 500, color: on ? "var(--accent-2)" : "var(--faint)" }}>{s.n}</span>
                         <span style={{ fontWeight: 700, fontSize: 16.5 }}>{s.tag}</span>
                       </div>
                       <p style={{ fontSize: 14.5, color: "var(--muted)", lineHeight: 1.55 }}>{on ? s.title : s.text}</p>
@@ -133,7 +133,7 @@ function HowMobile() {
                 <StepGlyph step={s} on={true} />
                 <div>
                   <div style={{ display: "flex", gap: 9, alignItems: "baseline", marginBottom: 4 }}>
-                    <span className="display" style={{ fontSize: 14, color: "var(--accent-2)" }}>{s.n}</span>
+                    <span className="mono" style={{ fontSize: 13, fontWeight: 500, color: "var(--accent-2)" }}>{s.n}</span>
                     <span style={{ fontWeight: 700, fontSize: 16.5 }}>{s.tag}</span>
                   </div>
                   <p style={{ fontSize: 14.5, color: "var(--muted)", lineHeight: 1.55 }}>{s.title}</p>
@@ -175,7 +175,7 @@ function DemoStage({ active, sub }) {
           Хочу уютную гостиную в тёплых тонах, бюджет 500к
         </div>
         <div className="glass" style={{ alignSelf: "flex-start", maxWidth: "82%", padding: "13px 16px", borderRadius: "16px 16px 16px 4px", fontSize: 14, lineHeight: 1.5, boxShadow: "var(--shadow-card)" }}>
-          <span style={{ display: "block", color: "var(--accent-2)", fontWeight: 700, fontSize: 11.5, letterSpacing: ".06em", marginBottom: 5 }}>СМЕТА AIVIBE · YANDEXGPT 5</span>
+          <span className="mono" style={{ display: "block", color: "var(--accent-2)", fontWeight: 500, fontSize: 11, letterSpacing: ".06em", marginBottom: 5 }}>СМЕТА AIVIBE · YANDEXGPT 5</span>
           Собрал смету: 38 позиций — диван-терракота, дубовый стеллаж, тёплый свет. Итог 480 000 ₽, расстановка по нормам.
         </div>
       </div>
@@ -290,7 +290,7 @@ function NewsFeed() {
               <div style={{ padding: 22, display: "flex", flexDirection: "column", gap: 10, flex: 1 }}>
                 <h3 style={{ fontFamily: "var(--font-display)", fontSize: i === 0 ? 25 : 20, fontWeight: 600, lineHeight: 1.22, letterSpacing: "-0.01em" }}>{n.title}</h3>
                 <p style={{ color: "var(--muted)", fontSize: 14.5, lineHeight: 1.55, flex: 1 }}>{n.excerpt}</p>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", color: "var(--faint)", fontSize: 13, marginTop: 4 }}>
+                <div className="mono" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", color: "var(--faint)", fontSize: 12, marginTop: 4 }}>
                   <span>{new Date(n.date).toLocaleDateString("ru-RU", { day: "numeric", month: "long" })}</span>
                   <span>{fmt(n.views)} просмотров</span>
                 </div>

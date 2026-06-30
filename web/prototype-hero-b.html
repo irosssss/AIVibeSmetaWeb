@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>AIVibe — прототип hero B (живая смета на бумаге)</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Spectral:ital,wght@0,400;0,500;0,600;1,400&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+
+<style>
+  /* самодостаточные токены — чтобы файл открывался автономно, без styles.css */
+  :root {
+    --bg-base:#F5F1EB; --surface:#FBF8F2; --surface-2:#F1E8DA;
+    --hairline:#E3D9C7; --accent:#C25A36; --accent-soft:#D9744B;
+    --accent-2:#5E6B5B; --chart:#C98A2E; --text:#2E2A26;
+    --muted:rgba(46,42,38,.62); --faint:rgba(46,42,38,.40);
+    --r-sm:12px; --r-pill:999px; --shadow-card:0 16px 40px rgba(46,42,38,.10);
+    --ease:cubic-bezier(.22,1,.36,1);
+    --font-display:"Spectral",Georgia,serif; --font-body:"Inter",system-ui,sans-serif;
+    --font-mono:"JetBrains Mono",ui-monospace,"SF Mono",Menlo,monospace;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { background:var(--bg-base); color:var(--text); font-family:var(--font-body); -webkit-font-smoothing:antialiased; }
+  body::after { content:""; position:fixed; inset:0; z-index:-1; pointer-events:none; opacity:.05; mix-blend-mode:multiply;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.82' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"); }
+  a { text-decoration:none; color:inherit; }
+  .container { width:min(1320px,100% - 48px); margin-inline:auto; }
+  .btn { display:inline-flex; align-items:center; justify-content:center; gap:10px; border-radius:var(--r-pill); font-weight:600; font-size:15px; border:none; cursor:pointer; font-family:inherit; transition:transform .25s var(--ease),background .25s,border-color .25s; }
+  .btn-primary { background:var(--accent); color:#FCF6EE; }
+  .btn-primary:hover { background:var(--accent-soft); transform:translateY(-2px); }
+  .btn-ghost { background:var(--surface); border:1px solid var(--hairline); color:var(--text); }
+  .btn-ghost:hover { transform:translateY(-2px); border-color:var(--accent); }
+
+  .proto-hero { min-height: 100vh; min-height: 100dvh; display: flex; align-items: center; padding: 96px 0 60px; }
+  .proto-grid { display: grid; grid-template-columns: 0.9fr 1.1fr; gap: 64px; align-items: center; }
+
+  /* ---- левая колонка ---- */
+  .mono-eyebrow {
+    font-family: var(--font-mono); font-size: 12.5px; letter-spacing: .14em;
+    color: var(--accent); text-transform: uppercase; display: inline-flex; gap: 10px; align-items: center;
+  }
+  .mono-eyebrow::before { content: ""; width: 26px; height: 1px; background: var(--accent); }
+  .hb-h1 {
+    font-family: var(--font-display); font-weight: 600; letter-spacing: -.025em; line-height: 1.04;
+    font-size: clamp(40px, 5vw, 70px); margin: 22px 0 0;
+  }
+  .hb-h1 em { font-style: italic; color: var(--accent); }
+  .hb-sub { margin-top: 24px; color: var(--muted); max-width: 480px; font-size: 18px; line-height: 1.7; }
+  .hb-cta { margin-top: 34px; display: flex; gap: 14px; flex-wrap: wrap; }
+  .hb-stats { margin-top: 46px; display: flex; gap: 38px; flex-wrap: wrap; }
+  .hb-stat .v { font-family: var(--font-mono); font-weight: 500; font-size: 26px; font-variant-numeric: tabular-nums; }
+  .hb-stat .l { color: var(--muted); font-size: 13px; margin-top: 3px; }
+
+  /* ---- лист сметы ---- */
+  .sheet {
+    position: relative; background: var(--surface); border: 1px solid var(--hairline);
+    border-radius: var(--r-sm); box-shadow: var(--shadow-card);
+    padding: 28px 30px 24px; max-width: 580px; margin-inline: auto; overflow: hidden;
+  }
+  /* бумажная фактура самого листа (грейн поверх surface) */
+  .grain {
+    position: absolute; inset: 0; z-index: 0; pointer-events: none; border-radius: inherit;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    opacity: 0.05; mix-blend-mode: multiply;
+  }
+  .sheet > *:not(.grain) { position: relative; z-index: 1; }
+  /* угловые «крестики» чертёжного листа */
+  .sheet::before, .sheet::after {
+    content: ""; position: absolute; width: 11px; height: 11px; pointer-events: none; z-index: 2;
+    border: 1px solid var(--hairline);
+  }
+  .sheet::before { top: 11px; left: 11px; border-right: 0; border-bottom: 0; }
+  .sheet::after  { top: 11px; right: 11px; border-left: 0; border-bottom: 0; }
+
+  .sheet-head { display: flex; justify-content: space-between; align-items: flex-start;
+    padding-bottom: 14px; border-bottom: 1px solid var(--hairline); margin-bottom: 4px; }
+  .sheet-head .ttl { font-family: var(--font-display); font-size: 20px; font-weight: 600; letter-spacing: -.01em; }
+  .sheet-head .sub { font-size: 12.5px; color: var(--muted); margin-top: 3px; }
+  .sheet-head .meta { font-family: var(--font-mono); font-size: 11.5px; color: var(--muted); text-align: right; line-height: 1.55; }
+
+  .rows { margin-top: 2px; }
+  .row {
+    display: grid; grid-template-columns: 28px 1fr auto 104px; gap: 12px; align-items: baseline;
+    padding: 11px 8px; border-bottom: 1px dotted var(--hairline); border-radius: 6px;
+    transition: background .2s var(--ease);
+  }
+  .row .idx { font-family: var(--font-mono); font-size: 11px; color: var(--faint); font-variant-numeric: tabular-nums; }
+  .row .pos { font-size: 14.5px; }
+  .row .qty { font-family: var(--font-mono); font-size: 12.5px; color: var(--muted); font-variant-numeric: tabular-nums; text-align: right; white-space: nowrap; }
+  .row .sum { font-family: var(--font-mono); font-size: 14px; font-variant-numeric: tabular-nums; text-align: right; }
+  .row:not(.head):hover { background: var(--surface-2); }
+  .row.head { border-bottom: 1px solid var(--hairline); padding-top: 4px; padding-bottom: 8px; }
+  .row.head span { font-family: var(--font-mono); font-size: 10px; letter-spacing: .1em; text-transform: uppercase; color: var(--faint); }
+  .row.head .pos, .row.head .qty, .row.head .sum { color: var(--faint); }
+  .row.more .pos { color: var(--muted); font-style: italic; }
+  .row.more .qty, .row.more .sum { color: var(--muted); }
+
+  .total { display: flex; justify-content: space-between; align-items: baseline; margin-top: 18px; padding-top: 6px; }
+  .total .lab { font-family: var(--font-mono); font-size: 12px; letter-spacing: .12em; text-transform: uppercase; color: var(--accent); }
+  .total .val { font-family: var(--font-display); font-weight: 600; font-size: 35px; color: var(--accent); font-variant-numeric: tabular-nums; letter-spacing: -.01em; }
+
+  /* рукописная пометка-сноска к итогу (в потоке — без клиппинга) */
+  .note { display: flex; justify-content: flex-end; align-items: center; gap: 7px; margin-top: 6px; }
+  .note svg { flex: none; }
+  .note svg path { fill: none; stroke: var(--chart); stroke-width: 1.6; stroke-linecap: round; }
+  .note span { font-family: var(--font-mono); font-size: 11.5px; color: var(--chart); }
+
+  /* штамп / title-block — 3×2 поле как на чертеже */
+  .stamp { margin-top: 18px; border: 1px solid var(--hairline); display: grid; grid-template-columns: repeat(3, 1fr); }
+  .stamp > div { padding: 8px 11px; border-right: 1px solid var(--hairline); border-bottom: 1px solid var(--hairline); }
+  .stamp > div:nth-child(3n) { border-right: 0; }
+  .stamp > div:nth-child(n+4) { border-bottom: 0; }
+  .stamp .k { font-family: var(--font-mono); font-size: 9.5px; letter-spacing: .08em; text-transform: uppercase; color: var(--faint); }
+  .stamp .v { font-family: var(--font-mono); font-size: 12px; color: var(--text); margin-top: 2px; }
+
+  /* ---- анимация сборки ---- */
+  @keyframes rowIn { from { opacity: 0; transform: translateY(9px); } to { opacity: 1; transform: none; } }
+  @keyframes softIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+  .play .rows .row:not(.head) { opacity: 0; animation: rowIn .42s var(--ease) forwards; }
+  .play .total, .play .note { opacity: 0; animation: softIn .5s var(--ease) forwards; }
+  .play .stamp { opacity: 0; animation: softIn .5s var(--ease) forwards; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .play .rows .row, .play .total, .play .note, .play .stamp { opacity: 1 !important; transform: none !important; animation: none !important; }
+  }
+
+  @media (max-width: 1000px) {
+    .proto-grid { grid-template-columns: 1fr; gap: 40px; }
+  }
+</style>
+</head>
+<body>
+  <section class="proto-hero">
+    <div class="container proto-grid">
+
+      <div>
+        <span class="mono-eyebrow">живая смета · лист 1/1</span>
+        <h1 class="hb-h1">Смета собирается<br/>у вас <em>на глазах</em></h1>
+        <p class="hb-sub">Вставьте ссылку на товар или фото комнаты — AIVibe заполнит лист сметы строка за строкой, с артикулами, количеством и ценой. Не абстрактный экран, а привычный документ со штампом.</p>
+        <div class="hb-cta">
+          <button class="btn btn-primary" style="padding:16px 26px;font-size:16px">
+            <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 3 8l9 5 9-5-9-5Z"/><path d="M3 14l9 5 9-5"/></svg>
+            Собрать смету
+          </button>
+          <a class="btn btn-ghost" style="padding:16px 26px;font-size:16px" href="#">Как это работает →</a>
+        </div>
+        <div class="hb-stats">
+          <div class="hb-stat"><div class="v">1 мин</div><div class="l">вместо вечера в таблицах</div></div>
+          <div class="hb-stat"><div class="v">38</div><div class="l">позиций с ценой</div></div>
+          <div class="hb-stat"><div class="v">3</div><div class="l">бюджета на выбор</div></div>
+        </div>
+      </div>
+
+      <div class="sheet" id="sheet">
+        <span class="grain" aria-hidden="true"></span>
+
+        <div class="sheet-head">
+          <div>
+            <div class="ttl">Смета ремонта</div>
+            <div class="sub">Квартира · 42 м² · черновой + чистовой</div>
+          </div>
+          <div class="meta">№ 024<br/>от 30.06.2026</div>
+        </div>
+
+        <div class="rows" id="rows">
+          <div class="row head"><span>№</span><span class="pos">Позиция</span><span class="qty">Кол-во</span><span class="sum">Сумма</span></div>
+          <div class="row"><span class="idx">01</span><span class="pos">Демонтаж перегородок</span><span class="qty">12 м²</span><span class="sum">18 400 ₽</span></div>
+          <div class="row"><span class="idx">02</span><span class="pos">Стяжка пола</span><span class="qty">42 м²</span><span class="sum">63 000 ₽</span></div>
+          <div class="row"><span class="idx">03</span><span class="pos">Штукатурка стен</span><span class="qty">96 м²</span><span class="sum">51 200 ₽</span></div>
+          <div class="row"><span class="idx">04</span><span class="pos">Электрика, точки</span><span class="qty">38 шт</span><span class="sum">47 500 ₽</span></div>
+          <div class="row"><span class="idx">05</span><span class="pos">Плитка, санузел</span><span class="qty">14 м²</span><span class="sum">32 900 ₽</span></div>
+          <div class="row more"><span class="idx">—</span><span class="pos">ещё 33 позиции</span><span class="qty">—</span><span class="sum">1 027 000 ₽</span></div>
+        </div>
+
+        <div class="total">
+          <span class="lab">Итого</span>
+          <span class="val" id="total">0 ₽</span>
+        </div>
+
+        <div class="note">
+          <svg width="40" height="20" viewBox="0 0 40 20" aria-hidden="true"><path d="M38 4 C18 -2 6 8 4 17 M4 17 l-1 -7 M4 17 l7 -2"/></svg>
+          <span>с НДС и логистикой</span>
+        </div>
+
+        <div class="stamp">
+          <div><div class="k">Объект</div><div class="v">Квартира</div></div>
+          <div><div class="k">Площадь</div><div class="v">42 м²</div></div>
+          <div><div class="k">Стадия</div><div class="v">Рабочая</div></div>
+          <div><div class="k">Дата</div><div class="v">30.06.2026</div></div>
+          <div><div class="k">Сметчик</div><div class="v">AIVibe AI</div></div>
+          <div><div class="k">Лист</div><div class="v">1 / 1</div></div>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+<script>
+  (function () {
+    var sheet = document.getElementById('sheet');
+    var dataRows = Array.prototype.slice.call(document.querySelectorAll('#rows .row:not(.head)'));
+    var reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    var STAGGER = 0.11, FIRST = 0.12;
+    dataRows.forEach(function (r, i) { r.style.animationDelay = (FIRST + i * STAGGER) + 's'; });
+    var rowsDone = FIRST + (dataRows.length - 1) * STAGGER + 0.42;
+    var totalEl = document.getElementById('total');
+    var noteEl = document.querySelector('.note');
+    var stampEl = document.querySelector('.stamp');
+    totalEl.style.animationDelay = rowsDone + 's';
+    noteEl.style.animationDelay = (rowsDone + 0.5) + 's';
+    stampEl.style.animationDelay = (rowsDone + 0.15) + 's';
+
+    var fmt = new Intl.NumberFormat('ru-RU');
+    var TARGET = 1240000;
+
+    function countUp() {
+      if (reduce) { totalEl.textContent = fmt.format(TARGET) + ' ₽'; return; }
+      var start = null, dur = 950;
+      function step(ts) {
+        if (!start) start = ts;
+        var p = Math.min((ts - start) / dur, 1);
+        var eased = 1 - Math.pow(1 - p, 3);
+        totalEl.textContent = fmt.format(Math.round(TARGET * eased)) + ' ₽';
+        if (p < 1) requestAnimationFrame(step);
+      }
+      requestAnimationFrame(step);
+    }
+
+    function play() {
+      sheet.classList.add('play');
+      setTimeout(countUp, reduce ? 0 : rowsDone * 1000);
+    }
+
+    if (reduce) { play(); return; }
+    var io = new IntersectionObserver(function (entries) {
+      entries.forEach(function (e) { if (e.isIntersecting) { play(); io.disconnect(); } });
+    }, { threshold: 0.2, rootMargin: '0px 0px -8% 0px' });
+    io.observe(sheet);
+  })();
+</script>
+</body>
+</html>
