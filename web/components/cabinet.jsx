@@ -4,12 +4,14 @@
    ============================================================ */
 const { useState: useC, useEffect: useCE } = React;
 
-/* провайдерские кнопки */
+/* провайдерские кнопки — фирменные SVG-логотипы (Яндекс / VK) */
 function YandexBtn({ onClick, loading }) {
   return (
     <button className="btn btn-block oauth-btn" onClick={onClick} disabled={loading}
       style={{ padding: "15px 20px", background: "#FC3F1D", color: "#fff", fontSize: 15.5 }}>
-      <span style={{ fontWeight: 900, fontSize: 19, fontFamily: "Arial,sans-serif", marginRight: 2 }}>Я</span>
+      <svg width="20" height="20" viewBox="0 0 64 64" aria-hidden="true" style={{ flex: "none" }}>
+        <path fill="#fff" d="M49.07 0c.524.405.262.88.095 1.333l-6.643 18.095-8.047 22.12a4.21 4.21 0 0 0-.262 1.429v19.81c0 1.2-.024 1.2-1.214 1.2-1.238 0-2.476-.048-3.714.024-.786.024-1.07-.238-1.048-1.024l.024-7.333V42.928c0-.5-.07-1.048-.262-1.524L14.976 7.333c-.095-.262-.238-.476-.357-.714v-.5c.38-.12.762-.3 1.143-.3l4.12-.024s1.357 0 1.81 1.286l9.7 27.31.405.976.333-1.095 1.905-6.976 8.5-26.31c.12-.333.405-.62.62-.93L49.07 0z"/>
+      </svg>
       Войти через Яндекс ID
     </button>
   );
@@ -18,7 +20,9 @@ function VKBtn({ onClick, loading }) {
   return (
     <button className="btn btn-block oauth-btn" onClick={onClick} disabled={loading}
       style={{ padding: "15px 20px", background: "#0077FF", color: "#fff", fontSize: 15.5 }}>
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M13.2 17.5c-5.3 0-8.7-3.7-8.8-9.8h2.8c.1 4.5 2.2 6.4 3.7 6.8V7.7h2.7v3.9c1.5-.2 3.1-1.9 3.6-3.9h2.7c-.4 2.5-2 4.2-3.2 4.9 1.2.6 3 2.1 3.7 4.9h-3c-.5-1.8-1.9-3.2-3.8-3.4v3.4z" /></svg>
+      <svg width="24" height="24" viewBox="0 0 256 256" aria-hidden="true" style={{ flex: "none" }}>
+        <path fill="#fff" d="M136.21 184.43c-58.34 0-91.62-40-93.01-106.56h29.23c.96 48.85 22.5 69.54 39.57 73.81V77.87h27.52V120c16.85-1.81 34.56-21.01 40.53-42.13h27.52c-4.58 26.02-23.78 45.22-37.44 53.12 13.66 6.4 35.52 23.14 43.84 53.44h-30.29c-6.5-20.27-22.72-35.95-44.16-38.08v38.08h-3.3z"/>
+      </svg>
       Войти через VK ID
     </button>
   );

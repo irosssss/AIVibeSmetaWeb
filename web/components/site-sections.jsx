@@ -15,10 +15,21 @@ const staticHow = prefersReduced || narrowVP;
    HOW IT WORKS — sticky-сцена, прогресс ведётся скроллом
 -------------------------------------------------------------- */
 const STEPS = [
-  { n: "01", icon: I.ruler, tag: "Габариты",     title: "Введите план комнаты или габариты", text: "Загрузите обмеры или нарисуйте план — стены, окна, двери. Без сложных 3D-программ." },
-  { n: "02", icon: I.spark, tag: "Смета и нормы", title: "AIVibe собирает спецификацию и проверяет расстановку", text: "Движок раскладывает мебель по нормам эргономики и собирает смету с артикулами и ценами под стиль и бюджет." },
-  { n: "03", icon: I.layers, tag: "3 варианта",  title: "Готовая смета в трёх бюджетах", text: "Эконом, база, премиум — выгружайте спецификацию клиенту. Меняете предмет — итог и проверка пересчитываются." },
+  { n: "01", icon: I.ruler, lot: "stepMeasure", tag: "Габариты",     title: "Введите план комнаты или габариты", text: "Загрузите обмеры или нарисуйте план — стены, окна, двери. Без сложных 3D-программ." },
+  { n: "02", icon: I.spark, lot: "stepAI",      tag: "Смета и нормы", title: "AIVibe собирает спецификацию и проверяет расстановку", text: "Движок раскладывает мебель по нормам эргономики и собирает смету с артикулами и ценами под стиль и бюджет." },
+  { n: "03", icon: I.layers, lot: "stepSpec",   tag: "3 варианта",  title: "Готовая смета в трёх бюджетах", text: "Эконом, база, премиум — выгружайте спецификацию клиенту. Меняете предмет — итог и проверка пересчитываются." },
 ];
+
+/* глиф шага: активный — Lottie line-art на бумажном квадрате; иначе статичная иконка */
+function StepGlyph({ step, on }) {
+  const box = { flex: "none", width: 44, height: 44, borderRadius: 12, display: "grid", placeItems: "center", transition: "all .45s" };
+  if (on) return (
+    <div style={{ ...box, background: "var(--surface)", border: "1px solid rgba(94,107,91,.4)", boxShadow: "var(--shadow-card)" }}>
+      <Lottie name={step.lot} ariaLabel="" fallback={<step.icon size={22} style={{ color: "var(--accent-2)" }} />} style={{ width: 34, height: 34 }} />
+    </div>
+  );
+  return <div style={{ ...box, background: "var(--surface-2)", color: "var(--muted)" }}><step.icon size={21} /></div>;
+}
 
 /* роутер: на узких экранах — свайп-степпер, иначе — sticky-сторителлинг */
 function HowItWorks() {
@@ -68,10 +79,7 @@ function HowDesktop() {
                     background: on ? "rgba(94,107,91,.08)" : "var(--surface)",
                     boxShadow: on ? "var(--shadow-card)" : "none",
                     opacity: on ? 1 : 0.55, transition: "all .45s ease" }}>
-                    <div style={{ flex: "none", width: 44, height: 44, borderRadius: 12, display: "grid", placeItems: "center",
-                      background: on ? "var(--accent-2)" : "var(--surface-2)", color: on ? "#FBF8F2" : "var(--muted)", transition: "all .45s" }}>
-                      <s.icon size={21} />
-                    </div>
+                    <StepGlyph step={s} on={on} />
                     <div>
                       <div style={{ display: "flex", gap: 9, alignItems: "baseline", marginBottom: 4 }}>
                         <span className="display" style={{ fontSize: 14, color: on ? "var(--accent-2)" : "var(--faint)" }}>{s.n}</span>
@@ -122,9 +130,7 @@ function HowMobile() {
               <DemoStage active={i} sub={1} />
               <div className="glass" style={{ borderRadius: "var(--r-lg)", padding: "18px 20px", display: "flex", gap: 15,
                 borderColor: "rgba(94,107,91,.45)", background: "rgba(94,107,91,.07)" }}>
-                <div style={{ flex: "none", width: 44, height: 44, borderRadius: 12, display: "grid", placeItems: "center", background: "var(--accent-2)", color: "#FBF8F2" }}>
-                  <s.icon size={21} />
-                </div>
+                <StepGlyph step={s} on={true} />
                 <div>
                   <div style={{ display: "flex", gap: 9, alignItems: "baseline", marginBottom: 4 }}>
                     <span className="display" style={{ fontSize: 14, color: "var(--accent-2)" }}>{s.n}</span>

@@ -1,0 +1,391 @@
+/* ============================================================
+   AIVibe — генератор Lottie/Bodymovin JSON (lottie-web совместимо)
+   Тёплое издательское «ателье»: терракота/олива/охра, line-art,
+   trim-path draw-on + бесшовные ambient-петли.
+   Следует taste из diffusionstudio/text-to-lottie (motion/design).
+   Запуск:  node gen-lottie.mjs  → пишет web/lottie-assets.js
+   ============================================================ */
+import { writeFileSync } from "node:fs";
+
+/* ---- бренд-палитра (RGB 0..1) ---- */
+const C = {
+  terra:     [0.7608, 0.3529, 0.2118, 1],
+  terraSoft: [0.8510, 0.4549, 0.2941, 1],
+  olive:     [0.3686, 0.4196, 0.3569, 1],
+  ochre:     [0.7882, 0.5412, 0.1804, 1],
+  navy:      [0.2431, 0.2902, 0.3490, 1],
+  ink:       [0.1804, 0.1647, 0.1490, 1],
+};
+
+/* ---- easing-якоря (motion-taste.md) bezier = x1,y1,x2,y2 ---- */
+const E = {
+  linear:   { o: { x: [0.0],  y: [0.0]  }, i: { x: [1.0],  y: [1.0]  } },
+  settle:   { o: { x: [0.0],  y: [0.65] }, i: { x: [0.51], y: [0.99] } }, // deep ease-out
+  entrance: { o: { x: [0.20], y: [0.75] }, i: { x: [0.34], y: [0.94] } }, // fast in, soft land
+  travel:   { o: { x: [1.0],  y: [0.49] }, i: { x: [0.0],  y: [0.55] } }, // S ease-in-out
+  pop:      { o: { x: [0.94], y: [0.75] }, i: { x: [0.34], y: [0.94] } }, // soft overshoot
+};
+
+/* ---- helpers ---- */
+const isProp = (v) => v && typeof v === "object" && "a" in v && "k" in v;
+const val = (k) => ({ a: 0, k });
+
+// kfs: [{t, s:[...], e?:'settle'(ease into next segment)}]
+// ВАЖНО: lottie-web trim-модификатор корректно читает ТОЛЬКО legacy-формат
+// кадров (s + e на самом кадре, оба хэндла o/i на стартовом кадре). Modern
+// s-only формат у анимированного trim схлопывается в пустой путь. Поэтому
+// эмитим legacy-формат — он универсально поддержан (trim, transform, opacity).
+function anim(kfs) {
+  const k = [];
+  for (let idx = 0; idx < kfs.length; idx++) {
+    const f = kfs[idx];
+    if (idx < kfs.length - 1) {
+      const ez = E[f.e || "settle"];
+      k.push({ t: f.t, s: f.s, e: kfs[idx + 1].s, o: ez.o, i: ez.i });
+    } else {
+      k.push({ t: f.t, s: f.s });
+    }
+  }
+  return { a: 1, k };
+}
+const P = (x) => (isProp(x) ? x : val(x)); // prop passthrough
+
+/* shapes */
+function shPath(pts, closed = false, tg = null) {
+  return {
+    ty: "sh", ix: 1, hd: false, nm: "p",
+    ks: { a: 0, k: {
+      i: pts.map((_, j) => (tg ? tg[j][0] : [0, 0])),
+      o: pts.map((_, j) => (tg ? tg[j][1] : [0, 0])),
+      v: pts.map((p) => [p[0], p[1]]), c: closed,
+    } },
+  };
+}
+const rect = (cx, cy, w, h, r = 0) => ({ ty: "rc", nm: "r", hd: false, d: 1, s: val([w, h]), p: val([cx, cy]), r: val(r) });
+const ellipse = (cx, cy, w, h) => ({ ty: "el", nm: "e", hd: false, d: 1, s: val([w, h]), p: val([cx, cy]) });
+const stroke = (color, w, o = 100) => ({ ty: "st", nm: "s", hd: false, c: P(color), o: P(o), w: P(w), lc: 2, lj: 2, ml: 4, d: [] });
+const fill = (color, o = 100) => ({ ty: "fl", nm: "f", hd: false, c: P(color), o: P(o), r: 1 });
+const trim = (e, s = 0, off = 0) => ({ ty: "tm", nm: "tm", hd: false, s: P(s), e: P(e), o: P(off), m: 1 });
+function grTr({ p = [0, 0], a = [0, 0], s = [100, 100], r = 0, o = 100 } = {}) {
+  return { ty: "tr", nm: "tr", p: P(p), a: P(a), s: P(s), r: P(r), o: P(o), sk: val(0), sa: val(0) };
+}
+const group = (it, nm = "g") => ({ ty: "gr", nm, hd: false, np: it.length, cix: 2, ix: 1, bm: 0, it });
+
+/* layer factory (per-comp ind) */
+function makeLayer(ctx) {
+  return (shapes, { nm = "L", ip = 0, op, ks = {} } = {}) => ({
+    ddd: 0, ind: ++ctx.ind, ty: 4, nm, sr: 1, ao: 0, bm: 0, st: 0,
+    ip, op: op ?? ctx.op,
+    ks: {
+      o: P(ks.o ?? 100), r: P(ks.r ?? 0),
+      p: P(ks.p ?? [0, 0, 0]), a: P(ks.a ?? [0, 0, 0]), s: P(ks.s ?? [100, 100, 100]),
+    },
+    shapes,
+  });
+}
+function comp(nm, w, h, op, build, fr = 60) {
+  const ctx = { ind: 0, op };
+  const L = makeLayer(ctx);
+  const layers = build(L, ctx);
+  return { v: "5.9.0", fr, ip: 0, op, w, h, nm, ddd: 0, assets: [], layers, meta: { g: "AIVibe", a: "AIVibe Atelier" } };
+}
+
+/* convenience: a stroked (optionally trimmed) line-art group */
+function strokeGroup(shapes, { color = C.terra, w = 2.4, o = 100, tr = {}, trimE = null } = {}) {
+  const it = [...shapes];
+  if (trimE != null) it.push(trim(trimE));
+  it.push(stroke(color, w, o));
+  it.push(grTr(tr));
+  return group(it);
+}
+function fillGroup(shapes, { color = C.terra, o = 100, tr = {} } = {}) {
+  return group([...shapes, fill(color, o), grTr(tr)]);
+}
+
+/* =====================================================================
+   1) HERO — тёплая line-art комната, AIVibe «обмеряет» помещение.
+   Сегмент 0..DRAW: рисуется штрихом (фирменный draw-on, стаггер).
+   Сегмент DRAW..OP: бесшовный ambient (скан-замер, пульс лампы, блики).
+   Плеер: playSegments([[0,DRAW],[DRAW,OP]]) → интро 1 раз, ambient в петле.
+   ===================================================================== */
+function hero() {
+  const W = 520, H = 440, DRAW = 120, OP = 420;
+  // ambient окно: AMB..OP, бесшовно (значения на AMB == на OP)
+  const AMB = DRAW, END = OP;
+
+  return comp("hero", W, H, OP, (L) => {
+    const layers = [];
+
+    /* — статичная база (рисуется штрихом в интро, держится в ambient) — */
+    // окно + рама картины (читаются первыми, верхний ряд)
+    const windowShapes = [
+      rect(120, 150, 120, 96, 3),
+      shPath([[120, 102], [120, 198]]),         // вертикальный шпрос
+      shPath([[60, 150], [180, 150]]),          // горизонтальный шпрос
+    ];
+    const sunShape = [ellipse(150, 128, 22, 22)];
+    const frameShapes = [
+      rect(335, 150, 78, 60, 3),
+      shPath([[306, 168], [322, 146], [338, 162], [352, 138], [364, 168]]), // «горы» внутри
+    ];
+    // диван
+    const sofaShapes = [
+      rect(220, 302, 172, 44, 11),              // сиденье
+      rect(220, 268, 172, 30, 9),               // спинка
+      rect(143, 290, 20, 52, 7),                // левый подлокотник
+      rect(297, 290, 20, 52, 7),                // правый подлокотник
+      shPath([[160, 324], [160, 340]]),         // ножки
+      shPath([[280, 324], [280, 340]]),
+      shPath([[220, 280], [220, 322]]),         // шов подушек
+    ];
+    // торшер
+    const lampShapes = [
+      shPath([[430, 352], [430, 238]]),                                  // стойка
+      shPath([[412, 238], [448, 238], [440, 214], [420, 214]], true),    // абажур (трапеция)
+    ];
+    // растение
+    const plantPot = [shPath([[83, 320], [107, 320], [103, 348], [87, 348]], true)];
+    const plantFronds = [
+      shPath([[95, 322], [80, 290]], false, [[[0, 0], [-6, -12]], [[8, 10], [0, 0]]]),
+      shPath([[95, 322], [95, 276]], false, [[[0, 0], [0, -14]], [[0, 12], [0, 0]]]),
+      shPath([[95, 322], [112, 292]], false, [[[0, 0], [8, -12]], [[-8, 10], [0, 0]]]),
+    ];
+    // пол + ковёр
+    const floorShapes = [shPath([[40, 360], [480, 360]])];
+    const rugShapes = [ellipse(255, 374, 350, 38)];
+
+    // стаггер draw-on по порядку чтения; держим e=100 в ambient
+    const drawn = (shapes, { color, w = 2.4, start, dur = 34 }) =>
+      L([strokeGroup(shapes, {
+        color, w,
+        trimE: anim([{ t: start, s: [0], e: "settle" }, { t: start + dur, s: [100] }]),
+      })], { nm: "base" });
+
+    layers.push(drawn(floorShapes,  { color: C.terra, w: 2.4, start: 0,  dur: 24 }));
+    layers.push(drawn(rugShapes,    { color: C.olive, w: 2.0, start: 8,  dur: 30 }));
+    layers.push(drawn(windowShapes, { color: C.terra, w: 2.4, start: 14, dur: 30 }));
+    layers.push(drawn(sunShape,     { color: C.ochre, w: 2.2, start: 30, dur: 18 }));
+    layers.push(drawn(frameShapes,  { color: C.terra, w: 2.2, start: 24, dur: 28 }));
+    layers.push(drawn(sofaShapes,   { color: C.terra, w: 2.6, start: 34, dur: 44 }));
+    layers.push(drawn(lampShapes,   { color: C.terra, w: 2.4, start: 62, dur: 30 }));
+    layers.push(drawn(plantPot,     { color: C.terra, w: 2.2, start: 74, dur: 18 }));
+
+    // фронды растения — лёгкое покачивание (ambient, бесшовно: 0→4→0→-4→0)
+    layers.push(L([strokeGroup(plantFronds, {
+      color: C.olive, w: 2.0,
+      trimE: anim([{ t: 78, s: [0], e: "settle" }, { t: 110, s: [100] }]),
+      tr: { a: [95, 322], p: [95, 322], r: anim([
+        { t: AMB, s: [0], e: "travel" }, { t: AMB + 90, s: [3.5], e: "travel" },
+        { t: AMB + 180, s: [0], e: "travel" }, { t: AMB + 240, s: [-3.5], e: "travel" },
+        { t: END, s: [0] },
+      ]) },
+    })], { nm: "fronds" }));
+
+    /* — световой конус лампы: пульс (ambient, бесшовно) — */
+    const cone = [
+      shPath([[418, 252], [410, 274]]),
+      shPath([[430, 254], [430, 280]]),
+      shPath([[442, 252], [450, 274]]),
+    ];
+    layers.push(L([strokeGroup(cone, { color: C.ochre, w: 2.0 })], {
+      nm: "cone",
+      ks: { o: anim([
+        { t: AMB, s: [34], e: "travel" }, { t: AMB + 150, s: [78], e: "travel" }, { t: END, s: [34] },
+      ]) },
+    }));
+
+    /* — олива-галочка «норма ок» у дивана: один импульс — */
+    const okMark = [shPath([[300, 332], [307, 339], [320, 324]])];
+    layers.push(L([strokeGroup(okMark, { color: C.olive, w: 3.0 })], {
+      nm: "ok",
+      ks: { o: anim([
+        { t: AMB, s: [0], e: "settle" }, { t: AMB + 70, s: [0], e: "pop" },
+        { t: AMB + 110, s: [100], e: "settle" }, { t: AMB + 210, s: [100], e: "settle" },
+        { t: AMB + 260, s: [0], e: "settle" }, { t: END, s: [0] },
+      ]) },
+    }));
+
+    /* — скан-замер: вертикальная терракотовая линия + glow, пинг-понг — */
+    const scanX = anim([
+      { t: AMB, s: [70, 0], e: "travel" },
+      { t: AMB + 150, s: [470, 0], e: "travel" },
+      { t: END, s: [70, 0] },
+    ]);
+    const scanLine = [shPath([[0, 96], [0, 366]])];
+    layers.push(L([strokeGroup(scanLine, { color: C.terra, w: 8, o: 14 })], { nm: "scan-glow", ks: { p: scanX, o: 70 } }));
+    layers.push(L([strokeGroup(scanLine, { color: C.terra, w: 2.4 })], { nm: "scan", ks: { p: scanX, o: 85 } }));
+    // бегунок на скане
+    layers.push(L([fillGroup([ellipse(0, 96, 9, 9)], { color: C.terra })], { nm: "scan-dot", ks: { p: scanX } }));
+
+    /* — размерная линия (диван), мигает синхронно со сканом — */
+    const dim = [
+      shPath([[135, 392], [305, 392]]),
+      shPath([[135, 386], [135, 398]]),
+      shPath([[305, 386], [305, 398]]),
+    ];
+    layers.push(L([strokeGroup(dim, { color: C.navy, w: 1.8 })], {
+      nm: "dim",
+      ks: { o: anim([
+        { t: AMB, s: [0], e: "settle" }, { t: AMB + 80, s: [0], e: "settle" },
+        { t: AMB + 130, s: [90], e: "settle" }, { t: AMB + 210, s: [90], e: "settle" },
+        { t: AMB + 270, s: [0], e: "settle" }, { t: END, s: [0] },
+      ]) },
+    }));
+
+    return layers;
+  });
+}
+
+/* =====================================================================
+   STEP-иконки (how-it-works). Маленькие, жирные, читаются ~28px.
+   Бесшовные петли с draw-on + fade-reset (трюк: кадр0==кадрOP «пусто»).
+   ===================================================================== */
+function stepMeasure() {
+  const S = 120, OP = 150;
+  return comp("stepMeasure", S, S, OP, (L) => {
+    const layers = [];
+    // план комнаты + угловые «уголки»
+    const room = [
+      rect(60, 56, 60, 60, 5),
+    ];
+    const ticks = [
+      shPath([[30, 36], [40, 36]]), shPath([[30, 36], [30, 46]]),
+      shPath([[90, 36], [80, 36]]), shPath([[90, 36], [90, 46]]),
+      shPath([[30, 76], [40, 76]]), shPath([[30, 76], [30, 66]]),
+      shPath([[90, 76], [80, 76]]), shPath([[90, 76], [90, 66]]),
+    ];
+    const draw = (s) => anim([{ t: 0, s: [0], e: "settle" }, { t: 34, s: [100], e: "settle" }, { t: 120, s: [100], e: "settle" }, { t: OP, s: [100] }]);
+    const reset = anim([{ t: 0, s: [100], e: "settle" }, { t: 118, s: [100], e: "settle" }, { t: OP, s: [0] }]);
+    layers.push(L([strokeGroup(room,  { color: C.terra, w: 3.2, trimE: draw() })], { nm: "room", ks: { o: reset } }));
+    layers.push(L([strokeGroup(ticks, { color: C.olive, w: 2.6, trimE: anim([{ t: 10, s: [0], e: "settle" }, { t: 44, s: [100] }]) })], { nm: "ticks", ks: { o: reset } }));
+    // размерная линия снизу + бегущий калипер
+    const dim = [shPath([[30, 98], [90, 98]]), shPath([[30, 92], [30, 104]]), shPath([[90, 92], [90, 104]])];
+    layers.push(L([strokeGroup(dim, { color: C.terra, w: 2.6, trimE: anim([{ t: 36, s: [0], e: "settle" }, { t: 66, s: [100] }]) })], { nm: "dim", ks: { o: reset } }));
+    layers.push(L([fillGroup([ellipse(0, 98, 8, 8)], { color: C.terra })], {
+      nm: "caliper",
+      ks: {
+        o: anim([{ t: 56, s: [0], e: "settle" }, { t: 66, s: [100], e: "settle" }, { t: 118, s: [100], e: "settle" }, { t: OP, s: [0] }]),
+        p: anim([{ t: 56, s: [30, 0], e: "travel" }, { t: 110, s: [90, 0], e: "travel" }, { t: OP, s: [30, 0] }]),
+      },
+    }));
+    return layers;
+  });
+}
+
+function stepAI() {
+  const S = 120, OP = 120;
+  return comp("stepAI", S, S, OP, (L) => {
+    const layers = [];
+    const cx = 60, cy = 58;
+    // 4-лучевая искра (чёткая звезда-«спарк»), пульс масштаба — бесшовно
+    const spark = [shPath([
+      [cx, cy - 32], [cx + 8, cy - 8], [cx + 32, cy], [cx + 8, cy + 8],
+      [cx, cy + 32], [cx - 8, cy + 8], [cx - 32, cy], [cx - 8, cy - 8],
+    ], true)];
+    const pulse = anim([
+      { t: 0, s: [86, 86], e: "travel" }, { t: 50, s: [108, 108], e: "travel" },
+      { t: 100, s: [86, 86], e: "travel" }, { t: OP, s: [86, 86] },
+    ]);
+    layers.push(L([fillGroup(spark, { color: C.terra })], { nm: "spark", ks: { p: [cx, cy, 0], a: [cx, cy, 0], s: pulse } }));
+    // орбитальная точка (олива) — линейный замкнутый круг
+    const orb = (ph) => anim([
+      { t: 0, s: [cx + 40 * Math.cos(ph), cy + 40 * Math.sin(ph), 0], e: "linear" },
+      { t: 40, s: [cx + 40 * Math.cos(ph + 2.094), cy + 40 * Math.sin(ph + 2.094), 0], e: "linear" },
+      { t: 80, s: [cx + 40 * Math.cos(ph + 4.188), cy + 40 * Math.sin(ph + 4.188), 0], e: "linear" },
+      { t: OP, s: [cx + 40 * Math.cos(ph + 6.283), cy + 40 * Math.sin(ph + 6.283), 0] },
+    ]);
+    layers.push(L([fillGroup([ellipse(0, 0, 9, 9)], { color: C.olive })], { nm: "orbit", ks: { p: orb(-1.2) } }));
+    layers.push(L([fillGroup([ellipse(0, 0, 6, 6)], { color: C.ochre })], { nm: "orbit2", ks: { p: orb(2.0), o: 70 } }));
+    return layers;
+  });
+}
+
+function stepSpec() {
+  const S = 120, OP = 150;
+  return comp("stepSpec", S, S, OP, (L) => {
+    const layers = [];
+    const reset = anim([{ t: 0, s: [100], e: "settle" }, { t: 118, s: [100], e: "settle" }, { t: OP, s: [0] }]);
+    // лист сметы
+    layers.push(L([strokeGroup([rect(60, 60, 64, 80, 6)], { color: C.terra, w: 3.0, trimE: anim([{ t: 0, s: [0], e: "settle" }, { t: 30, s: [100] }]) })], { nm: "sheet", ks: { o: reset } }));
+    // 3 строки сметы — заполняются по очереди
+    const rows = [40, 60, 80];
+    rows.forEach((y, i) => {
+      const start = 30 + i * 18;
+      layers.push(L([strokeGroup([shPath([[36, y], [70, y]])], { color: C.olive, w: 3.2, trimE: anim([{ t: start, s: [0], e: "settle" }, { t: start + 16, s: [100] }]) })], { nm: "row" + i, ks: { o: reset } }));
+      // галочка/чек справа от строки
+      layers.push(L([strokeGroup([shPath([[78, y - 3], [82, y + 1], [88, y - 6]])], { color: C.olive, w: 2.6 })], {
+        nm: "chk" + i,
+        ks: { o: anim([{ t: start + 12, s: [0], e: "pop" }, { t: start + 26, s: [100], e: "settle" }, { t: 118, s: [100], e: "settle" }, { t: OP, s: [0] }]) },
+      }));
+    });
+    // итоговая черта (терракота)
+    layers.push(L([strokeGroup([shPath([[36, 96], [84, 96]])], { color: C.terra, w: 4, trimE: anim([{ t: 86, s: [0], e: "entrance" }, { t: 104, s: [100] }]) })], { nm: "total", ks: { o: reset } }));
+    return layers;
+  });
+}
+
+/* =====================================================================
+   LOADER — «AI собирает смету». Скан сверху-вниз заполняет строки,
+   итог-бар заполняется последним. Бесшовная петля (fade-reset).
+   ===================================================================== */
+function loader() {
+  const W = 260, H = 170, OP = 132;
+  return comp("loader", W, H, OP, (L) => {
+    const layers = [];
+    const reset = anim([{ t: 0, s: [100], e: "settle" }, { t: 108, s: [100], e: "settle" }, { t: OP, s: [0] }]);
+    // карточка сметы
+    layers.push(L([strokeGroup([rect(130, 85, 200, 128, 14)], { color: C.terra, w: 2.6, trimE: anim([{ t: 0, s: [0], e: "settle" }, { t: 26, s: [100] }]) })], { nm: "card", ks: { o: reset } }));
+    // шапка
+    layers.push(L([strokeGroup([shPath([[48, 44], [120, 44]])], { color: C.terra, w: 4, trimE: anim([{ t: 14, s: [0], e: "settle" }, { t: 30, s: [100] }]) })], { nm: "head", ks: { o: reset } }));
+    // 4 строки — заполняются по очереди (phase offset)
+    const ys = [70, 92, 114];
+    ys.forEach((y, i) => {
+      const start = 30 + i * 16;
+      layers.push(L([strokeGroup([shPath([[48, y], [150, y]])], { color: C.olive, w: 3.4, trimE: anim([{ t: start, s: [0], e: "settle" }, { t: start + 18, s: [100] }]) })], { nm: "ln" + i, ks: { o: reset } }));
+      // прайс-чип справа
+      layers.push(L([strokeGroup([rect(186, y, 36, 12, 6)], { color: C.ochre, w: 2.4 })], {
+        nm: "pr" + i,
+        ks: { o: anim([{ t: start + 14, s: [0], e: "pop" }, { t: start + 28, s: [100], e: "settle" }, { t: 108, s: [100], e: "settle" }, { t: OP, s: [0] }]) },
+      }));
+    });
+    // итог-бар (жирная терракотовая черта, заполняется последней)
+    layers.push(L([strokeGroup([shPath([[48, 140], [212, 140]])], { color: C.terra, w: 6, trimE: anim([{ t: 84, s: [0], e: "entrance" }, { t: 108, s: [100] }]) })], { nm: "total", ks: { o: reset } }));
+    // скан сверху-вниз
+    layers.push(L([strokeGroup([shPath([[40, 0], [220, 0]])], { color: C.terra, w: 2.2, o: 50 })], {
+      nm: "scan",
+      ks: {
+        o: anim([{ t: 24, s: [0], e: "settle" }, { t: 34, s: [60], e: "settle" }, { t: 96, s: [60], e: "settle" }, { t: 110, s: [0] }]),
+        p: anim([{ t: 24, s: [0, 30, 0], e: "travel" }, { t: 100, s: [0, 150, 0], e: "travel" }, { t: OP, s: [0, 30, 0] }]),
+      },
+    }));
+    return layers;
+  });
+}
+
+/* ---- сборка ---- */
+const anims = {
+  hero: hero(),
+  stepMeasure: stepMeasure(),
+  stepAI: stepAI(),
+  stepSpec: stepSpec(),
+  loader: loader(),
+};
+
+// мета для плеера: интро-сегмент (draw-on один раз, потом петля ambient)
+const meta = {
+  hero: { introOut: 120, loop: true },     // [0..120] интро, [120..420] ambient-петля
+  stepMeasure: { loop: true },
+  stepAI: { loop: true },
+  stepSpec: { loop: true },
+  loader: { loop: true },
+};
+
+const out =
+  "/* AUTO-GENERATED by scripts/gen-lottie.mjs — НЕ править руками, правь генератор и перезапусти `node scripts/gen-lottie.mjs`. */\n" +
+  "window.AIVibeLottie = " + JSON.stringify(anims) + ";\n" +
+  "window.AIVibeLottieMeta = " + JSON.stringify(meta) + ";\n";
+
+// по умолчанию пишем рядом с репо: scripts/ → ../web/lottie-assets.js
+const target = process.argv[2] || new URL("../web/lottie-assets.js", import.meta.url);
+writeFileSync(target, out);
+console.log("ok:", Object.keys(anims).join(", "), "→", String(target), "(bytes:", out.length, ")");

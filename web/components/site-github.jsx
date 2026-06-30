@@ -41,6 +41,14 @@ function Footer({ go }) {
               <button className="btn btn-ghost" style={{ padding: "10px 16px", fontSize: 13.5 }} onClick={() => go("admin")}>Админка</button>
               <button className="btn btn-ghost" style={{ padding: "10px 16px", fontSize: 13.5 }} onClick={() => go("auth")}>Войти</button>
             </div>
+            <div style={{ display: "flex", gap: 10, marginTop: 16 }}>
+              <a className="social-chip vk" href="#" onClick={(e) => e.preventDefault()} aria-label="AIVibe во ВКонтакте" title="ВКонтакте">
+                <svg width="21" height="21" viewBox="0 0 256 256" aria-hidden="true"><path fill="currentColor" d="M136.21 184.43c-58.34 0-91.62-40-93.01-106.56h29.23c.96 48.85 22.5 69.54 39.57 73.81V77.87h27.52V120c16.85-1.81 34.56-21.01 40.53-42.13h27.52c-4.58 26.02-23.78 45.22-37.44 53.12 13.66 6.4 35.52 23.14 43.84 53.44h-30.29c-6.5-20.27-22.72-35.95-44.16-38.08v38.08h-3.3z" /></svg>
+              </a>
+              <a className="social-chip tg" href="#" onClick={(e) => e.preventDefault()} aria-label="AIVibe в Telegram" title="Telegram">
+                <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M9.78 18.65l.28-4.23 7.68-6.92c.34-.31-.07-.46-.52-.19L7.74 13.3 3.64 12c-.88-.25-.89-.86.2-1.3l15.97-6.16c.73-.33 1.43.18 1.15 1.3l-2.72 12.81c-.19.91-.74 1.13-1.5.71L12.6 16.3l-1.99 1.93c-.23.23-.42.42-.83.42z" /></svg>
+              </a>
+            </div>
           </div>
           {cols.map(([h, items]) => (
             <div key={h}>

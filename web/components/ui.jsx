@@ -79,6 +79,73 @@ function Img({ src, alt, label, style, className, radius }) {
               style={base} onError={() => setErr(true)} />;
 }
 
+/* ---------- Lottie-обёртка (lottie-web, без сборки) ----------
+   • graceful: если lottie/asset недоступны — показываем fallback (старый SVG);
+   • prefers-reduced-motion → статичный кадр, без петли;
+   • playOnView → играем только когда в зоне видимости (экономия CPU);
+   • intro → один проход [0..introOut], затем бесшовная ambient-петля. */
+function Lottie({ name, loop, intro, playOnView = true, staticFrame, style, className, ariaLabel, fallback = null }) {
+  const host = useRef(null);
+  const [loaded, setLoaded] = useState(false);
+  useEffect(() => {
+    const data = window.AIVibeLottie && window.AIVibeLottie[name];
+    if (!data) return;                                   // нет ассета → остаётся fallback
+    const meta = (window.AIVibeLottieMeta && window.AIVibeLottieMeta[name]) || {};
+    const reduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const introOut = intro != null ? intro : meta.introOut;
+    const wantLoop = loop != null ? loop : (meta.loop !== false);
+    let anim, io, timer, tries = 0, cancelled = false;
+    const start = () => {
+      if (reduce) {
+        const f = staticFrame != null ? staticFrame : (introOut != null ? introOut : Math.floor((data.op || 60) * 0.6));
+        anim.goToAndStop(f, true); return;
+      }
+      // intro: первый проход рисует комнату + один ambient, дальше — ambient-петля
+      // через re-trigger на 'complete' (playSegments-петля в этой сборке lottie-web
+      // сбрасывается на полный диапазон → комната «стирается»; goToAndPlay надёжен).
+      if (introOut != null) {
+        anim.loop = false;
+        if (!anim.__ambientBound) {
+          anim.__ambientBound = true;
+          anim.addEventListener("complete", () => anim.goToAndPlay(introOut, true));
+        }
+        anim.goToAndPlay(0, true);
+      } else { anim.loop = wantLoop; anim.play(); }
+    };
+    const init = () => {
+      if (cancelled) return;
+      const el = host.current;
+      if (!window.lottie) { if (tries++ < 80) timer = setTimeout(init, 40); return; } // ждём CDN (race-safe)
+      if (!el) return;
+      try {
+        anim = window.lottie.loadAnimation({
+          container: el, renderer: "svg", loop: reduce ? false : wantLoop, autoplay: false,
+          animationData: JSON.parse(JSON.stringify(data)),
+          rendererSettings: { progressiveLoad: false, preserveAspectRatio: "xMidYMid meet" },
+        });
+      } catch (e) { console.error("Lottie loadAnimation failed:", name, e); return; }
+      anim.addEventListener("DOMLoaded", () => {
+        setLoaded(true);
+        if (!playOnView || reduce || !("IntersectionObserver" in window)) { start(); return; }
+        io = new IntersectionObserver((es) => es.forEach((e) => {
+          if (e.isIntersecting) { if (!anim.__started) { anim.__started = true; start(); } else anim.play(); }
+          else anim.pause();
+        }), { threshold: 0.2 });
+        io.observe(el);
+      });
+    };
+    init();
+    return () => { cancelled = true; clearTimeout(timer); try { io && io.disconnect(); anim && anim.destroy(); } catch (e) {} };
+  }, [name]);
+  return (
+    <div className={className} style={style}>
+      <div ref={host} style={{ width: "100%", height: "100%", display: loaded ? "block" : "none" }}
+           role="img" aria-label={ariaLabel || undefined} aria-hidden={ariaLabel ? undefined : true} />
+      {!loaded && fallback}
+    </div>
+  );
+}
+
 /* ---------- Хук появления при скролле ---------- */
 function useReveal() {
   const ref = useRef(null);
@@ -177,4 +244,4 @@ function Donut({ data, size = 168 }) {
   );
 }
 
-Object.assign(window, { Logo, Icon, I, Img, useReveal, fmt, fmtMoney, AreaChart, BarList, Donut });
+Object.assign(window, { Logo, Icon, I, Img, Lottie, useReveal, fmt, fmtMoney, AreaChart, BarList, Donut });

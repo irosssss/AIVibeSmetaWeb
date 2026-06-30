@@ -131,9 +131,11 @@ function ProjectDetail({ id, onClose, initialStyle }) {
   if (!data) {
     return (
       <div className="pd-overlay" style={{ alignItems: "center", justifyContent: "center" }}>
-        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 14, color: "var(--muted)" }}>
-          <span className="spin" style={{ width: 30, height: 30 }} />
-          Загружаю проект и анализ помещения…
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 10, color: "var(--muted)" }}>
+          <Lottie name="loader" playOnView={false} ariaLabel="AIVibe собирает смету"
+                  fallback={<span className="spin" style={{ width: 30, height: 30 }} />}
+                  style={{ width: 230, height: 150 }} />
+          AIVibe собирает смету и проверяет расстановку…
         </div>
       </div>
     );

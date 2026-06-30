@@ -128,25 +128,36 @@ function Hero({ go }) {
   );
 }
 
-/* Рисованная сцена интерьера: line-art, «дорисовывается» штрихом */
-function HeroVisual() {
+/* fallback line-art (если Lottie/asset недоступен): рисуется штрихом через CSS */
+function HeroLineArt() {
   const ref = useRefS(null);
   useEffectS(() => { const el = ref.current; if (el) { el.classList.remove("go"); void el.offsetWidth; el.classList.add("go"); } }, []);
   return (
+    <svg ref={ref} className="line-art go" viewBox="0 0 340 340" width="100%" aria-hidden="true" style={{ maxWidth: 480, overflow: "visible", color: "var(--accent)" }}
+         fill="none" stroke="var(--accent)" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M20 300 H320" />
+      <ellipse cx="172" cy="312" rx="140" ry="16" stroke="var(--accent-2)" />
+      <path d="M210 44 H300 V128 H210 Z" />
+      <path stroke="var(--accent-2)" d="M255 44 V128 M210 86 H300 M306 60 l16 -10 M306 82 l18 -3 M306 104 l16 5" />
+      <path d="M40 62 H122 V130 H40 Z" />
+      <path stroke="var(--accent-2)" d="M50 116 q15 -20 30 -8 q12 9 26 -7 M50 124 H112" />
+      <path d="M64 250 L64 210 Q64 196 80 196 L244 196 Q260 196 260 210 L260 250 M50 250 H274 V272 H50 Z M74 272 V284 M250 272 V284" />
+      <path stroke="var(--accent-2)" d="M130 196 V224 M194 196 V224 M50 260 H274" />
+      <path d="M298 296 V150 M280 150 H316 L308 122 H288 Z" />
+      <path stroke="var(--accent-2)" d="M30 296 L34 256 H70 L66 296 Z M50 256 q-15 -34 -30 -44 M50 256 q11 -34 31 -46 M50 256 q0 -30 0 -52" />
+    </svg>
+  );
+}
+
+/* Рисованная сцена интерьера: Lottie line-art — рисуется штрихом, затем
+   AIVibe «обмеряет» комнату (бесшовный ambient-скан). Fallback — статичный SVG. */
+function HeroVisual() {
+  return (
     <div className="hero-visual" style={{ position: "relative", height: 600, display: "flex", alignItems: "center", justifyContent: "center" }}>
-      <svg ref={ref} className="line-art go" viewBox="0 0 340 340" width="100%" style={{ maxWidth: 480, overflow: "visible", color: "var(--accent)" }}
-           fill="none" stroke="var(--accent)" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M20 300 H320" />
-        <ellipse cx="172" cy="312" rx="140" ry="16" stroke="var(--accent-2)" />
-        <path d="M210 44 H300 V128 H210 Z" />
-        <path stroke="var(--accent-2)" d="M255 44 V128 M210 86 H300 M306 60 l16 -10 M306 82 l18 -3 M306 104 l16 5" />
-        <path d="M40 62 H122 V130 H40 Z" />
-        <path stroke="var(--accent-2)" d="M50 116 q15 -20 30 -8 q12 9 26 -7 M50 124 H112" />
-        <path d="M64 250 L64 210 Q64 196 80 196 L244 196 Q260 196 260 210 L260 250 M50 250 H274 V272 H50 Z M74 272 V284 M250 272 V284" />
-        <path stroke="var(--accent-2)" d="M130 196 V224 M194 196 V224 M50 260 H274" />
-        <path d="M298 296 V150 M280 150 H316 L308 122 H288 Z" />
-        <path stroke="var(--accent-2)" d="M30 296 L34 256 H70 L66 296 Z M50 256 q-15 -34 -30 -44 M50 256 q11 -34 31 -46 M50 256 q0 -30 0 -52" />
-      </svg>
+      <Lottie name="hero" intro={120}
+              ariaLabel="AIVibe собирает смету по комнате и проверяет нормы эргономики"
+              fallback={<HeroLineArt />}
+              style={{ width: "100%", maxWidth: 500, aspectRatio: "520 / 440" }} />
 
       {/* пришпиленная заметка-смета (бумага, лёгкий поворот) */}
       <div className="glass float-b" style={{ position: "absolute", bottom: 40, right: -6, width: 250, padding: 16, borderRadius: "var(--r-lg)", boxShadow: "var(--shadow-pop)", transform: "rotate(-1.6deg)" }}>
