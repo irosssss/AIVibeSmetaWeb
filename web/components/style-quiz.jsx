@@ -169,7 +169,7 @@ function QuizStep({ q, ans, onPick }) {
             const on = selected(o.v);
             return (
               <button key={o.v} className={"quiz-opt" + (on ? " on" : "")} onClick={() => onPick(q, o)} aria-pressed={on}>
-                <span style={{ width: 46, height: 46, borderRadius: 13, background: on ? "var(--accent)" : "var(--surface-2)", color: on ? "#FBF8F2" : "var(--accent)", display: "grid", placeItems: "center", flex: "none", transition: ".18s" }}><Ico size={23} /></span>
+                <span style={{ width: 46, height: 46, borderRadius: 13, background: on ? "var(--accent)" : "var(--surface-2)", color: on ? "var(--on-accent)" : "var(--accent)", display: "grid", placeItems: "center", flex: "none", transition: ".18s" }}><Ico size={23} /></span>
                 <span style={{ fontWeight: 700, fontSize: 16 }}>{o.v}</span>
                 {on && <span style={{ marginLeft: "auto" }}><I.check size={18} style={{ color: "var(--accent-2)" }} /></span>}
               </button>
@@ -231,7 +231,7 @@ function BudgetStep({ budget, setBudget }) {
       </div>
       <div style={{ display: "flex", gap: 8, marginTop: 22, flexWrap: "wrap", justifyContent: "center" }}>
         {[250000, 420000, 650000, 900000].map((b) => (
-          <button key={b} onClick={() => setBudget(b)} style={{ padding: "8px 15px", borderRadius: 99, fontSize: 13, fontWeight: 700, border: "1px solid " + (budget === b ? "var(--accent)" : "var(--hairline)"), background: budget === b ? "var(--accent)" : "var(--glass-2)", color: budget === b ? "#FBF8F2" : "var(--muted)" }}>{fmtRange(b)}</button>
+          <button key={b} onClick={() => setBudget(b)} style={{ padding: "8px 15px", borderRadius: 99, fontSize: 13, fontWeight: 700, border: "1px solid " + (budget === b ? "var(--accent)" : "var(--hairline)"), background: budget === b ? "var(--accent)" : "var(--glass-2)", color: budget === b ? "var(--on-accent)" : "var(--muted)" }}>{fmtRange(b)}</button>
         ))}
       </div>
     </div>

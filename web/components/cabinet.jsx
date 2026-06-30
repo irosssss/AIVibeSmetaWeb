@@ -66,7 +66,7 @@ function AuthScreen({ onAuthed, go }) {
           <div style={{ display: "flex", gap: 4, padding: 4, background: "var(--glass-2)", border: "1px solid var(--hairline)", borderRadius: 99, marginBottom: 30 }}>
             {[["login", "Вход"], ["register", "Регистрация"]].map(([k, t]) => (
               <button key={k} onClick={() => setMode(k)} style={{ flex: 1, padding: "10px", borderRadius: 99, fontWeight: 700, fontSize: 14,
-                background: mode === k ? "var(--accent)" : "transparent", color: mode === k ? "#FBF8F2" : "var(--muted)", transition: ".2s" }}>{t}</button>
+                background: mode === k ? "var(--accent)" : "transparent", color: mode === k ? "var(--on-accent)" : "var(--muted)", transition: ".2s" }}>{t}</button>
             ))}
           </div>
 
@@ -160,7 +160,7 @@ function AppTopBar({ user, onLogout, go, tabs, tab, setTab }) {
 function Avatar({ user, size = 40 }) {
   const initials = user.name.split(" ").map((w) => w[0]).slice(0, 2).join("");
   return (
-    <div style={{ width: size, height: size, borderRadius: "50%", background: user.avatar || "var(--accent)", color: "#FBF8F2",
+    <div style={{ width: size, height: size, borderRadius: "50%", background: user.avatar || "var(--accent)", color: "var(--on-accent)",
       display: "grid", placeItems: "center", fontWeight: 800, fontSize: size * 0.36, flex: "none", fontFamily: "var(--font-display)" }}>{initials}</div>
   );
 }

@@ -322,7 +322,7 @@ function Favorites() {
       <div className="fav-chips" style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 20 }}>
         {rooms.map((r) => (
           <button key={r} onClick={() => setRoom(r)} aria-pressed={room === r} style={{ padding: "8px 15px", borderRadius: 99, fontSize: 13.5, fontWeight: 700, border: "1px solid var(--hairline)",
-            background: room === r ? "var(--accent)" : "var(--glass-2)", color: room === r ? "#FBF8F2" : "var(--muted)", transition: ".18s" }}>{r}</button>
+            background: room === r ? "var(--accent)" : "var(--glass-2)", color: room === r ? "var(--on-accent)" : "var(--muted)", transition: ".18s" }}>{r}</button>
         ))}
       </div>
 

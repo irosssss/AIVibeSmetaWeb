@@ -272,7 +272,7 @@ function RoomSpecOverlay({ data, onClose }) {
           <div className="pd-cart">
             <div style={{ display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
               <div style={{ display: "flex", alignItems: "center", gap: 11 }}>
-                <span style={{ width: 40, height: 40, borderRadius: 12, background: "var(--accent)", color: "#FBF8F2", display: "grid", placeItems: "center", flex: "none" }}><I.layers size={20} /></span>
+                <span style={{ width: 40, height: 40, borderRadius: 12, background: "var(--accent)", color: "var(--on-accent)", display: "grid", placeItems: "center", flex: "none" }}><I.layers size={20} /></span>
                 <div>
                   <div style={{ fontFamily: "var(--font-display)", fontWeight: 800, fontSize: 20, lineHeight: 1 }}>{fmtMoney(grand)}</div>
                   <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 3 }}>{itemsCount} позиций · {over ? <span style={{ color: "var(--accent)" }}>сверх бюджета</span> : <span style={{ color: "var(--accent-2)" }}>в рамках бюджета</span>}</div>
@@ -425,7 +425,7 @@ function StylePicker({ data, styleId, onPick, sref }) {
             <button key={s.id} className={"style-card" + (on ? " sel" : "")} onClick={() => onPick(s.id)} aria-pressed={on}>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
                 <span style={{ fontWeight: 800, fontFamily: "var(--font-display)", fontSize: 17 }}>{s.name}</span>
-                {on && <span style={{ width: 22, height: 22, borderRadius: "50%", background: "var(--accent)", color: "#FBF8F2", display: "grid", placeItems: "center", flex: "none" }}><I.check size={13} /></span>}
+                {on && <span style={{ width: 22, height: 22, borderRadius: "50%", background: "var(--accent)", color: "var(--on-accent)", display: "grid", placeItems: "center", flex: "none" }}><I.check size={13} /></span>}
               </div>
               <div style={{ fontSize: 12.5, color: "var(--muted)", marginTop: 4 }}>{s.mood}</div>
               <div className="sw">{s.palette.map((c, i) => <span key={i} style={{ background: c }} />)}</div>
@@ -455,7 +455,7 @@ function LayoutPicker({ layout, onPick }) {
             <button key={l.id} className={"style-card" + (on ? " sel" : "")} onClick={() => onPick(l.id)} aria-pressed={on}>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, marginBottom: 12 }}>
                 <span style={{ fontWeight: 800, fontFamily: "var(--font-display)", fontSize: 17 }}>{l.name}</span>
-                {on && <span style={{ width: 22, height: 22, borderRadius: "50%", background: "var(--accent)", color: "#FBF8F2", display: "grid", placeItems: "center", flex: "none" }}><I.check size={13} /></span>}
+                {on && <span style={{ width: 22, height: 22, borderRadius: "50%", background: "var(--accent)", color: "var(--on-accent)", display: "grid", placeItems: "center", flex: "none" }}><I.check size={13} /></span>}
               </div>
               <MiniLayout plan={l.plan} />
               <div style={{ fontSize: 13, color: "var(--muted)", marginTop: 12, lineHeight: 1.45 }}>{l.note}</div>
@@ -564,7 +564,7 @@ function BeforeAfter({ data, style, pins }) {
 
         {/* разделитель + ручка */}
         <div style={{ position: "absolute", top: 0, bottom: 0, left: pos + "%", width: 2, background: "#fff", transform: "translateX(-1px)", boxShadow: "0 0 14px rgba(0,0,0,.55)" }}>
-          <div style={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%,-50%)", width: 42, height: 42, borderRadius: "50%", background: "#FBF8F2", color: "#2E2A26", display: "grid", placeItems: "center", boxShadow: "0 4px 18px rgba(46,42,38,.4)", cursor: "ew-resize" }}>
+          <div style={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%,-50%)", width: 42, height: 42, borderRadius: "50%", background: "var(--surface)", color: "var(--text)", display: "grid", placeItems: "center", boxShadow: "0 4px 18px rgba(46,42,38,.4)", cursor: "ew-resize" }}>
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M9 7l-4 5 4 5M15 7l4 5-4 5" /></svg>
           </div>
         </div>
@@ -762,7 +762,7 @@ function CartBar({ items, total, oldTotal, budget, style, onExport }) {
     <div className="pd-cart">
       <div style={{ display: "flex", alignItems: "center", gap: 18, flexWrap: "wrap" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 11 }}>
-          <span style={{ width: 40, height: 40, borderRadius: 12, background: "var(--accent)", color: "#FBF8F2", display: "grid", placeItems: "center", flex: "none" }}><I.layers size={20} /></span>
+          <span style={{ width: 40, height: 40, borderRadius: 12, background: "var(--accent)", color: "var(--on-accent)", display: "grid", placeItems: "center", flex: "none" }}><I.layers size={20} /></span>
           <div>
             <div style={{ fontFamily: "var(--font-display)", fontWeight: 800, fontSize: 20, lineHeight: 1 }}>{fmtMoney(total)}</div>
             <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 3 }}>{items.length} предметов · {over ? <span style={{ color: "var(--accent)" }}>сверх бюджета</span> : <span style={{ color: "var(--accent-2)" }}>в рамках бюджета</span>}</div>
@@ -809,7 +809,7 @@ function AdvisorChat({ id, hello, onAction, onClose }) {
   return (
     <React.Fragment>
       <div className="pd-chat-head">
-        <span style={{ width: 38, height: 38, borderRadius: 11, background: "var(--accent)", color: "#FBF8F2", display: "grid", placeItems: "center", flex: "none" }}><I.spark size={20} /></span>
+        <span style={{ width: 38, height: 38, borderRadius: 11, background: "var(--accent)", color: "var(--on-accent)", display: "grid", placeItems: "center", flex: "none" }}><I.spark size={20} /></span>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontWeight: 800, fontSize: 15 }}>AI-дизайнер</div>
           <div style={{ fontSize: 12, color: "var(--accent-2)", display: "flex", alignItems: "center", gap: 6 }}><span style={{ width: 7, height: 7, borderRadius: "50%", background: "var(--accent-2)" }} />на связи · YandexGPT</div>
