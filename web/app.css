@@ -130,6 +130,16 @@ select.fld { appearance: none; cursor: pointer;
   .fav-shop { position: static !important; }
 }
 
+/* ---- responsive: вкладки кабинета — скролл внутри пилюли, не переполнение ---- */
+@media (max-width: 720px) {
+  .cab-tabs { overflow-x: auto; max-width: 46vw; scrollbar-width: none; -webkit-overflow-scrolling: touch;
+    mask-image: linear-gradient(90deg, #000 88%, transparent); -webkit-mask-image: linear-gradient(90deg, #000 88%, transparent); }
+  .cab-tabs::-webkit-scrollbar { display: none; }
+  .cab-tabs button { white-space: nowrap; flex: none; }
+  .cab-new-t { display: none; }                                  /* «+ Новый проект» → только плюс */
+  .cab-new { padding: 9px 12px !important; }
+}
+
 /* ---- responsive: аналитика-карточки (кабинет + админка) ---- */
 @media (max-width: 1040px) {
   .kpi-grid { grid-template-columns: repeat(2,1fr) !important; }
@@ -305,6 +315,13 @@ select.fld { appearance: none; cursor: pointer;
   .pd-styles { grid-template-columns: 1fr !important; }
   .pd-an-top { grid-template-columns: 1fr !important; }
 }
+
+/* ---- Хлебные крошки в шапке оверлея (wayfinding при иерархии ≥3) ---- */
+.pd-crumbs { display: flex; align-items: center; gap: 7px; font-family: var(--font-mono); font-size: 11px; letter-spacing: .04em; color: var(--spec-meta); margin-bottom: 2px; min-width: 0; }
+.pd-crumbs button { font-family: inherit; font-size: inherit; color: var(--spec-meta); padding: 0; }
+.pd-crumbs button:hover { color: var(--accent-ink); text-decoration: underline; }
+.pd-crumbs span[aria-current] { color: var(--faint); }
+.pd-crumbs > span:not([aria-current]) { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 180px; }
 
 /* ---- Смета по комнатам: адаптив колонок документа ---- */
 @media (max-width: 760px) {

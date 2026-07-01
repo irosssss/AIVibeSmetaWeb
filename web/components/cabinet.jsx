@@ -4,16 +4,17 @@
    ============================================================ */
 const { useState: useC, useEffect: useCE } = React;
 
-/* ---------- Хеш-роутинг: #view/tab (переживает F5, работает «назад») ---------- */
+/* ---------- Хеш-роутинг: #view/tab/sub (переживает F5, работает «назад»,
+   sub — открытый проект: #cabinet/projects/p_1 → deep-link на смету) ---------- */
 const CAB_TABS = [["projects", "Проекты"], ["styles", "Мои стили"], ["norms", "Нормы"], ["favorites", "Избранное"], ["profile", "Профиль"]];
 const CAB_TAB_IDS = CAB_TABS.map((t) => t[0]);
 function parseRoute() {
   const h = (location.hash || "").replace(/^#\/?/, "");
-  const [view, tab] = h.split("/");
-  return { view: view || "site", tab: tab || "" };
+  const [view, tab, sub] = h.split("/");
+  return { view: view || "site", tab: tab || "", sub: sub || "" };
 }
-function setRoute(view, tab) {
-  const next = tab ? "#" + view + "/" + tab : "#" + view;
+function setRoute(view, tab, sub) {
+  const next = "#" + view + (tab ? "/" + tab : "") + (sub ? "/" + sub : "");
   if (location.hash !== next) location.hash = next;
 }
 /* прототип-свитчер и синтетический вход в админку — только в dev-окружении */
@@ -177,7 +178,7 @@ function AppTopBar({ user, onLogout, go, tabs, tab, setTab, onNewProject }) {
           )}
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          {onNewProject && <button className="btn btn-primary cab-new" style={{ padding: "9px 15px", fontSize: 13.5 }} onClick={onNewProject}><I.plus size={16} />Новый проект</button>}
+          {onNewProject && <button className="btn btn-primary cab-new" style={{ padding: "9px 15px", fontSize: 13.5 }} onClick={onNewProject} aria-label="Новый проект"><I.plus size={16} /><span className="cab-new-t">Новый проект</span></button>}
           <AccountMenu user={user} onLogout={onLogout} onTab={setTab} />
         </div>
       </div>

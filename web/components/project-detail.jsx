@@ -108,6 +108,7 @@ function ProjectDetail({ id, onClose, initialStyle }) {
     let alive = true;
     AIVibeAPI.projects.get(id).then((d) => {
       if (!alive) return;
+      if (!d || !d.id) { toast("Проект не найден — возможно, ссылка устарела.", "warn", 5000); onClose(); return; }
       setData(d);
       if (d.rooms) return; // проект-квартира: смета-комплектация по комнатам (отдельный рендер)
       const match = initialStyle && d.styles.find((s) => s.id === initialStyle);
@@ -184,6 +185,9 @@ function ProjectDetail({ id, onClose, initialStyle }) {
       <header className="pd-head">
         <button className="icon-btn" onClick={onClose} title="Назад к проектам" aria-label="Назад"><I.arrow size={18} style={{ transform: "rotate(180deg)" }} /></button>
         <div className="pd-title" style={{ flex: 1 }}>
+          <nav className="pd-crumbs" aria-label="Хлебные крошки">
+            <button onClick={onClose}>Проекты</button><span aria-hidden="true">/</span><span aria-current="page">{data.name}</span>
+          </nav>
           <h2>{data.name}</h2>
           <div className="pd-sub">{data.room} · {activeStyle.name} · {data.area} м²</div>
         </div>
@@ -243,6 +247,9 @@ function RoomSpecOverlay({ data, onClose }) {
       <header className="pd-head">
         <button className="icon-btn" onClick={onClose} title="Назад к проектам" aria-label="Назад"><I.arrow size={18} style={{ transform: "rotate(180deg)" }} /></button>
         <div className="pd-title" style={{ flex: 1 }}>
+          <nav className="pd-crumbs" aria-label="Хлебные крошки">
+            <button onClick={onClose}>Проекты</button><span aria-hidden="true">/</span><span>{data.name}</span><span aria-hidden="true">/</span><span aria-current="page">Смета</span>
+          </nav>
           <h2>{data.name}</h2>
           <div className="pd-sub">Комплектация по дизайн-проекту · {data.area} м² · {itemsCount} {plural(itemsCount, ["позиция", "позиции", "позиций"])}</div>
         </div>

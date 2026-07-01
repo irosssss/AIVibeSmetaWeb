@@ -162,7 +162,7 @@ const statusColor = { "В работе": "var(--info)", "Готов": "var(--acc
 function Projects() {
   const [rows, setRows] = useCV(null);
   const [sum, setSum] = useCV(null);          // сводная аналитика
-  const [openId, setOpenId] = useCV(null);   // открытая деталь проекта
+  const [openId, setOpenId] = useCV(() => parseRoute().sub || null);   // открытая деталь проекта (из hash — deep-link/F5)
   const [openStyle, setOpenStyle] = useCV(null); // стиль, с которым открыть проект (из квиза)
   const [newOpen, setNewOpen] = useCV(false); // модалка «Новый проект»
   const [quizOpen, setQuizOpen] = useCV(false);
@@ -173,15 +173,24 @@ function Projects() {
   const [menuId, setMenuId] = useCV(null);    // открытое ⋯-меню карточки
 
   const refresh = () => { AIVibeAPI.projects.list().then(setRows); AIVibeAPI.projects.summary().then(setSum); };
+
+  /* открытый проект живёт в адресе: #cabinet/projects/p_1 → F5 переоткрывает,
+     «назад» закрывает оверлей, ссылкой можно поделиться (wayfinding UpRock) */
+  const openProject = (id) => { setOpenId(id); setRoute("cabinet", "projects", id); };
+  const closeProject = () => { setOpenId(null); setOpenStyle(null); refresh(); setRoute("cabinet", "projects"); };
+
   useCVE(() => {
     refresh();
     try { if (!localStorage.getItem("aivibe_quiz_done")) setTimeout(() => setQuizOpen(true), 700); } catch (e) {}
     const onNew = () => setNewOpen(true);   // кнопка «+ Новый проект» из топбара
     window.addEventListener("aivibe:new-project", onNew);
-    return () => window.removeEventListener("aivibe:new-project", onNew);
+    // back/forward и ручная правка адреса — синхронизируем открытый проект
+    const onHash = () => { const r = parseRoute(); if (r.view === "cabinet" && r.tab === "projects") setOpenId(r.sub || null); };
+    window.addEventListener("hashchange", onHash);
+    return () => { window.removeEventListener("aivibe:new-project", onNew); window.removeEventListener("hashchange", onHash); };
   }, []);
 
-  const onCreated = (p) => { setNewOpen(false); refresh(); setOpenId(p.id); };
+  const onCreated = (p) => { setNewOpen(false); refresh(); openProject(p.id); };
 
   const finishQuiz = (styleId, extra) => {
     try { localStorage.setItem("aivibe_quiz_done", "1"); } catch (e) {}
@@ -189,7 +198,7 @@ function Projects() {
     const room = (extra && extra.room) || "Гостиная";
     const budget = (extra && extra.budget) || 420000;
     const styleName = QUIZ_STYLE_NAME[styleId] || "";
-    AIVibeAPI.projects.create({ name: room + " · " + (styleName || "проект"), room, budget, style: styleName }).then((p) => { refresh(); setOpenStyle(styleId); setOpenId(p.id); });
+    AIVibeAPI.projects.create({ name: room + " · " + (styleName || "проект"), room, budget, style: styleName }).then((p) => { refresh(); setOpenStyle(styleId); openProject(p.id); });
   };
 
   // импорт сметы из Excel → открываем в той же смете-комплектации (RoomSpecOverlay)
@@ -292,15 +301,15 @@ function Projects() {
         <div className="proj-grid" style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 18 }}>
           {shown.map((p) => (
             <ProjectCard key={p.id} p={p} menuOpen={menuId === p.id}
-              onOpen={() => setOpenId(p.id)} onMenu={() => setMenuId((m) => m === p.id ? null : p.id)}
+              onOpen={() => openProject(p.id)} onMenu={() => setMenuId((m) => m === p.id ? null : p.id)}
               onRename={() => rename(p)} onDuplicate={() => duplicate(p)} onStatus={(s) => changeStatus(p, s)} onRemove={() => removeP(p)} />
           ))}
         </div>
       )}
 
-      {openId && <ProjectDetail id={openId} initialStyle={openStyle} onClose={() => { setOpenId(null); setOpenStyle(null); refresh(); }} />}
+      {openId && <ProjectDetail id={openId} initialStyle={openStyle} onClose={closeProject} />}
       {importData && <RoomSpecOverlay data={importData} onClose={() => setImportData(null)} />}
-      {newOpen && <NewProjectModal onClose={() => setNewOpen(false)} onCreate={onCreated} onExample={() => { setNewOpen(false); setOpenId("p_1"); }} />}
+      {newOpen && <NewProjectModal onClose={() => setNewOpen(false)} onCreate={onCreated} onExample={() => { setNewOpen(false); openProject("p_1"); }} />}
       {quizOpen && <StyleQuiz onClose={() => { setQuizOpen(false); try { localStorage.setItem("aivibe_quiz_done", "1"); } catch (e) {} }} onDone={finishQuiz} />}
     </div>
   );
