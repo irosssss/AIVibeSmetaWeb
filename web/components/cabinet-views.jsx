@@ -67,7 +67,7 @@ function Profile({ user }) {
             <Row k="С нами с" v="январь 2026" />
             <Row k="Синхронизация" v={<span style={{ color: "var(--accent-2)" }}>● включена</span>} />
           </div>
-          <button className="btn btn-ghost btn-block" style={{ marginTop: 24 }}>Редактировать профиль</button>
+          <button className="btn btn-ghost btn-block" style={{ marginTop: 24 }} onClick={() => toast("Редактирование профиля появится вместе с настоящими аккаунтами — в бете данные приходят из Яндекс/VK ID.", "info", 5000)}>Редактировать профиль</button>
         </div>
 
         {/* KPI 2×2 с дельтами */}
@@ -113,10 +113,10 @@ function Profile({ user }) {
         <div className="glass" style={{ borderRadius: "var(--r-xl)", padding: 30 }}>
           <h3 style={{ fontSize: 18, fontWeight: 700, marginBottom: 20 }}>Настройки приложения</h3>
           <div style={{ display: "flex", flexDirection: "column" }}>
-            <Toggle label="Push о готовности AI-дизайна" sub="Уведомлять, когда советник закончит проект" on />
+            <Toggle label="Push о готовности AI-дизайна" sub="Уведомлять, когда AI-дизайнер закончит проект" on />
             <Toggle label="Подбор по каталогу фабрик" sub="Артикулы и цены фабрик-партнёров в смете" on />
             <Toggle label="Автопроверка норм" sub="Подсвечивать узкие проходы и зоны в расстановке" on />
-            <Toggle label="Публичные ссылки на проекты" sub="Делиться сметой и расстановкой по ссылке" last />
+            <Toggle label="Публичные ссылки на проекты" sub="Делиться сметой и проектом по ссылке" last />
           </div>
         </div>
 
@@ -239,7 +239,7 @@ function Projects() {
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20, flexWrap: "wrap", gap: 14 }}>
         <div>
           <h1 className="display" style={{ fontSize: 30 }}>Мои проекты</h1>
-          <p style={{ color: "var(--muted)", fontSize: 14.5, marginTop: 4 }}>Сохранённые комнаты, расстановки и сметы</p>
+          <p style={{ color: "var(--muted)", fontSize: 14.5, marginTop: 4 }}>Сохранённые комнаты и сметы для клиентов</p>
         </div>
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
           <button className="btn btn-ghost" onClick={() => setQuizOpen(true)}><I.spark size={16} /> Стиль-квиз</button>
@@ -292,8 +292,11 @@ function Projects() {
 
       {shown && shown.length === 0 && rows.length > 0 && (
         <div className="glass" style={{ borderRadius: "var(--r-lg)", padding: 40, textAlign: "center", color: "var(--muted)" }}>
-          <I.search size={26} style={{ color: "var(--faint)" }} /><div style={{ marginTop: 10, fontSize: 14.5 }}>Ничего не найдено.</div>
-          <button className="btn btn-ghost" style={{ marginTop: 14 }} onClick={() => { setQ(""); setStatusF("Все"); }}>Сбросить фильтры</button>
+          <I.search size={26} style={{ color: "var(--faint)" }} />
+          <div style={{ marginTop: 10, fontSize: 14.5 }}>
+            {q.trim() ? <React.Fragment>По запросу <b style={{ color: "var(--text)" }}>«{q.trim()}»</b> ничего не нашлось{statusF !== "Все" ? " среди «" + statusF + "»" : ""}.</React.Fragment> : <React.Fragment>В статусе «{statusF}» пока нет проектов.</React.Fragment>}
+          </div>
+          <button className="btn btn-ghost" style={{ marginTop: 14 }} onClick={() => { setQ(""); setStatusF("Все"); }}>Показать все проекты</button>
         </div>
       )}
 
@@ -472,7 +475,9 @@ function Favorites() {
           {!shown && <div className="glass skel" style={{ borderRadius: "var(--r-lg)", height: 460 }} />}
           {shown && shown.length === 0 && (
             <div className="glass" style={{ borderRadius: "var(--r-lg)", padding: 48, textAlign: "center", color: "var(--muted)" }}>
-              <I.heart size={28} style={{ color: "var(--faint)" }} /><div style={{ marginTop: 10, fontSize: 14.5 }}>В этой комнате пока нет избранного.</div>
+              <I.heart size={28} style={{ color: "var(--faint)" }} />
+              <div style={{ marginTop: 10, fontSize: 14.5 }}>{room === "Все" ? "В избранном пока пусто — добавляйте предметы сердечком из каталога проекта." : "В комнате «" + room + "» пока нет избранного."}</div>
+              {room !== "Все" && <button className="btn btn-ghost" style={{ marginTop: 14 }} onClick={() => setRoom("Все")}>Показать все комнаты</button>}
             </div>
           )}
           {shown && shown.length > 0 && (

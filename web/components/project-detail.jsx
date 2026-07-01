@@ -417,7 +417,7 @@ function RoomAnalysis({ a, sref }) {
       </div>
 
       <div style={{ marginTop: 22, display: "flex", flexDirection: "column", gap: 9 }}>
-        <div style={{ fontSize: 13, fontWeight: 700, color: "var(--faint)", textTransform: "uppercase", letterSpacing: ".1em", marginBottom: 3 }}>Выводы советника</div>
+        <div style={{ fontSize: 13, fontWeight: 700, color: "var(--spec-meta)", textTransform: "uppercase", letterSpacing: ".1em", marginBottom: 3 }}>Выводы AI-дизайнера</div>
         {a.findings.map((f, i) => {
           const Ico = FIND_ICON[f.kind] || FIND_ICON.idea;
           return (
@@ -838,7 +838,7 @@ function CartBar({ items, total, oldTotal, budget, style, onExport, onSave, save
           <span style={{ width: 40, height: 40, borderRadius: 12, background: "var(--accent)", color: "var(--on-accent)", display: "grid", placeItems: "center", flex: "none" }}><I.layers size={20} /></span>
           <div>
             <div className="mono" style={{ fontWeight: 600, fontSize: 21, lineHeight: 1 }}>{fmtMoney(total)}</div>
-            <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 3 }}>{items.length} {plural(items.length, ["предмет", "предмета", "предметов"])} · {over ? <span style={{ color: "var(--accent)" }}>сверх бюджета</span> : <span style={{ color: "var(--accent-2)" }}>в рамках бюджета</span>}</div>
+            <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 3 }}>{items.length} {plural(items.length, ["позиция", "позиции", "позиций"])} · {over ? <span style={{ color: "var(--accent)" }}>сверх бюджета</span> : <span style={{ color: "var(--accent-2)" }}>в рамках бюджета</span>}</div>
           </div>
         </div>
         {style && <span className="glass" style={{ display: "inline-flex", alignItems: "center", gap: 7, padding: "7px 12px", borderRadius: 99, fontSize: 12.5, fontWeight: 700 }}>
