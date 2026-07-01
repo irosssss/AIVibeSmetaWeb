@@ -140,8 +140,7 @@ function StyleEditor({ draft, onClose, onSaved }) {
 
   const delta = Math.round(((d.factor || 1) - 1) * 100);
   return (
-    <div className="modal-back" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
-      <div className="glass modal-card" style={{ borderRadius: "var(--r-xl)", maxWidth: 560, width: "min(560px, 100%)" }}>
+    <Modal onClose={onClose} label={d.__new ? "Новый стиль" : "Редактировать стиль"} maxWidth={560}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "20px 24px", borderBottom: "1px solid var(--hairline)" }}>
           <h3 className="display" style={{ fontSize: 20 }}>{d.__new ? "Новый стиль" : "Редактировать стиль"}</h3>
           <button className="icon-btn" onClick={onClose} aria-label="Закрыть"><I.close size={18} /></button>
@@ -214,8 +213,7 @@ function StyleEditor({ draft, onClose, onSaved }) {
               : busy ? "Сохранение…" : <React.Fragment><I.check size={16} />Сохранить стиль</React.Fragment>}
           </button>
         </div>
-      </div>
-    </div>
+    </Modal>
   );
 }
 

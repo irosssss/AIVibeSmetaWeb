@@ -122,6 +122,13 @@ function ProjectDetail({ id, onClose, initialStyle }) {
     AIVibeAPI.styles.list().then((list) => setMyStyles(list.filter((s) => s.owner !== null)));
   }, []);
 
+  // Esc закрывает оверлей (диалоги/модалки перехватывают Esc в capture-фазе раньше)
+  usePDE(() => {
+    const onKey = (e) => { if (e.key === "Escape") onClose(); };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, []);
+
   const goto = (key) => {
     const el = secRefs[key] && secRefs[key].current, box = mainRef.current;
     if (!el || !box) return;
@@ -214,6 +221,13 @@ function RoomSpecOverlay({ data, onClose }) {
   const [mode, setMode] = usePD("work");   // режим выгрузки: "work" (рабочая) / "client" (для клиента)
   const [roomSaved, setRoomSaved] = usePD(false);
   const saveRoom = () => { if (!data.id) { setRoomSaved(true); setTimeout(() => setRoomSaved(false), 1700); return; } AIVibeAPI.projects.update(data.id, { markupPct: markup }).then(() => { setRoomSaved(true); setTimeout(() => setRoomSaved(false), 1700); }); };
+
+  // Esc закрывает смету-оверлей (когда открыта напрямую, напр. из импорта Excel)
+  usePDE(() => {
+    const onKey = (e) => { if (e.key === "Escape") onClose(); };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, []);
   const rooms = data.rooms || [];
   const roomTotal = (r) => r.items.reduce((s, it) => s + it.price * (it.qty || 1), 0);
   const grand = rooms.reduce((s, r) => s + roomTotal(r), 0);

@@ -188,16 +188,11 @@ function AppTopBar({ user, onLogout, go, tabs, tab, setTab, onNewProject }) {
 /* аккаунт-меню: профиль · тариф/биллинг · настройки · выйти */
 function AccountMenu({ user, onLogout, onTab }) {
   const [open, setOpen] = useC(false);
-  useCE(() => {
-    if (!open) return;
-    const on = (e) => { if (!e.target.closest(".acc-menu")) setOpen(false); };
-    window.addEventListener("click", on);
-    return () => window.removeEventListener("click", on);
-  }, [open]);
+  useMenu(open, () => setOpen(false), "acc-menu");   // Esc/стрелки/click-outside — единый паттерн меню
   const billing = () => { setOpen(false); AIVibeAPI.billing.createPayment({ plan: "pro_month" }).then((r) => toast(r.message || "Оплата подключится позже.", "info", 5000)); };
   const item = (label, Ico, onClick, danger) => (
-    <button onClick={onClick} style={{ display: "flex", alignItems: "center", gap: 11, width: "100%", padding: "10px 12px", borderRadius: 10, fontSize: 14, fontWeight: 600,
-      color: danger ? "var(--accent)" : "var(--text)", textAlign: "left" }}
+    <button role="menuitem" onClick={onClick} style={{ display: "flex", alignItems: "center", gap: 11, width: "100%", padding: "10px 12px", borderRadius: 10, fontSize: 14, fontWeight: 600,
+      color: danger ? "var(--accent-ink)" : "var(--text)", textAlign: "left" }}
       onMouseEnter={(e) => (e.currentTarget.style.background = "var(--surface-2)")} onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}>
       <Ico size={17} style={{ color: danger ? "var(--accent)" : "var(--muted)", flex: "none" }} />{label}
     </button>

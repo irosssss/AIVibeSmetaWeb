@@ -308,16 +308,11 @@ function Projects() {
 
 /* карточка проекта с меню действий (⋯): переименовать · дублировать · статус · удалить */
 function ProjectCard({ p, menuOpen, onOpen, onMenu, onRename, onDuplicate, onStatus, onRemove }) {
-  useCVE(() => {
-    if (!menuOpen) return;
-    const on = (e) => { if (!e.target.closest(".pc-menu-wrap")) onMenu(); };
-    window.addEventListener("click", on);
-    return () => window.removeEventListener("click", on);
-  }, [menuOpen]);
+  useMenu(menuOpen, onMenu, "pc-menu-wrap");   // Esc/стрелки/click-outside — единый паттерн меню
   const mItem = (label, Ico, onClick, danger) => (
-    <button onClick={(e) => { e.stopPropagation(); onClick(); }} style={{ display: "flex", alignItems: "center", gap: 10, width: "100%", padding: "9px 12px", borderRadius: 9, fontSize: 13.5, fontWeight: 600, color: danger ? "var(--accent)" : "var(--text)", textAlign: "left" }}
+    <button role="menuitem" onClick={(e) => { e.stopPropagation(); onClick(); }} style={{ display: "flex", alignItems: "center", gap: 10, width: "100%", padding: "9px 12px", borderRadius: 9, fontSize: 13.5, fontWeight: 600, color: danger ? "var(--accent-ink)" : "var(--text)", textAlign: "left" }}
       onMouseEnter={(e) => (e.currentTarget.style.background = "var(--surface-2)")} onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}>
-      <Ico size={16} style={{ color: danger ? "var(--accent)" : "var(--muted)", flex: "none" }} />{label}
+      <Ico size={16} style={{ color: danger ? "var(--accent-ink)" : "var(--muted)", flex: "none" }} />{label}
     </button>
   );
   return (
@@ -342,7 +337,7 @@ function ProjectCard({ p, menuOpen, onOpen, onMenu, onRename, onDuplicate, onSta
             <div style={{ height: 1, background: "var(--hairline)", margin: "5px 4px" }} />
             <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".04em", textTransform: "uppercase", color: "var(--faint)", padding: "4px 12px 6px" }}>Статус</div>
             {PROJ_STATUSES.map((s) => (
-              <button key={s} onClick={(e) => { e.stopPropagation(); onStatus(s); }} style={{ display: "flex", alignItems: "center", gap: 9, width: "100%", padding: "8px 12px", borderRadius: 9, fontSize: 13.5, fontWeight: p.status === s ? 700 : 600, color: "var(--text)", textAlign: "left" }}
+              <button key={s} role="menuitem" onClick={(e) => { e.stopPropagation(); onStatus(s); }} style={{ display: "flex", alignItems: "center", gap: 9, width: "100%", padding: "8px 12px", borderRadius: 9, fontSize: 13.5, fontWeight: p.status === s ? 700 : 600, color: "var(--text)", textAlign: "left" }}
                 onMouseEnter={(e) => (e.currentTarget.style.background = "var(--surface-2)")} onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}>
                 <span style={{ width: 8, height: 8, borderRadius: "50%", background: statusColor[s], flex: "none" }} />{s}{p.status === s && <I.check size={14} style={{ marginLeft: "auto", color: "var(--accent-2)" }} />}
               </button>
@@ -387,8 +382,7 @@ function NewProjectModal({ onClose, onCreate, onExample }) {
     onCreate(p);
   };
   return (
-    <div className="modal-back" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
-      <div className="glass modal-card" style={{ borderRadius: "var(--r-xl)" }}>
+    <Modal onClose={onClose} label="Новый проект">
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "22px 26px", borderBottom: "1px solid var(--hairline)" }}>
           <h3 className="display" style={{ fontSize: 21 }}>Новый проект</h3>
           <button className="icon-btn" onClick={onClose} aria-label="Закрыть"><I.close size={18} /></button>
@@ -420,8 +414,7 @@ function NewProjectModal({ onClose, onCreate, onExample }) {
             <button className="btn btn-primary" onClick={submit} disabled={busy}>{busy ? "Создаём…" : <React.Fragment><I.plus size={16} />Создать проект</React.Fragment>}</button>
           </div>
         </div>
-      </div>
-    </div>
+    </Modal>
   );
 }
 
@@ -534,8 +527,7 @@ function FavTransferModal({ count, total, onClose, onDone }) {
     onDone(p);
   };
   return (
-    <div className="modal-back" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
-      <div className="glass modal-card" style={{ borderRadius: "var(--r-xl)", maxWidth: 480, width: "min(480px,100%)" }}>
+    <Modal onClose={onClose} label="Перенести в проект" maxWidth={480}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "20px 24px", borderBottom: "1px solid var(--hairline)" }}>
           <div>
             <h3 className="display" style={{ fontSize: 20 }}>Перенести в проект</h3>
@@ -557,8 +549,7 @@ function FavTransferModal({ count, total, onClose, onDone }) {
             </button>
           ))}
         </div>
-      </div>
-    </div>
+    </Modal>
   );
 }
 

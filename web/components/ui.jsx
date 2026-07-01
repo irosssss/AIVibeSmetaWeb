@@ -275,6 +275,75 @@ function promptDialog({ title, label, value = "", confirmLabel = "Сохрани
 window.promptDialog = promptDialog;
 
 /* ============================================================
+   Modal — обёртка для React-модалок: role=dialog, aria-modal,
+   ловушка фокуса, Esc → onClose, возврат фокуса на триггер.
+   ============================================================ */
+function Modal({ onClose, label, maxWidth, children }) {
+  const cardRef = useRef(null);
+  useEffect(() => {
+    const prev = document.activeElement;
+    const card = cardRef.current;
+    // фокус — сначала на поле ввода, иначе на первый интерактив (не на «Закрыть» в шапке)
+    const first = card.querySelector("input, select, textarea") || card.querySelector("button:not([aria-label='Закрыть'])") || card.querySelector("button");
+    (first || card).focus();
+    const onKey = (e) => {
+      if (e.key === "Escape") { e.stopPropagation(); onClose(); }
+      if (e.key === "Tab") {
+        const f = [...card.querySelectorAll("button, input, select, textarea, a[href], [tabindex]:not([tabindex='-1'])")].filter((el) => !el.disabled && el.offsetParent !== null);
+        if (!f.length) return;
+        const firstF = f[0], lastF = f[f.length - 1];
+        if (e.shiftKey && document.activeElement === firstF) { e.preventDefault(); lastF.focus(); }
+        else if (!e.shiftKey && document.activeElement === lastF) { e.preventDefault(); firstF.focus(); }
+      }
+    };
+    document.addEventListener("keydown", onKey, true);
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.removeEventListener("keydown", onKey, true);
+      document.body.style.overflow = "";
+      if (prev && prev.focus) prev.focus();
+    };
+  }, []);
+  return (
+    <div className="modal-back" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
+      <div ref={cardRef} tabIndex={-1} role="dialog" aria-modal="true" aria-label={label}
+        className="glass modal-card" style={{ borderRadius: "var(--r-xl)", ...(maxWidth ? { maxWidth, width: `min(${maxWidth}px, 100%)` } : {}) }}>
+        {children}
+      </div>
+    </div>
+  );
+}
+window.Modal = Modal;
+
+/* ============================================================
+   useMenu — клавиатура и click-outside для выпадающих меню:
+   Esc → закрыть + вернуть фокус, ↑/↓ по [role=menuitem].
+   wrapCls — класс контейнера (для click-outside).
+   ============================================================ */
+function useMenu(open, close, wrapCls) {
+  useEffect(() => {
+    if (!open) return;
+    const trigger = document.activeElement;
+    const items = () => [...document.querySelectorAll("." + wrapCls + " [role='menuitem']")].filter((el) => !el.disabled);
+    const onKey = (e) => {
+      if (e.key === "Escape") { e.stopPropagation(); close(); if (trigger && trigger.focus) trigger.focus(); }
+      if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+        e.preventDefault();
+        const f = items(); if (!f.length) return;
+        const i = f.indexOf(document.activeElement);
+        const next = e.key === "ArrowDown" ? (i + 1) % f.length : (i - 1 + f.length) % f.length;
+        f[next].focus();
+      }
+    };
+    const onClick = (e) => { if (!e.target.closest("." + wrapCls)) close(); };
+    document.addEventListener("keydown", onKey, true);
+    window.addEventListener("click", onClick);
+    return () => { document.removeEventListener("keydown", onKey, true); window.removeEventListener("click", onClick); };
+  }, [open]);
+}
+window.useMenu = useMenu;
+
+/* ============================================================
    ГРАФИКИ (рисуем сами на SVG, цвет --chart / Wasabi)
    ============================================================ */
 
