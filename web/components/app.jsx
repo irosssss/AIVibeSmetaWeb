@@ -4,35 +4,62 @@
    ============================================================ */
 const { useState: useApp, useEffect: useAppE } = React;
 
-function App() {
-  const [view, setView] = useApp("site");   // site | auth | cabinet | admin
-  const [user, setUser] = useApp(null);
+const VIEWS = ["site", "auth", "cabinet", "admin"];
+const routeView = () => { const v = parseRoute().view; return VIEWS.includes(v) ? v : "site"; };
 
-  // синтетический админ для прямого входа в админку из свитчера
+function App() {
+  const [view, setView] = useApp(routeView);   // site | auth | cabinet | admin
+  const [user, setUser] = useApp(null);
+  const [ready, setReady] = useApp(false);      // сессия проверена
+  const initView = useApp(routeView())[0];      // куда целились при загрузке (для гейта мигания)
+
+  // синтетический админ для прямого входа в админку из dev-свитчера
   const ADMIN = { id: "u_1", name: "Ирина Соколова", email: "irina@aivibe.ru", role: "admin", provider: "yandex", avatar: "#C25A36" };
 
+  // регидратация сессии: без неё F5 всегда выкидывал на промо
+  useAppE(() => {
+    AIVibeAPI.auth.getSession().then((s) => { if (s && s.user) setUser(s.user); }).finally(() => setReady(true));
+  }, []);
+
+  // back/forward и ручная правка адреса
+  useAppE(() => {
+    const on = () => setView(routeView());
+    window.addEventListener("hashchange", on);
+    return () => window.removeEventListener("hashchange", on);
+  }, []);
+
   const go = (v) => {
-    if (v === "cabinet") return setView(user ? "cabinet" : "auth");
-    if (v === "admin") {
-      if (!user || user.role !== "admin") setUser(ADMIN);
-      return setView("admin");
+    if (v === "cabinet") {
+      if (user) { setView("cabinet"); setRoute("cabinet", parseRoute().tab || "projects"); }
+      else { setView("auth"); setRoute("auth"); }
+      return;
     }
-    setView(v);
+    if (v === "admin") {
+      if (!DEV_MODE) return;                       // эскалация в админку — только в dev
+      if (!user || user.role !== "admin") setUser(ADMIN);
+      setView("admin"); setRoute("admin"); return;
+    }
+    setView(v); setRoute(v);
   };
 
-  const onAuthed = (u) => { setUser(u); setView("cabinet"); };
-  const onLogout = () => { AIVibeAPI.auth.logout(); setUser(null); setView("site"); };
+  const onAuthed = (u) => { setUser(u); setView("cabinet"); setRoute("cabinet", "projects"); };
+  const onLogout = () => { AIVibeAPI.auth.logout(); setUser(null); setView("site"); setRoute("site"); };
+
+  // ждём проверку сессии, если целимся в кабинет — чтобы не мигнуть промо/логином
+  if (!ready && (initView === "cabinet" || initView === "auth")) {
+    return <div className="minh-screen" style={{ display: "grid", placeItems: "center" }}><span className="spin" style={{ width: 30, height: 30 }} /></div>;
+  }
 
   let screen;
   if (view === "auth") screen = <AuthScreen onAuthed={onAuthed} go={go} />;
   else if (view === "cabinet") screen = user ? <Cabinet user={user} onLogout={onLogout} go={go} /> : <AuthScreen onAuthed={onAuthed} go={go} />;
-  else if (view === "admin") screen = <Admin user={user || ADMIN} onLogout={onLogout} go={go} />;
+  else if (view === "admin") screen = DEV_MODE ? <Admin user={user || ADMIN} onLogout={onLogout} go={go} /> : <SitePage go={go} />;
   else screen = <SitePage go={go} />;
 
   return (
     <React.Fragment>
       {screen}
-      <ProtoSwitch view={view} go={go} user={user} />
+      {DEV_MODE && <ProtoSwitch view={view} go={go} user={user} />}
     </React.Fragment>
   );
 }

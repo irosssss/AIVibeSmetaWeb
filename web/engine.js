@@ -50,8 +50,15 @@
     return Math.round(Math.hypot(dx, dy));
   }
 
-  /* ПРОВЕРКА ЭРГОНОМИКИ выбранной раскладки → список выводов */
-  function checkErgonomics(layout, room) {
+  /* ПРОВЕРКА ЭРГОНОМИКИ выбранной раскладки → список выводов.
+     norms — необязательный override поверх канона NORMS (двухслойная модель:
+     канон AIVibe → мой канон → проект). norms.enabled[key]===false выключает правило.
+     Без аргумента norms поведение идентично прежнему (обратная совместимость). */
+  function checkErgonomics(layout, room, norms) {
+    const NN = Object.assign({}, NORMS, norms || {});
+    const EN = (norms && norms.enabled) || {};
+    const on = (k) => EN[k] !== false;
+
     const rects = toCm(layout.plan, room);
     const roomArea = room.w * 100 * room.l * 100;
     const findings = [];
@@ -60,37 +67,43 @@
     let minPass = Infinity, collision = null;
     for (let i = 0; i < rects.length; i++) {
       for (let j = i + 1; j < rects.length; j++) {
-        const c = corridor(rects[i], rects[j]);
-        if (c.collision) collision = [rects[i].label, rects[j].label];
-        else if (c.gap < minPass) minPass = c.gap;
+        const a = rects[i], b = rects[j];
+        const c = corridor(a, b);
+        if (c.collision) { collision = [a.label, b.label]; continue; }
+        // пару диван↔журнальный стол ведёт отдельное правило — не считаем её «проходом»
+        if ((a.k === "seat" && b.k === "table") || (a.k === "table" && b.k === "seat")) continue;
+        if (c.gap < minPass) minPass = c.gap;
       }
     }
     if (collision) findings.push({ kind: "warn", text: `Пересекаются «${collision[0]}» и «${collision[1]}» — предметы налезают друг на друга, раздвиньте расстановку.` });
-    if (minPass !== Infinity) {
+    if (on("walkwayMin") && minPass !== Infinity) {
       const p = Math.round(minPass);
-      if (minPass >= NORMS.walkwayComfort) findings.push({ kind: "plus", text: `Главный проход ${p} см — свободно (норма ≥ ${NORMS.walkwayMin} см).` });
-      else if (minPass >= NORMS.walkwayMin) findings.push({ kind: "plus", text: `Проход ${p} см — в норме (минимум ${NORMS.walkwayMin} см).` });
-      else findings.push({ kind: "warn", text: `Узкий проход ${p} см — норма ≥ ${NORMS.walkwayMin} см, сместите мебель.` });
+      // сначала жёсткий минимум (пользователь может задать min > comfort), затем «комфорт»
+      if (minPass < NN.walkwayMin) findings.push({ kind: "warn", text: `Узкий проход ${p} см — норма ≥ ${NN.walkwayMin} см, сместите мебель.` });
+      else if (on("walkwayComfort") && minPass >= NN.walkwayComfort) findings.push({ kind: "plus", text: `Главный проход ${p} см — свободно (комфорт ≥ ${NN.walkwayComfort} см).` });
+      else findings.push({ kind: "plus", text: `Проход ${p} см — в норме (минимум ${NN.walkwayMin} см).` });
     }
 
     // 2) диван ↔ журнальный стол
     const seat = rects.find((r) => r.k === "seat"), table = rects.find((r) => r.k === "table");
-    if (seat && table) {
-      const g = edgeGap(seat, table), N = NORMS.seatToCoffee;
+    if (on("seatToCoffee") && seat && table) {
+      const g = edgeGap(seat, table), N = NN.seatToCoffee;
       if (g < N.min) findings.push({ kind: "warn", text: `Стол вплотную к дивану (${g} см) — комфортно ${N.min}–${N.max} см.` });
       else if (g > N.max + 15) findings.push({ kind: "warn", text: `Стол далеко от дивана (${g} см) — тянуться неудобно, норма ${N.min}–${N.max} см.` });
       else findings.push({ kind: "plus", text: `Диван↔стол ${g} см — удобная дистанция (${N.min}–${N.max} см).` });
     }
 
     // 3) плотность расстановки
-    const occ = rects.reduce((s, r) => s + r.area, 0) / roomArea;
-    const pc = Math.round(occ * 100);
-    if (occ > NORMS.occupancyWarn) findings.push({ kind: "warn", text: `Мебель занимает ${pc}% пола — тесновато, оставьте воздух (норма < ${Math.round(NORMS.occupancyWarn * 100)}%).` });
-    else findings.push({ kind: "plus", text: `Мебель занимает ${pc}% пола — комната дышит.` });
+    if (on("occupancyWarn")) {
+      const occ = rects.reduce((s, r) => s + r.area, 0) / roomArea;
+      const pc = Math.round(occ * 100);
+      if (occ > NN.occupancyWarn) findings.push({ kind: "warn", text: `Мебель занимает ${pc}% пола — тесновато, оставьте воздух (норма < ${Math.round(NN.occupancyWarn * 100)}%).` });
+      else findings.push({ kind: "plus", text: `Мебель занимает ${pc}% пола — комната дышит.` });
+    }
 
     // 4) зона открывания входной двери (если известна позиция двери)
-    if (room.door) {
-      const W = room.w * 100, L = room.l * 100, dW = NORMS.doorSwing, sw = NORMS.doorSwing;
+    if (on("doorSwing") && room.door) {
+      const W = room.w * 100, L = room.l * 100, dW = NN.doorSwing, sw = NN.doorSwing;
       const dz = room.door.indexOf("right") >= 0
         ? { x0: W - dW, x1: W, y0: L - sw, y1: L }
         : { x0: 0, x1: dW, y0: L - sw, y1: L };
@@ -101,14 +114,15 @@
 
     // 5) дистанция «диван ↔ ТВ-зона» (медиа-стена)
     const media = rects.find((r) => r.k === "media");
-    if (media && seat) {
-      const g = edgeGap(media, seat), T = NORMS.tvComfort;
+    if (on("tvComfort") && media && seat) {
+      const g = edgeGap(media, seat), T = NN.tvComfort;
       if (g < T.min - 30) findings.push({ kind: "warn", text: `ТВ-зона близко к дивану (${g} см) — глаза устают, комфортно от ${T.min} см.` });
       else if (g > T.max + 100) findings.push({ kind: "warn", text: `ТВ-зона далеко от дивана (${g} см) — мелко видно, оптимум ${T.min}–${T.max} см.` });
       else findings.push({ kind: "plus", text: `Диван↔ТВ ${g} см — комфортная дистанция просмотра (${T.min}–${T.max} см).` });
     }
 
     const warns = findings.filter((f) => f.kind === "warn").length;
+    const pc = Math.round((rects.reduce((s, r) => s + r.area, 0) / roomArea) * 100);
     return { findings, ok: warns === 0, warns, passed: findings.length - warns, occupancy: pc };
   }
 

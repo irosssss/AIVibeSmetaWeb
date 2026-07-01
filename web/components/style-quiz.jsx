@@ -141,7 +141,7 @@ function StyleQuiz({ onClose, onDone }) {
           {isResult ? (
             <React.Fragment>
               <button className="btn btn-ghost" onClick={onClose}>Закрыть</button>
-              <button className="btn btn-primary" onClick={() => onDone && onDone(result.winner)}><I.arrow size={16} />Открыть проект в этом стиле</button>
+              <button className="btn btn-primary" onClick={() => onDone && onDone(result.winner, { budget, room: ans.room })}><I.arrow size={16} />Создать проект в этом стиле</button>
             </React.Fragment>
           ) : isBudget ? (
             <button className="btn btn-primary" onClick={next}>Показать результат<I.arrow size={16} /></button>

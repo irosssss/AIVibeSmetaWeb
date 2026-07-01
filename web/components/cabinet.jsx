@@ -4,6 +4,22 @@
    ============================================================ */
 const { useState: useC, useEffect: useCE } = React;
 
+/* ---------- Хеш-роутинг: #view/tab (переживает F5, работает «назад») ---------- */
+const CAB_TABS = [["projects", "Проекты"], ["styles", "Мои стили"], ["norms", "Нормы"], ["favorites", "Избранное"], ["profile", "Профиль"]];
+const CAB_TAB_IDS = CAB_TABS.map((t) => t[0]);
+function parseRoute() {
+  const h = (location.hash || "").replace(/^#\/?/, "");
+  const [view, tab] = h.split("/");
+  return { view: view || "site", tab: tab || "" };
+}
+function setRoute(view, tab) {
+  const next = tab ? "#" + view + "/" + tab : "#" + view;
+  if (location.hash !== next) location.hash = next;
+}
+/* прототип-свитчер и синтетический вход в админку — только в dev-окружении */
+const DEV_MODE = location.hostname === "localhost" || location.hostname === "127.0.0.1" || /[?&]dev=1\b/.test(location.search);
+window.parseRoute = parseRoute; window.setRoute = setRoute; window.DEV_MODE = DEV_MODE;
+
 /* провайдерские кнопки — фирменные SVG-логотипы (Яндекс / VK) */
 function YandexBtn({ onClick, loading }) {
   return (
@@ -114,46 +130,102 @@ function Field({ label, ...p }) {
   );
 }
 
-/* ---------------- КАБИНЕТ (профиль + проекты) ---------------- */
+/* ---------------- КАБИНЕТ (рабочее пространство) ---------------- */
 function Cabinet({ user, onLogout, go }) {
-  const [tab, setTab] = useC("profile");
+  const [tab, setTab] = useC(() => { const t = parseRoute().tab; return CAB_TAB_IDS.includes(t) ? t : "projects"; });
+  const changeTab = (t) => { setTab(t); setRoute("cabinet", t); };
+
+  // синхронизация с адресом (кнопка «назад», deep-link, ручная правка hash)
+  useCE(() => {
+    const on = () => { const t = parseRoute().tab; if (CAB_TAB_IDS.includes(t)) setTab(t); };
+    window.addEventListener("hashchange", on);
+    return () => window.removeEventListener("hashchange", on);
+  }, []);
+  // при заходе без явной вкладки — зафиксировать дефолт в адресе
+  useCE(() => { if (!CAB_TAB_IDS.includes(parseRoute().tab)) setRoute("cabinet", tab); }, []);
+
+  const newProject = () => { changeTab("projects"); setTimeout(() => window.dispatchEvent(new CustomEvent("aivibe:new-project")), 0); };
+
   return (
     <div className="minh-screen">
-      <AppTopBar user={user} onLogout={onLogout} go={go}
-        tabs={[["profile", "Профиль"], ["projects", "Мои проекты"], ["favorites", "Избранное"]]} tab={tab} setTab={setTab} />
+      <AppTopBar user={user} onLogout={onLogout} go={go} tabs={CAB_TABS} tab={tab} setTab={changeTab} onNewProject={newProject} />
       <main className="container" style={{ paddingBlock: "clamp(28px,4vh,48px)", paddingTop: "calc(var(--nav-h) + 28px)" }}>
-        {tab === "profile" ? <Profile user={user} /> : tab === "favorites" ? <Favorites /> : <Projects />}
+        {tab === "profile" ? <Profile user={user} />
+          : tab === "favorites" ? <Favorites />
+          : tab === "styles" ? <StylesLibrary />
+          : tab === "norms" ? <NormsSettings />
+          : <Projects />}
       </main>
     </div>
   );
 }
 
-/* верхняя панель приложения (кабинет) */
-function AppTopBar({ user, onLogout, go, tabs, tab, setTab }) {
+/* верхняя панель приложения (кабинет): логотип · вкладки · +Новый проект · аккаунт-меню */
+function AppTopBar({ user, onLogout, go, tabs, tab, setTab, onNewProject }) {
   return (
     <header style={{ position: "fixed", top: 0, left: 0, right: 0, zIndex: 80, height: "var(--nav-h)", background: "rgba(251,248,242,.85)", backdropFilter: "blur(16px)", borderBottom: "1px solid var(--hairline)" }}>
       <div className="container" style={{ height: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 20 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 28 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 24, minWidth: 0 }}>
           <Logo size={23} onClick={() => go("site")} />
           {tabs && (
             <div className="cab-tabs" style={{ display: "flex", gap: 4, padding: 4, background: "var(--glass-2)", borderRadius: 99, border: "1px solid var(--hairline)" }}>
               {tabs.map(([k, t]) => (
-                <button key={k} onClick={() => setTab(k)} aria-current={tab === k ? "page" : undefined} style={{ padding: "8px 16px", borderRadius: 99, fontWeight: 700, fontSize: 13.5,
+                <button key={k} onClick={() => setTab(k)} aria-current={tab === k ? "page" : undefined} style={{ padding: "8px 15px", borderRadius: 99, fontWeight: 700, fontSize: 13.5,
                   background: tab === k ? "var(--surface-2)" : "transparent", color: tab === k ? "var(--text)" : "var(--muted)" }}>{t}</button>
               ))}
             </div>
           )}
         </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-          <Avatar user={user} size={36} />
-          <div className="cab-username" style={{ lineHeight: 1.2 }}>
-            <div style={{ fontWeight: 700, fontSize: 14 }}>{user.name}</div>
-            <div style={{ fontSize: 12, color: "var(--muted)" }}>{user.provider === "yandex" ? "Яндекс ID" : "VK ID"}</div>
-          </div>
-          <button className="icon-btn" title="Выйти" onClick={onLogout}><I.logout size={18} /></button>
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          {onNewProject && <button className="btn btn-primary cab-new" style={{ padding: "9px 15px", fontSize: 13.5 }} onClick={onNewProject}><I.plus size={16} />Новый проект</button>}
+          <AccountMenu user={user} onLogout={onLogout} onTab={setTab} />
         </div>
       </div>
     </header>
+  );
+}
+
+/* аккаунт-меню: профиль · тариф/биллинг · настройки · выйти */
+function AccountMenu({ user, onLogout, onTab }) {
+  const [open, setOpen] = useC(false);
+  useCE(() => {
+    if (!open) return;
+    const on = (e) => { if (!e.target.closest(".acc-menu")) setOpen(false); };
+    window.addEventListener("click", on);
+    return () => window.removeEventListener("click", on);
+  }, [open]);
+  const billing = () => { setOpen(false); AIVibeAPI.billing.createPayment({ plan: "pro_month" }).then((r) => alert(r.message || "Оплата подключится позже.")); };
+  const item = (label, Ico, onClick, danger) => (
+    <button onClick={onClick} style={{ display: "flex", alignItems: "center", gap: 11, width: "100%", padding: "10px 12px", borderRadius: 10, fontSize: 14, fontWeight: 600,
+      color: danger ? "var(--accent)" : "var(--text)", textAlign: "left" }}
+      onMouseEnter={(e) => (e.currentTarget.style.background = "var(--surface-2)")} onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}>
+      <Ico size={17} style={{ color: danger ? "var(--accent)" : "var(--muted)", flex: "none" }} />{label}
+    </button>
+  );
+  return (
+    <div className="acc-menu" style={{ position: "relative" }}>
+      <button onClick={(e) => { e.stopPropagation(); setOpen((o) => !o); }} style={{ display: "flex", alignItems: "center", gap: 10 }} aria-haspopup="menu" aria-expanded={open}>
+        <Avatar user={user} size={36} />
+        <div className="cab-username" style={{ lineHeight: 1.2, textAlign: "left" }}>
+          <div style={{ fontWeight: 700, fontSize: 14 }}>{user.name}</div>
+          <div style={{ fontSize: 12, color: "var(--muted)" }}>{user.provider === "yandex" ? "Яндекс ID" : "VK ID"}</div>
+        </div>
+        <I.arrow size={13} style={{ color: "var(--faint)", flex: "none", transform: open ? "rotate(-90deg)" : "rotate(90deg)", transition: ".2s" }} />
+      </button>
+      {open && (
+        <div className="glass" role="menu" style={{ position: "absolute", top: "calc(100% + 10px)", right: 0, minWidth: 214, borderRadius: 14, boxShadow: "var(--shadow-pop)", padding: 7, zIndex: 90 }}>
+          <div style={{ padding: "6px 12px 10px", borderBottom: "1px solid var(--hairline)", marginBottom: 6 }}>
+            <div style={{ fontWeight: 700, fontSize: 13.5 }}>{user.name}</div>
+            <div style={{ fontSize: 12, color: "var(--muted)" }}>{user.email}</div>
+          </div>
+          {item("Профиль", I.user, () => { setOpen(false); onTab("profile"); })}
+          {item("Тариф и биллинг", I.wallet, billing)}
+          {item("Настройки норм", I.sliders, () => { setOpen(false); onTab("norms"); })}
+          <div style={{ height: 1, background: "var(--hairline)", margin: "6px 4px" }} />
+          {item("Выйти", I.logout, () => { setOpen(false); onLogout(); }, true)}
+        </div>
+      )}
+    </div>
   );
 }
 

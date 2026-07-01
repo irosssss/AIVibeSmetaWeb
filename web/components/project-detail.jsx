@@ -97,6 +97,9 @@ function ProjectDetail({ id, onClose, initialStyle }) {
   const [sel, setSel] = usePD({});
   const [layoutId, setLayoutId] = usePD("window");
   const [chatOpen, setChatOpen] = usePD(false);
+  const [settings, setSettings] = usePD(null);   // пользовательские нормы-override
+  const [myStyles, setMyStyles] = usePD([]);     // стили из библиотеки пользователя
+  const [specSaved, setSpecSaved] = usePD(false);
 
   const mainRef = usePDR(null);
   const secRefs = { analysis: usePDR(null), styles: usePDR(null), budget: usePDR(null), products: usePDR(null) };
@@ -113,6 +116,11 @@ function ProjectDetail({ id, onClose, initialStyle }) {
     });
     return () => { alive = false; };
   }, [id]);
+
+  usePDE(() => {
+    AIVibeAPI.settings.get().then(setSettings);
+    AIVibeAPI.styles.list().then((list) => setMyStyles(list.filter((s) => s.owner !== null)));
+  }, []);
 
   const goto = (key) => {
     const el = secRefs[key] && secRefs[key].current, box = mainRef.current;
@@ -143,23 +151,25 @@ function ProjectDetail({ id, onClose, initialStyle }) {
 
   if (data.rooms) return <RoomSpecOverlay data={data} onClose={onClose} />;
 
-  const activeStyle = data.styles.find((s) => s.id === styleId) || data.styles[0];
+  const activeStyle = [...data.styles, ...myStyles].find((s) => s.id === styleId) || data.styles[0];
   const activeLayout = LAYOUTS.find((l) => l.id === layoutId) || LAYOUTS[0];
   const factor = activeStyle.factor || 1;
   const adj = (p) => adjustPrice(p, factor);
-  const mats = STYLE_MATERIALS[activeStyle.id] || DEFAULT_MATERIALS;
+  const mats = (activeStyle.materials && activeStyle.materials.length ? activeStyle.materials : STYLE_MATERIALS[activeStyle.id]) || DEFAULT_MATERIALS;
   const cartItems = data.catalog.map((c, i) => c.items.find((x) => x.id === sel[i])).filter(Boolean);
   const total = cartItems.reduce((s, it) => s + adj(it.price), 0);
   const oldTotal = cartItems.reduce((s, it) => s + adj(it.old || it.price), 0);
 
-  // Движок: проверка эргономики выбранной раскладки + строки сметы для PDF
-  const checks = window.AIVibeEngine ? AIVibeEngine.checkErgonomics(activeLayout, data.analysis.plan) : { findings: [], ok: true, warns: 0 };
+  // Движок: проверка эргономики выбранной раскладки (с учётом моих норм) + строки сметы для PDF
+  const effNorms = settings ? { ...(settings.normsOverride || {}), enabled: settings.enabledNorms || {} } : undefined;
+  const checks = window.AIVibeEngine ? AIVibeEngine.checkErgonomics(activeLayout, data.analysis.plan, effNorms) : { findings: [], ok: true, warns: 0 };
   const specRows = data.catalog.map((c, i) => {
     const it = c.items.find((x) => x.id === sel[i]);
     return it ? { cat: c.cat, title: it.title, factory: MP_NAME[it.mp], tier: TIER_NAME[it.tier], price: adj(it.price) } : null;
   }).filter(Boolean);
   const exportPDF = () => { if (window.AIVibePDF) AIVibePDF.exportSpec({ project: data.name, styleName: activeStyle.name, rows: specRows, total, budget: data.budget, checks }); };
   const optimize = () => { if (window.AIVibeEngine) setSel(AIVibeEngine.optimizeSpec(data.catalog, data.budget, factor).selection); };
+  const saveSpec = () => AIVibeAPI.projects.update(id, { style: activeStyle.name, items: cartItems.length }).then(() => { setSpecSaved(true); setTimeout(() => setSpecSaved(false), 1700); });
 
   return (
     <div className="pd-overlay" role="dialog" aria-label={"Проект: " + data.name}>
@@ -179,13 +189,13 @@ function ProjectDetail({ id, onClose, initialStyle }) {
         <div className="pd-main" ref={mainRef}>
           <StyleHero data={data} style={activeStyle} />
           <RoomAnalysis a={data.analysis} sref={secRefs.analysis} />
-          <StylePicker data={data} styleId={styleId} onPick={setStyleId} sref={secRefs.styles} />
+          <StylePicker data={data} styleId={styleId} onPick={setStyleId} sref={secRefs.styles} myStyles={myStyles} />
           <LayoutPicker layout={activeLayout} onPick={setLayoutId} />
           <BeforeAfter data={data} style={activeStyle} pins={activeLayout.pins} />
           <NormsCheck checks={checks} />
           <BudgetPicker data={data} tier={tier} onTier={applyTier} total={total} onOptimize={optimize} sref={secRefs.budget} />
           <ProductCatalog data={data} sel={sel} adj={adj} style={activeStyle} mats={mats} onPick={(i, idv) => setSel((s) => ({ ...s, [i]: idv }))} sref={secRefs.products} />
-          <CartBar items={cartItems} total={total} oldTotal={oldTotal} budget={data.budget} style={activeStyle} onExport={exportPDF} />
+          <CartBar items={cartItems} total={total} oldTotal={oldTotal} budget={data.budget} style={activeStyle} onExport={exportPDF} onSave={saveSpec} saved={specSaved} />
         </div>
 
         <aside className={"pd-rail" + (chatOpen ? " open" : "")}>
@@ -200,8 +210,10 @@ function ProjectDetail({ id, onClose, initialStyle }) {
 
 /* ---------------- СМЕТА-КОМПЛЕКТАЦИЯ ПО КОМНАТАМ (реальный дизайн-проект) ---------------- */
 function RoomSpecOverlay({ data, onClose }) {
-  const [markup, setMarkup] = usePD(25);
+  const [markup, setMarkup] = usePD(data.markupPct != null ? data.markupPct : 25);
   const [mode, setMode] = usePD("work");   // режим выгрузки: "work" (рабочая) / "client" (для клиента)
+  const [roomSaved, setRoomSaved] = usePD(false);
+  const saveRoom = () => { if (!data.id) { setRoomSaved(true); setTimeout(() => setRoomSaved(false), 1700); return; } AIVibeAPI.projects.update(data.id, { markupPct: markup }).then(() => { setRoomSaved(true); setTimeout(() => setRoomSaved(false), 1700); }); };
   const rooms = data.rooms || [];
   const roomTotal = (r) => r.items.reduce((s, it) => s + it.price * (it.qty || 1), 0);
   const grand = rooms.reduce((s, r) => s + roomTotal(r), 0);
@@ -287,7 +299,7 @@ function RoomSpecOverlay({ data, onClose }) {
                 </div>
                 <button className="btn btn-ghost" style={{ padding: "11px 16px" }} onClick={exportXLSX}><I.grid size={16} />Выгрузить Excel</button>
                 <button className="btn btn-ghost" style={{ padding: "11px 16px" }} onClick={exportPDF}><I.layers size={16} />Выгрузить PDF</button>
-                <button className="btn btn-primary" style={{ padding: "11px 18px" }}><I.check size={16} />Сохранить смету</button>
+                <button className="btn btn-primary" style={{ padding: "11px 18px" }} onClick={saveRoom}>{roomSaved ? <React.Fragment><I.check size={16} />Сохранено</React.Fragment> : <React.Fragment><I.check size={16} />Сохранить смету</React.Fragment>}</button>
               </div>
             </div>
           </div>
@@ -408,7 +420,25 @@ function FloorPlan({ plan }) {
 }
 
 /* ---------------- СТИЛЬ И ВАРИАНТЫ ---------------- */
-function StylePicker({ data, styleId, onPick, sref }) {
+function StyleOptionCard({ s, on, onPick }) {
+  const delta = Math.round(((s.factor || 1) - 1) * 100);
+  const deltaLabel = delta === 0 ? "базовый бюджет" : (delta > 0 ? `≈ дороже на ${delta}%` : `≈ дешевле на ${Math.abs(delta)}%`);
+  return (
+    <button className={"style-card" + (on ? " sel" : "")} onClick={() => onPick(s.id)} aria-pressed={on}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
+        <span style={{ fontWeight: 800, fontFamily: "var(--font-display)", fontSize: 17 }}>{s.name}</span>
+        {on && <span style={{ width: 22, height: 22, borderRadius: "50%", background: "var(--accent)", color: "var(--on-accent)", display: "grid", placeItems: "center", flex: "none" }}><I.check size={13} /></span>}
+      </div>
+      <div style={{ fontSize: 12.5, color: "var(--muted)", marginTop: 4 }}>{s.mood}</div>
+      <div className="sw">{(s.palette || []).map((c, i) => <span key={i} style={{ background: c }} />)}</div>
+      {s.desc && <div style={{ fontSize: 13, color: "var(--muted)", marginTop: 12, lineHeight: 1.45 }}>{s.desc}</div>}
+      <div style={{ marginTop: 12, fontSize: 12, fontWeight: 700, color: delta > 0 ? "var(--accent)" : (delta < 0 ? "var(--accent-2)" : "var(--faint)") }}>{deltaLabel}</div>
+    </button>
+  );
+}
+
+function StylePicker({ data, styleId, onPick, sref, myStyles }) {
+  const mine = myStyles || [];
   return (
     <section className="pd-section" ref={sref}>
       <div className="pd-eyebrow"><span className="dot" />Стиль и варианты</div>
@@ -417,24 +447,21 @@ function StylePicker({ data, styleId, onPick, sref }) {
         AI подобрал стили под пропорции, свет и назначение помещения. Выберите направление — палитра и акценты обновятся, а рядом видно ориентировочное влияние на бюджет.
       </p>
       <div className="pd-styles" style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 14 }}>
-        {data.styles.map((s) => {
-          const on = s.id === styleId;
-          const delta = Math.round((s.factor - 1) * 100);
-          const deltaLabel = delta === 0 ? "базовый бюджет" : (delta > 0 ? `≈ дороже на ${delta}%` : `≈ дешевле на ${Math.abs(delta)}%`);
-          return (
-            <button key={s.id} className={"style-card" + (on ? " sel" : "")} onClick={() => onPick(s.id)} aria-pressed={on}>
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
-                <span style={{ fontWeight: 800, fontFamily: "var(--font-display)", fontSize: 17 }}>{s.name}</span>
-                {on && <span style={{ width: 22, height: 22, borderRadius: "50%", background: "var(--accent)", color: "var(--on-accent)", display: "grid", placeItems: "center", flex: "none" }}><I.check size={13} /></span>}
-              </div>
-              <div style={{ fontSize: 12.5, color: "var(--muted)", marginTop: 4 }}>{s.mood}</div>
-              <div className="sw">{s.palette.map((c, i) => <span key={i} style={{ background: c }} />)}</div>
-              <div style={{ fontSize: 13, color: "var(--muted)", marginTop: 12, lineHeight: 1.45 }}>{s.desc}</div>
-              <div style={{ marginTop: 12, fontSize: 12, fontWeight: 700, color: delta > 0 ? "var(--accent)" : (delta < 0 ? "var(--accent-2)" : "var(--faint)") }}>{deltaLabel}</div>
-            </button>
-          );
-        })}
+        {data.styles.map((s) => <StyleOptionCard key={s.id} s={s} on={s.id === styleId} onPick={onPick} />)}
       </div>
+
+      {mine.length > 0 && (
+        <React.Fragment>
+          <div style={{ display: "flex", alignItems: "center", gap: 9, margin: "22px 2px 12px" }}>
+            <I.user size={16} style={{ color: "var(--accent)", flex: "none" }} />
+            <span style={{ fontWeight: 700, fontSize: 14.5 }}>Мои стили</span>
+            <span style={{ fontSize: 12.5, color: "var(--faint)" }}>· из библиотеки «Мои стили»</span>
+          </div>
+          <div className="pd-styles" style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 14 }}>
+            {mine.map((s) => <StyleOptionCard key={s.id} s={s} on={s.id === styleId} onPick={onPick} />)}
+          </div>
+        </React.Fragment>
+      )}
     </section>
   );
 }
@@ -755,8 +782,8 @@ function ProductCard({ item, selected, onClick, priceAdj, oldAdj, material, dot 
 }
 
 /* ---------------- СМЕТА (sticky) ---------------- */
-function CartBar({ items, total, oldTotal, budget, style, onExport }) {
-  const saved = oldTotal - total;
+function CartBar({ items, total, oldTotal, budget, style, onExport, onSave, saved }) {
+  const discount = oldTotal - total;
   const over = total > budget;
   return (
     <div className="pd-cart">
@@ -771,10 +798,10 @@ function CartBar({ items, total, oldTotal, budget, style, onExport }) {
         {style && <span className="glass" style={{ display: "inline-flex", alignItems: "center", gap: 7, padding: "7px 12px", borderRadius: 99, fontSize: 12.5, fontWeight: 700 }}>
           <span style={{ width: 9, height: 9, borderRadius: 3, background: style.palette[0], flex: "none" }} />{style.name}
         </span>}
-        {saved > 0 && <span className="glass" style={{ padding: "7px 12px", borderRadius: 99, fontSize: 12.5, fontWeight: 700, color: "var(--accent-2)" }}>Скидка по каталогу: −{fmtMoney(saved)}</span>}
+        {discount > 0 && <span className="glass" style={{ padding: "7px 12px", borderRadius: 99, fontSize: 12.5, fontWeight: 700, color: "var(--accent-2)" }}>Скидка по каталогу: −{fmtMoney(discount)}</span>}
         <div style={{ marginLeft: "auto", display: "flex", gap: 10 }}>
           <button className="btn btn-ghost" style={{ padding: "11px 16px" }} onClick={onExport}><I.layers size={16} />Выгрузить PDF</button>
-          <button className="btn btn-primary" style={{ padding: "11px 18px" }}><I.check size={16} />Сохранить смету</button>
+          <button className="btn btn-primary" style={{ padding: "11px 18px" }} onClick={onSave}>{saved ? <React.Fragment><I.check size={16} />Сохранено</React.Fragment> : <React.Fragment><I.check size={16} />Сохранить смету</React.Fragment>}</button>
         </div>
       </div>
     </div>

@@ -62,6 +62,34 @@
     })(),
   };
 
+  /* ----------------------------- localStorage-адаптер -----------------------------
+     Персистентность за теми же сигнатурами AIVibeAPI: при подключении бэкенда
+     тела методов меняются на fetch(...), UI не трогаем. */
+  const LS = {
+    get(k, d) { try { const v = localStorage.getItem("aivibe_" + k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } },
+    set(k, v) { try { localStorage.setItem("aivibe_" + k, JSON.stringify(v)); } catch (e) {} },
+  };
+  const today = () => new Date().toISOString().slice(0, 10);
+
+  /* ЕДИНЫЙ РЕЕСТР СТИЛЕЙ (раньше — три рассинхронизированных хардкода:
+     QUIZ_STYLES, DETAILS[*].styles, STYLE_MATERIALS). owner:null = системный (read-only). */
+  const SEED_STYLES = [
+    { id: "deco",    name: "Neo Deco",              owner: null, mood: "Геометрия, латунь, винные тона", desc: "Веерные мотивы, рифлёные поверхности и латунь. Богато, но не громоздко.", palette: ["#7C2D3A", "#C99A4B", "#1F2933", "#E7D7C9"], materials: ["велюр", "латунь", "мрамор", "рифление", "винный бархат"], decorLevel: "rich", factor: 1.0 },
+    { id: "warm",    name: "Тёплый минимализм",     owner: null, mood: "Терракота, лён, дерево",         desc: "Спокойная природная палитра, мягкие формы, минимум декора.",              palette: ["#C57B57", "#E7D3C0", "#8A8175", "#2E2A28"], materials: ["лён", "тёплое дерево", "букле", "керамика", "шерсть"],       decorLevel: "mid",  factor: 0.82 },
+    { id: "japandi", name: "Japandi",               owner: null, mood: "Светлое дерево, графит, зелень",  desc: "Сканди-функциональность × японский минимализм. Чистые линии.",           palette: ["#B79B82", "#3A3D3A", "#D9D2C7", "#6E7F6A"], materials: ["светлый дуб", "графит", "ротанг", "лён", "матовый металл"],   decorLevel: "min",  factor: 0.9 },
+    { id: "scandi",  name: "Сканди",                owner: null, mood: "Светлый дуб, хлопок, мята",       desc: "Светло, воздушно, функционально.",                                       palette: ["#EDE8E1", "#C9C6BE", "#9FB3A6", "#3B3A36"], materials: ["светлый дуб", "хлопок", "белёный ясень", "мята", "фетр"],     decorLevel: "min",  factor: 0.92 },
+    { id: "indust",  name: "Индустриальный",        owner: null, mood: "Тёмный металл, дерево, бетон",    desc: "Открытые конструкции, металл-каркас, тёплое дерево.",                     palette: ["#2B2B2E", "#7A4B2E", "#9A9A93", "#D6CFC4"], materials: ["чёрный металл", "дуб", "бетон", "кожа", "сталь"],             decorLevel: "mid",  factor: 1.0 },
+    { id: "midmod",  name: "Mid-century",           owner: null, mood: "Орех, горчица, олива",            desc: "Тёплое дерево, графичные ножки, ретро-характер.",                        palette: ["#7A5A3A", "#C29B3B", "#5E6B4E", "#E5DCCB"], materials: ["орех", "горчичный велюр", "тик", "латунь", "шерсть"],         decorLevel: "mid",  factor: 1.12 },
+    { id: "modern",  name: "Современная классика",  owner: null, mood: "Тёплый беж, латунь",              desc: "Молдинги, фрезеровка, латунная фурнитура.",                              palette: ["#D8C7AE", "#A88C5F", "#5A5247", "#EFE9DF"], materials: ["шпон", "латунь", "молдинг", "бархат", "мрамор"],              decorLevel: "rich", factor: 1.18 },
+  ];
+
+  /* гидрация из localStorage поверх дефолтов */
+  db.settings = LS.get("settings", { normsOverride: {}, enabledNorms: {}, toggles: { pushReady: true, factoryCatalog: true, autoNorms: true, publicLinks: false } });
+  db.styles   = LS.get("styles", SEED_STYLES);
+  const _lsProjects = LS.get("projects", null); if (_lsProjects) db.projects = _lsProjects;
+  const _lsFav = LS.get("favorites", null); if (_lsFav) db.favorites = _lsFav;
+  db.session  = LS.get("session", null);
+
   /* ----------------------------- AUTH ----------------------------- */
   // → API: POST /api/auth/oauth/{provider}  (обмен кода на токен → сессия/JWT)
   async function oauth(provider) {
@@ -70,6 +98,7 @@
       ? { id: "u_1", name: "Ирина Соколова", email: "irina@aivibe.ru", role: "admin" }
       : { id: "u_2", name: "Максим Орлов", email: "max.orlov@vk.com", role: "user" };
     db.session = { user: { ...base, provider, avatar: provider === "yandex" ? "#E2552B" : "#6B9BE8" } };
+    LS.set("session", db.session);
     return clone(db.session);
   }
 
@@ -80,7 +109,18 @@
       loginWithYandex: () => oauth("yandex"),   // → POST /api/auth/oauth/yandex
       loginWithVK: () => oauth("vk"),            // → POST /api/auth/oauth/vk
       getSession: async () => { await delay(120); return clone(db.session); }, // → GET /api/auth/session
-      logout: async () => { await delay(120); db.session = null; return { ok: true }; }, // → POST /api/auth/logout
+      logout: async () => { await delay(120); db.session = null; LS.set("session", null); return { ok: true }; }, // → POST /api/auth/logout
+    },
+
+    /* — Пользовательские настройки (нормы-override, тумблеры) — */
+    settings: {
+      get: async () => { await delay(120); return clone(db.settings); },              // → GET /api/profile/settings
+      update: async (patch) => {                                                        // → PATCH /api/profile/settings
+        await delay(160);
+        db.settings = { ...db.settings, ...patch };
+        LS.set("settings", db.settings);
+        return clone(db.settings);
+      },
     },
 
     /* — Подписка / оплата (ЮKassa) — */
@@ -137,6 +177,26 @@
     projects: {
       list: async () => { await delay(LATENCY); return clone(db.projects); }, // → GET /api/projects
 
+      create: async (patch = {}) => {                                          // → POST /api/projects
+        await delay(220);
+        const row = { id: "p_" + Date.now(), name: "Новый проект", room: "Гостиная", style: "", area: 0, items: 0, budget: 0, updated: today(), cover: "living", status: "В работе", ...patch };
+        db.projects.unshift(row);
+        LS.set("projects", db.projects);
+        return clone(row);
+      },
+      update: async (id, patch) => {                                           // → PATCH /api/projects/:id
+        await delay(160);
+        const i = db.projects.findIndex((p) => p.id === id);
+        if (i >= 0) { db.projects[i] = { ...db.projects[i], ...patch, updated: today() }; LS.set("projects", db.projects); }
+        return clone(db.projects[i]);
+      },
+      remove: async (id) => {                                                   // → DELETE /api/projects/:id
+        await delay(160);
+        db.projects = db.projects.filter((p) => p.id !== id);
+        LS.set("projects", db.projects);
+        return { ok: true };
+      },
+
       // → GET /api/projects/summary  (сводная аналитика по сохранённым проектам)
       summary: async () => {
         await delay(LATENCY);
@@ -173,6 +233,41 @@
       remove: async (id) => {                                                   // → DELETE /api/favorites/:id
         await delay(180);
         db.favorites = db.favorites.filter((f) => f.id !== id);
+        LS.set("favorites", db.favorites);
+        return { ok: true };
+      },
+    },
+
+    /* — Библиотека стилей (единый реестр: системные read-only + свои) — */
+    styles: {
+      list: async () => { await delay(140); return clone(db.styles); },        // → GET /api/styles
+      get: async (id) => { await delay(80); return clone(db.styles.find((s) => s.id === id)); },
+      create: async (patch = {}) => {                                          // → POST /api/styles
+        await delay(160);
+        const row = { id: "s_" + Date.now(), name: "Новый стиль", owner: "me", mood: "", desc: "", palette: ["#C57B57", "#E7D3C0", "#8A8175", "#2E2A28"], materials: ["дерево", "ткань", "металл"], decorLevel: "mid", factor: 1.0, ...patch };
+        db.styles.push(row);
+        LS.set("styles", db.styles);
+        return clone(row);
+      },
+      duplicate: async (id) => {                                                // форк пресета в свой (Shopify «Copy of…»)
+        await delay(160);
+        const src = db.styles.find((s) => s.id === id);
+        if (!src) return null;
+        const copy = { ...clone(src), id: "s_" + Date.now(), name: src.name + " (копия)", owner: "me" };
+        db.styles.push(copy);
+        LS.set("styles", db.styles);
+        return clone(copy);
+      },
+      update: async (id, patch) => {                                           // → PATCH /api/styles/:id (только свои)
+        await delay(140);
+        const i = db.styles.findIndex((s) => s.id === id);
+        if (i >= 0 && db.styles[i].owner !== null) { db.styles[i] = { ...db.styles[i], ...patch }; LS.set("styles", db.styles); }
+        return clone(db.styles[i]);
+      },
+      remove: async (id) => {                                                   // → DELETE /api/styles/:id (только свои)
+        await delay(140);
+        db.styles = db.styles.filter((s) => !(s.id === id && s.owner !== null));
+        LS.set("styles", db.styles);
         return { ok: true };
       },
     },

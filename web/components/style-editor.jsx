@@ -1,0 +1,220 @@
+/* ============================================================
+   AIVibe — БИБЛИОТЕКА СТИЛЕЙ (редактировать / создавать свои)
+   ------------------------------------------------------------
+   Единый реестр AIVibeAPI.styles заменяет три хардкода. Системные пресеты
+   (owner:null) — read-only база; «Дублировать» форкает в свой (Shopify «Copy of…»),
+   «Создать» — с нуля. Стиль = палитра + материалы + уровень декора + бюджет-factor,
+   применяется к смете по id (правишь стиль — смета пересчитывается).
+   ============================================================ */
+const { useState: useS, useEffect: useSE } = React;
+
+const DECOR = [["min", "Минимум"], ["mid", "Середина"], ["rich", "Насыщенно"]];
+const DECOR_LABEL = { min: "Минимум декора", mid: "Средний декор", rich: "Насыщенный декор" };
+const factorDelta = (f) => { const d = Math.round(((f || 1) - 1) * 100); return d === 0 ? "базовый бюджет" : d > 0 ? "≈ дороже на " + d + "%" : "≈ дешевле на " + Math.abs(d) + "%"; };
+
+function StylesLibrary() {
+  const [rows, setRows] = useS(null);
+  const [edit, setEdit] = useS(null);       // редактируемый/создаваемый стиль (draft) | null
+  const reload = () => AIVibeAPI.styles.list().then(setRows);
+  useSE(() => { reload(); }, []);
+
+  const duplicate = async (id) => { const c = await AIVibeAPI.styles.duplicate(id); await reload(); if (c) setEdit(c); };
+  const remove = async (id) => { if (!confirm("Удалить этот стиль?")) return; await AIVibeAPI.styles.remove(id); reload(); };
+  const createNew = () => setEdit({ __new: true, name: "", owner: "me", mood: "", desc: "", palette: ["#C57B57", "#E7D3C0", "#8A8175", "#2E2A28"], materials: ["дерево", "ткань", "металл"], decorLevel: "mid", factor: 1.0 });
+
+  const system = rows ? rows.filter((s) => s.owner === null) : [];
+  const mine = rows ? rows.filter((s) => s.owner !== null) : [];
+
+  return (
+    <div className="reveal in" ref={useReveal()}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: 22, flexWrap: "wrap", gap: 14 }}>
+        <div>
+          <span style={{ fontFamily: "var(--font-mono)", fontSize: 12, letterSpacing: ".12em", textTransform: "uppercase", color: "var(--accent)", display: "inline-flex", alignItems: "center", gap: 9 }}>
+            <I.spark size={15} />Библиотека стилей
+          </span>
+          <h1 className="display" style={{ fontSize: 30, marginTop: 10 }}>Мои стили</h1>
+          <p style={{ color: "var(--muted)", fontSize: 14.5, marginTop: 8, maxWidth: 640, lineHeight: 1.6 }}>
+            Системные пресеты — основа (только чтение). Дублируйте любой в свой и правьте палитру, материалы, уровень декора и класс бюджета — или соберите стиль с нуля. Стиль применяется к смете и влияет на подбор.
+          </p>
+        </div>
+        <button className="btn btn-primary" onClick={createNew}><I.plus size={17} />Создать стиль</button>
+      </div>
+
+      {!rows && <div className="proj-grid" style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 16 }}>{Array.from({ length: 6 }).map((_, i) => <div key={i} className="glass skel" style={{ borderRadius: "var(--r-lg)", height: 210 }} />)}</div>}
+
+      {mine.length > 0 && (
+        <React.Fragment>
+          <SectionLabel icon={I.user} text={"Мои стили · " + mine.length} />
+          <div className="proj-grid" style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 16, marginBottom: 30 }}>
+            {mine.map((s) => <StyleLibCard key={s.id} s={s} onEdit={() => setEdit(s)} onDuplicate={() => duplicate(s.id)} onRemove={() => remove(s.id)} />)}
+          </div>
+        </React.Fragment>
+      )}
+
+      {rows && <SectionLabel icon={I.layers} text={"Системные пресеты · " + system.length} sub="read-only база" />}
+      <div className="proj-grid" style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 16 }}>
+        {system.map((s) => <StyleLibCard key={s.id} s={s} system onDuplicate={() => duplicate(s.id)} />)}
+      </div>
+
+      {edit && <StyleEditor draft={edit} onClose={() => setEdit(null)} onSaved={() => { setEdit(null); reload(); }} />}
+    </div>
+  );
+}
+
+function SectionLabel({ icon: Ico, text, sub }) {
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 9, margin: "6px 2px 14px", flexWrap: "wrap" }}>
+      <Ico size={17} style={{ color: "var(--accent)", flex: "none" }} />
+      <h2 style={{ fontSize: 17, fontWeight: 700 }}>{text}</h2>
+      {sub && <span style={{ fontSize: 12, fontWeight: 700, letterSpacing: ".05em", textTransform: "uppercase", color: "var(--faint)" }}>· {sub}</span>}
+    </div>
+  );
+}
+
+function StyleLibCard({ s, system, onEdit, onDuplicate, onRemove }) {
+  const delta = Math.round(((s.factor || 1) - 1) * 100);
+  return (
+    <div className="glass" style={{ borderRadius: "var(--r-lg)", padding: 20, display: "flex", flexDirection: "column", gap: 12 }}>
+      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 10 }}>
+        <div style={{ minWidth: 0 }}>
+          <div style={{ fontWeight: 800, fontFamily: "var(--font-display)", fontSize: 18, letterSpacing: "-0.01em" }}>{s.name}</div>
+          <div style={{ fontSize: 12.5, color: "var(--muted)", marginTop: 3 }}>{s.mood || DECOR_LABEL[s.decorLevel] || ""}</div>
+        </div>
+        {system
+          ? <span style={{ fontSize: 11, fontWeight: 700, padding: "3px 9px", borderRadius: 99, background: "var(--surface-2)", color: "var(--faint)", flex: "none" }}>база</span>
+          : <span style={{ fontSize: 11, fontWeight: 700, padding: "3px 9px", borderRadius: 99, background: "rgba(94,107,91,.14)", color: "var(--accent-2)", flex: "none" }}>мой</span>}
+      </div>
+
+      <div style={{ display: "flex", height: 40, borderRadius: 9, overflow: "hidden", border: "1px solid var(--hairline)" }}>
+        {(s.palette || []).map((c, i) => <span key={i} title={c} style={{ flex: 1, background: c }} />)}
+      </div>
+
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+        {(s.materials || []).slice(0, 5).map((m, i) => (
+          <span key={i} style={{ fontSize: 11.5, fontWeight: 600, color: "var(--muted)", padding: "3px 9px", borderRadius: 99, background: "var(--glass-2)", border: "1px solid var(--hairline)" }}>{m}</span>
+        ))}
+      </div>
+
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, paddingTop: 12, marginTop: "auto", borderTop: "1px solid var(--hairline)" }}>
+        <span style={{ fontSize: 12, fontWeight: 700, color: delta > 0 ? "var(--accent)" : delta < 0 ? "var(--accent-2)" : "var(--faint)" }}>{factorDelta(s.factor)}</span>
+        <div style={{ display: "flex", gap: 6 }}>
+          <button className="btn btn-ghost" style={{ padding: "7px 12px", fontSize: 12.5 }} onClick={onDuplicate} title="Дублировать в свой"><I.layers size={14} />Дублировать</button>
+          {!system && <button className="icon-btn sm" title="Редактировать" onClick={onEdit}><I.edit size={15} /></button>}
+          {!system && <button className="icon-btn sm" title="Удалить" onClick={onRemove}><I.trash size={15} /></button>}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ---------------- РЕДАКТОР СТИЛЯ ---------------- */
+function StyleEditor({ draft, onClose, onSaved }) {
+  const [d, setD] = useS(() => ({ ...draft, palette: [...(draft.palette || [])], materials: [...(draft.materials || [])] }));
+  const [busy, setBusy] = useS(false);
+  const [mat, setMat] = useS("");
+  const set = (patch) => setD((x) => ({ ...x, ...patch }));
+
+  const setColor = (i, v) => setD((x) => { const p = [...x.palette]; p[i] = v; return { ...x, palette: p }; });
+  const addColor = () => setD((x) => x.palette.length >= 6 ? x : { ...x, palette: [...x.palette, "#B79B82"] });
+  const rmColor = (i) => setD((x) => x.palette.length <= 2 ? x : { ...x, palette: x.palette.filter((_, j) => j !== i) });
+  const addMat = () => { const v = mat.trim(); if (!v) return; setD((x) => x.materials.includes(v) ? x : { ...x, materials: [...x.materials, v] }); setMat(""); };
+  const rmMat = (i) => setD((x) => ({ ...x, materials: x.materials.filter((_, j) => j !== i) }));
+
+  const save = async () => {
+    if (busy) return;
+    const name = (d.name || "").trim() || "Новый стиль";
+    const payload = { name, mood: d.mood, desc: d.desc, palette: d.palette, materials: d.materials, decorLevel: d.decorLevel, factor: d.factor };
+    setBusy(true);
+    if (d.__new) await AIVibeAPI.styles.create(payload);
+    else await AIVibeAPI.styles.update(d.id, payload);
+    setBusy(false);
+    onSaved();
+  };
+
+  const delta = Math.round(((d.factor || 1) - 1) * 100);
+  return (
+    <div className="modal-back" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
+      <div className="glass modal-card" style={{ borderRadius: "var(--r-xl)", maxWidth: 560, width: "min(560px, 100%)" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "20px 24px", borderBottom: "1px solid var(--hairline)" }}>
+          <h3 className="display" style={{ fontSize: 20 }}>{d.__new ? "Новый стиль" : "Редактировать стиль"}</h3>
+          <button className="icon-btn" onClick={onClose} aria-label="Закрыть"><I.close size={18} /></button>
+        </div>
+
+        <div style={{ padding: 24, display: "flex", flexDirection: "column", gap: 20, maxHeight: "68vh", overflow: "auto" }}>
+          <Fld label="Название">
+            <input className="fld" value={d.name} onChange={(e) => set({ name: e.target.value })} placeholder="Например: Тёплый лофт" />
+          </Fld>
+          <Fld label="Настроение / описание">
+            <input className="fld" value={d.mood} onChange={(e) => set({ mood: e.target.value })} placeholder="Терракота, металл, дерево" />
+          </Fld>
+
+          {/* палитра */}
+          <div>
+            <FldLabel>Палитра</FldLabel>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 10, alignItems: "center" }}>
+              {d.palette.map((c, i) => (
+                <div key={i} style={{ position: "relative" }}>
+                  <input type="color" value={c} onChange={(e) => setColor(i, e.target.value)}
+                    style={{ width: 46, height: 46, border: "1px solid var(--hairline)", borderRadius: 10, padding: 0, background: "none", cursor: "pointer" }} title={c} />
+                  {d.palette.length > 2 && <button onClick={() => rmColor(i)} aria-label="Убрать цвет" style={{ position: "absolute", top: -7, right: -7, width: 20, height: 20, borderRadius: "50%", background: "var(--surface)", border: "1px solid var(--hairline)", color: "var(--muted)", display: "grid", placeItems: "center", boxShadow: "var(--shadow-card)" }}><I.close size={11} /></button>}
+                </div>
+              ))}
+              {d.palette.length < 6 && <button onClick={addColor} style={{ width: 46, height: 46, borderRadius: 10, border: "1.5px dashed var(--hairline)", color: "var(--muted)", display: "grid", placeItems: "center" }} title="Добавить цвет"><I.plus size={18} /></button>}
+            </div>
+          </div>
+
+          {/* материалы */}
+          <div>
+            <FldLabel>Материалы и фактуры</FldLabel>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 10 }}>
+              {d.materials.map((m, i) => (
+                <span key={i} style={{ display: "inline-flex", alignItems: "center", gap: 7, fontSize: 13, fontWeight: 600, color: "var(--text)", padding: "6px 12px", borderRadius: 99, background: "var(--glass-2)", border: "1px solid var(--hairline)" }}>
+                  {m}<button onClick={() => rmMat(i)} aria-label="Убрать" style={{ display: "grid", placeItems: "center", color: "var(--faint)" }}><I.close size={13} /></button>
+                </span>
+              ))}
+            </div>
+            <div style={{ display: "flex", gap: 8 }}>
+              <input className="fld" value={mat} onChange={(e) => setMat(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addMat(); } }} placeholder="Добавить материал…" />
+              <button className="btn btn-ghost" style={{ padding: "0 16px" }} onClick={addMat}><I.plus size={16} /></button>
+            </div>
+          </div>
+
+          {/* уровень декора */}
+          <div>
+            <FldLabel>Уровень декора</FldLabel>
+            <div className="pd-seg" style={{ display: "flex", gap: 4, padding: 4, background: "var(--surface-2)", border: "1px solid var(--hairline)", borderRadius: 12, maxWidth: 360 }}>
+              {DECOR.map(([k, t]) => (
+                <button key={k} onClick={() => set({ decorLevel: k })} style={{ flex: 1, padding: "9px", borderRadius: 8, fontWeight: 700, fontSize: 13.5, background: d.decorLevel === k ? "var(--surface)" : "transparent", color: d.decorLevel === k ? "var(--text)" : "var(--muted)", boxShadow: d.decorLevel === k ? "0 1px 2px rgba(46,42,38,.08)" : "none" }}>{t}</button>
+              ))}
+            </div>
+          </div>
+
+          {/* бюджет-класс (factor) */}
+          <div>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 6 }}>
+              <FldLabel>Класс бюджета</FldLabel>
+              <span style={{ fontSize: 12.5, fontWeight: 700, color: delta > 0 ? "var(--accent)" : delta < 0 ? "var(--accent-2)" : "var(--faint)" }}>{factorDelta(d.factor)}</span>
+            </div>
+            <input type="range" min="0.7" max="1.4" step="0.02" value={d.factor} onChange={(e) => set({ factor: +e.target.value })} style={{ width: "100%", accentColor: "var(--accent)", cursor: "pointer" }} />
+            <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11.5, color: "var(--faint)", marginTop: 6 }}><span>−30% (эконом)</span><span>база</span><span>+40% (премиум)</span></div>
+          </div>
+        </div>
+
+        <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, padding: "16px 24px", borderTop: "1px solid var(--hairline)" }}>
+          <button className="btn btn-ghost" onClick={onClose}>Отмена</button>
+          <button className="btn btn-primary" onClick={save} disabled={busy}>{busy ? "Сохранение…" : <React.Fragment><I.check size={16} />Сохранить стиль</React.Fragment>}</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function FldLabel({ children }) {
+  return <span style={{ display: "block", fontSize: 13, color: "var(--muted)", marginBottom: 8, fontWeight: 600 }}>{children}</span>;
+}
+function Fld({ label, children }) {
+  return <label style={{ display: "block" }}><FldLabel>{label}</FldLabel>{children}</label>;
+}
+
+window.StylesLibrary = StylesLibrary;
+window.StyleEditor = StyleEditor;

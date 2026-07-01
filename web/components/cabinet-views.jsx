@@ -153,10 +153,12 @@ function Toggle({ label, sub, on: initOn, last }) {
   );
 }
 
-/* стиль-квиз → проект, в котором этот стиль доступен */
-const QUIZ_STYLE_PROJECT = { deco: "p_1", warm: "p_2", japandi: "p_1", scandi: "p_3", indust: "p_4", midmod: "p_4" };
+/* стиль-квиз → читаемое имя стиля для нового проекта */
+const QUIZ_STYLE_NAME = { deco: "Neo Deco", warm: "Тёплый минимализм", japandi: "Japandi", scandi: "Сканди", indust: "Индустриальный", midmod: "Mid-century" };
+const PROJ_STATUSES = ["В работе", "Готов", "Архив"];
+const statusColor = { "В работе": "var(--info)", "Готов": "var(--accent-2)", "Архив": "var(--faint)" };
 
-/* ---------------- СОХРАНЁННЫЕ ПРОЕКТЫ ---------------- */
+/* ---------------- СОХРАНЁННЫЕ ПРОЕКТЫ (рабочий список) ---------------- */
 function Projects() {
   const [rows, setRows] = useCV(null);
   const [sum, setSum] = useCV(null);          // сводная аналитика
@@ -165,18 +167,31 @@ function Projects() {
   const [newOpen, setNewOpen] = useCV(false); // модалка «Новый проект»
   const [quizOpen, setQuizOpen] = useCV(false);
   const [importData, setImportData] = useCV(null); // смета, загруженная из Excel
+  const [q, setQ] = useCV("");                // поиск
+  const [statusF, setStatusF] = useCV("Все"); // фильтр по статусу
+  const [sort, setSort] = useCV("updated");   // updated | budget | name
+  const [menuId, setMenuId] = useCV(null);    // открытое ⋯-меню карточки
+
+  const refresh = () => { AIVibeAPI.projects.list().then(setRows); AIVibeAPI.projects.summary().then(setSum); };
   useCVE(() => {
-    AIVibeAPI.projects.list().then(setRows);
-    AIVibeAPI.projects.summary().then(setSum);
-    // авто-показ квиза при первом входе
+    refresh();
     try { if (!localStorage.getItem("aivibe_quiz_done")) setTimeout(() => setQuizOpen(true), 700); } catch (e) {}
+    const onNew = () => setNewOpen(true);   // кнопка «+ Новый проект» из топбара
+    window.addEventListener("aivibe:new-project", onNew);
+    return () => window.removeEventListener("aivibe:new-project", onNew);
   }, []);
-  const finishQuiz = (styleId) => {
+
+  const onCreated = (p) => { setNewOpen(false); refresh(); setOpenId(p.id); };
+
+  const finishQuiz = (styleId, extra) => {
     try { localStorage.setItem("aivibe_quiz_done", "1"); } catch (e) {}
     setQuizOpen(false);
-    setOpenStyle(styleId);
-    setOpenId(QUIZ_STYLE_PROJECT[styleId] || "p_1");
+    const room = (extra && extra.room) || "Гостиная";
+    const budget = (extra && extra.budget) || 420000;
+    const styleName = QUIZ_STYLE_NAME[styleId] || "";
+    AIVibeAPI.projects.create({ name: room + " · " + (styleName || "проект"), room, budget, style: styleName }).then((p) => { refresh(); setOpenStyle(styleId); setOpenId(p.id); });
   };
+
   // импорт сметы из Excel → открываем в той же смете-комплектации (RoomSpecOverlay)
   const onImport = (e) => {
     const f = e.target.files && e.target.files[0];
@@ -189,16 +204,28 @@ function Projects() {
       })
       .catch(() => alert("Не удалось прочитать файл."));
   };
-  const statusColor = { "В работе": "var(--info)", "Готов": "var(--accent-2)", "Архив": "var(--faint)" };
+
+  // действия над проектом
+  const rename = async (p) => { setMenuId(null); const name = prompt("Название проекта:", p.name); if (name && name.trim()) { await AIVibeAPI.projects.update(p.id, { name: name.trim() }); refresh(); } };
+  const duplicate = async (p) => { setMenuId(null); const { id, ...rest } = p; await AIVibeAPI.projects.create({ ...rest, name: p.name + " (копия)" }); refresh(); };
+  const changeStatus = async (p, status) => { setMenuId(null); await AIVibeAPI.projects.update(p.id, { status }); refresh(); };
+  const removeP = async (p) => { setMenuId(null); if (confirm("Удалить проект «" + p.name + "»? Это действие нельзя отменить.")) { await AIVibeAPI.projects.remove(p.id); refresh(); } };
+
+  const shown = rows ? rows
+    .filter((p) => statusF === "Все" || p.status === statusF)
+    .filter((p) => !q.trim() || ((p.name || "") + " " + (p.style || "") + " " + (p.room || "")).toLowerCase().includes(q.trim().toLowerCase()))
+    .slice()
+    .sort((a, b) => sort === "budget" ? b.budget - a.budget : sort === "name" ? (a.name || "").localeCompare(b.name || "") : (b.updated || "").localeCompare(a.updated || "")) : null;
+
   return (
     <div className="reveal in" ref={useReveal()}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24, flexWrap: "wrap", gap: 14 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20, flexWrap: "wrap", gap: 14 }}>
         <div>
           <h1 className="display" style={{ fontSize: 30 }}>Мои проекты</h1>
           <p style={{ color: "var(--muted)", fontSize: 14.5, marginTop: 4 }}>Сохранённые комнаты, расстановки и сметы</p>
         </div>
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-          <button className="btn btn-ghost" onClick={() => setQuizOpen(true)}><I.spark size={16} /> Пройти стиль-квиз</button>
+          <button className="btn btn-ghost" onClick={() => setQuizOpen(true)}><I.spark size={16} /> Стиль-квиз</button>
           <label className="btn btn-ghost" style={{ cursor: "pointer" }} title="Загрузить готовую комплектацию из Excel (колонки: Помещение, Раздел, Наименование, Кол-во, Цена)">
             <I.grid size={16} /> Импорт из Excel
             <input type="file" accept=".xlsx,.xls" hidden onChange={onImport} />
@@ -212,57 +239,145 @@ function Projects() {
         {!sum && Array.from({ length: 4 }).map((_, i) => <div key={i} className="glass skel" style={{ borderRadius: "var(--r-lg)", height: 104 }} />)}
         {sum && sum.kpis.map((k) => <KpiCard key={k.key} k={k} />)}
       </div>
-      <div className="chart-row" style={{ display: "grid", gridTemplateColumns: "1.4fr 1fr", gap: 16, marginBottom: 30 }}>
-        <AnalyCard title="Бюджет по проектам" source="смета AIVibe" accent="var(--accent-2)">
-          {sum ? <BarList data={sum.budgetByProject} color="var(--accent-2)" money /> : <ChartSkel h={120} />}
-        </AnalyCard>
-        <AnalyCard title="Статус проектов" source="портфель">
-          {sum ? <div style={{ paddingTop: 4 }}><Donut data={sum.statusSplit} size={150} /></div> : <ChartSkel h={150} />}
-        </AnalyCard>
-      </div>
 
-      <div className="proj-grid" style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 18 }}>
-        {!rows && Array.from({ length: 4 }).map((_, i) => <div key={i} className="glass skel" style={{ borderRadius: "var(--r-lg)", height: 280 }} />)}
-        {rows && rows.map((p) => (
-          <article key={p.id} className="glass news-card" style={{ borderRadius: "var(--r-lg)", overflow: "hidden", display: "flex", flexDirection: "column", cursor: "pointer" }} onClick={() => setOpenId(p.id)}>
-            <div style={{ position: "relative", aspectRatio: "16/10", overflow: "hidden" }}>
-              <Img src={PHOTOS[p.cover] || PHOTOS.living} label={p.room} />
-              <span style={{ position: "absolute", top: 12, left: 12, padding: "5px 11px", borderRadius: 99, fontSize: 11.5, fontWeight: 700, color: "#FCF6EE", background: "rgba(46,42,38,.62)", backdropFilter: "blur(6px)", border: "1px solid rgba(252,246,238,.22)", display: "flex", alignItems: "center", gap: 6 }}>
-                <span style={{ width: 7, height: 7, borderRadius: "50%", background: statusColor[p.status] }} />{p.status}
-              </span>
-            </div>
-            <div style={{ padding: 20, display: "flex", flexDirection: "column", gap: 12, flex: 1 }}>
-              <div>
-                <h3 style={{ fontSize: 18, fontWeight: 700, letterSpacing: "-0.01em" }}>{p.name}</h3>
-                <div style={{ color: "var(--muted)", fontSize: 13.5, marginTop: 3 }}>{p.style} · {p.room}</div>
-              </div>
-              <div style={{ display: "flex", gap: 16, fontSize: 13, color: "var(--muted)", marginTop: "auto" }}>
-                <span style={{ display: "flex", alignItems: "center", gap: 6 }}><I.ruler size={15} />{p.area} м²</span>
-                <span style={{ display: "flex", alignItems: "center", gap: 6 }}><I.layers size={15} />{p.items} предм.</span>
-              </div>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", paddingTop: 12, borderTop: "1px solid var(--hairline)" }}>
-                <span style={{ fontWeight: 800, fontFamily: "var(--font-display)", fontSize: 16 }}>{fmtMoney(p.budget)}</span>
-                <span className="btn btn-ghost" style={{ padding: "8px 14px", fontSize: 13 }}>Открыть <I.arrow size={14} /></span>
-              </div>
-            </div>
-          </article>
-        ))}
-      </div>
-      {openId && <ProjectDetail id={openId} initialStyle={openStyle} onClose={() => { setOpenId(null); setOpenStyle(null); }} />}
+      {/* ── тулбар: поиск · статус · сортировка ── */}
+      {rows && rows.length > 0 && (
+        <div className="proj-toolbar" style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", marginBottom: 20 }}>
+          <div style={{ position: "relative", flex: "1 1 240px", maxWidth: 340 }}>
+            <I.search size={16} style={{ position: "absolute", left: 13, top: "50%", transform: "translateY(-50%)", color: "var(--faint)" }} />
+            <input className="fld" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Поиск по названию, стилю, комнате" style={{ paddingLeft: 38 }} />
+          </div>
+          <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+            {["Все", ...PROJ_STATUSES].map((s) => (
+              <button key={s} onClick={() => setStatusF(s)} aria-pressed={statusF === s} style={{ padding: "8px 13px", borderRadius: 99, fontSize: 13, fontWeight: 700, border: "1px solid " + (statusF === s ? "var(--accent)" : "var(--hairline)"),
+                background: statusF === s ? "var(--accent)" : "var(--surface)", color: statusF === s ? "var(--on-accent)" : "var(--muted)" }}>{s}</button>
+            ))}
+          </div>
+          <select value={sort} onChange={(e) => setSort(e.target.value)} className="fld" style={{ width: "auto", padding: "9px 12px", fontSize: 13, fontWeight: 700, cursor: "pointer", marginLeft: "auto" }}>
+            <option value="updated">Сначала новые</option>
+            <option value="budget">По бюджету</option>
+            <option value="name">По названию</option>
+          </select>
+        </div>
+      )}
+
+      {/* ── сетка проектов / пустые состояния ── */}
+      {!rows && <div className="proj-grid" style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 18 }}>{Array.from({ length: 3 }).map((_, i) => <div key={i} className="glass skel" style={{ borderRadius: "var(--r-lg)", height: 280 }} />)}</div>}
+
+      {rows && rows.length === 0 && (
+        <div className="glass" style={{ borderRadius: "var(--r-xl)", padding: "56px 32px", textAlign: "center" }}>
+          <span style={{ width: 60, height: 60, borderRadius: 18, background: "var(--surface-2)", color: "var(--accent)", display: "grid", placeItems: "center", margin: "0 auto 18px" }}><I.layers size={28} /></span>
+          <h3 className="display" style={{ fontSize: 22 }}>Пока нет проектов</h3>
+          <p style={{ color: "var(--muted)", fontSize: 14.5, marginTop: 8, maxWidth: 420, marginInline: "auto", lineHeight: 1.6 }}>Создайте первый проект — задайте комнату и бюджет, дальше AIVibe соберёт смету и проверит эргономику.</p>
+          <button className="btn btn-primary" style={{ marginTop: 20 }} onClick={() => setNewOpen(true)}><I.plus size={17} />Создать первый проект</button>
+        </div>
+      )}
+
+      {shown && shown.length === 0 && rows.length > 0 && (
+        <div className="glass" style={{ borderRadius: "var(--r-lg)", padding: 40, textAlign: "center", color: "var(--muted)" }}>
+          <I.search size={26} style={{ color: "var(--faint)" }} /><div style={{ marginTop: 10, fontSize: 14.5 }}>Ничего не найдено.</div>
+          <button className="btn btn-ghost" style={{ marginTop: 14 }} onClick={() => { setQ(""); setStatusF("Все"); }}>Сбросить фильтры</button>
+        </div>
+      )}
+
+      {shown && shown.length > 0 && (
+        <div className="proj-grid" style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 18 }}>
+          {shown.map((p) => (
+            <ProjectCard key={p.id} p={p} menuOpen={menuId === p.id}
+              onOpen={() => setOpenId(p.id)} onMenu={() => setMenuId((m) => m === p.id ? null : p.id)}
+              onRename={() => rename(p)} onDuplicate={() => duplicate(p)} onStatus={(s) => changeStatus(p, s)} onRemove={() => removeP(p)} />
+          ))}
+        </div>
+      )}
+
+      {openId && <ProjectDetail id={openId} initialStyle={openStyle} onClose={() => { setOpenId(null); setOpenStyle(null); refresh(); }} />}
       {importData && <RoomSpecOverlay data={importData} onClose={() => setImportData(null)} />}
-      {newOpen && <NewProjectModal onClose={() => setNewOpen(false)} onExample={() => { setNewOpen(false); setOpenId("p_1"); }} />}
+      {newOpen && <NewProjectModal onClose={() => setNewOpen(false)} onCreate={onCreated} onExample={() => { setNewOpen(false); setOpenId("p_1"); }} />}
       {quizOpen && <StyleQuiz onClose={() => { setQuizOpen(false); try { localStorage.setItem("aivibe_quiz_done", "1"); } catch (e) {} }} onDone={finishQuiz} />}
     </div>
   );
 }
 
-/* модалка «Новый проект» — объясняет путь скан → анализ → подбор */
-function NewProjectModal({ onClose, onExample }) {
-  const steps = [
-    { icon: I.ruler, t: "Задайте габариты", s: "Загрузите план или введите размеры комнаты" },
-    { icon: I.spark, t: "AI проанализирует", s: "Свет, пропорции, зоны и подходящие стили" },
-    { icon: I.layers, t: "Смета под бюджет", s: "Спецификация с ценами по каталогу фабрик" },
-  ];
+/* карточка проекта с меню действий (⋯): переименовать · дублировать · статус · удалить */
+function ProjectCard({ p, menuOpen, onOpen, onMenu, onRename, onDuplicate, onStatus, onRemove }) {
+  useCVE(() => {
+    if (!menuOpen) return;
+    const on = (e) => { if (!e.target.closest(".pc-menu-wrap")) onMenu(); };
+    window.addEventListener("click", on);
+    return () => window.removeEventListener("click", on);
+  }, [menuOpen]);
+  const mItem = (label, Ico, onClick, danger) => (
+    <button onClick={(e) => { e.stopPropagation(); onClick(); }} style={{ display: "flex", alignItems: "center", gap: 10, width: "100%", padding: "9px 12px", borderRadius: 9, fontSize: 13.5, fontWeight: 600, color: danger ? "var(--accent)" : "var(--text)", textAlign: "left" }}
+      onMouseEnter={(e) => (e.currentTarget.style.background = "var(--surface-2)")} onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}>
+      <Ico size={16} style={{ color: danger ? "var(--accent)" : "var(--muted)", flex: "none" }} />{label}
+    </button>
+  );
+  return (
+    <article className="glass news-card" style={{ position: "relative", borderRadius: "var(--r-lg)", display: "flex", flexDirection: "column", cursor: "pointer" }}>
+      <div onClick={onOpen} style={{ position: "relative", aspectRatio: "16/10", overflow: "hidden", borderRadius: "var(--r-lg) var(--r-lg) 0 0" }}>
+        <Img src={PHOTOS[p.cover] || PHOTOS.living} label={p.room} />
+        <span style={{ position: "absolute", top: 12, left: 12, padding: "5px 11px", borderRadius: 99, fontSize: 11.5, fontWeight: 700, color: "#FCF6EE", background: "rgba(46,42,38,.62)", backdropFilter: "blur(6px)", border: "1px solid rgba(252,246,238,.22)", display: "flex", alignItems: "center", gap: 6 }}>
+          <span style={{ width: 7, height: 7, borderRadius: "50%", background: statusColor[p.status] }} />{p.status}
+        </span>
+      </div>
+
+      {/* ⋯ меню */}
+      <div className="pc-menu-wrap" style={{ position: "absolute", top: 10, right: 10 }}>
+        <button className="icon-btn sm" aria-label="Действия" onClick={(e) => { e.stopPropagation(); onMenu(); }}
+          style={{ background: "rgba(251,248,242,.92)", border: "1px solid var(--hairline)" }}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="12" cy="5" r="1.8" /><circle cx="12" cy="12" r="1.8" /><circle cx="12" cy="19" r="1.8" /></svg>
+        </button>
+        {menuOpen && (
+          <div className="glass" role="menu" onClick={(e) => e.stopPropagation()} style={{ position: "absolute", top: "calc(100% + 6px)", right: 0, minWidth: 194, borderRadius: 12, boxShadow: "var(--shadow-pop)", padding: 6, zIndex: 40 }}>
+            {mItem("Переименовать", I.edit, onRename)}
+            {mItem("Дублировать", I.layers, onDuplicate)}
+            <div style={{ height: 1, background: "var(--hairline)", margin: "5px 4px" }} />
+            <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".04em", textTransform: "uppercase", color: "var(--faint)", padding: "4px 12px 6px" }}>Статус</div>
+            {PROJ_STATUSES.map((s) => (
+              <button key={s} onClick={(e) => { e.stopPropagation(); onStatus(s); }} style={{ display: "flex", alignItems: "center", gap: 9, width: "100%", padding: "8px 12px", borderRadius: 9, fontSize: 13.5, fontWeight: p.status === s ? 700 : 600, color: "var(--text)", textAlign: "left" }}
+                onMouseEnter={(e) => (e.currentTarget.style.background = "var(--surface-2)")} onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}>
+                <span style={{ width: 8, height: 8, borderRadius: "50%", background: statusColor[s], flex: "none" }} />{s}{p.status === s && <I.check size={14} style={{ marginLeft: "auto", color: "var(--accent-2)" }} />}
+              </button>
+            ))}
+            <div style={{ height: 1, background: "var(--hairline)", margin: "5px 4px" }} />
+            {mItem("Удалить", I.trash, onRemove, true)}
+          </div>
+        )}
+      </div>
+
+      <div onClick={onOpen} style={{ padding: 20, display: "flex", flexDirection: "column", gap: 12, flex: 1 }}>
+        <div>
+          <h3 style={{ fontSize: 18, fontWeight: 700, letterSpacing: "-0.01em" }}>{p.name}</h3>
+          <div style={{ color: "var(--muted)", fontSize: 13.5, marginTop: 3 }}>{[p.style, p.room].filter(Boolean).join(" · ")}</div>
+        </div>
+        <div style={{ display: "flex", gap: 16, fontSize: 13, color: "var(--muted)", marginTop: "auto" }}>
+          <span style={{ display: "flex", alignItems: "center", gap: 6 }}><I.ruler size={15} />{p.area} м²</span>
+          <span style={{ display: "flex", alignItems: "center", gap: 6 }}><I.layers size={15} />{p.items} предм.</span>
+        </div>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", paddingTop: 12, borderTop: "1px solid var(--hairline)" }}>
+          <span style={{ fontWeight: 800, fontFamily: "var(--font-display)", fontSize: 16 }}>{fmtMoney(p.budget)}</span>
+          <span className="btn btn-ghost" style={{ padding: "8px 14px", fontSize: 13 }}>Открыть <I.arrow size={14} /></span>
+        </div>
+      </div>
+    </article>
+  );
+}
+
+/* модалка «Новый проект» — форма (комната · габариты · бюджет) → создаёт проект */
+function NewProjectModal({ onClose, onCreate, onExample }) {
+  const [name, setName] = useCV("");
+  const [room, setRoom] = useCV("Гостиная");
+  const [area, setArea] = useCV(24);
+  const [budget, setBudget] = useCV(420000);
+  const [busy, setBusy] = useCV(false);
+  const rooms = ["Гостиная", "Спальня", "Кухня", "Кабинет", "Детская", "Прихожая", "Ванная"];
+  const submit = async () => {
+    if (busy) return;
+    setBusy(true);
+    const p = await AIVibeAPI.projects.create({ name: name.trim() || (room + " — новый проект"), room, area: +area || 0, budget: +budget || 0, style: "" });
+    setBusy(false);
+    onCreate(p);
+  };
   return (
     <div className="modal-back" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
       <div className="glass modal-card" style={{ borderRadius: "var(--r-xl)" }}>
@@ -270,18 +385,32 @@ function NewProjectModal({ onClose, onExample }) {
           <h3 className="display" style={{ fontSize: 21 }}>Новый проект</h3>
           <button className="icon-btn" onClick={onClose} aria-label="Закрыть"><I.close size={18} /></button>
         </div>
-        <div style={{ padding: 26, display: "flex", flexDirection: "column", gap: 14 }}>
-          <p style={{ color: "var(--muted)", fontSize: 14.5, lineHeight: 1.6 }}>Проект начинается с габаритов комнаты — загрузите план или введите размеры. Дальше всё собирает AI — от анализа до сметы.</p>
-          {steps.map((st, i) => (
-            <div key={i} style={{ display: "flex", gap: 14, alignItems: "center" }}>
-              <span style={{ flex: "none", width: 44, height: 44, borderRadius: 12, background: "var(--surface-2)", color: "var(--accent)", display: "grid", placeItems: "center" }}><st.icon size={21} /></span>
-              <div><div style={{ fontWeight: 700, fontSize: 15 }}>{st.t}</div><div style={{ color: "var(--muted)", fontSize: 13.5, marginTop: 2 }}>{st.s}</div></div>
-            </div>
-          ))}
+        <div style={{ padding: 26, display: "flex", flexDirection: "column", gap: 16 }}>
+          <label style={{ display: "block" }}>
+            <span style={{ display: "block", fontSize: 13, color: "var(--muted)", marginBottom: 7, fontWeight: 600 }}>Название</span>
+            <input className="fld" value={name} onChange={(e) => setName(e.target.value)} placeholder="Напр. Гостиная на Патриках" />
+          </label>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+            <label style={{ display: "block" }}>
+              <span style={{ display: "block", fontSize: 13, color: "var(--muted)", marginBottom: 7, fontWeight: 600 }}>Комната</span>
+              <select className="fld" value={room} onChange={(e) => setRoom(e.target.value)} style={{ cursor: "pointer" }}>{rooms.map((r) => <option key={r} value={r}>{r}</option>)}</select>
+            </label>
+            <label style={{ display: "block" }}>
+              <span style={{ display: "block", fontSize: 13, color: "var(--muted)", marginBottom: 7, fontWeight: 600 }}>Площадь, м²</span>
+              <input className="fld" type="number" min="1" value={area} onChange={(e) => setArea(e.target.value)} />
+            </label>
+          </div>
+          <label style={{ display: "block" }}>
+            <span style={{ display: "flex", justifyContent: "space-between", fontSize: 13, color: "var(--muted)", marginBottom: 7, fontWeight: 600 }}>Бюджет<b style={{ color: "var(--accent)", fontFamily: "var(--font-display)", fontSize: 15 }}>{fmtMoney(budget)}</b></span>
+            <input type="range" min="120000" max="1500000" step="20000" value={budget} onChange={(e) => setBudget(+e.target.value)} style={{ width: "100%", accentColor: "var(--accent)", cursor: "pointer" }} />
+          </label>
         </div>
-        <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, padding: "18px 26px", borderTop: "1px solid var(--hairline)" }}>
-          <button className="btn btn-ghost" onClick={onClose}>Позже</button>
-          <button className="btn btn-primary" onClick={onExample}><I.arrow size={16} />Открыть пример проекта</button>
+        <div style={{ display: "flex", justifyContent: "space-between", gap: 10, padding: "18px 26px", borderTop: "1px solid var(--hairline)", flexWrap: "wrap" }}>
+          <button className="btn btn-ghost" onClick={onExample}>Открыть пример</button>
+          <div style={{ display: "flex", gap: 10 }}>
+            <button className="btn btn-ghost" onClick={onClose}>Отмена</button>
+            <button className="btn btn-primary" onClick={submit} disabled={busy}>{busy ? "Создаём…" : <React.Fragment><I.plus size={16} />Создать проект</React.Fragment>}</button>
+          </div>
         </div>
       </div>
     </div>
@@ -294,6 +423,7 @@ const FAV_MP = { f1: "Дубрава", f2: "Линея" };
 function Favorites() {
   const [items, setItems] = useCV(null);
   const [room, setRoom] = useCV("Все");
+  const [pickOpen, setPickOpen] = useCV(false);
   useCVE(() => { AIVibeAPI.favorites.list().then(setItems); }, []);
 
   const remove = async (id) => {
@@ -372,8 +502,52 @@ function Favorites() {
               <span className="display" style={{ fontSize: 24 }}>{fmtMoney(total)}</span>
             </div>
           </div>
-          <button className="btn btn-primary btn-block" style={{ marginTop: 16 }}><I.layers size={16} />Перенести в проект</button>
-          <button className="btn btn-ghost btn-block" style={{ marginTop: 10 }}>Поделиться доской</button>
+          <button className="btn btn-primary btn-block" style={{ marginTop: 16 }} disabled={!shown || shown.length === 0} onClick={() => setPickOpen(true)}><I.layers size={16} />Перенести в проект</button>
+          <button className="btn btn-ghost btn-block" style={{ marginTop: 10 }} onClick={() => { try { navigator.clipboard && navigator.clipboard.writeText(location.href); } catch (e) {} alert("Ссылка на доску скопирована (в проде — публичная ссылка на мудборд)."); }}>Поделиться доской</button>
+        </div>
+      </div>
+
+      {pickOpen && <FavTransferModal count={shown ? shown.length : 0} total={total} onClose={() => setPickOpen(false)}
+        onDone={(p) => { setPickOpen(false); alert((shown ? shown.length : 0) + " позиций перенесено в проект «" + p.name + "». Смета проекта обновлена."); }} />}
+    </div>
+  );
+}
+
+/* модалка «Перенести в проект» — выбор проекта-получателя (мост избранное → смета) */
+function FavTransferModal({ count, total, onClose, onDone }) {
+  const [rows, setRows] = useCV(null);
+  const [busy, setBusy] = useCV(false);
+  useCVE(() => { AIVibeAPI.projects.list().then(setRows); }, []);
+  const pick = async (p) => {
+    if (busy) return;
+    setBusy(true);
+    await AIVibeAPI.projects.update(p.id, { items: (p.items || 0) + count });
+    setBusy(false);
+    onDone(p);
+  };
+  return (
+    <div className="modal-back" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
+      <div className="glass modal-card" style={{ borderRadius: "var(--r-xl)", maxWidth: 480, width: "min(480px,100%)" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "20px 24px", borderBottom: "1px solid var(--hairline)" }}>
+          <div>
+            <h3 className="display" style={{ fontSize: 20 }}>Перенести в проект</h3>
+            <div style={{ fontSize: 13, color: "var(--muted)", marginTop: 3 }}>{count} позиций · {fmtMoney(total)}</div>
+          </div>
+          <button className="icon-btn" onClick={onClose} aria-label="Закрыть"><I.close size={18} /></button>
+        </div>
+        <div style={{ padding: 16, display: "flex", flexDirection: "column", gap: 8, maxHeight: "56vh", overflow: "auto" }}>
+          {!rows && Array.from({ length: 3 }).map((_, i) => <div key={i} className="skel" style={{ height: 58, borderRadius: 12 }} />)}
+          {rows && rows.map((p) => (
+            <button key={p.id} onClick={() => pick(p)} disabled={busy} style={{ display: "flex", alignItems: "center", gap: 12, padding: 12, borderRadius: 12, border: "1px solid var(--hairline)", background: "var(--surface)", textAlign: "left" }}
+              onMouseEnter={(e) => (e.currentTarget.style.borderColor = "var(--accent)")} onMouseLeave={(e) => (e.currentTarget.style.borderColor = "var(--hairline)")}>
+              <div style={{ width: 46, height: 46, borderRadius: 9, overflow: "hidden", flex: "none" }}><Img src={PHOTOS[p.cover] || PHOTOS.living} label="" /></div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontWeight: 700, fontSize: 14.5, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{p.name}</div>
+                <div style={{ fontSize: 12.5, color: "var(--muted)" }}>{p.room} · {fmtMoney(p.budget)}</div>
+              </div>
+              <I.arrow size={16} style={{ color: "var(--faint)", flex: "none" }} />
+            </button>
+          ))}
         </div>
       </div>
     </div>
