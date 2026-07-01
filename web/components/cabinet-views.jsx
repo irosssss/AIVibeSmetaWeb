@@ -43,6 +43,11 @@ function Profile({ user }) {
   useCVE(() => { AIVibeAPI.profile.analytics().then(setAn); }, []);
   return (
     <div className="reveal in" style={{ display: "flex", flexDirection: "column", gap: 22 }} ref={useReveal()}>
+      {/* заголовок вкладки — та же модель шапки, что у Проектов/Избранного */}
+      <div>
+        <h1 className="display" style={{ fontSize: 30 }}>Профиль</h1>
+        <p style={{ color: "var(--muted)", fontSize: 14.5, marginTop: 4 }}>Аккаунт, аналитика работы и настройки уведомлений</p>
+      </div>
       {/* ── верх: карточка профиля + KPI ── */}
       <div className="profile-grid" style={{ display: "grid", gridTemplateColumns: "0.8fr 1.2fr", gap: 22, alignItems: "start" }}>
         {/* карточка профиля */}

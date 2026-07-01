@@ -271,7 +271,8 @@ function RoomSpecOverlay({ data, onClose }) {
                 <span style={{ fontWeight: 700, fontSize: 14.5 }}>Наценка дизайнера</span>
                 <span className="mono" style={{ fontWeight: 600, fontSize: 17, color: "var(--accent-ink)" }}>+{markup}%</span>
               </div>
-              <input type="range" min="0" max="100" step="5" value={markup} onChange={(e) => setMarkup(+e.target.value)} className="quiz-range" style={{ marginTop: 10 }} />
+              <input type="range" min="0" max="100" step="5" value={markup} onChange={(e) => setMarkup(+e.target.value)} className="quiz-range" style={{ marginTop: 10 }}
+                aria-label="Наценка дизайнера, %" aria-valuetext={"+" + markup + "% — клиенту " + fmtMoney(client)} />
               <div style={{ display: "flex", justifyContent: "space-between", marginTop: 12, fontSize: 13.5, flexWrap: "wrap", gap: 8 }}>
                 <span style={{ color: "var(--muted)" }}>Себестоимость (фабрика): <b style={{ color: "var(--text)" }}>{fmtMoney(grand)}</b></span>
                 <span style={{ color: "var(--muted)" }}>Для клиента: <b style={{ color: "var(--accent-2)" }}>{fmtMoney(client)}</b></span>
@@ -326,7 +327,7 @@ function RoomSpecOverlay({ data, onClose }) {
             <div style={{ display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
               <div style={{ display: "flex", alignItems: "center", gap: 11 }}>
                 <span style={{ width: 40, height: 40, borderRadius: 12, background: "var(--accent)", color: "var(--on-accent)", display: "grid", placeItems: "center", flex: "none" }}><I.layers size={20} /></span>
-                <div>
+                <div aria-live="polite">
                   <div className="mono" style={{ fontWeight: 600, fontSize: 22, lineHeight: 1 }}>{fmtMoney(client)}</div>
                   <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 3 }}>итого клиенту · {itemsCount} {plural(itemsCount, ["позиция", "позиции", "позиций"])} · {over ? <span style={{ color: "var(--accent)" }}>закупка сверх бюджета</span> : <span style={{ color: "var(--accent-2)" }}>закупка в бюджете</span>}</div>
                 </div>
@@ -634,11 +635,18 @@ function BeforeAfter({ data, style, pins }) {
           </span>
         </div>
 
-        {/* разделитель + ручка */}
+        {/* разделитель + ручка (доступна с клавиатуры: role=slider, ←/→) */}
         <div style={{ position: "absolute", top: 0, bottom: 0, left: pos + "%", width: 2, background: "#fff", transform: "translateX(-1px)", boxShadow: "0 0 14px rgba(0,0,0,.55)" }}>
-          <div style={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%,-50%)", width: 42, height: 42, borderRadius: "50%", background: "var(--surface)", color: "var(--text)", display: "grid", placeItems: "center", boxShadow: "0 4px 18px rgba(46,42,38,.4)", cursor: "ew-resize" }}>
+          <button type="button" role="slider" aria-label="Сравнение до и после"
+            aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(pos)}
+            aria-valuetext={"«до» занимает " + Math.round(pos) + "% кадра"}
+            onKeyDown={(e) => {
+              if (e.key === "ArrowLeft" || e.key === "ArrowDown") { e.preventDefault(); setPos((p) => Math.max(6, p - 5)); }
+              if (e.key === "ArrowRight" || e.key === "ArrowUp") { e.preventDefault(); setPos((p) => Math.min(94, p + 5)); }
+            }}
+            style={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%,-50%)", width: 42, height: 42, borderRadius: "50%", background: "var(--surface)", color: "var(--text)", display: "grid", placeItems: "center", boxShadow: "0 4px 18px rgba(46,42,38,.4)", cursor: "ew-resize" }}>
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M9 7l-4 5 4 5M15 7l4 5-4 5" /></svg>
-          </div>
+          </button>
         </div>
       </div>
     </section>
@@ -890,9 +898,9 @@ function AdvisorChat({ id, hello, onAction, onClose }) {
         <button className="icon-btn pd-rail-close" onClick={onClose} aria-label="Свернуть чат"><I.close size={18} /></button>
       </div>
 
-      <div className="pd-chat-scroll" ref={scrollRef}>
+      <div className="pd-chat-scroll" ref={scrollRef} aria-live="polite" aria-label="Диалог с AI-дизайнером">
         {msgs.map((m, i) => <div key={i} className={"pd-msg " + m.role}>{m.text}</div>)}
-        {busy && <div className="pd-msg ai"><span className="pd-typing"><i /><i /><i /></span></div>}
+        {busy && <div className="pd-msg ai" aria-label="AI-дизайнер печатает"><span className="pd-typing"><i /><i /><i /></span></div>}
       </div>
 
       <div className="pd-chips">

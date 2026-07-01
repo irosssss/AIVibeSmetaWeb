@@ -81,13 +81,15 @@ function SitePage({ go }) {
   return (
     <div>
       <SiteNav go={go} />
-      <Hero go={go} />
-      <SpecCategories />
-      <SocialProof />
-      <HowItWorks />
-      <Bento />
-      <NewsFeed />
-      <Pricing go={go} />
+      <main id="main">
+        <Hero go={go} />
+        <SpecCategories />
+        <SocialProof />
+        <HowItWorks />
+        <Bento />
+        <NewsFeed />
+        <Pricing go={go} />
+      </main>
       <Footer go={go} />
     </div>
   );

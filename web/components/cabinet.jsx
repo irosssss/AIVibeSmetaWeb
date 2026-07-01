@@ -150,7 +150,7 @@ function Cabinet({ user, onLogout, go }) {
   return (
     <div className="minh-screen">
       <AppTopBar user={user} onLogout={onLogout} go={go} tabs={CAB_TABS} tab={tab} setTab={changeTab} onNewProject={newProject} />
-      <main className="container" style={{ paddingBlock: "clamp(28px,4vh,48px)", paddingTop: "calc(var(--nav-h) + 28px)" }}>
+      <main id="main" className="container" style={{ paddingBlock: "clamp(28px,4vh,48px)", paddingTop: "calc(var(--nav-h) + 28px)" }}>
         {tab === "profile" ? <Profile user={user} />
           : tab === "favorites" ? <Favorites />
           : tab === "styles" ? <StylesLibrary />
