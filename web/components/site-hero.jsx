@@ -91,30 +91,27 @@ function SiteNav({ go }) {
 function Hero({ go }) {
   return (
     <header className="minh-screen" style={{ position: "relative", display: "flex", alignItems: "center", paddingTop: "var(--nav-h)", overflow: "hidden" }}>
-      <div className="container hero-grid" style={{ display: "grid", gridTemplateColumns: "0.9fr 1.1fr", gap: 64, alignItems: "center", position: "relative", zIndex: 2, paddingBlock: "clamp(40px,7vh,84px)" }}>
+      <div className="container hero-grid" style={{ display: "grid", gridTemplateColumns: "0.82fr 1.18fr", gap: 56, alignItems: "center", position: "relative", zIndex: 2, paddingBlock: "clamp(40px,7vh,84px)" }}>
         <div>
-          <span className="mono-eyebrow">живая смета · лист 1/1</span>
-          <h1 className="display hero-h1" style={{ fontSize: "clamp(40px, 5vw, 72px)", lineHeight: 1.04, letterSpacing: "-0.025em", marginTop: 22 }}>
-            <span style={{ display: "block" }}>Смета собирается</span>
-            <span style={{ display: "block" }}>у вас <span style={{ color: "var(--accent)", fontStyle: "italic" }}>на глазах</span></span>
+          <span className="mono-eyebrow">смета-комплектация · для дизайнера</span>
+          <h1 className="display hero-h1" style={{ fontSize: "clamp(38px, 4.8vw, 66px)", lineHeight: 1.02, letterSpacing: "-0.025em", marginTop: 20 }}>
+            <span style={{ display: "block" }}>Смета клиенту —</span>
+            <span style={{ display: "block" }}>за <span style={{ color: "var(--accent)", fontStyle: "italic" }}>минуту</span></span>
           </h1>
-          <p style={{ marginTop: 24, color: "var(--muted)", maxWidth: 480, fontSize: 18, lineHeight: 1.7 }}>
-            Вставьте ссылку на товар или фото комнаты — AIVibe заполнит лист сметы строка за строкой, с артикулами, количеством и ценой. Не абстрактный экран, а привычный документ со штампом.
+          <p style={{ marginTop: 22, color: "var(--muted)", maxWidth: 430, fontSize: 17, lineHeight: 1.65 }}>
+            Две цены в одном документе: себестоимость фабрики и цена клиенту с вашей наценкой. Собрано за минуту, а не за вечер в таблицах — и готово к отправке.
           </p>
-          <div style={{ marginTop: 34, display: "flex", gap: 14, flexWrap: "wrap" }} id="download">
+          <div style={{ marginTop: 30, display: "flex", gap: 14, flexWrap: "wrap" }} id="download">
             <button className="btn btn-primary" style={{ padding: "16px 26px", fontSize: 16 }} onClick={() => go("auth")}><I.layers size={19} /> Собрать смету</button>
             <a className="btn btn-ghost" style={{ padding: "16px 26px", fontSize: 16 }} href="#how">Как это работает <I.arrow size={17} /></a>
           </div>
-          <div style={{ marginTop: 46, display: "flex", gap: 38, flexWrap: "wrap" }}>
-            {[["1 мин", "вместо вечера в таблицах"], ["38", "позиций с ценой"], ["3", "бюджета на выбор"]].map(([v, l]) => (
-              <div key={l}>
-                <div className="mono" style={{ fontWeight: 500, fontSize: 26 }}>{v}</div>
-                <div style={{ color: "var(--muted)", fontSize: 13, marginTop: 3 }}>{l}</div>
-              </div>
-            ))}
+          <div className="hero-chips">
+            <span className="hchip"><i style={{ background: "var(--accent)" }} />Две цены и ваша наценка</span>
+            <span className="hchip"><i style={{ background: "var(--accent-2)" }} />Экспорт клиенту PDF · Excel</span>
+            <span className="hchip"><i style={{ background: "var(--info)" }} />Проверка эргономики</span>
           </div>
         </div>
-        <SmetaSheet />
+        <SmetaPlate />
       </div>
       <div style={{ position: "absolute", bottom: 26, left: "50%", transform: "translateX(-50%)", color: "var(--faint)", fontSize: 12, letterSpacing: ".2em", textTransform: "uppercase", display: "flex", flexDirection: "column", alignItems: "center", gap: 8 }}>
         прокрутите
@@ -124,82 +121,58 @@ function Hero({ go }) {
   );
 }
 
-/* Живая смета на бумаге: лист со штампом, строки «впечатываются» при
-   попадании в экран, итог считается счётчиком. Респектит reduced-motion. */
-function SmetaSheet() {
-  const ref = useRefS(null);
+/* Плита сметы: рендер-баннер проекта + таблица с ДВУМЯ ценами
+   (себестоимость фабрики / цена клиенту), живой регулятор наценки —
+   клиентские суммы и прибыль пересчитываются на лету, — и экспорт клиенту. */
+function SmetaPlate() {
+  const [markup, setMarkup] = useStateS(32);
+  const fmt = (n) => new Intl.NumberFormat("ru-RU").format(Math.round(n)) + " ₽";
   const ROWS = [
-    ["01", "Демонтаж перегородок", "12 м²", "18 400 ₽"],
-    ["02", "Стяжка пола", "42 м²", "63 000 ₽"],
-    ["03", "Штукатурка стен", "96 м²", "51 200 ₽"],
-    ["04", "Электрика, точки", "38 шт", "47 500 ₽"],
-    ["05", "Плитка, санузел", "14 м²", "32 900 ₽"],
+    ["01", "Диван 3-местный, велюр", "DV-2240", "1 шт", 112000],
+    ["02", "Кресло лаунж, дуб/букле", "KR-118", "2 шт", 73000],
+    ["03", "Люстра подвесная, латунь", "LT-905", "1 шт", 38600],
   ];
-  const TARGET = 1240000;
-  useEffectS(() => {
-    const sheet = ref.current; if (!sheet) return;
-    const rows = sheet.querySelectorAll(".smeta-row:not(.head)");
-    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    const STAGGER = 0.11, FIRST = 0.12;
-    rows.forEach((r, i) => { r.style.animationDelay = (FIRST + i * STAGGER) + "s"; });
-    const rowsDone = FIRST + (rows.length - 1) * STAGGER + 0.42;
-    const totalEl = sheet.querySelector(".smeta-total .val");
-    const noteEl = sheet.querySelector(".smeta-note");
-    const stampEl = sheet.querySelector(".smeta-stamp");
-    if (totalEl) totalEl.style.animationDelay = rowsDone + "s";
-    if (noteEl) noteEl.style.animationDelay = (rowsDone + 0.5) + "s";
-    if (stampEl) stampEl.style.animationDelay = (rowsDone + 0.15) + "s";
-    const fmt = new Intl.NumberFormat("ru-RU");
-    let raf, timer;
-    const countUp = () => {
-      if (reduce || !totalEl) { if (totalEl) totalEl.textContent = fmt.format(TARGET) + " ₽"; return; }
-      let start = null;
-      const step = (ts) => {
-        if (!start) start = ts;
-        const p = Math.min((ts - start) / 950, 1);
-        const eased = 1 - Math.pow(1 - p, 3);
-        totalEl.textContent = fmt.format(Math.round(TARGET * eased)) + " ₽";
-        if (p < 1) raf = requestAnimationFrame(step);
-      };
-      raf = requestAnimationFrame(step);
-    };
-    const play = () => { sheet.classList.add("play"); timer = setTimeout(countUp, reduce ? 0 : rowsDone * 1000); };
-    if (reduce) { play(); return () => { cancelAnimationFrame(raf); clearTimeout(timer); }; }
-    const io = new IntersectionObserver((entries) => {
-      entries.forEach((e) => { if (e.isIntersecting) { play(); io.disconnect(); } });
-    }, { threshold: 0.2, rootMargin: "0px 0px -8% 0px" });
-    io.observe(sheet);
-    return () => { io.disconnect(); cancelAnimationFrame(raf); clearTimeout(timer); };
-  }, []);
+  const restCost = 896400, restCount = 35;
+  const costTotal = ROWS.reduce((s, r) => s + r[4], restCost);
+  const k = 1 + markup / 100;
+  const clientTotal = costTotal * k;
+  const profit = clientTotal - costTotal;
   return (
-    <div className="smeta-sheet" ref={ref} style={{ marginInline: "auto" }}>
-      <span className="smeta-grain" aria-hidden="true" />
-      <div className="smeta-head">
-        <div>
-          <div className="ttl">Смета ремонта</div>
-          <div className="sub">Квартира · 42 м² · черновой + чистовой</div>
+    <div className="plate" style={{ marginInline: "auto" }}>
+      <div className="plate-banner">
+        <Img src="img/hero-banner.jpg" label="рендер проекта" />
+        <span className="plate-lab">Проект «Кирова, 17к1» <b>· гостиная · 42 м²</b></span>
+      </div>
+      <div className="plate-head">
+        <div><div className="pt">Смета-комплектация</div><div className="ps">№ 024 · от 01.07.2026</div></div>
+        <div className="plate-toggle"><span className="on">Для клиента</span><span>Рабочая</span></div>
+      </div>
+      <div className="spec2 head"><span>№</span><span>Позиция</span><span className="r">Кол-во</span><span className="r">Себест.</span><span className="r">Клиенту</span></div>
+      {ROWS.map(([i, name, art, qty, cost]) => (
+        <div className="spec2" key={i}>
+          <span className="idx">{i}</span>
+          <span className="pos">{name} <b className="art">· {art}</b></span>
+          <span className="r q">{qty}</span>
+          <span className="r cost">{fmt(cost)}</span>
+          <span className="r cli">{fmt(cost * k)}</span>
         </div>
-        <div className="meta">№ 024<br />от 30.06.2026</div>
+      ))}
+      <div className="spec2 more">
+        <span className="idx">—</span><span className="pos">ещё {restCount} позиций комплектации</span>
+        <span className="r q">—</span><span className="r cost">{fmt(restCost)}</span><span className="r cli">{fmt(restCost * k)}</span>
       </div>
-      <div className="smeta-rows">
-        <div className="smeta-row head"><span>№</span><span className="pos">Позиция</span><span className="qty">Кол-во</span><span className="sum">Сумма</span></div>
-        {ROWS.map(([i, p, q, s]) => (
-          <div className="smeta-row" key={i}><span className="idx">{i}</span><span className="pos">{p}</span><span className="qty">{q}</span><span className="sum">{s}</span></div>
-        ))}
-        <div className="smeta-row more"><span className="idx">—</span><span className="pos">ещё 33 позиции</span><span className="qty">—</span><span className="sum">1 027 000 ₽</span></div>
+      <div className="plate-markup">
+        <span className="k">Наценка дизайнера <b>+{markup}%</b></span>
+        <input type="range" min="0" max="60" value={markup} onChange={(e) => setMarkup(+e.target.value)} aria-label="Наценка дизайнера, %" />
+        <span className="profit">прибыль +{fmt(profit)}</span>
       </div>
-      <div className="smeta-total"><span className="lab">Итого</span><span className="val">0 ₽</span></div>
-      <div className="smeta-note">
-        <svg width="40" height="20" viewBox="0 0 40 20" aria-hidden="true"><path d="M38 4 C18 -2 6 8 4 17 M4 17 l-1 -7 M4 17 l7 -2" /></svg>
-        <span>с НДС и логистикой</span>
+      <div className="plate-tot">
+        <div className="pt-card a"><div className="lab">Себестоимость</div><div className="val">{fmt(costTotal)}</div></div>
+        <div className="pt-card b"><div className="lab">Цена клиенту</div><div className="val">{fmt(clientTotal)}</div></div>
       </div>
-      <div className="smeta-stamp">
-        <div><div className="k">Объект</div><div className="v">Квартира</div></div>
-        <div><div className="k">Площадь</div><div className="v">42 м²</div></div>
-        <div><div className="k">Стадия</div><div className="v">Рабочая</div></div>
-        <div><div className="k">Дата</div><div className="v">30.06.2026</div></div>
-        <div><div className="k">Сметчик</div><div className="v">AIVibe AI</div></div>
-        <div><div className="k">Лист</div><div className="v">1 / 1</div></div>
+      <div className="plate-foot">
+        <span className="ergo"><I.check size={13} /> проверка эргономики по нормам NKBA / Neufert</span>
+        <span className="exp"><span>PDF</span><span>Excel</span></span>
       </div>
     </div>
   );

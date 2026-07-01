@@ -15,7 +15,7 @@ const staticHow = prefersReduced || narrowVP;
    HOW IT WORKS — sticky-сцена, прогресс ведётся скроллом
 -------------------------------------------------------------- */
 const STEPS = [
-  { n: "01", icon: I.ruler, lot: "stepMeasure", tag: "Габариты",     title: "Введите план комнаты или габариты", text: "Загрузите обмеры или нарисуйте план — стены, окна, двери. Без сложных 3D-программ." },
+  { n: "01", icon: I.ruler, lot: "stepMeasure", tag: "Источник",     title: "Вставьте ссылку на товар или фото комнаты", text: "Клиппер затянет товар с сайта фабрики — с ценой и артикулом, или начните с фото комнаты. Без обмеров и 3D-программ." },
   { n: "02", icon: I.spark, lot: "stepAI",      tag: "Смета и нормы", title: "AIVibe собирает спецификацию и проверяет расстановку", text: "Движок раскладывает мебель по нормам эргономики и собирает смету с артикулами и ценами под стиль и бюджет." },
   { n: "03", icon: I.layers, lot: "stepSpec",   tag: "3 варианта",  title: "Готовая смета в трёх бюджетах", text: "Эконом, база, премиум — выгружайте спецификацию клиенту. Меняете предмет — итог и проверка пересчитываются." },
 ];
@@ -69,7 +69,7 @@ function HowDesktop() {
           {/* левая колонка — шаги */}
           <div>
             <div className="eyebrow jade" style={{ marginBottom: 18 }}><span style={{ width: 22, height: 1, background: "var(--accent-2)" }} />КАК ЭТО РАБОТАЕТ</div>
-            <h2 className="display" style={{ fontSize: "clamp(34px,4.4vw,60px)", marginBottom: 36 }}>От пустой комнаты<br />до готового дизайна</h2>
+            <h2 className="display" style={{ fontSize: "clamp(34px,4.4vw,60px)", marginBottom: 36 }}>От пустой комнаты<br />до готовой сметы</h2>
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
               {STEPS.map((s, i) => {
                 const on = i === active;
@@ -122,7 +122,7 @@ function HowMobile() {
     <section id="how" style={{ paddingBlock: "clamp(56px,9vh,90px)" }}>
       <div className="container">
         <div className="eyebrow jade" style={{ marginBottom: 16 }}><span style={{ width: 22, height: 1, background: "var(--accent-2)" }} />КАК ЭТО РАБОТАЕТ</div>
-        <h2 className="display" style={{ fontSize: "clamp(30px,8vw,44px)" }}>От пустой комнаты<br />до готового дизайна</h2>
+        <h2 className="display" style={{ fontSize: "clamp(30px,8vw,44px)" }}>От пустой комнаты<br />до готовой сметы</h2>
 
         <div ref={scRef} onScroll={onScroll} className="how-scroller">
           {STEPS.map((s, i) => (
@@ -198,6 +198,45 @@ function DemoStage({ active, sub }) {
         {["План комнаты", "Подбор и смета", "Проверка норм"][active]}
       </div>
     </div>
+  );
+}
+
+/* --------------------------------------------------------------
+   КОМПЛЕКТАЦИЯ ПО КАТЕГОРИЯМ — витрина вывода: карточки с рендером,
+   себестоимостью и ценой клиенту (две цены на каждую категорию).
+-------------------------------------------------------------- */
+function SpecCategories() {
+  const ref = useReveal();
+  const CATS = [
+    ["cat-mebel", "Мебель", "12 позиций", "462 000", "612 000 ₽"],
+    ["cat-svet", "Свет", "8 позиций", "142 000", "188 000 ₽"],
+    ["cat-dekor", "Декор", "11 позиций", "108 000", "143 000 ₽"],
+    ["cat-tekstil", "Текстиль", "7 позиций", "408 000", "537 000 ₽"],
+  ];
+  return (
+    <section id="komplektacia" style={{ paddingBlock: "clamp(70px,10vh,120px)" }} ref={ref}>
+      <div className="container reveal">
+        <div className="catsec-head">
+          <div>
+            <div className="eyebrow"><span style={{ width: 22, height: 1, background: "var(--accent)" }} />спецификация · 38 позиций</div>
+            <h2 className="display" style={{ fontSize: "clamp(30px,4vw,50px)", marginTop: 14 }}>Комплектация по категориям</h2>
+          </div>
+          <p style={{ color: "var(--muted)", maxWidth: 340, fontSize: 14.5 }}>Мебель, свет, декор и текстиль — с артикулами, себестоимостью и ценой клиенту. Меняете позицию — итог и наценка пересчитываются.</p>
+        </div>
+        <div className="catgrid">
+          {CATS.map(([img, name, count, cost, client]) => (
+            <div className="catcard" key={name}>
+              <div className="cph"><Img src={"img/" + img + ".jpg"} label={name} /></div>
+              <div className="cbody">
+                <div className="cn">{name}</div>
+                <div className="cc">{count}</div>
+                <div className="ctwo"><span className="c1">себест. {cost}</span><span className="c2">{client}</span></div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
   );
 }
 

@@ -78,6 +78,7 @@ function SitePage({ go }) {
     <div>
       <SiteNav go={go} />
       <Hero go={go} />
+      <SpecCategories />
       <HowItWorks />
       <Bento />
       <NewsFeed />
