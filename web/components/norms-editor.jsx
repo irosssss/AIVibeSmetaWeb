@@ -57,6 +57,7 @@ function NormsSettings() {
   const [onlyMod, setOnlyMod] = useN(false);
   const [saved, setSaved] = useN(true);
   const [justSaved, setJustSaved] = useN(false);  // success-пульс 2.2с после сохранения
+  const [linkNote, setLinkNote] = useN("");        // сноска о мягком зажиме связанных порогов
 
   const reveal = useReveal();     // хук — до любого раннего return (Rules of Hooks)
 
@@ -72,11 +73,34 @@ function NormsSettings() {
   const isMod = (key) => key in override;
   const on = (key) => enabled[key] !== false;
 
-  const setKey = (key, val) => { setOverride((o) => ({ ...o, [key]: val })); setSaved(false); };
+  const setKey = (key, val) => {
+    setOverride((o) => {
+      const n = { ...o, [key]: val };
+      // связанная пара: минимальный проход не может превышать комфортный — мягкий зажим + сноска
+      const minV = key === "walkwayMin" ? val : (("walkwayMin" in n) ? n.walkwayMin : N_CANON.walkwayMin);
+      const comfV = key === "walkwayComfort" ? val : (("walkwayComfort" in n) ? n.walkwayComfort : N_CANON.walkwayComfort);
+      if (minV > comfV) {
+        if (key === "walkwayMin") { n.walkwayComfort = minV; setLinkNote("Комфортный проход подтянут до " + minV + " см — он не бывает меньше минимального."); }
+        else { n.walkwayMin = comfV; setLinkNote("Минимальный проход опущен до " + comfV + " см — он не бывает больше комфортного."); }
+      }
+      return n;
+    });
+    setSaved(false);
+  };
+  useNE(() => { if (!linkNote) return; const t = setTimeout(() => setLinkNote(""), 4200); return () => clearTimeout(t); }, [linkNote]);
   const resetKey = (key) => { setOverride((o) => { const n = { ...o }; delete n[key]; return n; }); setSaved(false); };
   const toggleKey = (key) => { setEnabled((e) => ({ ...e, [key]: e[key] === false ? true : false })); setSaved(false); };
   const resetAll = () => { setOverride({}); setBaseKey("canon"); setSaved(false); };
-  const applyPreset = (key) => {
+  const applyPreset = async (key) => {
+    // не затираем ручные правки молча — подтверждение (ошибка объясняет последствие)
+    if (modCount > 0 && key !== baseKey) {
+      const ok = await confirmDialog({
+        title: "Заполнить из пресета?",
+        text: "У вас " + modCount + " " + plural(modCount, ["изменённый порог", "изменённых порога", "изменённых порогов"]) + " — база «" + (N_PRESET_LABEL[key] || key) + "» перезапишет их значениями пресета.",
+        confirmLabel: "Заполнить", cancelLabel: "Оставить мои",
+      });
+      if (!ok) return;
+    }
     setBaseKey(key);
     const p = N_PRESETS[key], ov = {};
     NORM_DEFS.forEach((d) => { if (!nEq(p[d.key], N_CANON[d.key])) ov[d.key] = nClone(p[d.key]); });
@@ -138,6 +162,11 @@ function NormsSettings() {
             <span style={{ fontFamily: "var(--font-mono)", fontSize: 12, color: "var(--faint)" }}>{modCount ? modCount + " изменено" : "всё по канону"}</span>
           </div>
 
+          {linkNote && (
+            <div role="status" style={{ display: "flex", alignItems: "center", gap: 9, padding: "10px 22px", fontSize: 13, color: "var(--info)", background: "rgba(62,74,89,.07)", borderBottom: "1px solid var(--hairline-2)" }}>
+              <I.info size={15} style={{ flex: "none" }} />{linkNote}
+            </div>
+          )}
           {NORM_DEFS.filter((d) => !onlyMod || isMod(d.key)).map((d) => (
             <NormRow key={d.key} def={d} value={eff(d.key)} modified={isMod(d.key)} enabled={on(d.key)}
               onChange={(v) => setKey(d.key, v)} onReset={() => resetKey(d.key)} onToggle={() => toggleKey(d.key)} />

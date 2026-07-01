@@ -118,6 +118,7 @@ function StyleEditor({ draft, onClose, onSaved }) {
   const [busy, setBusy] = useS(false);
   const [done, setDone] = useS(false);   // короткая галочка «Сохранено» перед закрытием
   const [mat, setMat] = useS("");
+  const [nameErr, setNameErr] = useS("");  // валидация: имя обязательно и уникально
   const set = (patch) => setD((x) => ({ ...x, ...patch }));
 
   const setColor = (i, v) => setD((x) => { const p = [...x.palette]; p[i] = v; return { ...x, palette: p }; });
@@ -128,7 +129,13 @@ function StyleEditor({ draft, onClose, onSaved }) {
 
   const save = async () => {
     if (busy) return;
-    const name = (d.name || "").trim() || "Новый стиль";
+    const name = (d.name || "").trim();
+    if (!name) { setNameErr("Дайте стилю имя — без него его не найти в библиотеке и в смете."); return; }
+    const all = await AIVibeAPI.styles.list();
+    if (all.some((s) => s.id !== d.id && (s.name || "").trim().toLowerCase() === name.toLowerCase())) {
+      setNameErr("Стиль «" + name + "» уже есть в библиотеке — назовите этот иначе.");
+      return;
+    }
     const payload = { name, mood: d.mood, desc: d.desc, palette: d.palette, materials: d.materials, decorLevel: d.decorLevel, factor: d.factor };
     setBusy(true);
     if (d.__new) await AIVibeAPI.styles.create(payload);
@@ -148,20 +155,23 @@ function StyleEditor({ draft, onClose, onSaved }) {
 
         <div style={{ padding: 24, display: "flex", flexDirection: "column", gap: 20, maxHeight: "68vh", overflow: "auto" }}>
           <Fld label="Название">
-            <input className="fld" value={d.name} onChange={(e) => set({ name: e.target.value })} placeholder="Например: Тёплый лофт" />
+            <input className="fld" value={d.name} aria-invalid={nameErr ? "true" : undefined}
+              onChange={(e) => { set({ name: e.target.value }); if (nameErr) setNameErr(""); }} placeholder="Например: Тёплый лофт" />
+            {nameErr && <span className="fld-err" role="alert"><I.info size={14} />{nameErr}</span>}
           </Fld>
           <Fld label="Настроение / описание">
             <input className="fld" value={d.mood} onChange={(e) => set({ mood: e.target.value })} placeholder="Терракота, металл, дерево" />
           </Fld>
 
-          {/* палитра */}
+          {/* палитра: свотч + HEX-ввод (точные бренд-цвета, не только пипетка) */}
           <div>
             <FldLabel>Палитра</FldLabel>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 10, alignItems: "center" }}>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 10, alignItems: "flex-start" }}>
               {d.palette.map((c, i) => (
-                <div key={i} style={{ position: "relative" }}>
+                <div key={i} style={{ position: "relative", display: "flex", flexDirection: "column", gap: 6, alignItems: "center" }}>
                   <input type="color" value={c} onChange={(e) => setColor(i, e.target.value)}
                     style={{ width: 46, height: 46, border: "1px solid var(--hairline)", borderRadius: 10, padding: 0, background: "none", cursor: "pointer" }} title={c} />
+                  <HexInput value={c} onSet={(v) => setColor(i, v)} />
                   {d.palette.length > 2 && <button onClick={() => rmColor(i)} aria-label="Убрать цвет" style={{ position: "absolute", top: -7, right: -7, width: 20, height: 20, borderRadius: "50%", background: "var(--surface)", border: "1px solid var(--hairline)", color: "var(--muted)", display: "grid", placeItems: "center", boxShadow: "var(--shadow-card)" }}><I.close size={11} /></button>}
                 </div>
               ))}
@@ -214,6 +224,18 @@ function StyleEditor({ draft, onClose, onSaved }) {
           </button>
         </div>
     </Modal>
+  );
+}
+
+/* HEX-ввод свотча: применяет только валидный #RRGGBB, черновик живёт локально */
+function HexInput({ value, onSet }) {
+  const [v, setV] = useS(value);
+  useSE(() => { setV(value); }, [value]);
+  const ok = /^#[0-9A-Fa-f]{6}$/.test(v);
+  return (
+    <input className="fld" value={v} aria-label="HEX цвета" aria-invalid={ok ? undefined : "true"} spellCheck={false}
+      onChange={(e) => { const x = e.target.value.trim(); setV(x); if (/^#[0-9A-Fa-f]{6}$/.test(x)) onSet(x); }}
+      style={{ width: 78, padding: "5px 6px", fontFamily: "var(--font-mono)", fontSize: 11, textAlign: "center" }} />
   );
 }
 
