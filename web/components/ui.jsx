@@ -179,6 +179,102 @@ function plural(n, [one, few, many]) {
 window.plural = plural;
 
 /* ============================================================
+   ОБРАТНАЯ СВЯЗЬ: toast + confirmDialog + promptDialog
+   ------------------------------------------------------------
+   Вместо нативных alert/confirm/prompt (серый бокс ОС рвал
+   warm-editorial тон и блокировал поток). Plain DOM — зовутся
+   из любого слоя. Esc/фокус — «как везде» (закон Якоба).
+   ============================================================ */
+const TOAST_ICO = {
+  ok:   '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>',
+  warn: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16.5v.01"/></svg>',
+  info: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 7.5v.01"/></svg>',
+};
+function toast(text, kind = "ok", ms = 3600) {
+  let w = document.querySelector(".toast-wrap");
+  if (!w) {
+    w = document.createElement("div");
+    w.className = "toast-wrap";
+    w.setAttribute("role", "status");
+    w.setAttribute("aria-live", "polite");
+    document.body.appendChild(w);
+  }
+  const t = document.createElement("div");
+  t.className = "toast " + kind;
+  const i = document.createElement("span"); i.className = "ti"; i.innerHTML = TOAST_ICO[kind] || TOAST_ICO.ok;
+  const s = document.createElement("span"); s.textContent = text;   // textContent: в тексте бывают имена проектов
+  t.append(i, s);
+  let gone = false;
+  const hide = () => { if (gone) return; gone = true; t.classList.add("out"); setTimeout(() => t.remove(), 320); };
+  t.addEventListener("click", hide);
+  w.appendChild(t);
+  setTimeout(hide, ms);
+}
+window.toast = toast;
+
+/* базовый диалог: карточка + Esc/Tab-trap/возврат фокуса. build(card, close) наполняет содержимое */
+function dlgOpen(label, role, build) {
+  const prev = document.activeElement;
+  const back = document.createElement("div"); back.className = "modal-back";
+  const card = document.createElement("div"); card.className = "glass modal-card dlg-card";
+  card.setAttribute("role", role); card.setAttribute("aria-modal", "true"); card.setAttribute("aria-label", label);
+  back.appendChild(card); document.body.appendChild(back);
+  const close = () => { back.remove(); document.removeEventListener("keydown", onKey, true); if (prev && prev.focus) prev.focus(); };
+  const onKey = (e) => {
+    if (e.key === "Escape") { e.stopPropagation(); card.dispatchEvent(new CustomEvent("dlg-cancel")); }
+    if (e.key === "Tab") {   // ловушка фокуса внутри карточки
+      const f = [...card.querySelectorAll("button, input, select, textarea, a[href]")].filter((el) => !el.disabled);
+      if (!f.length) return;
+      const first = f[0], last = f[f.length - 1];
+      if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+      else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+    }
+  };
+  document.addEventListener("keydown", onKey, true);
+  back.addEventListener("mousedown", (e) => { if (e.target === back) card.dispatchEvent(new CustomEvent("dlg-cancel")); });
+  build(card, close);
+}
+
+/* подтверждение: await confirmDialog({title, text, confirmLabel}) → true/false */
+function confirmDialog({ title, text, confirmLabel = "Удалить", cancelLabel = "Отмена", danger = true }) {
+  return new Promise((resolve) => {
+    dlgOpen(title, "alertdialog", (card, close) => {
+      const done = (v) => { close(); resolve(v); };
+      card.addEventListener("dlg-cancel", () => done(false));
+      const h = document.createElement("h3"); h.className = "display"; h.textContent = title;
+      const p = document.createElement("p"); p.className = "dlg-text"; p.textContent = text || "";
+      const row = document.createElement("div"); row.className = "dlg-row";
+      const bC = document.createElement("button"); bC.className = "btn btn-ghost"; bC.textContent = cancelLabel; bC.onclick = () => done(false);
+      const bY = document.createElement("button"); bY.className = "btn " + (danger ? "btn-primary" : "btn-ghost"); bY.textContent = confirmLabel; bY.onclick = () => done(true);
+      row.append(bC, bY); card.append(h, p, row);
+      bC.focus();   // безопасный дефолт — на «Отмена»
+    });
+  });
+}
+window.confirmDialog = confirmDialog;
+
+/* ввод строки: await promptDialog({title, label, value}) → string | null */
+function promptDialog({ title, label, value = "", confirmLabel = "Сохранить", placeholder = "" }) {
+  return new Promise((resolve) => {
+    dlgOpen(title, "dialog", (card, close) => {
+      const done = (v) => { close(); resolve(v); };
+      card.addEventListener("dlg-cancel", () => done(null));
+      const h = document.createElement("h3"); h.className = "display"; h.textContent = title;
+      const lb = document.createElement("label"); lb.className = "dlg-lb"; lb.textContent = label || "";
+      const inp = document.createElement("input"); inp.className = "fld"; inp.value = value; inp.placeholder = placeholder;
+      inp.addEventListener("keydown", (e) => { if (e.key === "Enter") done(inp.value); });
+      lb.appendChild(inp);
+      const row = document.createElement("div"); row.className = "dlg-row";
+      const bC = document.createElement("button"); bC.className = "btn btn-ghost"; bC.textContent = "Отмена"; bC.onclick = () => done(null);
+      const bY = document.createElement("button"); bY.className = "btn btn-primary"; bY.textContent = confirmLabel; bY.onclick = () => done(inp.value);
+      row.append(bC, bY); card.append(h, lb, row);
+      inp.focus(); inp.select();
+    });
+  });
+}
+window.promptDialog = promptDialog;
+
+/* ============================================================
    ГРАФИКИ (рисуем сами на SVG, цвет --chart / Wasabi)
    ============================================================ */
 

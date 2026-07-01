@@ -194,7 +194,7 @@ function AccountMenu({ user, onLogout, onTab }) {
     window.addEventListener("click", on);
     return () => window.removeEventListener("click", on);
   }, [open]);
-  const billing = () => { setOpen(false); AIVibeAPI.billing.createPayment({ plan: "pro_month" }).then((r) => alert(r.message || "Оплата подключится позже.")); };
+  const billing = () => { setOpen(false); AIVibeAPI.billing.createPayment({ plan: "pro_month" }).then((r) => toast(r.message || "Оплата подключится позже.", "info", 5000)); };
   const item = (label, Ico, onClick, danger) => (
     <button onClick={onClick} style={{ display: "flex", alignItems: "center", gap: 11, width: "100%", padding: "10px 12px", borderRadius: 10, fontSize: 14, fontWeight: 600,
       color: danger ? "var(--accent)" : "var(--text)", textAlign: "left" }}

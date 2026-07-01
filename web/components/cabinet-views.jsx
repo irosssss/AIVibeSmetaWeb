@@ -200,16 +200,24 @@ function Projects() {
     AIVibeXLSX.importRoomSpec(f)
       .then((d) => {
         if (d && d.rooms && d.rooms.length) setImportData(d);
-        else alert("Не удалось распознать смету. Нужны колонки: Помещение, Раздел, Наименование, Кол-во, Цена.");
+        else toast("Не удалось распознать смету. Нужны колонки: Помещение, Раздел, Наименование, Кол-во, Цена.", "warn", 7000);
       })
-      .catch(() => alert("Не удалось прочитать файл."));
+      .catch(() => toast("Не удалось прочитать файл — нужен .xlsx или .xls.", "warn", 5000));
   };
 
   // действия над проектом
-  const rename = async (p) => { setMenuId(null); const name = prompt("Название проекта:", p.name); if (name && name.trim()) { await AIVibeAPI.projects.update(p.id, { name: name.trim() }); refresh(); } };
-  const duplicate = async (p) => { setMenuId(null); const { id, ...rest } = p; await AIVibeAPI.projects.create({ ...rest, name: p.name + " (копия)" }); refresh(); };
+  const rename = async (p) => {
+    setMenuId(null);
+    const name = await promptDialog({ title: "Переименовать проект", label: "Название", value: p.name });
+    if (name && name.trim()) { await AIVibeAPI.projects.update(p.id, { name: name.trim() }); refresh(); toast("Проект переименован"); }
+  };
+  const duplicate = async (p) => { setMenuId(null); const { id, ...rest } = p; await AIVibeAPI.projects.create({ ...rest, name: p.name + " (копия)" }); refresh(); toast("Копия создана — «" + p.name + " (копия)»"); };
   const changeStatus = async (p, status) => { setMenuId(null); await AIVibeAPI.projects.update(p.id, { status }); refresh(); };
-  const removeP = async (p) => { setMenuId(null); if (confirm("Удалить проект «" + p.name + "»? Это действие нельзя отменить.")) { await AIVibeAPI.projects.remove(p.id); refresh(); } };
+  const removeP = async (p) => {
+    setMenuId(null);
+    const ok = await confirmDialog({ title: "Удалить проект?", text: "«" + p.name + "» будет удалён вместе со сметой. Это действие нельзя отменить.", confirmLabel: "Удалить проект" });
+    if (ok) { await AIVibeAPI.projects.remove(p.id); refresh(); toast("Проект «" + p.name + "» удалён"); }
+  };
 
   const shown = rows ? rows
     .filter((p) => statusF === "Все" || p.status === statusF)
@@ -503,12 +511,12 @@ function Favorites() {
             </div>
           </div>
           <button className="btn btn-primary btn-block" style={{ marginTop: 16 }} disabled={!shown || shown.length === 0} onClick={() => setPickOpen(true)}><I.layers size={16} />Перенести в проект</button>
-          <button className="btn btn-ghost btn-block" style={{ marginTop: 10 }} onClick={() => { try { navigator.clipboard && navigator.clipboard.writeText(location.href); } catch (e) {} alert("Ссылка на доску скопирована (в проде — публичная ссылка на мудборд)."); }}>Поделиться доской</button>
+          <button className="btn btn-ghost btn-block" style={{ marginTop: 10 }} onClick={() => { try { navigator.clipboard && navigator.clipboard.writeText(location.href); } catch (e) {} toast("Ссылка на доску скопирована"); }}>Поделиться доской</button>
         </div>
       </div>
 
       {pickOpen && <FavTransferModal count={shown ? shown.length : 0} total={total} onClose={() => setPickOpen(false)}
-        onDone={(p) => { const n = shown ? shown.length : 0; setPickOpen(false); alert(n + " " + plural(n, ["позиция перенесена", "позиции перенесены", "позиций перенесено"]) + " в проект «" + p.name + "». Смета проекта обновлена."); }} />}
+        onDone={(p) => { const n = shown ? shown.length : 0; setPickOpen(false); toast(n + " " + plural(n, ["позиция перенесена", "позиции перенесены", "позиций перенесено"]) + " в проект «" + p.name + "» — смета обновлена."); }} />}
     </div>
   );
 }

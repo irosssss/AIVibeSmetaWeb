@@ -57,6 +57,35 @@ select.fld { appearance: none; cursor: pointer;
 .modal-back { position: fixed; inset: 0; z-index: 200; background: rgba(46,42,38,.42); backdrop-filter: blur(6px); display: grid; place-items: center; padding: 24px; animation: fadeIn .2s ease; }
 .modal-card { width: min(560px, 100%); box-shadow: var(--shadow-pop); background: var(--surface); animation: pop .25s cubic-bezier(.2,.7,.2,1); }
 
+/* ---- Тосты (обратная связь вместо alert) ---- */
+.toast-wrap { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); z-index: 300;
+  display: flex; flex-direction: column; align-items: center; gap: 10px; pointer-events: none; max-width: min(480px, calc(100vw - 32px)); }
+.toast { pointer-events: auto; cursor: pointer; display: flex; align-items: flex-start; gap: 11px;
+  padding: 13px 18px 13px 15px; border-radius: 14px; background: var(--surface); border: 1px solid var(--hairline);
+  box-shadow: var(--shadow-pop); font-size: 14px; line-height: 1.45; color: var(--text);
+  animation: toastIn .35s var(--ease); }
+.toast .ti { flex: none; width: 24px; height: 24px; border-radius: 8px; display: grid; place-items: center; margin-top: -1px; }
+.toast.ok .ti   { background: rgba(94,107,91,.16);  color: var(--accent-2); }
+.toast.warn .ti { background: rgba(194,90,54,.16);  color: var(--accent-ink); }
+.toast.info .ti { background: rgba(62,74,89,.14);   color: var(--info); }
+.toast.warn { border-left: 3px solid var(--accent); }
+.toast.out { opacity: 0; transform: translateY(8px); transition: opacity .3s, transform .3s; }
+@keyframes toastIn { from { opacity: 0; transform: translateY(14px) scale(.97); } to { opacity: 1; transform: none; } }
+
+/* ---- Диалоги confirm/prompt (тёплые, вместо нативных) ---- */
+.dlg-card { max-width: 440px; width: min(440px, 100%); border-radius: var(--r-xl); padding: 26px 26px 22px; }
+.dlg-card h3 { font-size: 20px; margin-bottom: 10px; }
+.dlg-card .dlg-text { color: var(--muted); font-size: 14.5px; line-height: 1.6; }
+.dlg-card .dlg-lb { display: block; font-size: 13px; color: var(--muted); font-weight: 600; }
+.dlg-card .dlg-lb .fld { margin-top: 8px; }
+.dlg-card .dlg-row { display: flex; justify-content: flex-end; gap: 10px; margin-top: 22px; }
+
+/* ---- Ошибка поля (валидация редакторов) ---- */
+.fld[aria-invalid="true"] { border-color: var(--accent); background: rgba(194,90,54,.05); }
+.fld-err { display: flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--accent-ink); margin-top: 7px; }
+
+@media (prefers-reduced-motion: reduce) { .toast, .modal-back, .modal-card { animation: none; } }
+
 /* ---- стиль-квиз ---- */
 .quiz-card { width: min(680px, 100%); max-height: 90vh; display: flex; flex-direction: column; box-shadow: var(--shadow-pop); background: var(--surface); animation: pop .25s cubic-bezier(.2,.7,.2,1); overflow: hidden; }
 .quiz-body { padding: 26px; overflow-y: auto; }

@@ -19,7 +19,12 @@ function StylesLibrary() {
   useSE(() => { reload(); }, []);
 
   const duplicate = async (id) => { const c = await AIVibeAPI.styles.duplicate(id); await reload(); if (c) setEdit(c); };
-  const remove = async (id) => { if (!confirm("Удалить этот стиль?")) return; await AIVibeAPI.styles.remove(id); reload(); };
+  const remove = async (id) => {
+    const s = (rows || []).find((x) => x.id === id);
+    const ok = await confirmDialog({ title: "Удалить стиль?", text: "«" + ((s && s.name) || "Стиль") + "» исчезнет из библиотеки. Сметы, где он применён, сохранят свои цены.", confirmLabel: "Удалить стиль" });
+    if (!ok) return;
+    await AIVibeAPI.styles.remove(id); reload(); toast("Стиль удалён");
+  };
   const createNew = () => setEdit({ __new: true, name: "", owner: "me", mood: "", desc: "", palette: ["#C57B57", "#E7D3C0", "#8A8175", "#2E2A28"], materials: ["дерево", "ткань", "металл"], decorLevel: "mid", factor: 1.0 });
 
   const system = rows ? rows.filter((s) => s.owner === null) : [];

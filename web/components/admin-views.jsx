@@ -20,8 +20,9 @@ function NewsAdmin() {
     setBusy(false); setEditing(null);
   };
   const remove = async (id) => {
-    if (!window.confirm("Удалить новость? Действие необратимо.")) return;
-    await AIVibeAPI.news.remove(id); load();
+    const ok = await confirmDialog({ title: "Удалить новость?", text: "Материал исчезнет из журнала. Действие необратимо.", confirmLabel: "Удалить" });
+    if (!ok) return;
+    await AIVibeAPI.news.remove(id); load(); toast("Новость удалена");
   };
   const toggleStatus = async (n) => {
     await AIVibeAPI.news.update(n.id, { status: n.status === "published" ? "draft" : "published" });
