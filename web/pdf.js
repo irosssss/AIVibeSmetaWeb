@@ -6,7 +6,7 @@
   const money = (n) => new Intl.NumberFormat("ru-RU").format(Math.round(n)) + " ₽"; // ₽
 
   function exportSpec({ project, styleName, rows, total, budget, checks }) {
-    if (!window.pdfMake) { alert("PDF-библиотека ещё загружается — попробуйте через секунду."); return false; }
+    if (!window.pdfMake) { (window.toast ? toast("PDF-модуль ещё загружается — попробуйте через секунду.", "info") : 0); return false; }
     const over = total > budget;
 
     const tableBody = [
@@ -90,7 +90,7 @@
   // mode: "work" (по умолчанию) — две цены (себестоимость + клиент) и бюджет;
   //       "client" — только цена клиента, без себестоимости/наценки/бюджета.
   function exportRoomSpec({ project, area, rooms, grand, markupPct, clientTotal, budget, mode }) {
-    if (!window.pdfMake) { alert("PDF-библиотека ещё загружается — попробуйте через секунду."); return false; }
+    if (!window.pdfMake) { (window.toast ? toast("PDF-модуль ещё загружается — попробуйте через секунду.", "info") : 0); return false; }
     const clientMode = mode === "client";
     const mk = 1 + (markupPct || 0) / 100;
     const toClient = (n) => Math.round(n * mk);          // себестоимость → цена клиента

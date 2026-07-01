@@ -78,4 +78,25 @@ function ProtoSwitch({ view, go, user }) {
   );
 }
 
-ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+/* границa ошибок: сбой любого экрана → тёплая заглушка вместо белого экрана */
+class ErrorBoundary extends React.Component {
+  constructor(props) { super(props); this.state = { err: null }; }
+  static getDerivedStateFromError(err) { return { err }; }
+  componentDidCatch(err, info) { console.error("[AIVibe] render error:", err, info); }
+  render() {
+    if (!this.state.err) return this.props.children;
+    return (
+      <div className="minh-screen" style={{ display: "grid", placeItems: "center", padding: 24, textAlign: "center" }}>
+        <div>
+          <div className="display" style={{ fontSize: 26, marginBottom: 10 }}>Что-то пошло не так…</div>
+          <p style={{ color: "var(--muted)", fontSize: 15, maxWidth: 420, margin: "0 auto 20px", lineHeight: 1.6 }}>
+            Экран споткнулся на ошибке. Обновите страницу — проекты и настройки сохранены.
+          </p>
+          <button className="btn btn-primary" onClick={() => location.reload()}>Обновить страницу</button>
+        </div>
+      </div>
+    );
+  }
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<ErrorBoundary><App /></ErrorBoundary>);

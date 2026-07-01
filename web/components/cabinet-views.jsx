@@ -211,12 +211,12 @@ function Projects() {
     const f = e.target.files && e.target.files[0];
     e.target.value = ""; // чтобы можно было выбрать тот же файл повторно
     if (!f || !(window.AIVibeXLSX && AIVibeXLSX.importRoomSpec)) return;
-    AIVibeXLSX.importRoomSpec(f)
+    withLib("xlsx", () => AIVibeXLSX.importRoomSpec(f)
       .then((d) => {
         if (d && d.rooms && d.rooms.length) setImportData(d);
         else toast("Не удалось распознать смету. Нужны колонки: Помещение, Раздел, Наименование, Кол-во, Цена.", "warn", 7000);
       })
-      .catch(() => toast("Не удалось прочитать файл — нужен .xlsx или .xls.", "warn", 5000));
+      .catch(() => toast("Не удалось прочитать файл — нужен .xlsx или .xls.", "warn", 5000)));
   };
 
   // действия над проектом

@@ -316,6 +316,40 @@ function Modal({ onClose, label, maxWidth, children }) {
 window.Modal = Modal;
 
 /* ============================================================
+   AIVibeLibs — ленивые тяжёлые библиотеки (не грузим на промо):
+   pdfmake ~2 МБ и SheetJS ~800 КБ подтягиваются при первом экспорте.
+   ============================================================ */
+const _libCache = {};
+function loadScript(src) {
+  if (!_libCache[src]) _libCache[src] = new Promise((resolve, reject) => {
+    const s = document.createElement("script");
+    s.src = src; s.async = true;
+    s.onload = resolve;
+    s.onerror = () => { delete _libCache[src]; s.remove(); reject(new Error("load failed: " + src)); };
+    document.head.appendChild(s);
+  });
+  return _libCache[src];
+}
+window.AIVibeLibs = {
+  // pdfmake + шрифтовой vfs (порядок важен)
+  pdf: () => window.pdfMake && window.pdfMake.vfs
+    ? Promise.resolve()
+    : loadScript("https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.10/pdfmake.min.js")
+        .then(() => loadScript("https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.10/vfs_fonts.js")),
+  xlsx: () => window.XLSX
+    ? Promise.resolve()
+    : loadScript("https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"),
+};
+/* обёртка: тост «готовим…» только если реально грузим, warn при сбое сети */
+function withLib(kind, run) {
+  const loaded = kind === "pdf" ? (window.pdfMake && window.pdfMake.vfs) : window.XLSX;
+  if (!loaded) toast(kind === "pdf" ? "Готовим модуль PDF…" : "Готовим модуль Excel…", "info", 1800);
+  return AIVibeLibs[kind]().then(run)
+    .catch(() => toast("Не удалось загрузить модуль " + (kind === "pdf" ? "PDF" : "Excel") + " — проверьте сеть и попробуйте ещё раз.", "warn", 5000));
+}
+window.withLib = withLib;
+
+/* ============================================================
    useMenu — клавиатура и click-outside для выпадающих меню:
    Esc → закрыть + вернуть фокус, ↑/↓ по [role=menuitem].
    wrapCls — класс контейнера (для click-outside).

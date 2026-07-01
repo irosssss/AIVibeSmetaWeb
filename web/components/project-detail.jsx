@@ -175,7 +175,7 @@ function ProjectDetail({ id, onClose, initialStyle }) {
     const it = c.items.find((x) => x.id === sel[i]);
     return it ? { cat: c.cat, title: it.title, factory: MP_NAME[it.mp], tier: TIER_NAME[it.tier], price: adj(it.price) } : null;
   }).filter(Boolean);
-  const exportPDF = () => { if (window.AIVibePDF) AIVibePDF.exportSpec({ project: data.name, styleName: activeStyle.name, rows: specRows, total, budget: data.budget, checks }); };
+  const exportPDF = () => { if (window.AIVibePDF) withLib("pdf", () => AIVibePDF.exportSpec({ project: data.name, styleName: activeStyle.name, rows: specRows, total, budget: data.budget, checks })); };
   const optimize = () => { if (window.AIVibeEngine) setSel(AIVibeEngine.optimizeSpec(data.catalog, data.budget, factor).selection); };
   const saveSpec = () => AIVibeAPI.projects.update(id, { style: activeStyle.name, items: cartItems.length }).then(() => { setSpecSaved(true); setTimeout(() => setSpecSaved(false), 1700); });
 
@@ -239,8 +239,8 @@ function RoomSpecOverlay({ data, onClose }) {
   const itemsCount = rooms.reduce((s, r) => s + r.items.length, 0);
   const over = grand > data.budget;
   const specArgs = () => ({ project: data.name, area: data.area, rooms, grand, markupPct: markup, clientTotal: client, budget: data.budget, mode });
-  const exportPDF = () => { if (window.AIVibePDF && AIVibePDF.exportRoomSpec) AIVibePDF.exportRoomSpec(specArgs()); };
-  const exportXLSX = () => { if (window.AIVibeXLSX) AIVibeXLSX.exportRoomSpec(specArgs()); };
+  const exportPDF = () => { if (window.AIVibePDF && AIVibePDF.exportRoomSpec) withLib("pdf", () => AIVibePDF.exportRoomSpec(specArgs())); };
+  const exportXLSX = () => { if (window.AIVibeXLSX) withLib("xlsx", () => AIVibeXLSX.exportRoomSpec(specArgs())); };
 
   return (
     <div className="pd-overlay" role="dialog" aria-label={"Смета: " + data.name}>
