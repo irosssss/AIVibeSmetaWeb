@@ -69,14 +69,15 @@ const I = {
 };
 
 /* ---------- Картинка с striped-плейсхолдером и fallback ---------- */
-function Img({ src, alt, label, style, className, radius }) {
+function Img({ src, alt, label, style, className, radius, priority }) {
   const [err, setErr] = useState(false);
   const base = { display: "block", width: "100%", height: "100%", objectFit: "cover", borderRadius: radius, ...style };
   if (err || !src) {
     return <div className={"ph " + (className || "")} style={{ ...base, objectFit: undefined }}>{label || "изображение"}</div>;
   }
-  return <img src={src} alt={alt || label || ""} loading="lazy" className={className}
-              style={base} onError={() => setErr(true)} />;
+  // priority — для LCP-картинок (hero): eager + fetchpriority, в паре с <link rel="preload">
+  return <img src={src} alt={alt || label || ""} loading={priority ? "eager" : "lazy"} fetchpriority={priority ? "high" : undefined}
+              className={className} style={base} onError={() => setErr(true)} />;
 }
 
 /* ---------- Lottie-обёртка (lottie-web, без сборки) ----------
@@ -165,6 +166,17 @@ function useReveal() {
 /* ---------- Числовой форматтер ---------- */
 const fmt = (n) => new Intl.NumberFormat("ru-RU").format(Math.round(n));
 const fmtMoney = (n) => new Intl.NumberFormat("ru-RU").format(Math.round(n)) + " ₽";
+
+/* склонение числительных: plural(3, ["позиция","позиции","позиций"]) → «позиции»
+   (правило n%10 / n%100 — корректно для 11–14, 21, 102 и т.д.) */
+function plural(n, [one, few, many]) {
+  const a = Math.abs(n) % 100, b = a % 10;
+  if (a > 10 && a < 20) return many;
+  if (b > 1 && b < 5) return few;
+  if (b === 1) return one;
+  return many;
+}
+window.plural = plural;
 
 /* ============================================================
    ГРАФИКИ (рисуем сами на SVG, цвет --chart / Wasabi)

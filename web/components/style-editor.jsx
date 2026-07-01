@@ -111,6 +111,7 @@ function StyleLibCard({ s, system, onEdit, onDuplicate, onRemove }) {
 function StyleEditor({ draft, onClose, onSaved }) {
   const [d, setD] = useS(() => ({ ...draft, palette: [...(draft.palette || [])], materials: [...(draft.materials || [])] }));
   const [busy, setBusy] = useS(false);
+  const [done, setDone] = useS(false);   // короткая галочка «Сохранено» перед закрытием
   const [mat, setMat] = useS("");
   const set = (patch) => setD((x) => ({ ...x, ...patch }));
 
@@ -128,7 +129,8 @@ function StyleEditor({ draft, onClose, onSaved }) {
     if (d.__new) await AIVibeAPI.styles.create(payload);
     else await AIVibeAPI.styles.update(d.id, payload);
     setBusy(false);
-    onSaved();
+    setDone(true);
+    setTimeout(onSaved, 650);   // дать увидеть «Сохранено», затем закрыть
   };
 
   const delta = Math.round(((d.factor || 1) - 1) * 100);
@@ -202,7 +204,10 @@ function StyleEditor({ draft, onClose, onSaved }) {
 
         <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, padding: "16px 24px", borderTop: "1px solid var(--hairline)" }}>
           <button className="btn btn-ghost" onClick={onClose}>Отмена</button>
-          <button className="btn btn-primary" onClick={save} disabled={busy}>{busy ? "Сохранение…" : <React.Fragment><I.check size={16} />Сохранить стиль</React.Fragment>}</button>
+          <button className="btn btn-primary" onClick={save} disabled={busy || done} style={done ? { background: "var(--accent-2)", color: "var(--on-accent)", opacity: 1 } : undefined}>
+            {done ? <span className="save-pulse" style={{ display: "inline-flex", alignItems: "center", gap: 8 }}><I.check size={16} />Сохранено</span>
+              : busy ? "Сохранение…" : <React.Fragment><I.check size={16} />Сохранить стиль</React.Fragment>}
+          </button>
         </div>
       </div>
     </div>

@@ -37,7 +37,7 @@ function SiteNav({ go }) {
     document.body.style.overflow = open ? "hidden" : "";
     return () => { document.body.style.overflow = ""; };
   }, [open]);
-  const links = [["Возможности", "#features"], ["Как работает", "#how"], ["Журнал", "#news"]];
+  const links = [["Возможности", "#features"], ["Как работает", "#how"], ["Тарифы", "#pricing"], ["Журнал", "#news"]];
   const jump = (h) => { setOpen(false); document.querySelector(h)?.scrollIntoView({ behavior: "smooth" }); };
   const lit = solid || open;
   return (
@@ -96,14 +96,17 @@ function Hero({ go }) {
           <span className="mono-eyebrow">смета-комплектация · для дизайнера</span>
           <h1 className="display hero-h1" style={{ fontSize: "clamp(38px, 4.8vw, 66px)", lineHeight: 1.02, letterSpacing: "-0.025em", marginTop: 20 }}>
             <span style={{ display: "block" }}>Смета клиенту —</span>
-            <span style={{ display: "block" }}>за <span style={{ color: "var(--accent)", fontStyle: "italic" }}>минуту</span></span>
+            <span style={{ display: "block" }}>с вашей <span style={{ color: "var(--accent-ink)", fontStyle: "italic" }}>наценкой</span></span>
           </h1>
           <p style={{ marginTop: 22, color: "var(--muted)", maxWidth: 430, fontSize: 17, lineHeight: 1.65 }}>
-            Две цены в одном документе: себестоимость фабрики и цена клиенту с вашей наценкой. Собрано за минуту, а не за вечер в таблицах — и готово к отправке.
+            Две цены в одном документе: себестоимость фабрики и цена клиенту. Собрано за минуту, а не за вечер в таблицах — проверено по нормам и готово к отправке.
           </p>
           <div style={{ marginTop: 30, display: "flex", gap: 14, flexWrap: "wrap" }} id="download">
-            <button className="btn btn-primary" style={{ padding: "16px 26px", fontSize: 16 }} onClick={() => go("auth")}><I.layers size={19} /> Собрать смету</button>
+            <button className="btn btn-primary" style={{ padding: "16px 26px", fontSize: 16 }} onClick={() => go("auth")}><I.layers size={19} /> Начать бесплатно</button>
             <a className="btn btn-ghost" style={{ padding: "16px 26px", fontSize: 16 }} href="#how">Как это работает <I.arrow size={17} /></a>
+          </div>
+          <div className="mono" style={{ marginTop: 12, fontSize: 12, color: "var(--spec-meta)", letterSpacing: ".02em" }}>
+            первая смета — бесплатно, без карты
           </div>
           <div className="hero-chips">
             <span className="hchip"><i style={{ background: "var(--accent)" }} />Две цены и ваша наценка</span>
@@ -140,7 +143,7 @@ function SmetaPlate() {
   return (
     <div className="plate" style={{ marginInline: "auto" }}>
       <div className="plate-banner">
-        <Img src="img/hero-banner.jpg" label="рендер проекта" />
+        <Img src="img/hero-banner.jpg" label="рендер проекта" priority />
         <span className="plate-lab">Проект «Кирова, 17к1» <b>· гостиная · 42 м²</b></span>
       </div>
       <div className="plate-head">

@@ -508,7 +508,7 @@ function Favorites() {
       </div>
 
       {pickOpen && <FavTransferModal count={shown ? shown.length : 0} total={total} onClose={() => setPickOpen(false)}
-        onDone={(p) => { setPickOpen(false); alert((shown ? shown.length : 0) + " позиций перенесено в проект «" + p.name + "». Смета проекта обновлена."); }} />}
+        onDone={(p) => { const n = shown ? shown.length : 0; setPickOpen(false); alert(n + " " + plural(n, ["позиция перенесена", "позиции перенесены", "позиций перенесено"]) + " в проект «" + p.name + "». Смета проекта обновлена."); }} />}
     </div>
   );
 }
@@ -531,7 +531,7 @@ function FavTransferModal({ count, total, onClose, onDone }) {
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "20px 24px", borderBottom: "1px solid var(--hairline)" }}>
           <div>
             <h3 className="display" style={{ fontSize: 20 }}>Перенести в проект</h3>
-            <div style={{ fontSize: 13, color: "var(--muted)", marginTop: 3 }}>{count} позиций · {fmtMoney(total)}</div>
+            <div style={{ fontSize: 13, color: "var(--muted)", marginTop: 3 }}>{count} {plural(count, ["позиция", "позиции", "позиций"])} · {fmtMoney(total)}</div>
           </div>
           <button className="icon-btn" onClick={onClose} aria-label="Закрыть"><I.close size={18} /></button>
         </div>

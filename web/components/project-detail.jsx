@@ -230,7 +230,7 @@ function RoomSpecOverlay({ data, onClose }) {
         <button className="icon-btn" onClick={onClose} title="Назад к проектам" aria-label="Назад"><I.arrow size={18} style={{ transform: "rotate(180deg)" }} /></button>
         <div className="pd-title" style={{ flex: 1 }}>
           <h2>{data.name}</h2>
-          <div className="pd-sub">Комплектация по дизайн-проекту · {data.area} м² · {itemsCount} позиций</div>
+          <div className="pd-sub">Комплектация по дизайн-проекту · {data.area} м² · {itemsCount} {plural(itemsCount, ["позиция", "позиции", "позиций"])}</div>
         </div>
         <span className="glass" style={{ display: "flex", alignItems: "center", gap: 7, padding: "7px 13px", borderRadius: 99, fontSize: 12.5, fontWeight: 700, whiteSpace: "nowrap" }}>
           <I.wallet size={15} style={{ color: "var(--accent-2)" }} />Бюджет {fmtMoney(data.budget)}
@@ -248,7 +248,7 @@ function RoomSpecOverlay({ data, onClose }) {
             <div className="glass" style={{ borderRadius: "var(--r-lg)", padding: "16px 20px", marginBottom: 22, maxWidth: 640 }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
                 <span style={{ fontWeight: 700, fontSize: 14.5 }}>Наценка дизайнера</span>
-                <span style={{ fontFamily: "var(--font-display)", fontWeight: 800, fontSize: 18, color: "var(--accent)" }}>{markup}%</span>
+                <span className="mono" style={{ fontWeight: 600, fontSize: 17, color: "var(--accent-ink)" }}>+{markup}%</span>
               </div>
               <input type="range" min="0" max="100" step="5" value={markup} onChange={(e) => setMarkup(+e.target.value)} className="quiz-range" style={{ marginTop: 10 }} />
               <div style={{ display: "flex", justifyContent: "space-between", marginTop: 12, fontSize: 13.5, flexWrap: "wrap", gap: 8 }}>
@@ -257,26 +257,46 @@ function RoomSpecOverlay({ data, onClose }) {
               </div>
             </div>
 
-            {/* комнаты */}
+            {/* комнаты — читаются как документ: шапка колонок + две цены построчно */}
             <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-              {rooms.map((r) => (
+              {rooms.map((r) => {
+                const kf = 1 + markup / 100;
+                return (
                 <div key={r.name} className="glass" style={{ borderRadius: "var(--r-lg)", padding: "16px 18px" }}>
                   <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 12, marginBottom: 8, flexWrap: "wrap" }}>
                     <span style={{ fontWeight: 800, fontFamily: "var(--font-display)", fontSize: 16.5 }}>{r.name}{r.area ? <span style={{ color: "var(--faint)", fontWeight: 500, fontSize: 13 }}> · {r.area} м²</span> : null}</span>
-                    <span style={{ fontFamily: "var(--font-display)", fontWeight: 800, fontSize: 15 }}>{fmtMoney(roomTotal(r))}</span>
+                    <span style={{ display: "flex", alignItems: "baseline", gap: 12 }}>
+                      {mode === "work" && <span className="mono" style={{ fontSize: 13, color: "var(--muted)" }}>{fmtMoney(roomTotal(r))}</span>}
+                      <span className="mono" style={{ fontWeight: 600, fontSize: 15, color: mode === "work" ? "var(--accent-2)" : "var(--text)" }}>{fmtMoney(Math.round(roomTotal(r) * kf))}</span>
+                    </span>
+                  </div>
+                  {/* шапка колонок */}
+                  <div className="mono" style={{ display: "flex", alignItems: "baseline", gap: 10, padding: "2px 0 6px", fontSize: 10.5, letterSpacing: ".06em", textTransform: "uppercase", color: "var(--spec-meta)", borderBottom: "1px solid var(--hairline)" }}>
+                    <span style={{ flex: 1 }}>Позиция</span>
+                    <span className="rs-cat" style={{ width: 78, textAlign: "right" }}>Раздел</span>
+                    <span style={{ width: 34, textAlign: "right" }}>Кол</span>
+                    <span className="rs-unit" style={{ width: 88, textAlign: "right" }}>Цена/шт</span>
+                    {mode === "work" && <span style={{ width: 100, textAlign: "right" }}>Себест.</span>}
+                    <span style={{ width: 104, textAlign: "right" }}>Клиенту</span>
                   </div>
                   <div style={{ display: "flex", flexDirection: "column" }}>
-                    {r.items.map((it, i) => (
-                      <div key={i} style={{ display: "flex", alignItems: "baseline", gap: 10, padding: "7px 0", borderTop: i ? "1px solid var(--hairline)" : "none", fontSize: 13.5 }}>
+                    {r.items.map((it, i) => {
+                      const qty = it.qty || 1;
+                      return (
+                      <div key={i} style={{ display: "flex", alignItems: "baseline", gap: 10, padding: "7px 0", borderTop: i ? "1px solid var(--hairline-2)" : "none", fontSize: 13.5 }}>
                         <span style={{ flex: 1, color: "var(--text)", lineHeight: 1.4 }}>{it.title}</span>
-                        <span style={{ color: "var(--faint)", whiteSpace: "nowrap", fontSize: 12 }}>{it.cat}</span>
-                        <span className="mono" style={{ color: "var(--muted)", whiteSpace: "nowrap", width: 30, textAlign: "right", fontSize: 12.5 }}>×{it.qty || 1}</span>
-                        <span className="mono" style={{ fontWeight: 600, whiteSpace: "nowrap", width: 100, textAlign: "right" }}>{fmtMoney(it.price * (it.qty || 1))}</span>
+                        <span className="rs-cat" style={{ color: "var(--spec-meta)", whiteSpace: "nowrap", fontSize: 12, width: 78, textAlign: "right", overflow: "hidden", textOverflow: "ellipsis" }}>{it.cat}</span>
+                        <span className="mono" style={{ color: "var(--spec-meta)", whiteSpace: "nowrap", width: 34, textAlign: "right", fontSize: 12.5 }}>×{qty}</span>
+                        <span className="mono rs-unit" style={{ color: "var(--spec-meta)", whiteSpace: "nowrap", width: 88, textAlign: "right", fontSize: 12.5 }}>{fmtMoney(mode === "client" ? Math.round(it.price * kf) : it.price)}</span>
+                        {mode === "work" && <span className="mono" style={{ color: "var(--muted)", whiteSpace: "nowrap", width: 100, textAlign: "right" }}>{fmtMoney(it.price * qty)}</span>}
+                        <span className="mono" style={{ fontWeight: 600, whiteSpace: "nowrap", width: 104, textAlign: "right", color: mode === "work" ? "var(--accent-2)" : "var(--text)" }}>{fmtMoney(Math.round(it.price * qty * kf))}</span>
                       </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
-              ))}
+                );
+              })}
             </div>
           </section>
 
@@ -286,11 +306,15 @@ function RoomSpecOverlay({ data, onClose }) {
               <div style={{ display: "flex", alignItems: "center", gap: 11 }}>
                 <span style={{ width: 40, height: 40, borderRadius: 12, background: "var(--accent)", color: "var(--on-accent)", display: "grid", placeItems: "center", flex: "none" }}><I.layers size={20} /></span>
                 <div>
-                  <div className="mono" style={{ fontWeight: 600, fontSize: 21, lineHeight: 1 }}>{fmtMoney(grand)}</div>
-                  <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 3 }}>{itemsCount} позиций · {over ? <span style={{ color: "var(--accent)" }}>сверх бюджета</span> : <span style={{ color: "var(--accent-2)" }}>в рамках бюджета</span>}</div>
+                  <div className="mono" style={{ fontWeight: 600, fontSize: 22, lineHeight: 1 }}>{fmtMoney(client)}</div>
+                  <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 3 }}>итого клиенту · {itemsCount} {plural(itemsCount, ["позиция", "позиции", "позиций"])} · {over ? <span style={{ color: "var(--accent)" }}>закупка сверх бюджета</span> : <span style={{ color: "var(--accent-2)" }}>закупка в бюджете</span>}</div>
                 </div>
               </div>
-              <span className="glass mono" style={{ padding: "7px 12px", borderRadius: 99, fontSize: 12, fontWeight: 500, color: "var(--accent-2)" }}>Клиенту (+{markup}%): {fmtMoney(client)}</span>
+              {mode === "work" && (
+                <span className="glass mono" style={{ padding: "7px 12px", borderRadius: 99, fontSize: 12, fontWeight: 500, color: "var(--muted)" }}>
+                  себестоимость {fmtMoney(grand)} · наценка +{markup}% = <b style={{ color: "var(--accent-2)", fontWeight: 600 }}>{fmtMoney(client - grand)}</b>
+                </span>
+              )}
               <div style={{ marginLeft: "auto", display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
                 <div className="spec-mode" role="group" aria-label="Режим выгрузки">
                   <span className="spec-mode-cap">Выгрузка</span>
@@ -611,14 +635,15 @@ function NormsCheck({ checks }) {
         <span className="glass" style={{ display: "inline-flex", alignItems: "center", gap: 7, padding: "6px 12px", borderRadius: 99, fontSize: 12.5, fontWeight: 700,
           color: c.ok ? "var(--accent-2)" : "var(--accent)", borderColor: c.ok ? "rgba(94,107,91,.4)" : "rgba(194,90,54,.4)" }}>
           <span style={{ width: 8, height: 8, borderRadius: "50%", background: c.ok ? "var(--accent-2)" : "var(--accent)", flex: "none" }} />
-          {c.ok ? "Все нормы соблюдены" : c.warns + (c.warns === 1 ? " замечание" : c.warns < 5 ? " замечания" : " замечаний")}
+          {c.ok ? "Все нормы соблюдены" : c.warns + " " + plural(c.warns, ["замечание", "замечания", "замечаний"])}
         </span>
       </div>
       <p style={{ color: "var(--muted)", fontSize: 14.5, marginTop: 8, marginBottom: 18, maxWidth: 760 }}>
         Движок проверил проходы, дистанции и плотность по нормам эргономики — детерминированно, из геометрии выбранной раскладки. Меняете раскладку выше — проверка пересчитывается.
       </p>
       <div style={{ display: "flex", flexDirection: "column", gap: 9 }}>
-        {c.findings.map((f, i) => {
+        {/* замечания первыми — иерархия критичности, «в норме» подчинённо */}
+        {[...c.findings].sort((a, b) => (a.kind === "warn" ? 0 : 1) - (b.kind === "warn" ? 0 : 1)).map((f, i) => {
           const Ico = FIND_ICON[f.kind] || FIND_ICON.idea;
           return (
             <div key={i} className={"find " + f.kind}>
@@ -658,7 +683,7 @@ function BudgetPicker({ data, tier, onTier, total, onOptimize, sref }) {
       <div className="glass" style={{ borderRadius: "var(--r-lg)", padding: "18px 20px", marginTop: 18, maxWidth: 640 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 12, flexWrap: "wrap", gap: 8 }}>
           <span style={{ fontSize: 14, color: "var(--muted)" }}>Подобрано на</span>
-          <span className="display" style={{ fontSize: 24 }}>{fmtMoney(total)} <span style={{ fontSize: 14, color: "var(--faint)", fontWeight: 500 }}>из {fmtMoney(budget)}</span></span>
+          <span className="mono" style={{ fontSize: 22, fontWeight: 600 }}>{fmtMoney(total)} <span style={{ fontSize: 13, color: "var(--spec-meta)", fontWeight: 400 }}>из {fmtMoney(budget)}</span></span>
         </div>
         <div className="budget-bar"><i style={{ width: pct + "%", background: over ? "linear-gradient(90deg,#C25A36,#ff7849)" : "linear-gradient(90deg,var(--accent-2),#39b88c)" }} /></div>
         <div style={{ display: "flex", justifyContent: "space-between", marginTop: 10, fontSize: 13 }}>
@@ -706,7 +731,7 @@ function ProductCatalog({ data, sel, onPick, sref, adj, style, mats }) {
               <div style={{ display: "flex", alignItems: "center", gap: 11, marginBottom: 12 }}>
                 <span style={{ width: 34, height: 34, borderRadius: 10, background: "var(--surface-2)", color: "var(--accent)", display: "grid", placeItems: "center", flex: "none" }}><Ico size={18} /></span>
                 <span style={{ fontWeight: 700, fontSize: 16 }}>{c.cat}</span>
-                {selItem && <span style={{ marginLeft: "auto", fontFamily: "var(--font-display)", fontWeight: 800, fontSize: 16 }}>{fmtMoney(adj(selItem.price))}</span>}
+                {selItem && <span className="mono" style={{ marginLeft: "auto", fontWeight: 600, fontSize: 15 }}>{fmtMoney(adj(selItem.price))}</span>}
               </div>
 
               {canSave && (
@@ -791,8 +816,8 @@ function CartBar({ items, total, oldTotal, budget, style, onExport, onSave, save
         <div style={{ display: "flex", alignItems: "center", gap: 11 }}>
           <span style={{ width: 40, height: 40, borderRadius: 12, background: "var(--accent)", color: "var(--on-accent)", display: "grid", placeItems: "center", flex: "none" }}><I.layers size={20} /></span>
           <div>
-            <div style={{ fontFamily: "var(--font-display)", fontWeight: 800, fontSize: 20, lineHeight: 1 }}>{fmtMoney(total)}</div>
-            <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 3 }}>{items.length} предметов · {over ? <span style={{ color: "var(--accent)" }}>сверх бюджета</span> : <span style={{ color: "var(--accent-2)" }}>в рамках бюджета</span>}</div>
+            <div className="mono" style={{ fontWeight: 600, fontSize: 21, lineHeight: 1 }}>{fmtMoney(total)}</div>
+            <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 3 }}>{items.length} {plural(items.length, ["предмет", "предмета", "предметов"])} · {over ? <span style={{ color: "var(--accent)" }}>сверх бюджета</span> : <span style={{ color: "var(--accent-2)" }}>в рамках бюджета</span>}</div>
           </div>
         </div>
         {style && <span className="glass" style={{ display: "inline-flex", alignItems: "center", gap: 7, padding: "7px 12px", borderRadius: 99, fontSize: 12.5, fontWeight: 700 }}>

@@ -7,10 +7,11 @@ const { useEffect: useE3 } = React;
    CTA + FOOTER
 -------------------------------------------------------------- */
 function Footer({ go }) {
+  /* [название, якорь|null] — null = раздел ещё не написан, честная заглушка без мёртвого клика */
   const cols = [
-    ["Продукт", ["Возможности", "Как работает", "Новости", "Войти"]],
-    ["Технологии", ["Движок эргономики", "Каталог фабрик", "YandexGPT 5", "Выгрузка сметы"]],
-    ["Компания", ["О проекте", "Контакты", "Политика", "Оферта"]],
+    ["Продукт", [["Возможности", "#features"], ["Как работает", "#how"], ["Тарифы", "#pricing"], ["Новости", "#news"]]],
+    ["Технологии", [["Движок эргономики", "#how"], ["Каталог фабрик", "#komplektacia"], ["YandexGPT 5", "#features"], ["Выгрузка сметы", "#komplektacia"]]],
+    ["Компания", [["О проекте", null], ["Контакты", null], ["Политика", null], ["Оферта", null]]],
   ];
   return (
     <footer style={{ marginTop: 40 }}>
@@ -19,12 +20,13 @@ function Footer({ go }) {
         <div className="glass" style={{ position: "relative", overflow: "hidden", borderRadius: "var(--r-xl)", padding: "clamp(48px,7vw,88px)", textAlign: "center" }}>
           <div style={{ position: "absolute", width: 600, height: 360, left: "50%", top: "50%", transform: "translate(-50%,-50%)", background: "radial-gradient(circle, rgba(194,90,54,.22), transparent 70%)", filter: "blur(40px)" }} />
           <div style={{ position: "relative" }}>
-            <h2 className="display" style={{ fontSize: "clamp(34px,5vw,72px)", lineHeight: 0.95 }}>Соберите смету<br />сегодня</h2>
-            <p style={{ color: "var(--muted)", maxWidth: 540, margin: "24px auto 36px", fontSize: 18 }}>Загрузите габариты комнаты — AIVibe соберёт спецификацию с ценами и проверит расстановку по нормам эргономики.</p>
+            <h2 className="display" style={{ fontSize: "clamp(34px,5vw,72px)", lineHeight: 0.95 }}>Первая смета —<br />сегодня и бесплатно</h2>
+            <p style={{ color: "var(--muted)", maxWidth: 540, margin: "24px auto 36px", fontSize: 18 }}>AIVibe соберёт спецификацию с ценами, посчитает вашу наценку и проверит эргономику по нормам — документ готов к отправке клиенту.</p>
             <div style={{ display: "flex", gap: 14, justifyContent: "center", flexWrap: "wrap" }}>
-              <button className="btn btn-primary" style={{ padding: "16px 30px", fontSize: 16 }} onClick={() => go("auth")}><I.layers size={19} /> Собрать смету</button>
-              <button className="btn btn-ghost" style={{ padding: "16px 30px", fontSize: 16 }} onClick={() => go("auth")}>Личный кабинет</button>
+              <button className="btn btn-primary" style={{ padding: "16px 30px", fontSize: 16 }} onClick={() => go("auth")}><I.layers size={19} /> Начать бесплатно</button>
+              <button className="btn btn-ghost" style={{ padding: "16px 30px", fontSize: 16 }} onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}>Посмотреть пример сметы</button>
             </div>
+            <div className="mono" style={{ marginTop: 16, fontSize: 12, color: "var(--spec-meta)" }}>без карты · тарифы от 1 490 ₽/мес после беты</div>
           </div>
         </div>
       </div>
@@ -38,7 +40,7 @@ function Footer({ go }) {
               Смета и проверка норм для дизайнеров интерьера. Каталог фабрик-партнёров и российский AI.
             </p>
             <div style={{ display: "flex", gap: 10, marginTop: 22 }}>
-              <button className="btn btn-ghost" style={{ padding: "10px 16px", fontSize: 13.5 }} onClick={() => go("admin")}>Админка</button>
+              {window.DEV_MODE && <button className="btn btn-ghost" style={{ padding: "10px 16px", fontSize: 13.5 }} onClick={() => go("admin")}>Админка</button>}
               <button className="btn btn-ghost" style={{ padding: "10px 16px", fontSize: 13.5 }} onClick={() => go("auth")}>Войти</button>
             </div>
             <div style={{ display: "flex", gap: 10, marginTop: 16 }}>
@@ -54,8 +56,10 @@ function Footer({ go }) {
             <div key={h}>
               <div style={{ fontWeight: 700, marginBottom: 16, fontSize: 15 }}>{h}</div>
               <div style={{ display: "flex", flexDirection: "column", gap: 11 }}>
-                {items.map((t) => <a key={t} href="#" onClick={(e) => e.preventDefault()} style={{ color: "var(--muted)", fontSize: 14, transition: ".2s" }}
-                  onMouseEnter={(e) => (e.target.style.color = "var(--text)")} onMouseLeave={(e) => (e.target.style.color = "var(--muted)")}>{t}</a>)}
+                {items.map(([t, href]) => href
+                  ? <a key={t} href={href} style={{ color: "var(--muted)", fontSize: 14, transition: ".2s" }}
+                      onMouseEnter={(e) => (e.target.style.color = "var(--text)")} onMouseLeave={(e) => (e.target.style.color = "var(--muted)")}>{t}</a>
+                  : <span key={t} title="Раздел скоро" style={{ color: "var(--faint)", fontSize: 14, cursor: "default" }}>{t}</span>)}
               </div>
             </div>
           ))}
@@ -79,9 +83,11 @@ function SitePage({ go }) {
       <SiteNav go={go} />
       <Hero go={go} />
       <SpecCategories />
+      <SocialProof />
       <HowItWorks />
       <Bento />
       <NewsFeed />
+      <Pricing go={go} />
       <Footer go={go} />
     </div>
   );

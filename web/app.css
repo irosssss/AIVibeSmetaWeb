@@ -184,6 +184,8 @@ select.fld { appearance: none; cursor: pointer;
 .light-meter > i { display: block; height: 100%; border-radius: 99px; background: linear-gradient(90deg, var(--info), var(--accent-2), var(--accent)); }
 
 .find { display: flex; gap: 12px; padding: 13px 15px; border-radius: 12px; border: 1px solid var(--hairline); background: var(--glass-2); }
+.find.warn { border-left: 3px solid var(--accent); }   /* критичное — с терракотовым ребром */
+.find.plus { opacity: .85; }                            /* «в норме» — подчинённо */
 .find .fi { flex: none; width: 26px; height: 26px; border-radius: 8px; display: grid; place-items: center; }
 .find.plus .fi { background: rgba(94,107,91,.18); color: var(--accent-2); }
 .find.warn .fi { background: rgba(194,90,54,.18); color: var(--accent); }
@@ -222,8 +224,8 @@ select.fld { appearance: none; cursor: pointer;
 .prod-card .pim { position: relative; aspect-ratio: 4/3; overflow: hidden; }
 .prod-card .pbody { padding: 12px 13px; display: flex; flex-direction: column; gap: 7px; flex: 1; }
 .prod-card .pt { font-size: 13px; line-height: 1.35; font-weight: 600; }
-.prod-card .pprice { font-family: var(--font-display); font-weight: 800; font-size: 16px; }
-.prod-card .pold { font-size: 12px; color: var(--faint); text-decoration: line-through; }
+.prod-card .pprice { font-family: var(--font-mono); font-variant-numeric: tabular-nums; font-weight: 600; font-size: 16px; }
+.prod-card .pold { font-family: var(--font-mono); font-variant-numeric: tabular-nums; font-size: 12px; color: var(--spec-meta); text-decoration: line-through; }
 .prod-card .selflag { position: absolute; top: 8px; right: 8px; width: 24px; height: 24px; border-radius: 50%; background: var(--accent-2); color: var(--on-accent); display: grid; place-items: center; }
 
 .mp { display: inline-flex; align-items: center; gap: 5px; font-size: 10.5px; font-weight: 800; padding: 4px 8px; border-radius: 6px; color: #fff; letter-spacing: .01em; }
@@ -274,6 +276,28 @@ select.fld { appearance: none; cursor: pointer;
   .pd-styles { grid-template-columns: 1fr !important; }
   .pd-an-top { grid-template-columns: 1fr !important; }
 }
+
+/* ---- Смета по комнатам: адаптив колонок документа ---- */
+@media (max-width: 760px) {
+  .rs-unit { display: none !important; }   /* Цена/шт уходит первой */
+}
+@media (max-width: 560px) {
+  .rs-cat { display: none !important; }    /* затем Раздел — остаются Кол·Себест·Клиенту */
+}
+
+/* ---- Редактор норм: success-пульс сохранения + адаптив ---- */
+.save-pulse { animation: savePulse .5s var(--ease); }
+@keyframes savePulse { 0% { transform: scale(.92); opacity: .4; } 60% { transform: scale(1.04); } 100% { transform: scale(1); opacity: 1; } }
+
+@media (max-width: 880px) {
+  .norms-layout { grid-template-columns: 1fr !important; }       /* колонки → столбец */
+  .norms-aside { position: static !important; }                   /* снять sticky у проверки */
+}
+@media (max-width: 560px) {
+  .norm-row { grid-template-columns: 1fr !important; }            /* правило → один столбец */
+  .norm-ctrl { align-items: flex-start !important; min-width: 0 !important; }
+}
+
 @media (prefers-contrast: more) {
   .style-card, .prod-card, .find, .metric-grid { border-width: 1.5px; }
 }

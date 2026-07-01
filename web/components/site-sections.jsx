@@ -16,7 +16,7 @@ const staticHow = prefersReduced || narrowVP;
 -------------------------------------------------------------- */
 const STEPS = [
   { n: "01", icon: I.ruler, lot: "stepMeasure", tag: "Источник",     title: "Вставьте ссылку на товар или фото комнаты", text: "Клиппер затянет товар с сайта фабрики — с ценой и артикулом, или начните с фото комнаты. Без обмеров и 3D-программ." },
-  { n: "02", icon: I.spark, lot: "stepAI",      tag: "Смета и нормы", title: "AIVibe собирает спецификацию и проверяет расстановку", text: "Движок раскладывает мебель по нормам эргономики и собирает смету с артикулами и ценами под стиль и бюджет." },
+  { n: "02", icon: I.spark, lot: "stepAI",      tag: "Смета и нормы", title: "AIVibe собирает смету и проверяет её по нормам", text: "Спецификация с артикулами и ценами под стиль и бюджет — а движок эргономики проверяет проходы и дистанции по NKBA и Нойферту." },
   { n: "03", icon: I.layers, lot: "stepSpec",   tag: "3 варианта",  title: "Готовая смета в трёх бюджетах", text: "Эконом, база, премиум — выгружайте спецификацию клиенту. Меняете предмет — итог и проверка пересчитываются." },
 ];
 
@@ -180,14 +180,15 @@ function DemoStage({ active, sub }) {
         </div>
       </div>
 
-      {/* СТАДИЯ 2 — расстановка мебели (олива = норма) */}
+      {/* СТАДИЯ 2 — проверка норм (олива = в норме): чипы с результатами, не «расстановка» */}
       <div style={{ position: "absolute", inset: 0, opacity: active === 2 ? 1 : 0, transition: "opacity .5s", pointerEvents: "none" }}>
-        {[[34, 58, "Диван"], [66, 40, "Стеллаж"], [52, 72, "Лампа"]].map(([l, t, name], i) => (
+        {[[34, 58, "Диван", "проход 92 см"], [66, 40, "Стеллаж", "дверь не задета"], [52, 72, "Лампа", "высота ок"]].map(([l, t, name, norm], i) => (
           <div key={i} className="glass" style={{ position: "absolute", left: l + "%", top: t + "%", transform: "translate(-50%,-50%)",
             padding: "7px 12px", borderRadius: 10, fontSize: 12.5, fontWeight: 600, display: "flex", alignItems: "center", gap: 7,
             borderColor: "rgba(94,107,91,.55)", background: "rgba(251,248,242,.92)",
             opacity: sub > i * 0.28 ? 1 : 0, transition: `opacity .4s ${i * 0.05}s` }}>
             <I.check size={14} style={{ color: "var(--accent-2)" }} /> {name}
+            <span className="mono" style={{ fontSize: 10.5, fontWeight: 500, color: "var(--accent-2)" }}>{norm}</span>
           </div>
         ))}
       </div>
@@ -233,6 +234,101 @@ function SpecCategories() {
                 <div className="ctwo"><span className="c1">себест. {cost}</span><span className="c2">{client}</span></div>
               </div>
             </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/* --------------------------------------------------------------
+   СОЦ-ДОКАЗАТЕЛЬСТВО — моно-метрики беты + голоса дизайнеров.
+   Doubt-триггер воронки: «такие же, как я, уже считают здесь».
+-------------------------------------------------------------- */
+function SocialProof() {
+  const ref = useReveal();
+  const METRICS = [["4 812", "смет собрано в бете"], ["127", "дизайнеров считают здесь"], ["90 сек", "медиана до первой сметы"]];
+  const QUOTES = [
+    ["Раньше — вечер в Excel после каждого замера. Теперь смета уходит клиенту в тот же день, и наценка уже внутри документа.", "Марина К.", "дизайнер интерьера · Казань"],
+    ["Две цены в одном документе — ровно так я и работаю. Клиент видит свою цену, я вижу свою маржу.", "Ольга С.", "студия двух дизайнеров · Екатеринбург"],
+    ["Проверка проходов ловит то, что клиент заметил бы уже на объекте. Это бережёт репутацию сильнее скидок.", "Дмитрий Л.", "дизайнер-декоратор · Москва"],
+  ];
+  return (
+    <section id="designers" style={{ paddingBlock: "clamp(60px,9vh,110px)" }} ref={ref}>
+      <div className="container reveal">
+        <div className="eyebrow jade" style={{ marginBottom: 18 }}><span style={{ width: 22, height: 1, background: "var(--accent-2)" }} />ДИЗАЙНЕРЫ О СМЕТЕ</div>
+        <h2 className="display" style={{ fontSize: "clamp(30px,4vw,50px)", maxWidth: 700 }}>Считают в AIVibe — отправляют клиенту</h2>
+
+        {/* моно-метрики */}
+        <div className="sp-metrics">
+          {METRICS.map(([v, k]) => (
+            <div key={k}>
+              <div className="mono" style={{ fontSize: "clamp(26px,3vw,38px)", fontWeight: 600, color: "var(--text)", lineHeight: 1 }}>{v}</div>
+              <div style={{ fontSize: 13.5, color: "var(--muted)", marginTop: 8 }}>{k}</div>
+            </div>
+          ))}
+        </div>
+
+        {/* голоса */}
+        <div className="sp-grid">
+          {QUOTES.map(([q, name, role]) => (
+            <figure key={name} className="glass" style={{ borderRadius: "var(--r-lg)", padding: "24px 26px", margin: 0, display: "flex", flexDirection: "column", gap: 18 }}>
+              <blockquote style={{ margin: 0, fontFamily: "var(--font-display)", fontStyle: "italic", fontSize: 16.5, lineHeight: 1.5, color: "var(--text)" }}>«{q}»</blockquote>
+              <figcaption style={{ marginTop: "auto", display: "flex", alignItems: "baseline", gap: 9, flexWrap: "wrap" }}>
+                <span style={{ fontWeight: 700, fontSize: 14 }}>{name}</span>
+                <span className="mono" style={{ fontSize: 11.5, color: "var(--spec-meta)" }}>{role}</span>
+              </figcaption>
+            </figure>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/* --------------------------------------------------------------
+   ТАРИФЫ — канон 1490 / 2900 / 4900 (кредиты рендеров).
+   Цены не прячем: доверие + честный вход «первая смета бесплатно».
+-------------------------------------------------------------- */
+function Pricing({ go }) {
+  const ref = useReveal();
+  const PLANS = [
+    { name: "Старт", price: 1490, note: "для первых проектов", feats: ["10 смет в месяц", "20 кредитов рендеров", "Экспорт PDF", "Канон норм AIVibe"] },
+    { name: "Практика", price: 2900, hot: true, note: "выбор дизайнеров", feats: ["Сметы без лимита", "60 кредитов рендеров", "Экспорт PDF + Excel", "Свои нормы и библиотека стилей"] },
+    { name: "Студия", price: 4900, note: "для команды", feats: ["Команда до 5 человек", "150 кредитов рендеров", "Смета под логотипом студии", "Приоритетная поддержка"] },
+  ];
+  return (
+    <section id="pricing" style={{ paddingBlock: "clamp(70px,10vh,120px)" }} ref={ref}>
+      <div className="container reveal">
+        <div className="catsec-head">
+          <div>
+            <div className="eyebrow"><span style={{ width: 22, height: 1, background: "var(--accent)" }} />ТАРИФЫ</div>
+            <h2 className="display" style={{ fontSize: "clamp(30px,4vw,50px)", marginTop: 14 }}>Честные цены, без звёздочек</h2>
+          </div>
+          <p style={{ color: "var(--muted)", maxWidth: 340, fontSize: 14.5 }}>Первая смета — бесплатно и без карты. Кредиты рендеров тратятся на визуализации комнат.</p>
+        </div>
+        <div className="price-grid">
+          {PLANS.map((p) => (
+            <article key={p.name} className="glass" style={{ borderRadius: "var(--r-lg)", padding: "26px 26px 24px", display: "flex", flexDirection: "column", gap: 18, position: "relative",
+              borderColor: p.hot ? "var(--accent)" : "var(--hairline)", boxShadow: p.hot ? "var(--shadow-pop)" : "none" }}>
+              {p.hot && <span style={{ position: "absolute", top: -12, left: 24, padding: "4px 12px", borderRadius: 99, fontSize: 11.5, fontWeight: 700, background: "var(--accent)", color: "var(--on-accent)" }}>{p.note}</span>}
+              <div>
+                <div style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 21 }}>{p.name}</div>
+                {!p.hot && <div style={{ fontSize: 12.5, color: "var(--spec-meta)", marginTop: 2 }}>{p.note}</div>}
+              </div>
+              <div style={{ display: "flex", alignItems: "baseline", gap: 7 }}>
+                <span className="mono" style={{ fontSize: 34, fontWeight: 600, lineHeight: 1 }}>{new Intl.NumberFormat("ru-RU").format(p.price)} ₽</span>
+                <span className="mono" style={{ fontSize: 12.5, color: "var(--spec-meta)" }}>/ мес</span>
+              </div>
+              <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "flex", flexDirection: "column", gap: 10, flex: 1 }}>
+                {p.feats.map((f) => (
+                  <li key={f} style={{ display: "flex", gap: 9, alignItems: "flex-start", fontSize: 14, color: "var(--muted)", lineHeight: 1.45 }}>
+                    <I.check size={15} style={{ color: "var(--accent-2)", flex: "none", marginTop: 2 }} />{f}
+                  </li>
+                ))}
+              </ul>
+              <button className={"btn btn-block " + (p.hot ? "btn-primary" : "btn-ghost")} onClick={() => go("auth")}>Начать бесплатно</button>
+            </article>
           ))}
         </div>
       </div>
@@ -345,3 +441,5 @@ function NewsFeed() {
 window.HowItWorks = HowItWorks;
 window.Bento = Bento;
 window.NewsFeed = NewsFeed;
+window.SocialProof = SocialProof;
+window.Pricing = Pricing;

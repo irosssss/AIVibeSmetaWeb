@@ -56,6 +56,7 @@ function NormsSettings() {
   const [baseKey, setBaseKey] = useN("canon");
   const [onlyMod, setOnlyMod] = useN(false);
   const [saved, setSaved] = useN(true);
+  const [justSaved, setJustSaved] = useN(false);  // success-пульс 2.2с после сохранения
 
   const reveal = useReveal();     // хук — до любого раннего return (Rules of Hooks)
 
@@ -82,7 +83,11 @@ function NormsSettings() {
     setOverride(ov); setSaved(false);
   };
   const save = () => {
-    AIVibeAPI.settings.update({ normsOverride: override, enabledNorms: enabled }).then(() => setSaved(true));
+    AIVibeAPI.settings.update({ normsOverride: override, enabledNorms: enabled }).then(() => {
+      setSaved(true);
+      setJustSaved(true);
+      setTimeout(() => setJustSaved(false), 2200);
+    });
   };
 
   const modCount = Object.keys(override).length;
@@ -141,9 +146,11 @@ function NormsSettings() {
             <div style={{ padding: "34px 22px", textAlign: "center", color: "var(--muted)", fontSize: 14 }}>Пока ничего не изменено — все нормы по канону AIVibe.</div>
           )}
 
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 14, padding: "14px 22px", borderTop: "1px solid var(--hairline)", background: saved ? "transparent" : "rgba(194,90,54,.05)" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 9, fontSize: 13, color: "var(--muted)" }}>
-              <span style={{ width: 8, height: 8, borderRadius: "50%", background: saved ? "var(--faint)" : "var(--accent)" }} />
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 14, padding: "14px 22px", borderTop: "1px solid var(--hairline)", background: justSaved ? "rgba(94,107,91,.08)" : saved ? "transparent" : "rgba(194,90,54,.05)", transition: "background .3s" }}>
+            <div className={justSaved ? "save-pulse" : ""} style={{ display: "flex", alignItems: "center", gap: 9, fontSize: 13, color: justSaved ? "var(--accent-2)" : "var(--muted)", fontWeight: justSaved ? 700 : 400 }}>
+              {justSaved
+                ? <I.check size={15} />
+                : <span style={{ width: 8, height: 8, borderRadius: "50%", background: saved ? "var(--faint)" : "var(--accent)" }} />}
               {saved ? (modCount ? "Сохранено · мой канон" : "Всё по канону") : "Есть несохранённые правки"}
             </div>
             <div style={{ display: "flex", gap: 10 }}>
@@ -154,7 +161,7 @@ function NormsSettings() {
         </div>
 
         {/* живая проверка */}
-        <aside style={{ position: "sticky", top: "calc(var(--nav-h) + 20px)" }}>
+        <aside className="norms-aside" style={{ position: "sticky", top: "calc(var(--nav-h) + 20px)" }}>
           <div className="glass" style={{ borderRadius: "var(--r-lg)", overflow: "hidden" }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 20px", borderBottom: "1px solid var(--hairline)" }}>
               <h3 style={{ fontSize: 15, fontWeight: 700, display: "flex", alignItems: "center", gap: 8 }}>
@@ -167,10 +174,10 @@ function NormsSettings() {
                 <NormsMiniPlan />
                 <div style={{ flex: 1 }}>
                   <div className="display" style={{ fontSize: 34, lineHeight: 1, color: warnN === 0 ? "var(--accent-2)" : "var(--accent)" }}>{warnN === 0 ? "OK" : warnN}</div>
-                  <div style={{ fontSize: 12.5, color: "var(--muted)", marginTop: 4 }}>{warnN === 0 ? "по нормам" : warnN === 1 ? "замечание" : "замечания"}</div>
+                  <div style={{ fontSize: 12.5, color: "var(--muted)", marginTop: 4 }}>{warnN === 0 ? "по нормам" : plural(warnN, ["замечание", "замечания", "замечаний"])}</div>
                   <div style={{ display: "flex", gap: 16, marginTop: 14 }}>
                     <div style={{ fontSize: 12.5 }}><div style={{ fontFamily: "var(--font-mono)", fontWeight: 500, fontSize: 18, color: "var(--accent-2)" }}>{okN}</div>в норме</div>
-                    <div style={{ fontSize: 12.5 }}><div style={{ fontFamily: "var(--font-mono)", fontWeight: 500, fontSize: 18, color: "var(--accent)" }}>{warnN}</div>замечаний</div>
+                    <div style={{ fontSize: 12.5 }}><div style={{ fontFamily: "var(--font-mono)", fontWeight: 500, fontSize: 18, color: "var(--accent)" }}>{warnN}</div>{plural(warnN, ["замечание", "замечания", "замечаний"])}</div>
                   </div>
                 </div>
               </div>
@@ -222,7 +229,7 @@ function NormRow({ def, value, modified, enabled, onChange, onReset, onToggle })
           {modified ? "источник: мой канон" : "дефолт: канон AIVibe · " + canonDisp + " " + def.unit}
         </div>
       </div>
-      <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 10, minWidth: 230 }}>
+      <div className="norm-ctrl" style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 10, minWidth: 230 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           {def.type === "range" ? (
             <React.Fragment>
