@@ -340,12 +340,19 @@ window.AIVibeLibs = {
     ? Promise.resolve()
     : loadScript("https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"),
 };
-/* обёртка: тост «готовим…» только если реально грузим, warn при сбое сети */
+/* обёртка: тост «готовим…» только если реально грузим.
+   Сбой сети и сбой самого экспорта — разные ошибки с разными текстами (и логом). */
 function withLib(kind, run) {
+  const label = kind === "pdf" ? "PDF" : "Excel";
   const loaded = kind === "pdf" ? (window.pdfMake && window.pdfMake.vfs) : window.XLSX;
-  if (!loaded) toast(kind === "pdf" ? "Готовим модуль PDF…" : "Готовим модуль Excel…", "info", 1800);
-  return AIVibeLibs[kind]().then(run)
-    .catch(() => toast("Не удалось загрузить модуль " + (kind === "pdf" ? "PDF" : "Excel") + " — проверьте сеть и попробуйте ещё раз.", "warn", 5000));
+  if (!loaded) toast("Готовим модуль " + label + "…", "info", 1800);
+  return AIVibeLibs[kind]().then(
+    () => Promise.resolve().then(run).catch((e) => {
+      console.error("[AIVibe] " + label + "-экспорт упал:", e);
+      toast("Не удалось выполнить экспорт " + label + " — попробуйте ещё раз.", "warn", 5000);
+    }),
+    () => toast("Не удалось загрузить модуль " + label + " — проверьте сеть и попробуйте ещё раз.", "warn", 5000)
+  );
 }
 window.withLib = withLib;
 
@@ -365,7 +372,8 @@ function useMenu(open, close, wrapCls) {
         e.preventDefault();
         const f = items(); if (!f.length) return;
         const i = f.indexOf(document.activeElement);
-        const next = e.key === "ArrowDown" ? (i + 1) % f.length : (i - 1 + f.length) % f.length;
+        // с триггера (i=-1): ↓ — первый пункт, ↑ — последний
+        const next = e.key === "ArrowDown" ? (i + 1) % f.length : (i < 0 ? f.length - 1 : (i - 1 + f.length) % f.length);
         f[next].focus();
       }
     };

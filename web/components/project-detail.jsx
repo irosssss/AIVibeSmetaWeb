@@ -327,9 +327,10 @@ function RoomSpecOverlay({ data, onClose }) {
             <div style={{ display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
               <div style={{ display: "flex", alignItems: "center", gap: 11 }}>
                 <span style={{ width: 40, height: 40, borderRadius: 12, background: "var(--accent)", color: "var(--on-accent)", display: "grid", placeItems: "center", flex: "none" }}><I.layers size={20} /></span>
-                <div aria-live="polite">
+                <div>
+                  {/* без aria-live: сумму при драге озвучивает aria-valuetext слайдера; live — только статус бюджета */}
                   <div className="mono" style={{ fontWeight: 600, fontSize: 22, lineHeight: 1 }}>{fmtMoney(client)}</div>
-                  <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 3 }}>итого клиенту · {itemsCount} {plural(itemsCount, ["позиция", "позиции", "позиций"])} · {over ? <span style={{ color: "var(--accent)" }}>закупка сверх бюджета</span> : <span style={{ color: "var(--accent-2)" }}>закупка в бюджете</span>}</div>
+                  <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 3 }}>итого клиенту · {itemsCount} {plural(itemsCount, ["позиция", "позиции", "позиций"])} · <span role="status" aria-atomic="true">{over ? <span style={{ color: "var(--accent)" }}>закупка сверх бюджета</span> : <span style={{ color: "var(--accent-2)" }}>закупка в бюджете</span>}</span></div>
                 </div>
               </div>
               {mode === "work" && (
@@ -570,6 +571,7 @@ function BeforeAfter({ data, style, pins }) {
   const [pos, setPos] = usePD(56);
   const [drag, setDrag] = usePD(false);
   const boxRef = usePDR(null);
+  const knobRef = usePDR(null);   // фокус на ручку при клике (preventDefault гасит нативный фокус)
   const img = PHOTOS[data.cover] || PHOTOS.living;
   const pal = style.palette;
   const arPins = pins || [[31, 60, "Диван"], [69, 45, "Стеллаж"], [50, 74, "Свет"]];
@@ -603,7 +605,7 @@ function BeforeAfter({ data, style, pins }) {
         Слева — исходное фото комнаты, справа — как AIVibe видит её в стиле «{style.name}». Перетащите ползунок, чтобы сравнить.
       </p>
 
-      <div ref={boxRef} onPointerDown={(e) => { e.preventDefault(); setDrag(true); setFromX(e.clientX); }}
+      <div ref={boxRef} onPointerDown={(e) => { e.preventDefault(); if (knobRef.current) knobRef.current.focus({ preventScroll: true }); setDrag(true); setFromX(e.clientX); }}
         style={{ position: "relative", borderRadius: "var(--r-xl)", overflow: "hidden", aspectRatio: "16/9", userSelect: "none", touchAction: "none", cursor: "ew-resize", boxShadow: "var(--shadow-pop)", border: "1px solid var(--hairline)" }}>
 
         {/* ПОСЛЕ — полный слой снизу, цветокоррекция + тон палитры стиля */}
@@ -637,12 +639,14 @@ function BeforeAfter({ data, style, pins }) {
 
         {/* разделитель + ручка (доступна с клавиатуры: role=slider, ←/→) */}
         <div style={{ position: "absolute", top: 0, bottom: 0, left: pos + "%", width: 2, background: "#fff", transform: "translateX(-1px)", boxShadow: "0 0 14px rgba(0,0,0,.55)" }}>
-          <button type="button" role="slider" aria-label="Сравнение до и после"
+          <button ref={knobRef} type="button" role="slider" aria-label="Сравнение до и после"
             aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(pos)}
             aria-valuetext={"«до» занимает " + Math.round(pos) + "% кадра"}
             onKeyDown={(e) => {
               if (e.key === "ArrowLeft" || e.key === "ArrowDown") { e.preventDefault(); setPos((p) => Math.max(6, p - 5)); }
               if (e.key === "ArrowRight" || e.key === "ArrowUp") { e.preventDefault(); setPos((p) => Math.min(94, p + 5)); }
+              if (e.key === "Home") { e.preventDefault(); setPos(6); }
+              if (e.key === "End") { e.preventDefault(); setPos(94); }
             }}
             style={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%,-50%)", width: 42, height: 42, borderRadius: "50%", background: "var(--surface)", color: "var(--text)", display: "grid", placeItems: "center", boxShadow: "0 4px 18px rgba(46,42,38,.4)", cursor: "ew-resize" }}>
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M9 7l-4 5 4 5M15 7l4 5-4 5" /></svg>
@@ -898,9 +902,9 @@ function AdvisorChat({ id, hello, onAction, onClose }) {
         <button className="icon-btn pd-rail-close" onClick={onClose} aria-label="Свернуть чат"><I.close size={18} /></button>
       </div>
 
-      <div className="pd-chat-scroll" ref={scrollRef} aria-live="polite" aria-label="Диалог с AI-дизайнером">
+      <div className="pd-chat-scroll" ref={scrollRef} role="log" aria-label="Диалог с AI-дизайнером">
         {msgs.map((m, i) => <div key={i} className={"pd-msg " + m.role}>{m.text}</div>)}
-        {busy && <div className="pd-msg ai" aria-label="AI-дизайнер печатает"><span className="pd-typing"><i /><i /><i /></span></div>}
+        {busy && <div className="pd-msg ai" role="status" aria-label="AI-дизайнер печатает"><span className="pd-typing"><i /><i /><i /></span></div>}
       </div>
 
       <div className="pd-chips">

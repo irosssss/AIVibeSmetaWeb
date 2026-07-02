@@ -111,11 +111,12 @@ function StyleQuiz({ onClose, onDone }) {
   const next = () => setStep((s) => s + 1);
   const back = () => setStep((s) => Math.max(0, s - 1));
 
-  // Esc закрывает квиз (управляемый поп-ап — закон Якоба)
+  // Esc закрывает квиз (управляемый поп-ап — закон Якоба).
+  // Capture + stopPropagation: не даём Esc долететь до bubble-слушателя оверлея проекта под квизом.
   React.useEffect(() => {
-    const onKey = (e) => { if (e.key === "Escape") onClose(); };
-    document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
+    const onKey = (e) => { if (e.key === "Escape") { e.stopPropagation(); onClose(); } };
+    document.addEventListener("keydown", onKey, true);
+    return () => document.removeEventListener("keydown", onKey, true);
   }, []);
 
   return (

@@ -1,7 +1,7 @@
 /* ============================================================
    AIVibe — Кабинет: Профиль и Сохранённые проекты
    ============================================================ */
-const { useState: useCV, useEffect: useCVE } = React;
+const { useState: useCV, useEffect: useCVE, useRef: useCVR } = React;
 
 /* ---------- общие карточки аналитики (паттерн дашборда: Stripe / Linear / Metabase) ---------- */
 function AnalyCard({ title, source, accent, children, style }) {
@@ -189,8 +189,15 @@ function Projects() {
     try { if (!localStorage.getItem("aivibe_quiz_done")) setTimeout(() => setQuizOpen(true), 700); } catch (e) {}
     const onNew = () => setNewOpen(true);   // кнопка «+ Новый проект» из топбара
     window.addEventListener("aivibe:new-project", onNew);
-    // back/forward и ручная правка адреса — синхронизируем открытый проект
-    const onHash = () => { const r = parseRoute(); if (r.view === "cabinet" && r.tab === "projects") setOpenId(r.sub || null); };
+    // back/forward и ручная правка адреса — синхронизируем открытый проект;
+    // закрытие «назад» чистит и стиль квиза, и обновляет список (как closeProject)
+    const onHash = () => {
+      const r = parseRoute();
+      if (r.view !== "cabinet" || r.tab !== "projects") return;
+      const sub = r.sub || null;
+      setOpenId(sub);
+      if (!sub) { setOpenStyle(null); refresh(); }
+    };
     window.addEventListener("hashchange", onHash);
     return () => { window.removeEventListener("aivibe:new-project", onNew); window.removeEventListener("hashchange", onHash); };
   }, []);
@@ -326,8 +333,10 @@ function Projects() {
 /* карточка проекта с меню действий (⋯): переименовать · дублировать · статус · удалить */
 function ProjectCard({ p, menuOpen, onOpen, onMenu, onRename, onDuplicate, onStatus, onRemove }) {
   useMenu(menuOpen, onMenu, "pc-menu-wrap");   // Esc/стрелки/click-outside — единый паттерн меню
+  const trigRef = useCVR(null);                 // «⋯»: сюда возвращаем фокус перед действием —
+                                                // иначе диалог запомнит размонтированный пункт меню
   const mItem = (label, Ico, onClick, danger) => (
-    <button role="menuitem" onClick={(e) => { e.stopPropagation(); onClick(); }} style={{ display: "flex", alignItems: "center", gap: 10, width: "100%", padding: "9px 12px", borderRadius: 9, fontSize: 13.5, fontWeight: 600, color: danger ? "var(--accent-ink)" : "var(--text)", textAlign: "left" }}
+    <button role="menuitem" onClick={(e) => { e.stopPropagation(); if (trigRef.current) trigRef.current.focus(); onClick(); }} style={{ display: "flex", alignItems: "center", gap: 10, width: "100%", padding: "9px 12px", borderRadius: 9, fontSize: 13.5, fontWeight: 600, color: danger ? "var(--accent-ink)" : "var(--text)", textAlign: "left" }}
       onMouseEnter={(e) => (e.currentTarget.style.background = "var(--surface-2)")} onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}>
       <Ico size={16} style={{ color: danger ? "var(--accent-ink)" : "var(--muted)", flex: "none" }} />{label}
     </button>
@@ -343,7 +352,7 @@ function ProjectCard({ p, menuOpen, onOpen, onMenu, onRename, onDuplicate, onSta
 
       {/* ⋯ меню */}
       <div className="pc-menu-wrap" style={{ position: "absolute", top: 10, right: 10 }}>
-        <button className="icon-btn sm" aria-label="Действия" onClick={(e) => { e.stopPropagation(); onMenu(); }}
+        <button ref={trigRef} className="icon-btn sm" aria-label="Действия" aria-haspopup="menu" aria-expanded={menuOpen} onClick={(e) => { e.stopPropagation(); onMenu(); }}
           style={{ background: "rgba(251,248,242,.92)", border: "1px solid var(--hairline)" }}>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="12" cy="5" r="1.8" /><circle cx="12" cy="12" r="1.8" /><circle cx="12" cy="19" r="1.8" /></svg>
         </button>
@@ -354,7 +363,7 @@ function ProjectCard({ p, menuOpen, onOpen, onMenu, onRename, onDuplicate, onSta
             <div style={{ height: 1, background: "var(--hairline)", margin: "5px 4px" }} />
             <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".04em", textTransform: "uppercase", color: "var(--faint)", padding: "4px 12px 6px" }}>Статус</div>
             {PROJ_STATUSES.map((s) => (
-              <button key={s} role="menuitem" onClick={(e) => { e.stopPropagation(); onStatus(s); }} style={{ display: "flex", alignItems: "center", gap: 9, width: "100%", padding: "8px 12px", borderRadius: 9, fontSize: 13.5, fontWeight: p.status === s ? 700 : 600, color: "var(--text)", textAlign: "left" }}
+              <button key={s} role="menuitem" onClick={(e) => { e.stopPropagation(); if (trigRef.current) trigRef.current.focus(); onStatus(s); }} style={{ display: "flex", alignItems: "center", gap: 9, width: "100%", padding: "8px 12px", borderRadius: 9, fontSize: 13.5, fontWeight: p.status === s ? 700 : 600, color: "var(--text)", textAlign: "left" }}
                 onMouseEnter={(e) => (e.currentTarget.style.background = "var(--surface-2)")} onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}>
                 <span style={{ width: 8, height: 8, borderRadius: "50%", background: statusColor[s], flex: "none" }} />{s}{p.status === s && <I.check size={14} style={{ marginLeft: "auto", color: "var(--accent-2)" }} />}
               </button>
