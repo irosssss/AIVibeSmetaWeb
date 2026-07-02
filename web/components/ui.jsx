@@ -318,6 +318,92 @@ function Modal({ onClose, label, maxWidth, children }) {
 window.Modal = Modal;
 
 /* ============================================================
+   Атомарные контролы (роадмап UpRock #7) — вместо трёх самописных
+   toggle, трёх сегмент-контролов и дублированных шапок/итогов.
+   Цветовые роли: терракота = primary/выбор, олива = успех/включено.
+   ============================================================ */
+
+/* переключатель вкл/выкл (олива = включено) */
+function Switch({ on, onChange, disabled, title, ariaLabel }) {
+  return (
+    <button type="button" className={"sw-toggle" + (on ? " on" : "")} onClick={onChange}
+      disabled={disabled} aria-pressed={on} title={title} aria-label={ariaLabel}>
+      <span className="knob" />
+    </button>
+  );
+}
+
+/* сегмент-переключатель «одно из N»: radiogroup, ←/→ двигают выбор.
+   className задаёт скин: pd-seg (крупный) · spec-mode (компактный с подписью) · pd-seg seg-lite (светлый) */
+function SegTabs({ items, value, onChange, ariaLabel, className = "pd-seg", cap, style }) {
+  const move = (e) => {
+    if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
+    e.preventDefault();
+    const i = items.findIndex((it) => it.id === value);
+    const next = e.key === "ArrowRight" ? (i + 1) % items.length : (i - 1 + items.length) % items.length;
+    onChange(items[next].id);
+    const btns = e.currentTarget.parentElement.querySelectorAll("[role='radio']");
+    if (btns[next]) btns[next].focus();
+  };
+  return (
+    <div className={className} role="radiogroup" aria-label={ariaLabel} style={style}>
+      {cap && <span className="spec-mode-cap">{cap}</span>}
+      {items.map((it) => (
+        <button key={it.id} type="button" role="radio" aria-checked={it.id === value} title={it.title}
+          tabIndex={it.id === value ? 0 : -1} className={it.id === value ? "on" : ""}
+          onClick={() => onChange(it.id)} onKeyDown={move}>
+          {it.label}{it.sub && <span className="sn">{it.sub}</span>}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+/* шапка оверлея проекта/сметы: назад + крошки + заголовок + бюджет-чип/правый слот.
+   Не PageHead — это имя занято шапкой раздела админки (admin.jsx). */
+function OverlayHead({ onBack, crumbs, title, sub, budget, right }) {
+  return (
+    <header className="pd-head">
+      <button className="icon-btn" onClick={onBack} title="Назад к проектам" aria-label="Назад"><I.arrow size={18} style={{ transform: "rotate(180deg)" }} /></button>
+      <div className="pd-title" style={{ flex: 1 }}>
+        <nav className="pd-crumbs" aria-label="Хлебные крошки">
+          {crumbs.map((c, i) => (
+            <React.Fragment key={i}>
+              {i > 0 && <span aria-hidden="true">/</span>}
+              {c.onClick
+                ? <button onClick={c.onClick}>{c.label}</button>
+                : <span aria-current={i === crumbs.length - 1 ? "page" : undefined}>{c.label}</span>}
+            </React.Fragment>
+          ))}
+        </nav>
+        <h2>{title}</h2>
+        <div className="pd-sub">{sub}</div>
+      </div>
+      {budget != null && (
+        <span className="glass" style={{ display: "flex", alignItems: "center", gap: 7, padding: "7px 13px", borderRadius: 99, fontSize: 12.5, fontWeight: 700, whiteSpace: "nowrap" }}>
+          <I.wallet size={15} style={{ color: "var(--accent-2)" }} />Бюджет {fmtMoney(budget)}
+        </span>
+      )}
+      {right}
+    </header>
+  );
+}
+
+/* итог сметы: плитка-иконка + крупная mono-цифра (tabular) + подпись */
+function SmetaTotal({ amount, caption, icon = "layers", size = 22 }) {
+  const Ico = icon ? (I[icon] || I.layers) : null;
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 11 }}>
+      {Ico && <span style={{ width: 40, height: 40, borderRadius: 12, background: "var(--accent)", color: "var(--on-accent)", display: "grid", placeItems: "center", flex: "none" }}><Ico size={20} /></span>}
+      <div>
+        <div className="mono" style={{ fontWeight: 600, fontSize: size, lineHeight: 1 }}>{fmtMoney(amount)}</div>
+        {caption && <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 3 }}>{caption}</div>}
+      </div>
+    </div>
+  );
+}
+
+/* ============================================================
    AIVibeLibs — ленивые тяжёлые библиотеки (не грузим на промо):
    pdfmake ~2 МБ и SheetJS ~800 КБ подтягиваются при первом экспорте.
    ============================================================ */
@@ -465,4 +551,4 @@ function Donut({ data, size = 168 }) {
   );
 }
 
-Object.assign(window, { Logo, Icon, I, Img, Lottie, useReveal, fmt, fmtMoney, AreaChart, BarList, Donut });
+Object.assign(window, { Logo, Icon, I, Img, Lottie, useReveal, fmt, fmtMoney, AreaChart, BarList, Donut, Switch, SegTabs, OverlayHead, SmetaTotal });

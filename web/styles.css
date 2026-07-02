@@ -19,9 +19,9 @@
   --hairline-2: #EDE5D6;
 
   /* ---- Accents (роль токена = одна; заливка ≠ текст) ---- */
-  --accent: #C25A36;           /* Terracotta — CTA / акцент (заливка) */
+  --accent: #B7502C;           /* Terracotta — CTA / акцент (заливка). Huetone-пасс: было #C25A36 (4.12:1 c --on-accent), стало 4.72:1 — тот же OKLCH-тон/хрома, ниже светлота */
   --accent-soft: #D9744B;      /* светлая терракота — ТОЛЬКО заливки/иллюстрации */
-  --accent-strong: #A8462A;    /* тёмная терракота — hover CTA (текст на ней ≥4.5:1) */
+  --accent-strong: #A43E18;    /* тёмная терракота — hover CTA (6.04:1, шаг от базы виден) */
   --accent-ink: #A6431F;       /* терракота КАК ТЕКСТ на бумаге (≥4.5:1) */
   --accent-2: #5E6B5B;         /* Olive — успех / эргономика-ок */
   --info: #3E4A59;             /* Dusty Navy — инфо / ссылки */
@@ -47,7 +47,7 @@
   /* ---- Shadow / glow (тёплые, мягкие — без неона) ---- */
   --shadow-card: 0 16px 40px rgba(46, 42, 38, 0.10);
   --shadow-pop: 0 26px 64px rgba(46, 42, 38, 0.16);
-  --glow-accent: 0 10px 26px rgba(194, 90, 54, 0.22);
+  --glow-accent: 0 10px 26px rgba(183, 80, 44, 0.22);
   --glow-jade: 0 8px 22px rgba(94, 107, 91, 0.20);
 
   /* ---- Type ---- */
@@ -96,7 +96,7 @@ body::before {
   inset: 0;
   z-index: -2;
   background:
-    radial-gradient(70% 55% at 50% -8%, rgba(194, 90, 54, 0.06), transparent 60%),
+    radial-gradient(70% 55% at 50% -8%, rgba(183, 80, 44, 0.06), transparent 60%),
     radial-gradient(55% 45% at 94% 6%, rgba(62, 74, 89, 0.04), transparent 60%),
     radial-gradient(60% 50% at 6% 100%, rgba(94, 107, 91, 0.05), transparent 60%),
     var(--bg-base);
@@ -115,7 +115,7 @@ body::after {
   pointer-events: none;
 }
 
-::selection { background: rgba(194, 90, 54, 0.28); color: var(--text); }
+::selection { background: rgba(183, 80, 44, 0.28); color: var(--text); }
 
 button { font-family: inherit; cursor: pointer; border: none; background: none; color: inherit; }
 input, textarea, select { font-family: inherit; }
@@ -147,7 +147,7 @@ a { color: inherit; text-decoration: none; }
   font-size: 12px;
   letter-spacing: 0.2em;
   text-transform: uppercase;
-  color: var(--accent);
+  color: var(--accent-ink); /* терракота КАК ТЕКСТ — токен-ink (заливочный --accent на бумаге < 4.5:1) */
   display: inline-flex;
   align-items: center;
   gap: 10px;
@@ -175,7 +175,7 @@ a { color: inherit; text-decoration: none; }
 }
 .btn-primary { background: var(--accent); color: var(--on-accent); box-shadow: var(--glow-accent); }
 /* hover ЗАТЕМНЯЕТ (было осветление до --accent-soft → текст падал до 2.99:1) */
-.btn-primary:hover { transform: translateY(-2px); background: var(--accent-strong); box-shadow: 0 16px 34px rgba(168,70,42,.34); }
+.btn-primary:hover { transform: translateY(-2px); background: var(--accent-strong); box-shadow: 0 16px 34px rgba(164,62,24,.34); }
 .btn-ghost { background: var(--surface); border: 1px solid var(--hairline); color: var(--text); }
 .btn-ghost:hover { transform: translateY(-2px); border-color: var(--accent); background: var(--surface-2); }
 .btn-block { width: 100%; }
@@ -476,7 +476,7 @@ a { color: inherit; text-decoration: none; }
 /* mono-eyebrow с лидирующей чертой — переиспользуем в hero и секциях */
 .mono-eyebrow {
   font-family: var(--font-mono); font-size: 12.5px; letter-spacing: .14em;
-  color: var(--accent); text-transform: uppercase; display: inline-flex; gap: 10px; align-items: center;
+  color: var(--accent-ink); text-transform: uppercase; display: inline-flex; gap: 10px; align-items: center;
 }
 .mono-eyebrow::before { content: ""; width: 26px; height: 1px; background: currentColor; }
 

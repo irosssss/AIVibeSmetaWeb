@@ -187,7 +187,7 @@ function QuizStep({ q, ans, onPick }) {
       )}
 
       {q.type === "palette" && (
-        <div className="quiz-grid" style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 12 }}>
+        <div className="quiz-grid" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(170px, 1fr))", gap: 12 }}>
           {q.options.map((o) => {
             const st = QUIZ_STYLES[o.style];
             const on = selected(o.v);

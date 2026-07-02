@@ -163,7 +163,7 @@ function DemoStage({ active, sub }) {
 
       {/* СТАДИЯ 0 — скан (терракота) */}
       <div style={{ position: "absolute", inset: 0, opacity: active === 0 ? 1 : 0.25, transition: "opacity .5s" }}>
-        <div style={{ position: "absolute", inset: 0, backgroundImage: "linear-gradient(rgba(194,90,54,.30) 1px,transparent 1px),linear-gradient(90deg,rgba(194,90,54,.30) 1px,transparent 1px)", backgroundSize: "30px 30px",
+        <div style={{ position: "absolute", inset: 0, backgroundImage: "linear-gradient(rgba(183,80,44,.30) 1px,transparent 1px),linear-gradient(90deg,rgba(183,80,44,.30) 1px,transparent 1px)", backgroundSize: "30px 30px",
           clipPath: `inset(0 ${(1 - scanFill) * 100}% 0 0)`, transition: "clip-path .2s linear" }} />
         <div style={{ position: "absolute", top: 0, bottom: 0, left: scanFill * 100 + "%", width: 2, background: "var(--accent)", boxShadow: "0 0 22px var(--accent)", opacity: active === 0 ? 1 : 0 }} />
       </div>
@@ -171,7 +171,7 @@ function DemoStage({ active, sub }) {
       {/* СТАДИЯ 1 — AI-чат */}
       <div style={{ position: "absolute", left: 18, right: 18, bottom: 18, display: "flex", flexDirection: "column", gap: 10,
         opacity: active === 1 ? 1 : 0, transform: active === 1 ? "none" : "translateY(14px)", transition: "all .5s", pointerEvents: "none" }}>
-        <div className="glass" style={{ alignSelf: "flex-end", maxWidth: "70%", padding: "11px 15px", borderRadius: "16px 16px 4px 16px", fontSize: 14, background: "rgba(194,90,54,.14)", borderColor: "rgba(194,90,54,.35)" }}>
+        <div className="glass" style={{ alignSelf: "flex-end", maxWidth: "70%", padding: "11px 15px", borderRadius: "16px 16px 4px 16px", fontSize: 14, background: "rgba(183,80,44,.14)", borderColor: "rgba(183,80,44,.35)" }}>
           Хочу уютную гостиную в тёплых тонах, бюджет 500к
         </div>
         <div className="glass" style={{ alignSelf: "flex-start", maxWidth: "82%", padding: "13px 16px", borderRadius: "16px 16px 16px 4px", fontSize: 14, lineHeight: 1.5, boxShadow: "var(--shadow-card)" }}>

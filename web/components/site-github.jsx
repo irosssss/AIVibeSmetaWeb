@@ -18,7 +18,7 @@ function Footer({ go }) {
       {/* CTA */}
       <div className="container">
         <div className="glass" style={{ position: "relative", overflow: "hidden", borderRadius: "var(--r-xl)", padding: "clamp(48px,7vw,88px)", textAlign: "center" }}>
-          <div style={{ position: "absolute", width: 600, height: 360, left: "50%", top: "50%", transform: "translate(-50%,-50%)", background: "radial-gradient(circle, rgba(194,90,54,.22), transparent 70%)", filter: "blur(40px)" }} />
+          <div style={{ position: "absolute", width: 600, height: 360, left: "50%", top: "50%", transform: "translate(-50%,-50%)", background: "radial-gradient(circle, rgba(183,80,44,.22), transparent 70%)", filter: "blur(40px)" }} />
           <div style={{ position: "relative" }}>
             <h2 className="display" style={{ fontSize: "clamp(34px,5vw,72px)", lineHeight: 0.95 }}>Первая смета —<br />сегодня и бесплатно</h2>
             <p style={{ color: "var(--muted)", maxWidth: 540, margin: "24px auto 36px", fontSize: 18 }}>AIVibe соберёт спецификацию с ценами, посчитает вашу наценку и проверит эргономику по нормам — документ готов к отправке клиенту.</p>

@@ -42,7 +42,7 @@ const N_PLAN = [
   { x: 12, y: 80, w: 52, h: 8,  k: "media",  label: "ТВ-зона" },
   { x: 74, y: 30, w: 14, h: 26, k: "accent", label: "Кресло" },
 ];
-const N_COL = { seat: "#C25A36", table: "#C98A2E", media: "#3E4A59", accent: "#5E6B5B", rug: "rgba(46,42,38,.16)" };
+const N_COL = { seat: "#B7502C", table: "#C98A2E", media: "#3E4A59", accent: "#5E6B5B", rug: "rgba(46,42,38,.16)" };
 
 const nClone = (o) => JSON.parse(JSON.stringify(o));
 const nEq = (a, b) => JSON.stringify(a) === JSON.stringify(b);
@@ -149,7 +149,7 @@ function NormsSettings() {
         </label>
         <div style={{ flex: 1 }} />
         <button onClick={() => setOnlyMod((v) => !v)} aria-pressed={onlyMod} style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "8px 14px", borderRadius: 99, fontSize: 13, fontWeight: 700,
-          border: "1px solid " + (onlyMod ? "var(--accent)" : "var(--hairline)"), background: onlyMod ? "rgba(194,90,54,.08)" : "var(--surface)", color: onlyMod ? "var(--accent)" : "var(--muted)" }}>
+          border: "1px solid " + (onlyMod ? "var(--accent)" : "var(--hairline)"), background: onlyMod ? "rgba(183,80,44,.08)" : "var(--surface)", color: onlyMod ? "var(--accent)" : "var(--muted)" }}>
           <span style={{ width: 8, height: 8, borderRadius: "50%", background: "currentColor" }} />Только изменённые
         </button>
       </div>
@@ -175,7 +175,7 @@ function NormsSettings() {
             <div style={{ padding: "34px 22px", textAlign: "center", color: "var(--muted)", fontSize: 14 }}>Пока ничего не изменено — все нормы по канону AIVibe.</div>
           )}
 
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 14, padding: "14px 22px", borderTop: "1px solid var(--hairline)", background: justSaved ? "rgba(94,107,91,.08)" : saved ? "transparent" : "rgba(194,90,54,.05)", transition: "background .3s" }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 14, padding: "14px 22px", borderTop: "1px solid var(--hairline)", background: justSaved ? "rgba(94,107,91,.08)" : saved ? "transparent" : "rgba(183,80,44,.05)", transition: "background .3s" }}>
             <div className={justSaved ? "save-pulse" : ""} style={{ display: "flex", alignItems: "center", gap: 9, fontSize: 13, color: justSaved ? "var(--accent-2)" : "var(--muted)", fontWeight: justSaved ? 700 : 400 }}>
               {justSaved
                 ? <I.check size={15} />
@@ -250,7 +250,7 @@ function NormRow({ def, value, modified, enabled, onChange, onReset, onToggle })
         <div style={{ fontWeight: 600, fontSize: 15, display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
           {def.label}
           {modified
-            ? <span style={{ fontSize: 11, fontWeight: 600, padding: "2px 9px", borderRadius: 99, background: "rgba(194,90,54,.14)", color: "var(--accent)" }}>изменено</span>
+            ? <span style={{ fontSize: 11, fontWeight: 600, padding: "2px 9px", borderRadius: 99, background: "rgba(183,80,44,.14)", color: "var(--accent)" }}>изменено</span>
             : <span style={{ fontSize: 11, fontWeight: 600, padding: "2px 9px", borderRadius: 99, background: "var(--surface-2)", color: "var(--faint)" }}>по канону</span>}
         </div>
         <div style={{ color: "var(--muted)", fontSize: 13, marginTop: 3 }}>{def.hint}</div>
@@ -277,10 +277,7 @@ function NormRow({ def, value, modified, enabled, onChange, onReset, onToggle })
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           {modified && <button onClick={onReset} style={{ display: "inline-flex", alignItems: "center", gap: 5, fontFamily: "var(--font-mono)", fontSize: 11, color: "var(--muted)", border: "1px solid var(--hairline)", borderRadius: 99, padding: "5px 10px" }}>↺ сброс</button>}
-          <button onClick={onToggle} aria-pressed={enabled} title={enabled ? "Выключить правило" : "Включить правило"}
-            style={{ width: 46, height: 26, borderRadius: 99, padding: 3, flex: "none", border: "1px solid " + (enabled ? "var(--accent-2)" : "var(--hairline)"), background: enabled ? "var(--accent-2)" : "var(--surface-2)", transition: ".2s" }}>
-            <span style={{ display: "block", width: 18, height: 18, borderRadius: "50%", background: "#fff", transform: enabled ? "translateX(20px)" : "none", transition: ".2s", boxShadow: "0 1px 3px rgba(46,42,38,.3)" }} />
-          </button>
+          <Switch on={enabled} onChange={onToggle} title={enabled ? "Выключить правило" : "Включить правило"} ariaLabel={"Правило «" + def.label + "»"} />
         </div>
       </div>
     </div>

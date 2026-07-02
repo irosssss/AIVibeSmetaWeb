@@ -32,14 +32,19 @@
 
   // mode: "work" (по умолчанию) — две цены (себестоимость + клиент) и бюджет;
   //       "client" — только цена клиента, без себестоимости/наценки/бюджета.
-  function exportRoomSpec({ project, area, rooms, grand, markupPct, clientTotal, budget, mode }) {
-    if (!window.XLSX) { alert("Excel-библиотека ещё загружается — попробуйте через секунду."); return false; }
+  // catMarkupPct: {раздел: %} — свои наценки поверх базовой markupPct (как на экране сметы).
+  function exportRoomSpec({ project, area, rooms, grand, markupPct, catMarkupPct, clientTotal, budget, mode }) {
+    if (!window.XLSX) { (window.toast ? toast("Excel-библиотека ещё загружается — попробуйте через секунду.", "info") : 0); return false; }
     rooms = rooms || [];
     const clientMode = mode === "client";
-    const mk = 1 + (markupPct || 0) / 100;
+    const catOf = (it) => it.cat || "Прочее";
+    const pctOf = (it) => (catMarkupPct && catMarkupPct[catOf(it)] != null ? catMarkupPct[catOf(it)] : (markupPct || 0));
+    const hasCatMk = !!catMarkupPct && Object.keys(catMarkupPct).length > 0;
     const lineCost = (it) => it.price * (it.qty || 1);
+    const lineClient = (it) => Math.round(lineCost(it) * (1 + pctOf(it) / 100));    // клиентские суммы — из округлённых строк, как в UI
+    const unitClient = (it) => Math.round(it.price * (1 + pctOf(it) / 100));
     const roomCost = (r) => r.items.reduce((s, it) => s + lineCost(it), 0);
-    const client = (n) => Math.round(n * mk);
+    const roomClient = (r) => r.items.reduce((s, it) => s + lineClient(it), 0);
     const roomLabel = (r) => r.name + (r.area ? "  ·  " + r.area + " м²" : "");
 
     const wb = XLSX.utils.book_new();
@@ -59,24 +64,26 @@
     push(["AIVibe — смета-комплектация"]);
     push([project || "Проект", "", area ? area + " м²" : ""]);
     push([]);
-    if (!clientMode) { push(["Наценка дизайнера, %", markupPct || 0]); push([]); }   // процент, не деньги
+    if (!clientMode) { push([hasCatMk ? "Наценка дизайнера (базовая), %" : "Наценка дизайнера, %", markupPct || 0]); push([]); }   // процент, не деньги
 
     push(clientMode ? ["По помещениям", "Сумма"] : ["По помещениям", "Себестоимость", "Для клиента"]);
     rooms.forEach((r) => {
-      const c = roomCost(r);
-      if (clientMode) { const ri = push([roomLabel(r), client(c)]); mc.push([ri, 1]); }
-      else { const ri = push([roomLabel(r), c, client(c)]); mc.push([ri, 1], [ri, 2]); }
+      if (clientMode) { const ri = push([roomLabel(r), roomClient(r)]); mc.push([ri, 1]); }
+      else { const ri = push([roomLabel(r), roomCost(r), roomClient(r)]); mc.push([ri, 1], [ri, 2]); }
     });
     if (clientMode) { const ri = push(["Итого", clientTotal]); mc.push([ri, 1]); }
     else { const ri = push(["Итого", grand, clientTotal]); mc.push([ri, 1], [ri, 2]); }
     push([]);
-    // по разделам (закупочным категориям) — по убыванию суммы
-    const byCat = {};
-    rooms.forEach((r) => r.items.forEach((it) => { const k = it.cat || "—"; byCat[k] = (byCat[k] || 0) + lineCost(it); }));
-    push(clientMode ? ["По разделам", "Сумма"] : ["По разделам", "Себестоимость", "Для клиента"]);
+    // по разделам (закупочным категориям) — по убыванию суммы; в рабочем режиме виден и процент наценки раздела
+    const byCat = {}, byCatCli = {};
+    rooms.forEach((r) => r.items.forEach((it) => { const k = catOf(it); byCat[k] = (byCat[k] || 0) + lineCost(it); byCatCli[k] = (byCatCli[k] || 0) + lineClient(it); }));
+    push(clientMode ? ["По разделам", "Сумма"] : ["По разделам", "Себестоимость", "Для клиента", "Наценка, %"]);
     Object.keys(byCat).sort((a, b) => byCat[b] - byCat[a]).forEach((cat) => {
-      if (clientMode) { const ri = push([cat, client(byCat[cat])]); mc.push([ri, 1]); }
-      else { const ri = push([cat, byCat[cat], client(byCat[cat])]); mc.push([ri, 1], [ri, 2]); }
+      if (clientMode) { const ri = push([cat, byCatCli[cat]]); mc.push([ri, 1]); }
+      else {
+        const pct = catMarkupPct && catMarkupPct[cat] != null ? catMarkupPct[cat] : (markupPct || 0);
+        const ri = push([cat, byCat[cat], byCatCli[cat], pct]); mc.push([ri, 1], [ri, 2]);   // процент — не деньги
+      }
     });
     if (!clientMode) {   // бюджет/себестоимость — внутренняя кухня, в клиентскую версию не выгружаем
       push([]);
@@ -85,7 +92,7 @@
     }
 
     const wsS = XLSX.utils.aoa_to_sheet(svod);
-    setCols(wsS, clientMode ? [42, 16] : [42, 16, 16]);
+    setCols(wsS, clientMode ? [42, 16] : [42, 16, 16, 11]);
     fmtMoney(wsS, mc);
     XLSX.utils.book_append_sheet(wb, wsS, uniqueSheet("Свод"));
 
@@ -97,8 +104,8 @@
     rooms.forEach((r) => r.items.forEach((it) => {
       const lc = lineCost(it);
       all.push(clientMode
-        ? [++n, r.name, it.cat || "", it.title, it.qty || 1, client(it.price), client(lc)]
-        : [++n, r.name, it.cat || "", it.title, it.qty || 1, it.price, lc, client(it.price), client(lc)]);
+        ? [++n, r.name, it.cat || "", it.title, it.qty || 1, unitClient(it), lineClient(it)]
+        : [++n, r.name, it.cat || "", it.title, it.qty || 1, it.price, lc, unitClient(it), lineClient(it)]);
     }));
     all.push(clientMode ? ["", "", "", "Итого", "", "", clientTotal] : ["", "", "", "Итого", "", "", grand, "", clientTotal]);
     const wsA = XLSX.utils.aoa_to_sheet(all);
@@ -117,11 +124,10 @@
       r.items.forEach((it) => {
         const lc = lineCost(it);
         rows.push(clientMode
-          ? [++m, it.cat || "", it.title, it.qty || 1, client(it.price), client(lc)]
-          : [++m, it.cat || "", it.title, it.qty || 1, it.price, lc, client(it.price), client(lc)]);
+          ? [++m, it.cat || "", it.title, it.qty || 1, unitClient(it), lineClient(it)]
+          : [++m, it.cat || "", it.title, it.qty || 1, it.price, lc, unitClient(it), lineClient(it)]);
       });
-      const rc = roomCost(r);
-      rows.push(clientMode ? ["", "", "Итого по комнате", "", "", client(rc)] : ["", "", "Итого по комнате", "", "", rc, "", client(rc)]);
+      rows.push(clientMode ? ["", "", "Итого по комнате", "", "", roomClient(r)] : ["", "", "Итого по комнате", "", "", roomCost(r), "", roomClient(r)]);
       const ws = XLSX.utils.aoa_to_sheet(rows);
       setCols(ws, clientMode ? [5, 16, 46, 7, 15, 16] : [5, 16, 46, 7, 13, 14, 15, 16]);
       fmtMoneyCols(ws, clientMode ? [4, 5] : [4, 5, 6, 7], 2, rows.length - 1);

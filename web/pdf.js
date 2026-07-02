@@ -44,7 +44,7 @@
             { text: "Спецификация проекта", alignment: "right", style: "muted", margin: [0, 6, 0, 0] },
           ],
         },
-        { canvas: [{ type: "line", x1: 0, y1: 0, x2: 515, y2: 0, lineWidth: 1, lineColor: "#E2552B" }], margin: [0, 8, 0, 0] },
+        { canvas: [{ type: "line", x1: 0, y1: 0, x2: 515, y2: 0, lineWidth: 1, lineColor: "#B7502C" }], margin: [0, 8, 0, 0] },
         { text: project || "Проект", style: "h1", margin: [0, 14, 0, 2] },
         { text: (styleName ? styleName + " · " : "") + "смета по каталогу фабрик-партнёров", style: "muted", margin: [0, 0, 0, 16] },
 
@@ -70,7 +70,7 @@
         { text: "Цены, наличие и сроки — по каталогу фабрик-партнёров. Документ сформирован в AIVibe.", style: "foot", margin: [0, 20, 0, 0] },
       ],
       styles: {
-        logo: { fontSize: 18, bold: true, color: "#E2552B" },
+        logo: { fontSize: 18, bold: true, color: "#B7502C" },
         h1: { fontSize: 20, bold: true, color: "#1A1417" },
         h2: { fontSize: 12, bold: true, color: "#3A3338", margin: [0, 8, 0, 4] },
         th: { bold: true, fontSize: 9, color: "#6B6168" },
@@ -89,33 +89,34 @@
   // Многокомнатная смета-комплектация (реальный дизайн-проект): разделы по комнатам.
   // mode: "work" (по умолчанию) — две цены (себестоимость + клиент) и бюджет;
   //       "client" — только цена клиента, без себестоимости/наценки/бюджета.
-  function exportRoomSpec({ project, area, rooms, grand, markupPct, clientTotal, budget, mode }) {
+  // catMarkupPct: {раздел: %} — свои наценки поверх базовой markupPct (как на экране сметы).
+  function exportRoomSpec({ project, area, rooms, grand, markupPct, catMarkupPct, clientTotal, budget, mode }) {
     if (!window.pdfMake) { (window.toast ? toast("PDF-модуль ещё загружается — попробуйте через секунду.", "info") : 0); return false; }
     const clientMode = mode === "client";
-    const mk = 1 + (markupPct || 0) / 100;
-    const toClient = (n) => Math.round(n * mk);          // себестоимость → цена клиента
+    const pctOf = (it) => { const c = it.cat || "Прочее"; return catMarkupPct && catMarkupPct[c] != null ? catMarkupPct[c] : (markupPct || 0); };
+    const lineCost = (it) => it.price * (it.qty || 1);
+    const lineClient = (it) => Math.round(lineCost(it) * (1 + pctOf(it) / 100));   // клиентские суммы — из округлённых строк, как в UI
+    const hasCatMk = !!catMarkupPct && Object.keys(catMarkupPct).length > 0;
     const content = [
       { columns: [ { text: "AIVibe", style: "logo" }, { text: "Смета-комплектация", alignment: "right", style: "muted", margin: [0, 6, 0, 0] } ] },
-      { canvas: [{ type: "line", x1: 0, y1: 0, x2: 515, y2: 0, lineWidth: 1, lineColor: "#E2552B" }], margin: [0, 8, 0, 0] },
+      { canvas: [{ type: "line", x1: 0, y1: 0, x2: 515, y2: 0, lineWidth: 1, lineColor: "#B7502C" }], margin: [0, 8, 0, 0] },
       { text: project || "Проект", style: "h1", margin: [0, 14, 0, 2] },
       { text: "Комплектация по дизайн-проекту · " + (area || "—") + " м²", style: "muted", margin: [0, 0, 0, 14] },
     ];
     (rooms || []).forEach((r) => {
-      const sub = r.items.reduce((s, it) => s + it.price * (it.qty || 1), 0);
+      const sub = r.items.reduce((s, it) => s + lineCost(it), 0);
+      const subClient = r.items.reduce((s, it) => s + lineClient(it), 0);
       content.push({ text: r.name + (r.area ? "   ·   " + r.area + " м²" : ""), style: "h2", margin: [0, 12, 0, 4] });
       content.push({
-        table: { headerRows: 0, widths: ["*", 60, 32, "auto"], body: r.items.map((it) => {
-          const line = it.price * (it.qty || 1);
-          return [
-            it.title,
-            { text: it.cat || "", color: "#8A8088", fontSize: 9 },
-            { text: "×" + (it.qty || 1), alignment: "right", fontSize: 9, color: "#8A8088" },
-            { text: money(clientMode ? toClient(line) : line), alignment: "right" },
-          ];
-        }) },
+        table: { headerRows: 0, widths: ["*", 60, 32, "auto"], body: r.items.map((it) => [
+          it.title,
+          { text: it.cat || "", color: "#8A8088", fontSize: 9 },
+          { text: "×" + (it.qty || 1), alignment: "right", fontSize: 9, color: "#8A8088" },
+          { text: money(clientMode ? lineClient(it) : lineCost(it)), alignment: "right" },
+        ]) },
         layout: { hLineWidth: () => 0.5, hLineColor: () => "#EFEAE4", vLineWidth: () => 0, paddingTop: () => 3.5, paddingBottom: () => 3.5 },
       });
-      content.push({ columns: [ { text: "", width: "*" }, { text: "Итого по комнате: " + money(clientMode ? toClient(sub) : sub), alignment: "right", bold: true, fontSize: 10.5, margin: [0, 4, 0, 0] } ] });
+      content.push({ columns: [ { text: "", width: "*" }, { text: "Итого по комнате: " + money(clientMode ? subClient : sub), alignment: "right", bold: true, fontSize: 10.5, margin: [0, 4, 0, 0] } ] });
     });
     content.push({ canvas: [{ type: "line", x1: 0, y1: 0, x2: 515, y2: 0, lineWidth: 0.5, lineColor: "#E5E0DA" }], margin: [0, 14, 0, 8] });
     if (clientMode) {
@@ -124,7 +125,7 @@
       const over = grand > budget;
       content.push({ columns: [
         { text: over ? "Превышение бюджета на " + money(grand - budget) : "В рамках бюджета (" + money(budget) + ")", color: over ? "#B45309" : "#2F7A52", fontSize: 10, margin: [0, 6, 0, 0] },
-        { stack: [ { text: "Себестоимость: " + money(grand), alignment: "right", fontSize: 11 }, { text: "Для клиента (+" + markupPct + "%): " + money(clientTotal), alignment: "right", style: "total" } ] },
+        { stack: [ { text: "Себестоимость: " + money(grand), alignment: "right", fontSize: 11 }, { text: "Для клиента " + (hasCatMk ? "(наценка по разделам)" : "(+" + (markupPct || 0) + "%)") + ": " + money(clientTotal), alignment: "right", style: "total" } ] },
       ] });
     }
     content.push({ text: "Комплектация (мебель, техника, сантехника, свет, текстиль). Ремонтные работы и отделочные материалы — отдельной сметой. Цены — рыночный ориентир. Документ сформирован в AIVibe.", style: "foot", margin: [0, 16, 0, 0] });
@@ -133,7 +134,7 @@
       pageMargins: [40, 46, 40, 44],
       content,
       styles: {
-        logo: { fontSize: 18, bold: true, color: "#E2552B" },
+        logo: { fontSize: 18, bold: true, color: "#B7502C" },
         h1: { fontSize: 20, bold: true, color: "#1A1417" },
         h2: { fontSize: 12, bold: true, color: "#3A3338" },
         muted: { color: "#8A8088", fontSize: 10 },

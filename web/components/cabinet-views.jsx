@@ -63,7 +63,7 @@ function Profile({ user }) {
                 <span style={{ width: 8, height: 8, borderRadius: "50%", background: user.provider === "yandex" ? "#FC3F1D" : "#0077FF" }} />
                 {user.provider === "yandex" ? "Яндекс ID" : "VK ID"}
               </span>
-              {user.role === "admin" && <span style={{ padding: "6px 13px", borderRadius: 99, fontSize: 12.5, fontWeight: 700, background: "rgba(194,90,54,.16)", color: "var(--accent)", border: "1px solid rgba(194,90,54,.32)" }}>Администратор</span>}
+              {user.role === "admin" && <span style={{ padding: "6px 13px", borderRadius: 99, fontSize: 12.5, fontWeight: 700, background: "rgba(183,80,44,.16)", color: "var(--accent)", border: "1px solid rgba(183,80,44,.32)" }}>Администратор</span>}
             </div>
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: 14, marginTop: 22 }}>
@@ -132,7 +132,7 @@ function Profile({ user }) {
             <h3 style={{ fontSize: 18, fontWeight: 700 }}>Последняя сессия с AI-дизайнером</h3>
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-            <div className="glass" style={{ alignSelf: "flex-end", maxWidth: "75%", padding: "11px 15px", borderRadius: "14px 14px 4px 14px", fontSize: 14, background: "rgba(194,90,54,.14)" }}>Сделай гостиную теплее, добавь текстиль</div>
+            <div className="glass" style={{ alignSelf: "flex-end", maxWidth: "75%", padding: "11px 15px", borderRadius: "14px 14px 4px 14px", fontSize: 14, background: "rgba(183,80,44,.14)" }}>Сделай гостиную теплее, добавь текстиль</div>
             <div className="glass" style={{ alignSelf: "flex-start", maxWidth: "82%", padding: "11px 15px", borderRadius: "14px 14px 14px 4px", fontSize: 14, lineHeight: 1.5 }}>Добавил шерстяной плед, льняные шторы и ковёр терракотового тона. Обновил расстановку и смету — посмотрите в проекте «Гостиная на Патриках».</div>
           </div>
         </div>
@@ -145,15 +145,13 @@ function Row({ k, v }) {
   return <div style={{ display: "flex", justifyContent: "space-between", gap: 16, fontSize: 14.5 }}><span style={{ color: "var(--muted)", whiteSpace: "nowrap" }}>{k}</span><span style={{ fontWeight: 600, whiteSpace: "nowrap", textAlign: "right" }}>{v}</span></div>;
 }
 
+/* строка настройки с переключателем — сам контрол теперь единый <Switch> из ui.jsx */
 function Toggle({ label, sub, on: initOn, last }) {
   const [on, setOn] = useCV(!!initOn);
   return (
     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, paddingBlock: 14, borderBottom: last ? "none" : "1px solid var(--hairline)" }}>
       <div style={{ minWidth: 0 }}><div style={{ fontWeight: 600, fontSize: 14.5, lineHeight: 1.3 }}>{label}</div><div style={{ color: "var(--muted)", fontSize: 13, marginTop: 3, lineHeight: 1.4 }}>{sub}</div></div>
-      <button onClick={() => setOn(!on)} aria-pressed={on} style={{ width: 48, height: 28, borderRadius: 99, padding: 3, flex: "none",
-        background: on ? "var(--accent-2)" : "var(--surface-2)", transition: ".25s" }}>
-        <span style={{ display: "block", width: 22, height: 22, borderRadius: "50%", background: "#fff", transform: on ? "translateX(20px)" : "none", transition: ".25s" }} />
-      </button>
+      <Switch on={on} onChange={() => setOn(!on)} ariaLabel={label} />
     </div>
   );
 }
@@ -291,7 +289,7 @@ function Projects() {
       )}
 
       {/* ── сетка проектов / пустые состояния ── */}
-      {!rows && <div className="proj-grid" style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 18 }}>{Array.from({ length: 3 }).map((_, i) => <div key={i} className="glass skel" style={{ borderRadius: "var(--r-lg)", height: 280 }} />)}</div>}
+      {!rows && <div className="proj-grid" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(250px, 1fr))", gap: 18 }}>{Array.from({ length: 3 }).map((_, i) => <div key={i} className="glass skel" style={{ borderRadius: "var(--r-lg)", height: 280 }} />)}</div>}
 
       {rows && rows.length === 0 && (
         <div className="glass" style={{ borderRadius: "var(--r-xl)", padding: "56px 32px", textAlign: "center" }}>
@@ -313,7 +311,7 @@ function Projects() {
       )}
 
       {shown && shown.length > 0 && (
-        <div className="proj-grid" style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 18 }}>
+        <div className="proj-grid" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(250px, 1fr))", gap: 18 }}>
           {shown.map((p) => (
             <ProjectCard key={p.id} p={p} menuOpen={menuId === p.id}
               onOpen={() => openProject(p.id)} onMenu={() => setMenuId((m) => m === p.id ? null : p.id)}
@@ -323,7 +321,7 @@ function Projects() {
       )}
 
       {openId && <ProjectDetail id={openId} initialStyle={openStyle} onClose={closeProject} />}
-      {importData && <RoomSpecOverlay data={importData} onClose={() => setImportData(null)} />}
+      {importData && <RoomSpecOverlay data={importData} onClose={() => { setImportData(null); refresh(); }} />}
       {newOpen && <NewProjectModal onClose={() => setNewOpen(false)} onCreate={onCreated} onExample={() => { setNewOpen(false); openProject("p_1"); }} />}
       {quizOpen && <StyleQuiz onClose={() => { setQuizOpen(false); try { localStorage.setItem("aivibe_quiz_done", "1"); } catch (e) {} }} onDone={finishQuiz} />}
     </div>
@@ -528,7 +526,8 @@ function Favorites() {
             {saved > 0 && <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, color: "var(--accent-2)", fontWeight: 700 }}><span>Скидка по каталогу</span><span>−{fmtMoney(saved)}</span></div>}
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
               <span style={{ color: "var(--muted)", fontSize: 14 }}>Итого</span>
-              <span className="display" style={{ fontSize: 24 }}>{fmtMoney(total)}</span>
+              {/* деньги — всегда mono+tabular, Spectral только нецифровым заголовкам */}
+              <span className="mono" style={{ fontSize: 22, fontWeight: 600 }}>{fmtMoney(total)}</span>
             </div>
           </div>
           <button className="btn btn-primary btn-block" style={{ marginTop: 16 }} disabled={!shown || shown.length === 0} onClick={() => setPickOpen(true)}><I.layers size={16} />Перенести в проект</button>

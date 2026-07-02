@@ -14,7 +14,7 @@ function App() {
   const initView = useApp(routeView())[0];      // куда целились при загрузке (для гейта мигания)
 
   // синтетический админ для прямого входа в админку из dev-свитчера
-  const ADMIN = { id: "u_1", name: "Ирина Соколова", email: "irina@aivibe.ru", role: "admin", provider: "yandex", avatar: "#C25A36" };
+  const ADMIN = { id: "u_1", name: "Ирина Соколова", email: "irina@aivibe.ru", role: "admin", provider: "yandex", avatar: "#B7502C" };
 
   // регидратация сессии: без неё F5 всегда выкидывал на промо
   useAppE(() => {

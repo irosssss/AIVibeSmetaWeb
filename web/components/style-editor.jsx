@@ -45,19 +45,19 @@ function StylesLibrary() {
         <button className="btn btn-primary" onClick={createNew}><I.plus size={17} />Создать стиль</button>
       </div>
 
-      {!rows && <div className="proj-grid" style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 16 }}>{Array.from({ length: 6 }).map((_, i) => <div key={i} className="glass skel" style={{ borderRadius: "var(--r-lg)", height: 210 }} />)}</div>}
+      {!rows && <div className="proj-grid" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(250px, 1fr))", gap: 16 }}>{Array.from({ length: 6 }).map((_, i) => <div key={i} className="glass skel" style={{ borderRadius: "var(--r-lg)", height: 210 }} />)}</div>}
 
       {mine.length > 0 && (
         <React.Fragment>
           <SectionLabel icon={I.user} text={"Мои стили · " + mine.length} />
-          <div className="proj-grid" style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 16, marginBottom: 30 }}>
+          <div className="proj-grid" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(250px, 1fr))", gap: 16, marginBottom: 30 }}>
             {mine.map((s) => <StyleLibCard key={s.id} s={s} onEdit={() => setEdit(s)} onDuplicate={() => duplicate(s.id)} onRemove={() => remove(s.id)} />)}
           </div>
         </React.Fragment>
       )}
 
       {rows && <SectionLabel icon={I.layers} text={"Системные пресеты · " + system.length} sub="read-only база" />}
-      <div className="proj-grid" style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 16 }}>
+      <div className="proj-grid" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(250px, 1fr))", gap: 16 }}>
         {system.map((s) => <StyleLibCard key={s.id} s={s} system onDuplicate={() => duplicate(s.id)} />)}
       </div>
 
@@ -198,11 +198,9 @@ function StyleEditor({ draft, onClose, onSaved }) {
           {/* уровень декора */}
           <div>
             <FldLabel>Уровень декора</FldLabel>
-            <div className="pd-seg" style={{ display: "flex", gap: 4, padding: 4, background: "var(--surface-2)", border: "1px solid var(--hairline)", borderRadius: 12, maxWidth: 360 }}>
-              {DECOR.map(([k, t]) => (
-                <button key={k} onClick={() => set({ decorLevel: k })} style={{ flex: 1, padding: "9px", borderRadius: 8, fontWeight: 700, fontSize: 13.5, background: d.decorLevel === k ? "var(--surface)" : "transparent", color: d.decorLevel === k ? "var(--text)" : "var(--muted)", boxShadow: d.decorLevel === k ? "0 1px 2px rgba(46,42,38,.08)" : "none" }}>{t}</button>
-              ))}
-            </div>
+            <SegTabs className="pd-seg seg-lite" style={{ maxWidth: 360 }} ariaLabel="Уровень декора"
+              value={d.decorLevel} onChange={(k) => set({ decorLevel: k })}
+              items={DECOR.map(([k, t]) => ({ id: k, label: t }))} />
           </div>
 
           {/* бюджет-класс (factor) */}

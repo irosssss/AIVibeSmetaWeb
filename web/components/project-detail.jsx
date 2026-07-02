@@ -187,19 +187,10 @@ function ProjectDetail({ id, onClose, initialStyle }) {
   return (
     <div className="pd-overlay" role="dialog" aria-label={"Проект: " + data.name}>
       {/* шапка */}
-      <header className="pd-head">
-        <button className="icon-btn" onClick={onClose} title="Назад к проектам" aria-label="Назад"><I.arrow size={18} style={{ transform: "rotate(180deg)" }} /></button>
-        <div className="pd-title" style={{ flex: 1 }}>
-          <nav className="pd-crumbs" aria-label="Хлебные крошки">
-            <button onClick={onClose}>Проекты</button><span aria-hidden="true">/</span><span aria-current="page">{data.name}</span>
-          </nav>
-          <h2>{data.name}</h2>
-          <div className="pd-sub">{data.room} · {activeStyle.name} · {data.area} м²</div>
-        </div>
-        <span className="glass" style={{ display: "flex", alignItems: "center", gap: 7, padding: "7px 13px", borderRadius: 99, fontSize: 12.5, fontWeight: 700, whiteSpace: "nowrap" }}>
-          <I.wallet size={15} style={{ color: "var(--accent-2)" }} />Бюджет {fmtMoney(data.budget)}
-        </span>
-      </header>
+      <OverlayHead onBack={onClose} budget={data.budget}
+        crumbs={[{ label: "Проекты", onClick: onClose }, { label: data.name }]}
+        title={data.name}
+        sub={data.room + " · " + activeStyle.name + " · " + data.area + " м²"} />
 
       <div className="pd-body">
         <div className="pd-main" ref={mainRef}>
@@ -227,9 +218,23 @@ function ProjectDetail({ id, onClose, initialStyle }) {
 /* ---------------- СМЕТА-КОМПЛЕКТАЦИЯ ПО КОМНАТАМ (реальный дизайн-проект) ---------------- */
 function RoomSpecOverlay({ data, onClose }) {
   const [markup, setMarkup] = usePD(data.markupPct != null ? data.markupPct : 25);
+  const [catMarkup, setCatMarkup] = usePD(data.catMarkupPct || {});  // {раздел: %} — своя наценка поверх базовой (пусто = наследует)
+  const [catOpen, setCatOpen] = usePD(false);
   const [mode, setMode] = usePD("work");   // режим выгрузки: "work" (рабочая) / "client" (для клиента)
   const [roomSaved, setRoomSaved] = usePD(false);
-  const saveRoom = () => { if (!data.id) { setRoomSaved(true); setTimeout(() => setRoomSaved(false), 1700); return; } AIVibeAPI.projects.update(data.id, { markupPct: markup }).then(() => { setRoomSaved(true); setTimeout(() => setRoomSaved(false), 1700); }); };
+  const [savedId, setSavedId] = usePD(data.id || null);
+  const saveRoom = () => {
+    const done = () => { setRoomSaved(true); setTimeout(() => setRoomSaved(false), 1700); };
+    const patch = { markupPct: markup, catMarkupPct: catMarkup };
+    if (savedId) { AIVibeAPI.projects.update(savedId, patch).then(done); return; }
+    // импортированная из Excel смета не привязана к проекту — создаём его,
+    // иначе «Сохранено» врало бы, а наценки терялись при закрытии оверлея
+    AIVibeAPI.projects.create({
+      name: data.name || "Смета из Excel", room: "Комплектация из Excel", style: "",
+      area: data.area, budget: data.budget || 0, items: (data.rooms || []).reduce((s, r) => s + r.items.length, 0),
+      rooms: data.rooms, summaryShort: data.summaryShort, ...patch,
+    }).then((p) => { setSavedId(p.id); toast("Смета сохранена в «Мои проекты»"); done(); });
+  };
 
   // Esc закрывает смету-оверлей (когда открыта напрямую, напр. из импорта Excel);
   // из полей ввода Esc не закрывает, а отдаёт фокус
@@ -243,30 +248,34 @@ function RoomSpecOverlay({ data, onClose }) {
     return () => document.removeEventListener("keydown", onKey);
   }, []);
   const rooms = data.rooms || [];
-  const roomTotal = (r) => r.items.reduce((s, it) => s + it.price * (it.qty || 1), 0);
+  // наценка: базовая + необязательный оверрайд по разделу; клиентские суммы всегда складываются из округлённых строк
+  const catOf = (it) => it.cat || "Прочее";
+  const pctOf = (cat) => (catMarkup[cat] != null ? catMarkup[cat] : markup);
+  const lineCost = (it) => it.price * (it.qty || 1);
+  const lineClient = (it) => Math.round(lineCost(it) * (1 + pctOf(catOf(it)) / 100));
+  const roomTotal = (r) => r.items.reduce((s, it) => s + lineCost(it), 0);
+  const roomClient = (r) => r.items.reduce((s, it) => s + lineClient(it), 0);
   const grand = rooms.reduce((s, r) => s + roomTotal(r), 0);
-  const client = Math.round(grand * (1 + markup / 100));
+  const client = rooms.reduce((s, r) => s + roomClient(r), 0);
   const itemsCount = rooms.reduce((s, r) => s + r.items.length, 0);
   const over = grand > data.budget;
-  const specArgs = () => ({ project: data.name, area: data.area, rooms, grand, markupPct: markup, clientTotal: client, budget: data.budget, mode });
+  // разделы проекта — из фактических позиций, тяжёлые по себестоимости первыми
+  const catCost = {}, catCli = {};   // catCli — суммой округлённых строк, чтобы панель сходилась с итогом и выгрузками
+  rooms.forEach((r) => r.items.forEach((it) => { const k = catOf(it); catCost[k] = (catCost[k] || 0) + lineCost(it); catCli[k] = (catCli[k] || 0) + lineClient(it); }));
+  const cats = Object.keys(catCost).sort((a, b) => catCost[b] - catCost[a]);
+  const ovrCount = cats.filter((c) => catMarkup[c] != null).length;
+  const setCatPct = (cat, v) => setCatMarkup((m) => { const n = { ...m }; if (v == null) delete n[cat]; else n[cat] = v; return n; });
+  const effPct = grand > 0 ? Math.round((client / grand - 1) * 100) : markup;
+  const specArgs = () => ({ project: data.name, area: data.area, rooms, grand, markupPct: markup, catMarkupPct: catMarkup, clientTotal: client, budget: data.budget, mode });
   const exportPDF = () => { if (window.AIVibePDF && AIVibePDF.exportRoomSpec) withLib("pdf", () => AIVibePDF.exportRoomSpec(specArgs())); };
   const exportXLSX = () => { if (window.AIVibeXLSX) withLib("xlsx", () => AIVibeXLSX.exportRoomSpec(specArgs())); };
 
   return (
     <div className="pd-overlay" role="dialog" aria-label={"Смета: " + data.name}>
-      <header className="pd-head">
-        <button className="icon-btn" onClick={onClose} title="Назад к проектам" aria-label="Назад"><I.arrow size={18} style={{ transform: "rotate(180deg)" }} /></button>
-        <div className="pd-title" style={{ flex: 1 }}>
-          <nav className="pd-crumbs" aria-label="Хлебные крошки">
-            <button onClick={onClose}>Проекты</button><span aria-hidden="true">/</span><span>{data.name}</span><span aria-hidden="true">/</span><span aria-current="page">Смета</span>
-          </nav>
-          <h2>{data.name}</h2>
-          <div className="pd-sub">Комплектация по дизайн-проекту · {data.area} м² · {itemsCount} {plural(itemsCount, ["позиция", "позиции", "позиций"])}</div>
-        </div>
-        <span className="glass" style={{ display: "flex", alignItems: "center", gap: 7, padding: "7px 13px", borderRadius: 99, fontSize: 12.5, fontWeight: 700, whiteSpace: "nowrap" }}>
-          <I.wallet size={15} style={{ color: "var(--accent-2)" }} />Бюджет {fmtMoney(data.budget)}
-        </span>
-      </header>
+      <OverlayHead onBack={onClose} budget={data.budget}
+        crumbs={[{ label: "Проекты", onClick: onClose }, { label: data.name }, { label: "Смета" }]}
+        title={data.name}
+        sub={"Комплектация по дизайн-проекту · " + data.area + " м² · " + itemsCount + " " + plural(itemsCount, ["позиция", "позиции", "позиций"])} />
 
       <div className="pd-body">
         <div className="pd-main">
@@ -275,31 +284,67 @@ function RoomSpecOverlay({ data, onClose }) {
             <h3 className="pd-h">Смета по комнатам</h3>
             <p style={{ color: "var(--muted)", fontSize: 14.5, marginTop: 4, marginBottom: 18, maxWidth: 820, lineHeight: 1.6 }}>{data.summaryShort}</p>
 
-            {/* наценка дизайнера: себестоимость → цена клиента */}
+            {/* наценка дизайнера: базовая на всё + свои проценты по разделам */}
             <div className="glass" style={{ borderRadius: "var(--r-lg)", padding: "16px 20px", marginBottom: 22, maxWidth: 640 }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
-                <span style={{ fontWeight: 700, fontSize: 14.5 }}>Наценка дизайнера</span>
+                <span style={{ fontWeight: 700, fontSize: 14.5 }}>Наценка дизайнера{ovrCount > 0 && <span style={{ fontWeight: 500, fontSize: 12.5, color: "var(--muted)" }}> · базовая</span>}</span>
                 <span className="mono" style={{ fontWeight: 600, fontSize: 17, color: "var(--accent-ink)" }}>+{markup}%</span>
               </div>
               <input type="range" min="0" max="100" step="5" value={markup} onChange={(e) => setMarkup(+e.target.value)} className="quiz-range" style={{ marginTop: 10 }}
-                aria-label="Наценка дизайнера, %" aria-valuetext={"+" + markup + "% — клиенту " + fmtMoney(client)} />
+                aria-label="Базовая наценка дизайнера, %" aria-valuetext={"+" + markup + "% — клиенту " + fmtMoney(client)} />
               <div style={{ display: "flex", justifyContent: "space-between", marginTop: 12, fontSize: 13.5, flexWrap: "wrap", gap: 8 }}>
                 <span style={{ color: "var(--muted)" }}>Себестоимость (фабрика): <b style={{ color: "var(--text)" }}>{fmtMoney(grand)}</b></span>
                 <span style={{ color: "var(--muted)" }}>Для клиента: <b style={{ color: "var(--accent-2)" }}>{fmtMoney(client)}</b></span>
               </div>
+
+              {/* свои наценки по разделам: пустое поле = раздел наследует базовую */}
+              <button onClick={() => setCatOpen((o) => !o)} aria-expanded={catOpen}
+                style={{ display: "inline-flex", alignItems: "center", gap: 7, marginTop: 14, fontSize: 13, fontWeight: 600, color: "var(--info)" }}>
+                <I.sliders size={14} />Наценка по разделам
+                {ovrCount > 0 && <span className="mono" style={{ fontSize: 11.5, color: "var(--accent-ink)" }}>· {ovrCount} {plural(ovrCount, ["своя", "свои", "своих"])}</span>}
+                <span aria-hidden="true" style={{ display: "inline-flex", transform: catOpen ? "rotate(180deg)" : "none", transition: "transform .2s var(--ease)" }}><Icon size={13} d="M4 9l8 7 8-7" /></span>
+              </button>
+              {catOpen && (
+                <div style={{ marginTop: 8, borderTop: "1px solid var(--hairline-2)" }}>
+                  {cats.map((cat) => {
+                    const ovr = catMarkup[cat] != null;
+                    return (
+                      <div key={cat} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 0", borderBottom: "1px solid var(--hairline-2)", fontSize: 13.5 }}>
+                        <span style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{cat}</span>
+                        <span className="mono rs-unit" style={{ fontSize: 12, color: "var(--spec-meta)", whiteSpace: "nowrap" }}>{fmtMoney(catCost[cat])}</span>
+                        <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
+                          <input className="fld" type="number" min="0" max="300" step="5" inputMode="numeric"
+                            value={ovr ? catMarkup[cat] : ""} placeholder={"+" + markup}
+                            aria-label={"Наценка на раздел «" + cat + "», % — пусто: базовая"}
+                            onChange={(e) => { const v = e.target.value; if (v === "") { setCatPct(cat, null); return; } const n = Math.max(0, Math.min(300, Math.round(+v))); if (!isNaN(n)) setCatPct(cat, n); }}
+                            style={{ width: 64, padding: "6px 8px", fontSize: 12.5, fontFamily: "var(--font-mono)", textAlign: "right" }} />
+                          <span className="mono" style={{ fontSize: 11.5, color: "var(--faint)" }}>%</span>
+                        </span>
+                        <span className="mono" style={{ width: 96, textAlign: "right", fontSize: 12.5, fontWeight: ovr ? 600 : 400, color: ovr ? "var(--accent-ink)" : "var(--muted)", whiteSpace: "nowrap" }}>
+                          {fmtMoney(catCli[cat])}
+                        </span>
+                        {ovr
+                          ? <button onClick={() => setCatPct(cat, null)} title="Вернуть базовую наценку" aria-label={"Вернуть разделу «" + cat + "» базовую наценку"} className="mono" style={{ flex: "none", fontSize: 11, color: "var(--muted)", border: "1px solid var(--hairline)", borderRadius: 99, padding: "4px 9px" }}>↺</button>
+                          : <span style={{ flex: "none", width: 31 }} aria-hidden="true" />}
+                      </div>
+                    );
+                  })}
+                  <div style={{ padding: "8px 0 2px", fontSize: 12, color: "var(--muted)", lineHeight: 1.5 }}>
+                    Пустое поле — раздел идёт по базовой наценке +{markup}%. Свои проценты действуют в смете и в выгрузках PDF и Excel.
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* комнаты — читаются как документ: шапка колонок + две цены построчно */}
             <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-              {rooms.map((r) => {
-                const kf = 1 + markup / 100;
-                return (
+              {rooms.map((r) => (
                 <div key={r.name} className="glass" style={{ borderRadius: "var(--r-lg)", padding: "16px 18px" }}>
                   <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 12, marginBottom: 8, flexWrap: "wrap" }}>
                     <span style={{ fontWeight: 800, fontFamily: "var(--font-display)", fontSize: 16.5 }}>{r.name}{r.area ? <span style={{ color: "var(--faint)", fontWeight: 500, fontSize: 13 }}> · {r.area} м²</span> : null}</span>
                     <span style={{ display: "flex", alignItems: "baseline", gap: 12 }}>
                       {mode === "work" && <span className="mono" style={{ fontSize: 13, color: "var(--muted)" }}>{fmtMoney(roomTotal(r))}</span>}
-                      <span className="mono" style={{ fontWeight: 600, fontSize: 15, color: mode === "work" ? "var(--accent-2)" : "var(--text)" }}>{fmtMoney(Math.round(roomTotal(r) * kf))}</span>
+                      <span className="mono" style={{ fontWeight: 600, fontSize: 15, color: mode === "work" ? "var(--accent-2)" : "var(--text)" }}>{fmtMoney(roomClient(r))}</span>
                     </span>
                   </div>
                   {/* шапка колонок */}
@@ -319,41 +364,35 @@ function RoomSpecOverlay({ data, onClose }) {
                         <span style={{ flex: 1, color: "var(--text)", lineHeight: 1.4 }}>{it.title}</span>
                         <span className="rs-cat" style={{ color: "var(--spec-meta)", whiteSpace: "nowrap", fontSize: 12, width: 78, textAlign: "right", overflow: "hidden", textOverflow: "ellipsis" }}>{it.cat}</span>
                         <span className="mono" style={{ color: "var(--spec-meta)", whiteSpace: "nowrap", width: 34, textAlign: "right", fontSize: 12.5 }}>×{qty}</span>
-                        <span className="mono rs-unit" style={{ color: "var(--spec-meta)", whiteSpace: "nowrap", width: 88, textAlign: "right", fontSize: 12.5 }}>{fmtMoney(mode === "client" ? Math.round(it.price * kf) : it.price)}</span>
+                        <span className="mono rs-unit" style={{ color: "var(--spec-meta)", whiteSpace: "nowrap", width: 88, textAlign: "right", fontSize: 12.5 }}>{fmtMoney(mode === "client" ? Math.round(it.price * (1 + pctOf(catOf(it)) / 100)) : it.price)}</span>
                         {mode === "work" && <span className="mono" style={{ color: "var(--muted)", whiteSpace: "nowrap", width: 100, textAlign: "right" }}>{fmtMoney(it.price * qty)}</span>}
-                        <span className="mono" style={{ fontWeight: 600, whiteSpace: "nowrap", width: 104, textAlign: "right", color: mode === "work" ? "var(--accent-2)" : "var(--text)" }}>{fmtMoney(Math.round(it.price * qty * kf))}</span>
+                        <span className="mono" style={{ fontWeight: 600, whiteSpace: "nowrap", width: 104, textAlign: "right", color: mode === "work" ? "var(--accent-2)" : "var(--text)" }}>{fmtMoney(lineClient(it))}</span>
                       </div>
                       );
                     })}
                   </div>
                 </div>
-                );
-              })}
+              ))}
             </div>
           </section>
 
           {/* итог (sticky) */}
           <div className="pd-cart">
             <div style={{ display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 11 }}>
-                <span style={{ width: 40, height: 40, borderRadius: 12, background: "var(--accent)", color: "var(--on-accent)", display: "grid", placeItems: "center", flex: "none" }}><I.layers size={20} /></span>
-                <div>
-                  {/* без aria-live: сумму при драге озвучивает aria-valuetext слайдера; live — только статус бюджета */}
-                  <div className="mono" style={{ fontWeight: 600, fontSize: 22, lineHeight: 1 }}>{fmtMoney(client)}</div>
-                  <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 3 }}>итого клиенту · {itemsCount} {plural(itemsCount, ["позиция", "позиции", "позиций"])} · <span role="status" aria-atomic="true">{over ? <span style={{ color: "var(--accent)" }}>закупка сверх бюджета</span> : <span style={{ color: "var(--accent-2)" }}>закупка в бюджете</span>}</span></div>
-                </div>
-              </div>
+              {/* без aria-live: сумму при драге озвучивает aria-valuetext слайдера; live — только статус бюджета */}
+              <SmetaTotal amount={client}
+                caption={<React.Fragment>итого клиенту · {itemsCount} {plural(itemsCount, ["позиция", "позиции", "позиций"])} · <span role="status" aria-atomic="true">{over ? <span style={{ color: "var(--accent-ink)" }}>закупка сверх бюджета</span> : <span style={{ color: "var(--accent-2)" }}>закупка в бюджете</span>}</span></React.Fragment>} />
               {mode === "work" && (
                 <span className="glass mono" style={{ padding: "7px 12px", borderRadius: 99, fontSize: 12, fontWeight: 500, color: "var(--muted)" }}>
-                  себестоимость {fmtMoney(grand)} · наценка +{markup}% = <b style={{ color: "var(--accent-2)", fontWeight: 600 }}>{fmtMoney(client - grand)}</b>
+                  себестоимость {fmtMoney(grand)} · наценка {ovrCount > 0 ? "≈ +" + effPct + "%" : "+" + markup + "%"} = <b style={{ color: "var(--accent-2)", fontWeight: 600 }}>{fmtMoney(client - grand)}</b>
                 </span>
               )}
               <div style={{ marginLeft: "auto", display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
-                <div className="spec-mode" role="group" aria-label="Режим выгрузки">
-                  <span className="spec-mode-cap">Выгрузка</span>
-                  <button type="button" className={mode === "work" ? "on" : ""} onClick={() => setMode("work")} title="Рабочая смета: себестоимость, наценка и цена клиента">Рабочая</button>
-                  <button type="button" className={mode === "client" ? "on" : ""} onClick={() => setMode("client")} title="Для клиента: только итоговая цена, без себестоимости и наценки">Для клиента</button>
-                </div>
+                <SegTabs className="spec-mode" cap="Выгрузка" ariaLabel="Режим выгрузки" value={mode} onChange={setMode}
+                  items={[
+                    { id: "work", label: "Рабочая", title: "Рабочая смета: себестоимость, наценка и цена клиента" },
+                    { id: "client", label: "Для клиента", title: "Для клиента: только итоговая цена, без себестоимости и наценки" },
+                  ]} />
                 <button className="btn btn-ghost" style={{ padding: "11px 16px" }} onClick={exportXLSX}><I.grid size={16} />Выгрузить Excel</button>
                 <button className="btn btn-ghost" style={{ padding: "11px 16px" }} onClick={exportPDF}><I.layers size={16} />Выгрузить PDF</button>
                 <button className="btn btn-primary" style={{ padding: "11px 18px" }} onClick={saveRoom}>{roomSaved ? <React.Fragment><I.check size={16} />Сохранено</React.Fragment> : <React.Fragment><I.check size={16} />Сохранить смету</React.Fragment>}</button>
@@ -503,7 +542,7 @@ function StylePicker({ data, styleId, onPick, sref, myStyles }) {
       <p style={{ color: "var(--muted)", fontSize: 14.5, marginTop: 4, marginBottom: 18, maxWidth: 720 }}>
         AI подобрал стили под пропорции, свет и назначение помещения. Выберите направление — палитра и акценты обновятся, а рядом видно ориентировочное влияние на бюджет.
       </p>
-      <div className="pd-styles" style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 14 }}>
+      <div className="pd-styles" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: 14 }}>
         {data.styles.map((s) => <StyleOptionCard key={s.id} s={s} on={s.id === styleId} onPick={onPick} />)}
       </div>
 
@@ -514,7 +553,7 @@ function StylePicker({ data, styleId, onPick, sref, myStyles }) {
             <span style={{ fontWeight: 700, fontSize: 14.5 }}>Мои стили</span>
             <span style={{ fontSize: 12.5, color: "var(--faint)" }}>· из библиотеки «Мои стили»</span>
           </div>
-          <div className="pd-styles" style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 14 }}>
+          <div className="pd-styles" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: 14 }}>
             {mine.map((s) => <StyleOptionCard key={s.id} s={s} on={s.id === styleId} onPick={onPick} />)}
           </div>
         </React.Fragment>
@@ -532,7 +571,7 @@ function LayoutPicker({ layout, onPick }) {
       <p style={{ color: "var(--muted)", fontSize: 14.5, marginTop: 4, marginBottom: 18, maxWidth: 720 }}>
         AI предложил несколько схем расстановки под геометрию комнаты. Выберите раскладку — обновятся метки на визуализации «до/после» и акценты сцены.
       </p>
-      <div className="pd-styles" style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 14 }}>
+      <div className="pd-styles" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: 14 }}>
         {LAYOUTS.map((l) => {
           const on = l.id === layout.id;
           return (
@@ -676,7 +715,7 @@ function NormsCheck({ checks }) {
       <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
         <h3 className="pd-h" style={{ marginBottom: 0 }}>Эргономика расстановки</h3>
         <span className="glass" style={{ display: "inline-flex", alignItems: "center", gap: 7, padding: "6px 12px", borderRadius: 99, fontSize: 12.5, fontWeight: 700,
-          color: c.ok ? "var(--accent-2)" : "var(--accent)", borderColor: c.ok ? "rgba(94,107,91,.4)" : "rgba(194,90,54,.4)" }}>
+          color: c.ok ? "var(--accent-2)" : "var(--accent)", borderColor: c.ok ? "rgba(94,107,91,.4)" : "rgba(183,80,44,.4)" }}>
           <span style={{ width: 8, height: 8, borderRadius: "50%", background: c.ok ? "var(--accent-2)" : "var(--accent)", flex: "none" }} />
           {c.ok ? "Все нормы соблюдены" : c.warns + " " + plural(c.warns, ["замечание", "замечания", "замечаний"])}
         </span>
@@ -714,13 +753,8 @@ function BudgetPicker({ data, tier, onTier, total, onOptimize, sref }) {
         Тариф меняет наполнение сметы целиком — AI пересобирает подбор под выбранный уровень. Отдельные предметы потом можно заменить вручную ниже.
       </p>
 
-      <div className="pd-seg" style={{ maxWidth: 520 }} role="tablist" aria-label="Уровень бюджета">
-        {data.budgets.map((b) => (
-          <button key={b.id} className={b.id === tier ? "on" : ""} onClick={() => onTier(b.id)} role="tab" aria-selected={b.id === tier}>
-            {b.name}{b.recommended && <span className="sn">рекомендация AI</span>}
-          </button>
-        ))}
-      </div>
+      <SegTabs className="pd-seg" style={{ maxWidth: 520 }} ariaLabel="Уровень бюджета" value={tier} onChange={onTier}
+        items={data.budgets.map((b) => ({ id: b.id, label: b.name, sub: b.recommended ? "рекомендация AI" : null }))} />
       <div style={{ fontSize: 13.5, color: "var(--muted)", marginTop: 12 }}>{cur.note}</div>
 
       <div className="glass" style={{ borderRadius: "var(--r-lg)", padding: "18px 20px", marginTop: 18, maxWidth: 640 }}>
@@ -728,7 +762,7 @@ function BudgetPicker({ data, tier, onTier, total, onOptimize, sref }) {
           <span style={{ fontSize: 14, color: "var(--muted)" }}>Подобрано на</span>
           <span className="mono" style={{ fontSize: 22, fontWeight: 600 }}>{fmtMoney(total)} <span style={{ fontSize: 13, color: "var(--spec-meta)", fontWeight: 400 }}>из {fmtMoney(budget)}</span></span>
         </div>
-        <div className="budget-bar"><i style={{ width: pct + "%", background: over ? "linear-gradient(90deg,#C25A36,#ff7849)" : "linear-gradient(90deg,var(--accent-2),#39b88c)" }} /></div>
+        <div className="budget-bar"><i style={{ width: pct + "%", background: over ? "linear-gradient(90deg,#B7502C,#ff7849)" : "linear-gradient(90deg,var(--accent-2),#39b88c)" }} /></div>
         <div style={{ display: "flex", justifyContent: "space-between", marginTop: 10, fontSize: 13 }}>
           <span style={{ color: over ? "var(--accent)" : "var(--accent-2)", fontWeight: 700 }}>
             {over ? `Превышение на ${fmtMoney(total - budget)}` : `Остаток ${fmtMoney(budget - total)}`}
@@ -856,13 +890,8 @@ function CartBar({ items, total, oldTotal, budget, style, onExport, onSave, save
   return (
     <div className="pd-cart">
       <div style={{ display: "flex", alignItems: "center", gap: 18, flexWrap: "wrap" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 11 }}>
-          <span style={{ width: 40, height: 40, borderRadius: 12, background: "var(--accent)", color: "var(--on-accent)", display: "grid", placeItems: "center", flex: "none" }}><I.layers size={20} /></span>
-          <div>
-            <div className="mono" style={{ fontWeight: 600, fontSize: 21, lineHeight: 1 }}>{fmtMoney(total)}</div>
-            <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 3 }}>{items.length} {plural(items.length, ["позиция", "позиции", "позиций"])} · {over ? <span style={{ color: "var(--accent)" }}>сверх бюджета</span> : <span style={{ color: "var(--accent-2)" }}>в рамках бюджета</span>}</div>
-          </div>
-        </div>
+        <SmetaTotal amount={total} size={21}
+          caption={<React.Fragment>{items.length} {plural(items.length, ["позиция", "позиции", "позиций"])} · {over ? <span style={{ color: "var(--accent-ink)" }}>сверх бюджета</span> : <span style={{ color: "var(--accent-2)" }}>в рамках бюджета</span>}</React.Fragment>} />
         {style && <span className="glass" style={{ display: "inline-flex", alignItems: "center", gap: 7, padding: "7px 12px", borderRadius: 99, fontSize: 12.5, fontWeight: 700 }}>
           <span style={{ width: 9, height: 9, borderRadius: 3, background: style.palette[0], flex: "none" }} />{style.name}
         </span>}
