@@ -248,11 +248,13 @@ function RoomSpecOverlay({ data, onClose }) {
     return () => document.removeEventListener("keydown", onKey);
   }, []);
   const rooms = data.rooms || [];
-  // наценка: базовая + необязательный оверрайд по разделу; клиентские суммы всегда складываются из округлённых строк
+  // наценка: базовая + необязательный оверрайд по разделу. Округляется ЦЕНА ЗА ШТУКУ,
+  // сумма строки = цена × кол-во — тогда колонки документа бьются арифметически (UI = PDF = Excel)
   const catOf = (it) => it.cat || "Прочее";
   const pctOf = (cat) => (catMarkup[cat] != null ? catMarkup[cat] : markup);
   const lineCost = (it) => it.price * (it.qty || 1);
-  const lineClient = (it) => Math.round(lineCost(it) * (1 + pctOf(catOf(it)) / 100));
+  const unitClient = (it) => Math.round(it.price * (1 + pctOf(catOf(it)) / 100));
+  const lineClient = (it) => unitClient(it) * (it.qty || 1);
   const roomTotal = (r) => r.items.reduce((s, it) => s + lineCost(it), 0);
   const roomClient = (r) => r.items.reduce((s, it) => s + lineClient(it), 0);
   const grand = rooms.reduce((s, r) => s + roomTotal(r), 0);
@@ -316,6 +318,7 @@ function RoomSpecOverlay({ data, onClose }) {
                           <input className="fld" type="number" min="0" max="300" step="5" inputMode="numeric"
                             value={ovr ? catMarkup[cat] : ""} placeholder={"+" + markup}
                             aria-label={"Наценка на раздел «" + cat + "», % — пусто: базовая"}
+                            onKeyDown={(e) => { if (["e", "E", "+", "-", ".", ","].includes(e.key)) e.preventDefault(); }}
                             onChange={(e) => { const v = e.target.value; if (v === "") { setCatPct(cat, null); return; } const n = Math.max(0, Math.min(300, Math.round(+v))); if (!isNaN(n)) setCatPct(cat, n); }}
                             style={{ width: 64, padding: "6px 8px", fontSize: 12.5, fontFamily: "var(--font-mono)", textAlign: "right" }} />
                           <span className="mono" style={{ fontSize: 11.5, color: "var(--faint)" }}>%</span>
@@ -362,9 +365,9 @@ function RoomSpecOverlay({ data, onClose }) {
                       return (
                       <div key={i} style={{ display: "flex", alignItems: "baseline", gap: 10, padding: "7px 0", borderTop: i ? "1px solid var(--hairline-2)" : "none", fontSize: 13.5 }}>
                         <span style={{ flex: 1, color: "var(--text)", lineHeight: 1.4 }}>{it.title}</span>
-                        <span className="rs-cat" style={{ color: "var(--spec-meta)", whiteSpace: "nowrap", fontSize: 12, width: 78, textAlign: "right", overflow: "hidden", textOverflow: "ellipsis" }}>{it.cat}</span>
+                        <span className="rs-cat" style={{ color: "var(--spec-meta)", whiteSpace: "nowrap", fontSize: 12, width: 78, textAlign: "right", overflow: "hidden", textOverflow: "ellipsis" }}>{catOf(it)}</span>
                         <span className="mono" style={{ color: "var(--spec-meta)", whiteSpace: "nowrap", width: 34, textAlign: "right", fontSize: 12.5 }}>×{qty}</span>
-                        <span className="mono rs-unit" style={{ color: "var(--spec-meta)", whiteSpace: "nowrap", width: 88, textAlign: "right", fontSize: 12.5 }}>{fmtMoney(mode === "client" ? Math.round(it.price * (1 + pctOf(catOf(it)) / 100)) : it.price)}</span>
+                        <span className="mono rs-unit" style={{ color: "var(--spec-meta)", whiteSpace: "nowrap", width: 88, textAlign: "right", fontSize: 12.5 }}>{fmtMoney(mode === "client" ? unitClient(it) : it.price)}</span>
                         {mode === "work" && <span className="mono" style={{ color: "var(--muted)", whiteSpace: "nowrap", width: 100, textAlign: "right" }}>{fmtMoney(it.price * qty)}</span>}
                         <span className="mono" style={{ fontWeight: 600, whiteSpace: "nowrap", width: 104, textAlign: "right", color: mode === "work" ? "var(--accent-2)" : "var(--text)" }}>{fmtMoney(lineClient(it))}</span>
                       </div>

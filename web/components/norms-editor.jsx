@@ -149,7 +149,7 @@ function NormsSettings() {
         </label>
         <div style={{ flex: 1 }} />
         <button onClick={() => setOnlyMod((v) => !v)} aria-pressed={onlyMod} style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "8px 14px", borderRadius: 99, fontSize: 13, fontWeight: 700,
-          border: "1px solid " + (onlyMod ? "var(--accent)" : "var(--hairline)"), background: onlyMod ? "rgba(183,80,44,.08)" : "var(--surface)", color: onlyMod ? "var(--accent)" : "var(--muted)" }}>
+          border: "1px solid " + (onlyMod ? "var(--accent)" : "var(--hairline)"), background: onlyMod ? "rgba(183,80,44,.08)" : "var(--surface)", color: onlyMod ? "var(--accent-ink)" : "var(--muted)" }}>
           <span style={{ width: 8, height: 8, borderRadius: "50%", background: "currentColor" }} />Только изменённые
         </button>
       </div>
@@ -250,7 +250,7 @@ function NormRow({ def, value, modified, enabled, onChange, onReset, onToggle })
         <div style={{ fontWeight: 600, fontSize: 15, display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
           {def.label}
           {modified
-            ? <span style={{ fontSize: 11, fontWeight: 600, padding: "2px 9px", borderRadius: 99, background: "rgba(183,80,44,.14)", color: "var(--accent)" }}>изменено</span>
+            ? <span style={{ fontSize: 11, fontWeight: 600, padding: "2px 9px", borderRadius: 99, background: "rgba(183,80,44,.14)", color: "var(--accent-ink)" }}>изменено</span>
             : <span style={{ fontSize: 11, fontWeight: 600, padding: "2px 9px", borderRadius: 99, background: "var(--surface-2)", color: "var(--faint)" }}>по канону</span>}
         </div>
         <div style={{ color: "var(--muted)", fontSize: 13, marginTop: 3 }}>{def.hint}</div>

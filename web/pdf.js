@@ -95,7 +95,8 @@
     const clientMode = mode === "client";
     const pctOf = (it) => { const c = it.cat || "Прочее"; return catMarkupPct && catMarkupPct[c] != null ? catMarkupPct[c] : (markupPct || 0); };
     const lineCost = (it) => it.price * (it.qty || 1);
-    const lineClient = (it) => Math.round(lineCost(it) * (1 + pctOf(it) / 100));   // клиентские суммы — из округлённых строк, как в UI
+    const unitClient = (it) => Math.round(it.price * (1 + pctOf(it) / 100));       // округляется цена/шт,
+    const lineClient = (it) => unitClient(it) * (it.qty || 1);                     // сумма = цена × кол-во — как в UI, документ бьётся
     const hasCatMk = !!catMarkupPct && Object.keys(catMarkupPct).length > 0;
     const content = [
       { columns: [ { text: "AIVibe", style: "logo" }, { text: "Смета-комплектация", alignment: "right", style: "muted", margin: [0, 6, 0, 0] } ] },
@@ -110,7 +111,7 @@
       content.push({
         table: { headerRows: 0, widths: ["*", 60, 32, "auto"], body: r.items.map((it) => [
           it.title,
-          { text: it.cat || "", color: "#8A8088", fontSize: 9 },
+          { text: it.cat || "Прочее", color: "#8A8088", fontSize: 9 },
           { text: "×" + (it.qty || 1), alignment: "right", fontSize: 9, color: "#8A8088" },
           { text: money(clientMode ? lineClient(it) : lineCost(it)), alignment: "right" },
         ]) },

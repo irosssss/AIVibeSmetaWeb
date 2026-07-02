@@ -41,8 +41,8 @@
     const pctOf = (it) => (catMarkupPct && catMarkupPct[catOf(it)] != null ? catMarkupPct[catOf(it)] : (markupPct || 0));
     const hasCatMk = !!catMarkupPct && Object.keys(catMarkupPct).length > 0;
     const lineCost = (it) => it.price * (it.qty || 1);
-    const lineClient = (it) => Math.round(lineCost(it) * (1 + pctOf(it) / 100));    // клиентские суммы — из округлённых строк, как в UI
-    const unitClient = (it) => Math.round(it.price * (1 + pctOf(it) / 100));
+    const unitClient = (it) => Math.round(it.price * (1 + pctOf(it) / 100));        // округляется цена/шт,
+    const lineClient = (it) => unitClient(it) * (it.qty || 1);                      // сумма = цена × кол-во — колонки бьются арифметически
     const roomCost = (r) => r.items.reduce((s, it) => s + lineCost(it), 0);
     const roomClient = (r) => r.items.reduce((s, it) => s + lineClient(it), 0);
     const roomLabel = (r) => r.name + (r.area ? "  ·  " + r.area + " м²" : "");
@@ -104,8 +104,8 @@
     rooms.forEach((r) => r.items.forEach((it) => {
       const lc = lineCost(it);
       all.push(clientMode
-        ? [++n, r.name, it.cat || "", it.title, it.qty || 1, unitClient(it), lineClient(it)]
-        : [++n, r.name, it.cat || "", it.title, it.qty || 1, it.price, lc, unitClient(it), lineClient(it)]);
+        ? [++n, r.name, catOf(it), it.title, it.qty || 1, unitClient(it), lineClient(it)]
+        : [++n, r.name, catOf(it), it.title, it.qty || 1, it.price, lc, unitClient(it), lineClient(it)]);
     }));
     all.push(clientMode ? ["", "", "", "Итого", "", "", clientTotal] : ["", "", "", "Итого", "", "", grand, "", clientTotal]);
     const wsA = XLSX.utils.aoa_to_sheet(all);
@@ -124,8 +124,8 @@
       r.items.forEach((it) => {
         const lc = lineCost(it);
         rows.push(clientMode
-          ? [++m, it.cat || "", it.title, it.qty || 1, unitClient(it), lineClient(it)]
-          : [++m, it.cat || "", it.title, it.qty || 1, it.price, lc, unitClient(it), lineClient(it)]);
+          ? [++m, catOf(it), it.title, it.qty || 1, unitClient(it), lineClient(it)]
+          : [++m, catOf(it), it.title, it.qty || 1, it.price, lc, unitClient(it), lineClient(it)]);
       });
       rows.push(clientMode ? ["", "", "Итого по комнате", "", "", roomClient(r)] : ["", "", "Итого по комнате", "", "", roomCost(r), "", roomClient(r)]);
       const ws = XLSX.utils.aoa_to_sheet(rows);

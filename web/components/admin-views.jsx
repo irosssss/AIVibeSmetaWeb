@@ -49,7 +49,7 @@ function NewsAdmin() {
               </div>
             </div>
             <span style={{ color: "var(--muted)", fontSize: 13.5 }}>{n.category}</span>
-            <button onClick={() => toggleStatus(n)} className="status-pill" style={{ background: n.status === "published" ? "rgba(94,107,91,.16)" : "var(--glass-2)", color: n.status === "published" ? "var(--accent-2)" : "var(--muted)", borderColor: n.status === "published" ? "rgba(94,107,91,.34)" : "var(--hairline)" }}>
+            <button onClick={() => toggleStatus(n)} className="status-pill" style={{ background: n.status === "published" ? "rgba(94,107,91,.16)" : "var(--glass-2)", color: n.status === "published" ? "var(--accent-2-ink)" : "var(--muted)", borderColor: n.status === "published" ? "rgba(94,107,91,.34)" : "var(--hairline)" }}>
               <span style={{ width: 7, height: 7, borderRadius: "50%", background: n.status === "published" ? "var(--accent-2)" : "var(--faint)" }} />
               {n.status === "published" ? "Опубликовано" : "Черновик"}
             </button>
@@ -152,10 +152,10 @@ function UsersAdmin() {
               {u.provider === "yandex" ? "Яндекс ID" : "VK ID"}
             </span>
             <span>{u.role === "admin"
-              ? <span className="status-pill" style={{ background: "rgba(183,80,44,.16)", color: "var(--accent)", borderColor: "rgba(183,80,44,.32)" }}>Админ</span>
+              ? <span className="status-pill" style={{ background: "rgba(183,80,44,.16)", color: "var(--accent-ink)", borderColor: "rgba(183,80,44,.32)" }}>Админ</span>
               : <span style={{ fontSize: 13.5, color: "var(--muted)" }}>Пользователь</span>}</span>
             <span style={{ fontSize: 13.5, color: "var(--muted)" }}>{u.projects}</span>
-            <span><span className="status-pill" style={{ background: u.status === "active" ? "rgba(94,107,91,.16)" : "rgba(183,80,44,.14)", color: u.status === "active" ? "var(--accent-2)" : "var(--accent)", borderColor: u.status === "active" ? "rgba(94,107,91,.34)" : "rgba(183,80,44,.3)" }}>
+            <span><span className="status-pill" style={{ background: u.status === "active" ? "rgba(94,107,91,.16)" : "rgba(183,80,44,.14)", color: u.status === "active" ? "var(--accent-2-ink)" : "var(--accent-ink)", borderColor: u.status === "active" ? "rgba(94,107,91,.34)" : "rgba(183,80,44,.3)" }}>
               <span style={{ width: 7, height: 7, borderRadius: "50%", background: u.status === "active" ? "var(--accent-2)" : "var(--accent)" }} />
               {u.status === "active" ? "Активен" : "Заблокирован"}</span></span>
             <div style={{ display: "flex", justifyContent: "flex-end" }}>

@@ -63,7 +63,7 @@ function Profile({ user }) {
                 <span style={{ width: 8, height: 8, borderRadius: "50%", background: user.provider === "yandex" ? "#FC3F1D" : "#0077FF" }} />
                 {user.provider === "yandex" ? "Яндекс ID" : "VK ID"}
               </span>
-              {user.role === "admin" && <span style={{ padding: "6px 13px", borderRadius: 99, fontSize: 12.5, fontWeight: 700, background: "rgba(183,80,44,.16)", color: "var(--accent)", border: "1px solid rgba(183,80,44,.32)" }}>Администратор</span>}
+              {user.role === "admin" && <span style={{ padding: "6px 13px", borderRadius: 99, fontSize: 12.5, fontWeight: 700, background: "rgba(183,80,44,.16)", color: "var(--accent-ink)", border: "1px solid rgba(183,80,44,.32)" }}>Администратор</span>}
             </div>
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: 14, marginTop: 22 }}>

@@ -195,7 +195,7 @@ select.fld { appearance: none; cursor: pointer;
   background: rgba(251,248,242,.9); backdrop-filter: blur(16px); border-bottom: 1px solid var(--hairline); }
 .pd-head .pd-title { min-width: 0; }
 .pd-head .pd-title h2 { font-family: var(--font-display); font-weight: 800; font-size: clamp(16px,2.2vw,21px); letter-spacing: -0.02em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.pd-head .pd-sub { color: var(--muted); font-size: 12.5px; margin-top: 1px; }
+.pd-head .pd-sub { color: var(--muted); font-size: 12.5px; margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }  /* на узкой шапке — многоточие, не 5 строк в 76px */
 
 .pd-body { flex: 1; min-height: 0; display: grid; grid-template-columns: 1fr 384px; }
 .pd-main { overflow-y: auto; overflow-x: hidden; scroll-behavior: smooth; }
@@ -214,7 +214,8 @@ select.fld { appearance: none; cursor: pointer;
 .plan-box .pl-dim { position: absolute; font-size: 11px; color: var(--faint); font-weight: 600; }
 .plan-box .pl-sun { position: absolute; color: var(--accent); opacity: .9; }
 
-.metric-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1px; background: var(--hairline); border: 1px solid var(--hairline); border-radius: var(--r-lg); overflow: hidden; }
+/* фикс-3 колонки: «бордюры» тут — трюк gap+фон, auto-fit оставлял пустые ячейки сплошным hairline-блоком при 4–5 колонках */
+.metric-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 1px; background: var(--hairline); border: 1px solid var(--hairline); border-radius: var(--r-lg); overflow: hidden; }
 .metric-grid .m { background: var(--surface); padding: 15px 16px; }
 .metric-grid .m .k { font-size: 12px; color: var(--muted); }
 .metric-grid .m .v { font-family: var(--font-display); font-weight: 700; font-size: 19px; margin-top: 3px; }
@@ -257,7 +258,7 @@ select.fld { appearance: none; cursor: pointer;
 
 /* ---- Switch — единый переключатель вкл/выкл (олива = включено) ---- */
 .sw-toggle { width: 46px; height: 26px; border-radius: 99px; padding: 3px; flex: none;
-  border: 1px solid var(--hairline); background: var(--surface-2); transition: background .2s, border-color .2s; }
+  border: 1px solid rgba(46,42,38,.55); background: var(--surface-2); transition: background .2s, border-color .2s; }  /* off-бордер ≥3:1 (WCAG 1.4.11) — иначе выключенный тумблер сливается с карточкой */
 .sw-toggle .knob { display: block; width: 18px; height: 18px; border-radius: 50%; background: #fff;
   box-shadow: 0 1px 3px rgba(46,42,38,.3); transition: transform .2s; }
 .sw-toggle.on { background: var(--accent-2); border-color: var(--accent-2); }
@@ -289,8 +290,8 @@ select.fld { appearance: none; cursor: pointer;
 
 .tier-tag { font-size: 10px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; padding: 3px 7px; border-radius: 5px; }
 .tier-tag.eco { background: rgba(62,74,89,.16); color: var(--info); }
-.tier-tag.opt { background: rgba(94,107,91,.16); color: var(--accent-2); }
-.tier-tag.prem { background: rgba(183,80,44,.16); color: var(--accent); }
+.tier-tag.opt { background: rgba(94,107,91,.16); color: var(--accent-2-ink); }
+.tier-tag.prem { background: rgba(183,80,44,.16); color: var(--accent-ink); }
 
 /* — корзина-бар — */
 .pd-cart { position: sticky; bottom: 0; z-index: 5; background: rgba(251,248,242,.95); backdrop-filter: blur(16px); border-top: 1px solid var(--hairline); padding: 14px clamp(16px,3vw,40px); }

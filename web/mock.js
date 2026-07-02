@@ -18,7 +18,7 @@
     session: null, // { user } | null
 
     users: [
-      { id: "u_1", name: "Ирина Соколова", email: "irina@aivibe.ru", role: "admin", provider: "yandex", status: "active", joined: "2026-01-12", projects: 14, avatar: "#E2552B" },
+      { id: "u_1", name: "Ирина Соколова", email: "irina@aivibe.ru", role: "admin", provider: "yandex", status: "active", joined: "2026-01-12", projects: 14, avatar: "#B7502C" },
       { id: "u_2", name: "Максим Орлов", email: "max.orlov@vk.com", role: "user", provider: "vk", status: "active", joined: "2026-02-03", projects: 6, avatar: "#6B9BE8" },
       { id: "u_3", name: "Алина Гусева", email: "alina.g@yandex.ru", role: "user", provider: "yandex", status: "active", joined: "2026-02-21", projects: 9, avatar: "#1F8A6B" },
       { id: "u_4", name: "Дмитрий Лебедев", email: "d.lebedev@vk.com", role: "user", provider: "vk", status: "blocked", joined: "2026-03-01", projects: 2, avatar: "#A6B24E" },
@@ -97,7 +97,7 @@
     const base = provider === "yandex"
       ? { id: "u_1", name: "Ирина Соколова", email: "irina@aivibe.ru", role: "admin" }
       : { id: "u_2", name: "Максим Орлов", email: "max.orlov@vk.com", role: "user" };
-    db.session = { user: { ...base, provider, avatar: provider === "yandex" ? "#E2552B" : "#6B9BE8" } };
+    db.session = { user: { ...base, provider, avatar: provider === "yandex" ? "#B7502C" : "#6B9BE8" } };
     LS.set("session", db.session);
     return clone(db.session);
   }

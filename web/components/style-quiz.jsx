@@ -72,6 +72,7 @@ function StyleQuiz({ onClose, onDone }) {
   const isBudget = step === QUIZ.length;
   const isResult = step === total;
 
+  const advT = React.useRef(null);   // дебаунс авто-перехода: быстрые клики меняют выбор, переход один
   const pick = (q, opt) => {
     if (q.type === "chips") {
       setAns((a) => {
@@ -81,7 +82,9 @@ function StyleQuiz({ onClose, onDone }) {
       });
     } else {
       setAns((a) => ({ ...a, [q.key]: opt.v }));
-      setTimeout(() => setStep((s) => s + 1), 220);   // авто-переход для одиночного выбора
+      // без дебаунса и клампа два быстрых клика = два таймера → step уезжал за total и ронял рендер
+      clearTimeout(advT.current);
+      advT.current = setTimeout(() => setStep((s) => Math.min(s + 1, QUIZ.length)), 220);   // авто-переход для одиночного выбора
     }
   };
 
@@ -108,7 +111,7 @@ function StyleQuiz({ onClose, onDone }) {
   const answered = curQ ? (curQ.type === "chips" ? (ans[curQ.key] || []).length > 0 : !!ans[curQ.key]) : true;
   const progress = isResult ? 100 : Math.round((step / total) * 100);
 
-  const next = () => setStep((s) => s + 1);
+  const next = () => setStep((s) => Math.min(s + 1, total));   // двойной клик «Показать результат» не уводит за результат
   const back = () => setStep((s) => Math.max(0, s - 1));
 
   // Esc закрывает квиз (управляемый поп-ап — закон Якоба).
@@ -154,7 +157,7 @@ function StyleQuiz({ onClose, onDone }) {
           ) : isBudget ? (
             <button className="btn btn-primary" onClick={next}>Показать результат<I.arrow size={16} /></button>
           ) : (
-            curQ.type === "chips" && <button className="btn btn-primary" onClick={next} disabled={!answered} style={{ opacity: answered ? 1 : 0.5, pointerEvents: answered ? "auto" : "none" }}>Далее<I.arrow size={16} /></button>
+            curQ && curQ.type === "chips" && <button className="btn btn-primary" onClick={next} disabled={!answered} style={{ opacity: answered ? 1 : 0.5, pointerEvents: answered ? "auto" : "none" }}>Далее<I.arrow size={16} /></button>
           )}
         </div>
       </div>
