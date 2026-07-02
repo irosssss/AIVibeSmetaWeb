@@ -292,6 +292,8 @@ function Modal({ onClose, label, maxWidth, children }) {
         const f = [...card.querySelectorAll("button, input, select, textarea, a[href], [tabindex]:not([tabindex='-1'])")].filter((el) => !el.disabled && el.offsetParent !== null);
         if (!f.length) return;
         const firstF = f[0], lastF = f[f.length - 1];
+        // фокус утёк наружу (например, на body) — затягиваем обратно в модалку
+        if (!card.contains(document.activeElement)) { e.preventDefault(); firstF.focus(); return; }
         if (e.shiftKey && document.activeElement === firstF) { e.preventDefault(); lastF.focus(); }
         else if (!e.shiftKey && document.activeElement === lastF) { e.preventDefault(); firstF.focus(); }
       }

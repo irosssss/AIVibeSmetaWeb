@@ -123,9 +123,14 @@ function ProjectDetail({ id, onClose, initialStyle }) {
     AIVibeAPI.styles.list().then((list) => setMyStyles(list.filter((s) => s.owner !== null)));
   }, []);
 
-  // Esc закрывает оверлей (диалоги/модалки перехватывают Esc в capture-фазе раньше)
+  // Esc закрывает оверлей (диалоги/модалки перехватывают Esc в capture-фазе раньше;
+  // из полей ввода — чат AI-дизайнера — Esc не закрывает, а отдаёт фокус)
   usePDE(() => {
-    const onKey = (e) => { if (e.key === "Escape") onClose(); };
+    const onKey = (e) => {
+      if (e.key !== "Escape") return;
+      if (/^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName)) { e.target.blur(); return; }
+      onClose();
+    };
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
   }, []);
@@ -226,9 +231,14 @@ function RoomSpecOverlay({ data, onClose }) {
   const [roomSaved, setRoomSaved] = usePD(false);
   const saveRoom = () => { if (!data.id) { setRoomSaved(true); setTimeout(() => setRoomSaved(false), 1700); return; } AIVibeAPI.projects.update(data.id, { markupPct: markup }).then(() => { setRoomSaved(true); setTimeout(() => setRoomSaved(false), 1700); }); };
 
-  // Esc закрывает смету-оверлей (когда открыта напрямую, напр. из импорта Excel)
+  // Esc закрывает смету-оверлей (когда открыта напрямую, напр. из импорта Excel);
+  // из полей ввода Esc не закрывает, а отдаёт фокус
   usePDE(() => {
-    const onKey = (e) => { if (e.key === "Escape") onClose(); };
+    const onKey = (e) => {
+      if (e.key !== "Escape") return;
+      if (/^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName)) { e.target.blur(); return; }
+      onClose();
+    };
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
   }, []);

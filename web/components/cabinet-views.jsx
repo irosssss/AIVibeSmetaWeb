@@ -490,7 +490,7 @@ function Favorites() {
           {shown && shown.length === 0 && (
             <div className="glass" style={{ borderRadius: "var(--r-lg)", padding: 48, textAlign: "center", color: "var(--muted)" }}>
               <I.heart size={28} style={{ color: "var(--faint)" }} />
-              <div style={{ marginTop: 10, fontSize: 14.5 }}>{room === "Все" ? "В избранном пока пусто — добавляйте предметы сердечком из каталога проекта." : "В комнате «" + room + "» пока нет избранного."}</div>
+              <div style={{ marginTop: 10, fontSize: 14.5 }}>{room === "Все" ? "В избранном пока пусто. Сохранение предметов из каталога появится вместе с реальным каталогом фабрик." : "В комнате «" + room + "» пока нет избранного."}</div>
               {room !== "Все" && <button className="btn btn-ghost" style={{ marginTop: 14 }} onClick={() => setRoom("Все")}>Показать все комнаты</button>}
             </div>
           )}
@@ -532,12 +532,19 @@ function Favorites() {
             </div>
           </div>
           <button className="btn btn-primary btn-block" style={{ marginTop: 16 }} disabled={!shown || shown.length === 0} onClick={() => setPickOpen(true)}><I.layers size={16} />Перенести в проект</button>
-          <button className="btn btn-ghost btn-block" style={{ marginTop: 10 }} onClick={() => { try { navigator.clipboard && navigator.clipboard.writeText(location.href); } catch (e) {} toast("Ссылка на доску скопирована"); }}>Поделиться доской</button>
+          <button className="btn btn-ghost btn-block" style={{ marginTop: 10 }} onClick={() => {
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+              navigator.clipboard.writeText(location.href).then(
+                () => toast("Ссылка на доску скопирована"),
+                () => toast("Не удалось скопировать ссылку — скопируйте адрес из строки браузера.", "warn", 5000)
+              );
+            } else toast("Буфер обмена недоступен — скопируйте адрес из строки браузера.", "warn", 5000);
+          }}>Поделиться доской</button>
         </div>
       </div>
 
       {pickOpen && <FavTransferModal count={shown ? shown.length : 0} total={total} onClose={() => setPickOpen(false)}
-        onDone={(p) => { const n = shown ? shown.length : 0; setPickOpen(false); toast(n + " " + plural(n, ["позиция перенесена", "позиции перенесены", "позиций перенесено"]) + " в проект «" + p.name + "» — смета обновлена."); }} />}
+        onDone={(p) => { const n = shown ? shown.length : 0; setPickOpen(false); toast(n + " " + plural(n, ["позиция перенесена", "позиции перенесены", "позиций перенесено"]) + " в проект «" + p.name + "»."); }} />}
     </div>
   );
 }

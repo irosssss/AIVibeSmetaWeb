@@ -21,7 +21,7 @@ function StylesLibrary() {
   const duplicate = async (id) => { const c = await AIVibeAPI.styles.duplicate(id); await reload(); if (c) setEdit(c); };
   const remove = async (id) => {
     const s = (rows || []).find((x) => x.id === id);
-    const ok = await confirmDialog({ title: "Удалить стиль?", text: "«" + ((s && s.name) || "Стиль") + "» исчезнет из библиотеки. Сметы, где он применён, сохранят свои цены.", confirmLabel: "Удалить стиль" });
+    const ok = await confirmDialog({ title: "Удалить стиль?", text: "«" + ((s && s.name) || "Стиль") + "» исчезнет из библиотеки. Проекты, где он был выбран, вернутся к базовому стилю — цены пересчитаются.", confirmLabel: "Удалить стиль" });
     if (!ok) return;
     await AIVibeAPI.styles.remove(id); reload(); toast("Стиль удалён");
   };
