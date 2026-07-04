@@ -42,7 +42,14 @@ const N_PLAN = [
   { x: 12, y: 80, w: 52, h: 8,  k: "media",  label: "ТВ-зона" },
   { x: 74, y: 30, w: 14, h: 26, k: "accent", label: "Кресло" },
 ];
-const N_COL = { seat: "#B7502C", table: "#C98A2E", media: "#3E4A59", accent: "#5E6B5B", rug: "rgba(46,42,38,.16)" };
+/* чертёжные цвета мебели (line-art: контур + тинт) — ink-оттенки, как в LAYOUT_K детали проекта */
+const N_COL = {
+  seat:   { stroke: "#A6431F", fill: "rgba(183,80,44,.12)" },
+  table:  { stroke: "#8D6017", fill: "rgba(201,138,46,.14)" },
+  media:  { stroke: "#3E4A59", fill: "rgba(62,74,89,.12)" },
+  accent: { stroke: "#556150", fill: "rgba(94,107,91,.14)" },
+  rug:    { stroke: "rgba(46,42,38,.35)", fill: "transparent", dashed: true },
+};
 
 const nClone = (o) => JSON.parse(JSON.stringify(o));
 const nEq = (a, b) => JSON.stringify(a) === JSON.stringify(b);
@@ -295,15 +302,19 @@ function Stepper({ value, step, onSet, disabled }) {
   );
 }
 
-/* мини-план комнаты (доля контейнера, как в проекте) */
+/* мини-план комнаты — чертёжный язык, как FloorPlan/MiniLayout в детали проекта */
 function NormsMiniPlan() {
   return (
-    <div style={{ position: "relative", width: 132, height: 160, flex: "none", borderRadius: 10, border: "1px solid var(--hairline)", background: "var(--bg-deep)", overflow: "hidden" }}>
-      <span style={{ position: "absolute", top: -1, left: "26%", width: "48%", height: 4, background: "var(--accent-2)", borderRadius: 2 }} />
-      <span style={{ position: "absolute", bottom: -1, right: "6%", width: "22%", height: 12, borderRight: "2px solid var(--accent)", borderRadius: "0 0 9px 0" }} />
-      {N_PLAN.map((b, i) => (
-        <span key={i} title={b.label} style={{ position: "absolute", left: b.x + "%", top: b.y + "%", width: b.w + "%", height: b.h + "%", background: N_COL[b.k], opacity: b.k === "rug" ? 1 : 0.85, borderRadius: 3 }} />
-      ))}
+    <div className="plan-box" style={{ position: "relative", width: 132, height: 160, flex: "none" }}>
+      <span className="pl-win" style={{ left: "26%", width: "48%" }} />
+      <span className="pl-door" style={{ right: "6%", width: "24%" }} />
+      {N_PLAN.map((b, i) => {
+        const k = N_COL[b.k] || N_COL.table;
+        return (
+          <span key={i} title={b.label} style={{ position: "absolute", left: b.x + "%", top: b.y + "%", width: b.w + "%", height: b.h + "%",
+            borderRadius: 2, background: k.fill, border: (k.dashed ? "1.1px dashed " : "1.2px solid ") + k.stroke }} />
+        );
+      })}
     </div>
   );
 }

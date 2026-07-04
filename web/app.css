@@ -206,13 +206,20 @@ select.fld { appearance: none; cursor: pointer;
 .pd-eyebrow .dot { width: 22px; height: 1px; background: var(--accent-2); }
 .pd-h { font-family: var(--font-display); font-weight: 800; letter-spacing: -0.02em; font-size: clamp(22px,3vw,30px); margin-bottom: 6px; }
 
-/* — анализ: floorplan — */
-.plan-box { position: relative; border: 1.5px solid var(--hairline); border-radius: 10px; background:
-  repeating-linear-gradient(45deg, transparent, transparent 13px, rgba(46,42,38,.04) 13px, rgba(46,42,38,.04) 14px); }
-.plan-box .pl-win { position: absolute; background: var(--accent-2); box-shadow: 0 0 14px var(--accent-2); }
-.plan-box .pl-door { position: absolute; border-bottom: 2px dashed var(--accent); }
-.plan-box .pl-dim { position: absolute; font-size: 11px; color: var(--faint); font-weight: 600; }
-.plan-box .pl-sun { position: absolute; color: var(--accent); opacity: .9; }
+/* — мини-планы = фрагмент рабочего чертежа: тушь-стены, миллиметровка (не штриховка) — */
+.plan-box { position: relative; border: 2px solid var(--text); border-radius: 3px;
+  background:
+    linear-gradient(var(--hairline-2) 1px, transparent 1px),
+    linear-gradient(90deg, var(--hairline-2) 1px, transparent 1px),
+    var(--surface);
+  background-size: 18px 18px, 18px 18px, auto; }
+/* окно: разрыв в стене + двойная линия остекления */
+.plan-box .pl-win { position: absolute; top: -5px; height: 8px; background: var(--surface);
+  border-top: 1.4px solid var(--info); border-bottom: 1.4px solid var(--info); }
+/* дверь: проём в стене + полотно (солид, справа) + дуга открывания (пунктир); квадрат через aspect-ratio */
+.plan-box .pl-door { position: absolute; bottom: 0; aspect-ratio: 1; border-right: 1.4px solid var(--accent-ink); }
+.plan-box .pl-door::before { content: ""; position: absolute; left: 0; right: 0; bottom: -2px; height: 2px; background: var(--surface); }
+.plan-box .pl-door::after { content: ""; position: absolute; inset: 0; border-top: 1.2px dashed rgba(183,80,44,.55); border-left: 1.2px dashed rgba(183,80,44,.55); border-radius: 100% 0 0 0; }
 
 /* фикс-3 колонки: «бордюры» тут — трюк gap+фон, auto-fit оставлял пустые ячейки сплошным hairline-блоком при 4–5 колонках */
 .metric-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 1px; background: var(--hairline); border: 1px solid var(--hairline); border-radius: var(--r-lg); overflow: hidden; }
@@ -220,8 +227,10 @@ select.fld { appearance: none; cursor: pointer;
 .metric-grid .m .k { font-size: 12px; color: var(--muted); }
 .metric-grid .m .v { font-family: var(--font-display); font-weight: 700; font-size: 19px; margin-top: 3px; }
 
-.light-meter { height: 9px; border-radius: 99px; background: var(--glass-2); overflow: hidden; }
-.light-meter > i { display: block; height: 100%; border-radius: 99px; background: linear-gradient(90deg, var(--info), var(--accent-2), var(--accent)); }
+/* инсоляция = охра-солнце, один семантический цвет (радуга-градиент читалась как случайность,
+   а терракота на конце — как «плохо», хотя высокая инсоляция — хорошо) */
+.light-meter { height: 6px; border-radius: 99px; background: var(--glass-2); overflow: hidden; }
+.light-meter > i { display: block; height: 100%; border-radius: 99px; background: var(--chart); }
 
 .find { display: flex; gap: 12px; padding: 13px 15px; border-radius: 12px; border: 1px solid var(--hairline); background: var(--glass-2); }
 .find.warn { border-left: 3px solid var(--accent); }   /* критичное — с терракотовым ребром */

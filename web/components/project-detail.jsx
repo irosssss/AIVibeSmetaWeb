@@ -60,7 +60,14 @@ const LAYOUTS = [
     pins: [[50, 38, "Диван"], [26, 66, "Кресло"], [72, 66, "Кресло"]],
   },
 ];
-const LAYOUT_K = { seat: "var(--accent)", media: "var(--info)", table: "var(--accent-2)", accent: "var(--chart)", rug: "rgba(255,255,255,.12)" };
+/* чертёжные цвета мебели: line-art (контур-чернила + лёгкий тинт), не сплошные заливки */
+const LAYOUT_K = {
+  seat:   { stroke: "var(--accent-ink)", fill: "rgba(183,80,44,.10)",  ink: "var(--accent-ink)" },
+  media:  { stroke: "var(--info)",       fill: "rgba(62,74,89,.10)",   ink: "var(--info)" },
+  table:  { stroke: "var(--accent-2)",   fill: "rgba(94,107,91,.12)",  ink: "var(--accent-2-ink)" },
+  accent: { stroke: "var(--chart-ink)",  fill: "rgba(201,138,46,.14)", ink: "var(--chart-ink)" },
+  rug:    { stroke: "rgba(46,42,38,.35)", fill: "transparent",         ink: "var(--spec-meta)", dashed: true },
+};
 
 /* цена предмета с поправкой на выбранный стиль (округляем до сотен) */
 const adjustPrice = (price, factor) => (price == null ? price : Math.round((price * factor) / 100) * 100);
@@ -438,8 +445,9 @@ function RoomAnalysis({ a, sref }) {
           <FloorPlan plan={a.plan} />
           <div style={{ marginTop: 16 }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 7 }}>
-              <span style={{ display: "flex", alignItems: "center", gap: 7, fontSize: 13, fontWeight: 700 }}><I.sun size={15} style={{ color: "var(--accent)" }} />{a.light.label}</span>
-              <span style={{ fontFamily: "var(--font-display)", fontWeight: 800, fontSize: 15 }}>{a.light.score}<span style={{ fontSize: 11, color: "var(--faint)" }}>/100</span></span>
+              {/* солнце = охра (терракота у нас — варнинг, высокая инсоляция — не «плохо») */}
+              <span style={{ display: "flex", alignItems: "center", gap: 7, fontSize: 13, fontWeight: 700 }}><I.sun size={15} style={{ color: "var(--chart-ink)" }} />{a.light.label}</span>
+              <span className="mono" style={{ fontWeight: 600, fontSize: 15 }}>{a.light.score}<span style={{ fontSize: 11, color: "var(--spec-meta)", fontWeight: 400 }}>/100</span></span>
             </div>
             <div className="light-meter"><i style={{ width: a.light.score + "%" }} /></div>
             <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 7 }}>{a.light.note}</div>
@@ -486,33 +494,92 @@ function RoomAnalysis({ a, sref }) {
   );
 }
 
-/* мини-план комнаты по пропорциям w:l + окна + дверь + ориентация */
+/* мини-план — фрагмент рабочего чертежа (язык интерьерных тех-инфографик из рефов):
+   тушь-стены, окна двойной линией остекления с откосами, дверная дуга открывания,
+   выносные размерные линии с косыми засечками, миллиметровка вместо штриховки */
 function FloorPlan({ plan }) {
-  const ratio = plan.w / plan.l;
-  const winLeft = plan.door === "low-left" ? "62%" : "16%";
+  const RW = 200, RH = Math.round(RW / (plan.w / plan.l));
+  const M = { l: 8, t: 22, r: 36, b: 30 };                    // поля: сверху солнце, справа/снизу размеры
+  const W = RW + M.l + M.r, H = RH + M.t + M.b;
+  const x0 = M.l, y0 = M.t, x1 = x0 + RW, y1 = y0 + RH;
+  const fmtM = (v) => String(v).replace(".", ",") + " м";
+  // окна равномерно по верхней (световой) стене
+  const seg = RW / plan.windows;
+  const wins = Array.from({ length: plan.windows }, (_, i) => {
+    const len = Math.min(seg * 0.6, 62), cx = x0 + seg * (i + 0.5);
+    return [cx - len / 2, cx + len / 2];
+  });
+  // дверь на нижней стене: проём + полотно + дуга (петля у ближнего угла)
+  const dw = Math.max(28, RW * 0.16);
+  const hingeLeft = plan.door === "low-left";
+  const dx = hingeLeft ? x0 + RW * 0.10 : x1 - RW * 0.10 - dw;
+  const hx = hingeLeft ? dx : dx + dw;
+  const arc = hingeLeft
+    ? `M ${dx + dw} ${y1} A ${dw} ${dw} 0 0 0 ${dx} ${y1 - dw}`
+    : `M ${dx} ${y1} A ${dw} ${dw} 0 0 1 ${dx + dw} ${y1 - dw}`;
+  const tick = (x, y, key) => <line key={key} x1={x - 3} y1={y + 3} x2={x + 3} y2={y - 3} stroke="var(--spec-meta)" strokeWidth="1.1" />;
+  const dimY = y1 + 18, dimX = x1 + 18;
+  const mono = { fontFamily: "var(--font-mono)", fontSize: 10, fill: "var(--spec-meta)" };
   return (
     <div>
-      <div style={{ position: "relative", width: "100%", aspectRatio: String(ratio), maxHeight: 180, margin: "0 auto" }}>
-        <div className="plan-box" style={{ position: "absolute", inset: 0 }}>
-          {/* окна сверху */}
-          {Array.from({ length: plan.windows }).map((_, i) => (
-            <span key={i} className="pl-win" style={{ top: -2, height: 4, borderRadius: 2,
-              left: `${22 + i * (56 / Math.max(1, plan.windows - 0))}%`, width: `${Math.min(34, 40 / plan.windows)}%` }} />
+      <svg viewBox={`0 0 ${W} ${H}`} width="100%" style={{ display: "block", maxHeight: 240, margin: "0 auto" }} role="img"
+           aria-label={"План комнаты " + plan.w + "×" + plan.l + " м, окна на " + plan.side}>
+        <defs>
+          <pattern id="fp-grid" width="16" height="16" patternUnits="userSpaceOnUse">
+            <path d="M16 0H0V16" fill="none" stroke="var(--hairline-2)" strokeWidth="1" />
+          </pattern>
+        </defs>
+        {/* бумага + миллиметровка */}
+        <rect x={x0} y={y0} width={RW} height={RH} fill="var(--surface)" />
+        <rect x={x0} y={y0} width={RW} height={RH} fill="url(#fp-grid)" />
+        {/* стены */}
+        <rect x={x0} y={y0} width={RW} height={RH} fill="none" stroke="var(--text)" strokeWidth="2.4" />
+        {/* окна: разрыв стены + двойное остекление + откосы */}
+        {wins.map(([a, b], i) => (
+          <g key={i}>
+            <line x1={a} y1={y0} x2={b} y2={y0} stroke="var(--surface)" strokeWidth="3.4" />
+            <line x1={a} y1={y0 - 1.7} x2={b} y2={y0 - 1.7} stroke="var(--info)" strokeWidth="1.2" />
+            <line x1={a} y1={y0 + 1.7} x2={b} y2={y0 + 1.7} stroke="var(--info)" strokeWidth="1.2" />
+            <line x1={a} y1={y0 - 3.2} x2={a} y2={y0 + 3.2} stroke="var(--text)" strokeWidth="1.5" />
+            <line x1={b} y1={y0 - 3.2} x2={b} y2={y0 + 3.2} stroke="var(--text)" strokeWidth="1.5" />
+          </g>
+        ))}
+        {/* солнце + румб у световой стены (охра = свет) */}
+        <g transform={`translate(${x1 - 34} ${y0 - 11})`}>
+          <circle cx="0" cy="0" r="2.6" fill="none" stroke="var(--chart-ink)" strokeWidth="1.2" />
+          {[0, 45, 90, 135, 180, 225, 270, 315].map((a) => (
+            <line key={a} x1={4.2 * Math.cos(a * Math.PI / 180)} y1={4.2 * Math.sin(a * Math.PI / 180)}
+                  x2={6 * Math.cos(a * Math.PI / 180)} y2={6 * Math.sin(a * Math.PI / 180)} stroke="var(--chart-ink)" strokeWidth="1" />
           ))}
-          {/* дверь снизу */}
-          <span className="pl-door" style={{ bottom: -1, width: "22%", height: 14, borderLeft: "2px solid var(--accent)", borderRadius: "0 0 0 10px", left: winLeft }} />
-          {/* солнце/ориентация у окон */}
-          <span className="pl-sun" style={{ top: 8, right: 8, display: "flex", alignItems: "center", gap: 4, fontSize: 11, fontWeight: 700 }}>
-            <I.sun size={14} />{plan.side}
-          </span>
-          {/* размеры */}
-          <span className="pl-dim" style={{ bottom: 5, left: "50%", transform: "translateX(-50%)" }}>{plan.w} м</span>
-          <span className="pl-dim" style={{ top: "50%", right: 5, transform: "translateY(-50%) rotate(90deg)" }}>{plan.l} м</span>
-        </div>
-      </div>
-      <div style={{ display: "flex", gap: 16, justifyContent: "center", marginTop: 12, fontSize: 11.5, color: "var(--faint)" }}>
-        <span style={{ display: "flex", alignItems: "center", gap: 5 }}><span style={{ width: 12, height: 3, background: "var(--accent-2)", borderRadius: 2 }} />Окно</span>
-        <span style={{ display: "flex", alignItems: "center", gap: 5 }}><span style={{ width: 10, height: 8, borderLeft: "2px solid var(--accent)", borderBottom: "2px solid var(--accent)" }} />Вход</span>
+          <text x="11" y="3.4" style={{ ...mono, fill: "var(--chart-ink)", letterSpacing: ".08em" }}>{plan.side}</text>
+        </g>
+        {/* дверь */}
+        <line x1={dx} y1={y1} x2={dx + dw} y2={y1} stroke="var(--surface)" strokeWidth="3.4" />
+        <line x1={dx} y1={y1 - 3.2} x2={dx} y2={y1 + 3.2} stroke="var(--text)" strokeWidth="1.5" />
+        <line x1={dx + dw} y1={y1 - 3.2} x2={dx + dw} y2={y1 + 3.2} stroke="var(--text)" strokeWidth="1.5" />
+        <line x1={hx} y1={y1} x2={hx} y2={y1 - dw} stroke="var(--accent-ink)" strokeWidth="1.6" />
+        <path d={arc} fill="none" stroke="var(--accent-ink)" strokeWidth="1.1" strokeDasharray="3 3" opacity=".65" />
+        {/* размер по ширине: выноски + линия + засечки + подпись */}
+        <line x1={x0} y1={y1 + 4} x2={x0} y2={dimY + 3} stroke="var(--hairline)" strokeWidth="1" />
+        <line x1={x1} y1={y1 + 4} x2={x1} y2={dimY + 3} stroke="var(--hairline)" strokeWidth="1" />
+        <line x1={x0} y1={dimY} x2={x1} y2={dimY} stroke="var(--spec-meta)" strokeWidth="1" />
+        {tick(x0, dimY, "tw1")}{tick(x1, dimY, "tw2")}
+        <text x={(x0 + x1) / 2} y={dimY - 4} textAnchor="middle" style={mono}>{fmtM(plan.w)}</text>
+        {/* размер по глубине */}
+        <line x1={x1 + 4} y1={y0} x2={dimX + 3} y2={y0} stroke="var(--hairline)" strokeWidth="1" />
+        <line x1={x1 + 4} y1={y1} x2={dimX + 3} y2={y1} stroke="var(--hairline)" strokeWidth="1" />
+        <line x1={dimX} y1={y0} x2={dimX} y2={y1} stroke="var(--spec-meta)" strokeWidth="1" />
+        {tick(dimX, y0, "th1")}{tick(dimX, y1, "th2")}
+        <text x={dimX - 4} y={(y0 + y1) / 2} textAnchor="middle" transform={`rotate(-90 ${dimX - 4} ${(y0 + y1) / 2})`} style={mono}>{fmtM(plan.l)}</text>
+      </svg>
+      {/* легенда — те же условные обозначения, что на чертеже */}
+      <div style={{ display: "flex", gap: 18, justifyContent: "center", marginTop: 10, fontFamily: "var(--font-mono)", fontSize: 10, letterSpacing: ".07em", textTransform: "uppercase", color: "var(--spec-meta)" }}>
+        <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
+          <svg width="18" height="8" aria-hidden="true"><line x1="1" y1="2.5" x2="17" y2="2.5" stroke="var(--info)" strokeWidth="1.3" /><line x1="1" y1="5.5" x2="17" y2="5.5" stroke="var(--info)" strokeWidth="1.3" /></svg>Окно
+        </span>
+        <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
+          <svg width="12" height="12" aria-hidden="true"><line x1="10.5" y1="1" x2="10.5" y2="11" stroke="var(--accent-ink)" strokeWidth="1.4" /><path d="M1 11 A 10 10 0 0 1 10.5 1.5" fill="none" stroke="var(--accent-ink)" strokeWidth="1" strokeDasharray="2.5 2.5" opacity=".7" /></svg>Вход
+        </span>
       </div>
     </div>
   );
@@ -600,20 +667,24 @@ function LayoutPicker({ layout, onPick }) {
   );
 }
 
-/* схема комнаты сверху: окно сверху, дверь снизу, блоки мебели */
+/* схема раскладки сверху — тот же чертёжный язык, что и FloorPlan: тушь-стены, line-art мебель */
 function MiniLayout({ plan }) {
   return (
-    <div className="plan-box" style={{ position: "relative", width: "100%", aspectRatio: "16/11", borderRadius: 12 }}>
-      <span className="pl-win" style={{ position: "absolute", top: -2, height: 4, borderRadius: 2, left: "26%", width: "48%" }} />
-      <span style={{ position: "absolute", bottom: -1, left: "8%", width: "20%", height: 12, borderLeft: "2px solid var(--accent)", borderRadius: "0 0 0 9px" }} />
-      {plan.map((b, i) => (
-        <span key={i} title={b.label} style={{ position: "absolute", left: b.x + "%", top: b.y + "%", width: b.w + "%", height: b.h + "%",
-          borderRadius: b.k === "rug" ? 7 : 5, background: LAYOUT_K[b.k] || "var(--surface-2)",
-          border: b.k === "rug" ? "1px dashed rgba(255,255,255,.3)" : "1px solid rgba(255,255,255,.18)",
-          display: "grid", placeItems: "center", overflow: "hidden" }}>
-          <span style={{ fontSize: 9.5, fontWeight: 700, color: b.k === "rug" ? "var(--faint)" : "#fff", opacity: .92, whiteSpace: "nowrap", padding: "0 2px" }}>{b.label}</span>
-        </span>
-      ))}
+    <div className="plan-box" style={{ position: "relative", width: "100%", aspectRatio: "16/11" }}>
+      <span className="pl-win" style={{ left: "26%", width: "48%" }} />
+      <span className="pl-door" style={{ left: "8%", width: "16%" }} />
+      {plan.map((b, i) => {
+        const k = LAYOUT_K[b.k] || LAYOUT_K.table;
+        const tall = b.h * 0.6875 > b.w;   // вытянутый по вертикали блок (аспект карты 16/11) — подпись вертикально
+        return (
+          <span key={i} title={b.label} style={{ position: "absolute", left: b.x + "%", top: b.y + "%", width: b.w + "%", height: b.h + "%",
+            borderRadius: 2, background: k.fill, border: (k.dashed ? "1.2px dashed " : "1.3px solid ") + k.stroke,
+            display: "grid", placeItems: k.dashed ? "end center" : "center", overflow: "hidden" }}>
+            <span className="mono" style={{ fontSize: 8.5, letterSpacing: ".05em", textTransform: "uppercase", color: k.ink, whiteSpace: "nowrap",
+              padding: k.dashed ? "0 2px 2px" : "0 2px", writingMode: tall ? "vertical-rl" : undefined }}>{b.label}</span>
+          </span>
+        );
+      })}
     </div>
   );
 }
