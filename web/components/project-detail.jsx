@@ -222,7 +222,7 @@ function ProjectDetail({ id, onClose, initialStyle }) {
         </aside>
       </div>
 
-      <button className="pd-chat-fab" onClick={() => setChatOpen(true)} style={{ display: chatOpen ? "none" : undefined }}><I.chat size={19} />AI-дизайнер</button>
+      <button className="pd-chat-fab" onClick={() => setChatOpen(true)} style={{ display: chatOpen ? "none" : undefined }}><I.chat size={19} />Помощник</button>
     </div>
   );
 }
@@ -636,7 +636,7 @@ function RoomAnalysis({ a, sref }) {
       </div>
 
       <div style={{ marginTop: 22, display: "flex", flexDirection: "column", gap: 9 }}>
-        <div style={{ fontSize: 13, fontWeight: 700, color: "var(--spec-meta)", textTransform: "uppercase", letterSpacing: ".1em", marginBottom: 3 }}>Выводы AI-дизайнера</div>
+        <div style={{ fontSize: 13, fontWeight: 700, color: "var(--spec-meta)", textTransform: "uppercase", letterSpacing: ".1em", marginBottom: 3 }}>Выводы по помещению</div>
         {a.findings.map((f, i) => {
           const Ico = FIND_ICON[f.kind] || FIND_ICON.idea;
           return (
@@ -796,7 +796,7 @@ function LayoutPicker({ layout, onPick }) {
       <div className="pd-eyebrow"><span className="dot" />Расстановка</div>
       <h3 className="pd-h">Варианты раскладки мебели</h3>
       <p style={{ color: "var(--muted)", fontSize: 14.5, marginTop: 4, marginBottom: 18, maxWidth: 720 }}>
-        AI предложил несколько схем расстановки под геометрию комнаты. Выберите раскладку — обновятся метки на визуализации «до/после» и акценты сцены.
+        Готовые схемы расстановки под геометрию комнаты. Выберите раскладку — обновятся метки на визуализации «до/после» и акценты сцены.
       </p>
       <div className="pd-styles" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: 14 }}>
         {LAYOUTS.map((l) => {
@@ -882,7 +882,7 @@ function BeforeAfter({ data, style, pins }) {
         </span>
       </div>
       <p style={{ color: "var(--muted)", fontSize: 14.5, marginTop: 8, marginBottom: 18, maxWidth: 760 }}>
-        Слева — исходное фото комнаты, справа — как AIVibe видит её в стиле «{style.name}». Перетащите ползунок, чтобы сравнить.
+        Слева — исходное фото комнаты, справа — тональное превью в палитре стиля «{style.name}» с метками расстановки (это демо-визуализация, не рендер). Перетащите ползунок, чтобы сравнить.
       </p>
 
       <div ref={boxRef} onPointerDown={(e) => { e.preventDefault(); if (knobRef.current) knobRef.current.focus({ preventScroll: true }); setDrag(true); setFromX(e.clientX); }}
@@ -900,7 +900,7 @@ function BeforeAfter({ data, style, pins }) {
             </span>
           ))}
           <span style={badge({ right: 14, top: 14, background: "rgba(94,107,91,.92)", border: "1px solid rgba(94,107,91,.5)", color: "#FCF6EE" })}>
-            <I.spark size={13} />ПОСЛЕ · AIVibe
+            <I.spark size={13} />ПОСЛЕ · превью стиля
           </span>
           <div style={{ position: "absolute", left: 14, bottom: 14, display: "flex", gap: 6 }}>
             {pal.map((c, i) => <span key={i} style={{ width: 22, height: 22, borderRadius: 6, background: c, border: "1px solid rgba(255,255,255,.25)" }} />)}
@@ -1017,9 +1017,11 @@ function ProductCatalog({ data, sel, onPick, sref, adj, style, mats }) {
       <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
         <h3 className="pd-h" style={{ marginBottom: 0 }}>Подбор по каталогу фабрик</h3>
         <span className="mp f1">Дубрава</span><span className="mp f2">Линея</span>
+        {/* честная метка: фабрики и цены каталога — демонстрационные, реальные позиции придут из клиппера/фида */}
+        <span style={{ padding: "4px 10px", borderRadius: 99, fontSize: 11.5, fontWeight: 700, letterSpacing: ".04em", color: "var(--muted)", background: "var(--glass-2)", border: "1px dashed var(--hairline)" }}>демо-каталог</span>
       </div>
       <p style={{ color: "var(--muted)", fontSize: 14.5, marginTop: 8, marginBottom: 18, maxWidth: 760 }}>
-        В каждой категории — 3 варианта по цене и фабрике. Нажмите на карточку, чтобы заменить предмет в смете: итог и полоса бюджета пересчитаются автоматически.
+        В каждой категории — 3 варианта по цене и фабрике (демо-данные для примера работы). Нажмите на карточку, чтобы заменить предмет в смете: итог и полоса бюджета пересчитаются автоматически.
       </p>
       <div className="glass" style={{ display: "inline-flex", alignItems: "center", gap: 9, padding: "8px 14px", borderRadius: 99, marginBottom: 22, fontSize: 13 }}>
         <span style={{ width: 11, height: 11, borderRadius: 4, background: style.palette[0], border: "1px solid rgba(255,255,255,.25)", flex: "none" }} />
@@ -1046,7 +1048,7 @@ function ProductCatalog({ data, sel, onPick, sref, adj, style, mats }) {
                 <button onClick={() => onPick(ci, cheapest.id)} className="save-banner">
                   <span style={{ width: 30, height: 30, borderRadius: 9, background: "rgba(94,107,91,.18)", color: "var(--accent-2)", display: "grid", placeItems: "center", flex: "none" }}><I.spark size={16} /></span>
                   <span style={{ flex: 1, textAlign: "left", fontSize: 13.5, lineHeight: 1.4 }}>
-                    <b style={{ color: "var(--text)" }}>AI нашёл аналог дешевле на {fmtMoney(saving)}</b>
+                    <b style={{ color: "var(--text)" }}>Аналог дешевле на {fmtMoney(saving)}</b>
                     <span style={{ color: "var(--muted)" }}> — «{cheapest.title}», рейтинг {cheapest.rating}</span>
                   </span>
                   <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 13, fontWeight: 800, color: "var(--accent-2)", whiteSpace: "nowrap" }}>Заменить<I.arrow size={15} /></span>
@@ -1166,15 +1168,16 @@ function AdvisorChat({ id, hello, onAction, onClose }) {
       <div className="pd-chat-head">
         <span style={{ width: 38, height: 38, borderRadius: 11, background: "var(--accent)", color: "var(--on-accent)", display: "grid", placeItems: "center", flex: "none" }}><I.spark size={20} /></span>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontWeight: 800, fontSize: 15 }}>AI-дизайнер</div>
-          <div style={{ fontSize: 12, color: "var(--accent-2)", display: "flex", alignItems: "center", gap: 6 }}><span style={{ width: 7, height: 7, borderRadius: "50%", background: "var(--accent-2)" }} />на связи · YandexGPT</div>
+          <div style={{ fontWeight: 800, fontSize: 15 }}>Помощник проекта</div>
+          {/* честный лейбл: чат работает на сценариях-командах (дешевле/премиум/стиль), настоящий ИИ подключится Worker-слоем */}
+          <div style={{ fontSize: 12, color: "var(--muted)", display: "flex", alignItems: "center", gap: 6 }}><span style={{ width: 7, height: 7, borderRadius: "50%", background: "var(--accent-2)" }} />демо-сценарии · без ИИ</div>
         </div>
         <button className="icon-btn pd-rail-close" onClick={onClose} aria-label="Свернуть чат"><I.close size={18} /></button>
       </div>
 
-      <div className="pd-chat-scroll" ref={scrollRef} role="log" aria-label="Диалог с AI-дизайнером">
+      <div className="pd-chat-scroll" ref={scrollRef} role="log" aria-label="Диалог с помощником проекта">
         {msgs.map((m, i) => <div key={i} className={"pd-msg " + m.role}>{m.text}</div>)}
-        {busy && <div className="pd-msg ai" role="status" aria-label="AI-дизайнер печатает"><span className="pd-typing"><i /><i /><i /></span></div>}
+        {busy && <div className="pd-msg ai" role="status" aria-label="Помощник печатает"><span className="pd-typing"><i /><i /><i /></span></div>}
       </div>
 
       <div className="pd-chips">
@@ -1182,7 +1185,7 @@ function AdvisorChat({ id, hello, onAction, onClose }) {
       </div>
 
       <form className="pd-chat-input" onSubmit={(e) => { e.preventDefault(); send(val); }}>
-        <input value={val} onChange={(e) => setVal(e.target.value)} placeholder="Спросите дизайнера…" aria-label="Сообщение" />
+        <input value={val} onChange={(e) => setVal(e.target.value)} placeholder="Команда помощнику…" aria-label="Сообщение" />
         <button type="submit" className="btn btn-primary" disabled={busy || !val.trim()} style={{ padding: "0 16px" }} aria-label="Отправить"><I.send size={17} /></button>
       </form>
     </React.Fragment>

@@ -46,7 +46,7 @@ function Profile({ user }) {
       {/* заголовок вкладки — та же модель шапки, что у Проектов/Избранного */}
       <div>
         <h1 className="display" style={{ fontSize: 30 }}>Профиль</h1>
-        <p style={{ color: "var(--muted)", fontSize: 14.5, marginTop: 4 }}>Аккаунт, аналитика работы и настройки уведомлений</p>
+        <p style={{ color: "var(--muted)", fontSize: 14.5, marginTop: 4 }}>Аккаунт и сводка по вашей работе</p>
       </div>
       {/* ── верх: карточка профиля + KPI ── */}
       <div className="profile-grid" style={{ display: "grid", gridTemplateColumns: "0.8fr 1.2fr", gap: 22, alignItems: "start" }}>
@@ -67,10 +67,9 @@ function Profile({ user }) {
             </div>
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: 14, marginTop: 22 }}>
-            <Row k="Тариф" v="AIVibe Pro" />
-            <Row k="Регион" v="Москва, РФ" />
-            <Row k="С нами с" v="январь 2026" />
-            <Row k="Синхронизация" v={<span style={{ color: "var(--accent-2)" }}>● включена</span>} />
+            {/* только то, что правда: тарифов пока нет (бета), данные живут в localStorage этого браузера */}
+            <Row k="Тариф" v="Бета · бесплатно" />
+            <Row k="Хранение данных" v="локально, в этом браузере" />
           </div>
           <button className="btn btn-ghost btn-block" style={{ marginTop: 24 }} onClick={() => toast("Редактирование профиля появится вместе с настоящими аккаунтами — в бете данные приходят из Яндекс/VK ID.", "info", 5000)}>Редактировать профиль</button>
         </div>
@@ -82,59 +81,34 @@ function Profile({ user }) {
         </div>
       </div>
 
-      {/* ── аналитика профиля ── */}
+      {/* ── аналитика профиля: только то, что честно считается из проектов ──
+          (график «AI-сессий» и муляж переписки убраны — таких событий не существует;
+          вернутся настоящими после появления версий/статусов) */}
       <div>
         <div style={{ display: "flex", alignItems: "center", gap: 9, margin: "4px 2px 14px", flexWrap: "wrap" }}>
           <I.chart size={18} style={{ color: "var(--accent)", flex: "none" }} />
-          <h2 style={{ fontSize: 18, fontWeight: 700, whiteSpace: "nowrap" }}>Ваша аналитика</h2>
-          <span style={{ fontSize: 12.5, color: "var(--faint)" }}>· за последние 12 недель</span>
+          <h2 style={{ fontSize: 18, fontWeight: 700, whiteSpace: "nowrap" }}>По вашим проектам</h2>
         </div>
 
-        <div className="chart-row" style={{ display: "grid", gridTemplateColumns: "1.5fr 1fr", gap: 16, marginBottom: 16 }}>
-          <AnalyCard title="Активность" source="AI-сессии" accent="var(--chart)">
-            {an ? (
-              <React.Fragment>
-                <AreaChart data={an.activity} color="var(--chart)" id="prof-act" height={160} />
-                <div style={{ display: "flex", gap: 20, marginTop: 12, fontSize: 12.5, color: "var(--muted)" }}>
-                  <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}><span style={{ width: 12, height: 3, background: "var(--chart)", borderRadius: 2 }} />AI-сессии</span>
-                  <span>Пик: {Math.max(...an.activity)} сессий в неделю</span>
-                </div>
-              </React.Fragment>
-            ) : <ChartSkel h={160} />}
+        <div className="chart-row" style={{ display: "grid", gridTemplateColumns: "1.5fr 1fr", gap: 16 }}>
+          <AnalyCard title="Бюджет по проектам" source="из ваших смет" accent="var(--accent-2)">
+            {an ? <BarList data={an.spendByProject} color="var(--accent-2)" money /> : <ChartSkel h={120} />}
           </AnalyCard>
           <AnalyCard title="Стили в проектах" source="доля бюджета">
             {an ? <div style={{ paddingTop: 4 }}><Donut data={an.styleSplit} size={150} /></div> : <ChartSkel h={150} />}
           </AnalyCard>
         </div>
-
-        <AnalyCard title="Бюджет по проектам" source="подобрано через AIVibe" accent="var(--accent-2)">
-          {an ? <BarList data={an.spendByProject} color="var(--accent-2)" money /> : <ChartSkel h={120} />}
-        </AnalyCard>
       </div>
 
-      {/* ── настройки + последняя сессия ── */}
-      <div className="chart-row" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 22, alignItems: "start" }}>
-        {/* настройки */}
-        <div className="glass" style={{ borderRadius: "var(--r-xl)", padding: 30 }}>
-          <h3 style={{ fontSize: 18, fontWeight: 700, marginBottom: 20 }}>Настройки приложения</h3>
-          <div style={{ display: "flex", flexDirection: "column" }}>
-            <Toggle label="Push о готовности AI-дизайна" sub="Уведомлять, когда AI-дизайнер закончит проект" on />
-            <Toggle label="Подбор по каталогу фабрик" sub="Артикулы и цены фабрик-партнёров в смете" on />
-            <Toggle label="Автопроверка норм" sub="Подсвечивать узкие проходы и зоны в расстановке" on />
-            <Toggle label="Публичные ссылки на проекты" sub="Делиться сметой и проектом по ссылке" last />
-          </div>
-        </div>
-
-        {/* недавняя AI-сессия */}
-        <div className="glass" style={{ borderRadius: "var(--r-xl)", padding: 30 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 9, marginBottom: 16 }}>
-            <I.spark size={18} style={{ color: "var(--accent)" }} />
-            <h3 style={{ fontSize: 18, fontWeight: 700 }}>Последняя сессия с AI-дизайнером</h3>
-          </div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-            <div className="glass" style={{ alignSelf: "flex-end", maxWidth: "75%", padding: "11px 15px", borderRadius: "14px 14px 4px 14px", fontSize: 14, background: "rgba(183,80,44,.14)" }}>Сделай гостиную теплее, добавь текстиль</div>
-            <div className="glass" style={{ alignSelf: "flex-start", maxWidth: "82%", padding: "11px 15px", borderRadius: "14px 14px 14px 4px", fontSize: 14, lineHeight: 1.5 }}>Добавил шерстяной плед, льняные шторы и ковёр терракотового тона. Обновил расстановку и смету — посмотрите в проекте «Гостиная на Патриках».</div>
-          </div>
+      {/* ── рабочее место: мосты в Мастерскую вместо тумблеров-пустышек ── */}
+      <div className="glass" style={{ borderRadius: "var(--r-xl)", padding: 30 }}>
+        <h3 style={{ fontSize: 18, fontWeight: 700, marginBottom: 6 }}>Рабочее место</h3>
+        <p style={{ color: "var(--muted)", fontSize: 13.5, lineHeight: 1.5, marginBottom: 18, maxWidth: 640 }}>
+          Ваши нормы эргономики и библиотека стилей применяются к каждой смете. Уведомления и синхронизация между устройствами появятся вместе с реальными аккаунтами.
+        </p>
+        <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+          <button className="btn btn-ghost" onClick={() => setRoute("cabinet", "workshop", "norms")}><I.sliders size={16} />Мои нормы</button>
+          <button className="btn btn-ghost" onClick={() => setRoute("cabinet", "workshop", "styles")}><I.spark size={16} />Мои стили</button>
         </div>
       </div>
     </div>
@@ -145,21 +119,21 @@ function Row({ k, v }) {
   return <div style={{ display: "flex", justifyContent: "space-between", gap: 16, fontSize: 14.5 }}><span style={{ color: "var(--muted)", whiteSpace: "nowrap" }}>{k}</span><span style={{ fontWeight: 600, whiteSpace: "nowrap", textAlign: "right" }}>{v}</span></div>;
 }
 
-/* строка настройки с переключателем — сам контрол теперь единый <Switch> из ui.jsx */
-function Toggle({ label, sub, on: initOn, last }) {
-  const [on, setOn] = useCV(!!initOn);
-  return (
-    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, paddingBlock: 14, borderBottom: last ? "none" : "1px solid var(--hairline)" }}>
-      <div style={{ minWidth: 0 }}><div style={{ fontWeight: 600, fontSize: 14.5, lineHeight: 1.3 }}>{label}</div><div style={{ color: "var(--muted)", fontSize: 13, marginTop: 3, lineHeight: 1.4 }}>{sub}</div></div>
-      <Switch on={on} onChange={() => setOn(!on)} ariaLabel={label} />
-    </div>
-  );
-}
-
 /* стиль-квиз → читаемое имя стиля для нового проекта */
 const QUIZ_STYLE_NAME = { deco: "Neo Deco", warm: "Тёплый минимализм", japandi: "Japandi", scandi: "Сканди", indust: "Индустриальный", midmod: "Mid-century" };
-const PROJ_STATUSES = ["В работе", "Готов", "Архив"];
-const statusColor = { "В работе": "var(--info)", "Готов": "var(--accent-2)", "Архив": "var(--faint)" };
+/* стадии петли комплектатора: проект живёт по workflow «собрал → согласовал →
+   закупил → сдал», а не по абстрактному «в работе». Цвета — язык темы:
+   синий = информация/начало, охра = ждём решения, терракота = активные деньги,
+   олива = финал-ок. Подсказка следующего шага — статичный словарь стадии
+   (не имитация событий: событий пока нет, это просто смысл стадии). */
+const PROJ_STATUSES = ["Сбор", "Согласование", "Закупка", "Сдача", "Архив"];
+const statusColor = { "Сбор": "var(--info)", "Согласование": "var(--chart)", "Закупка": "var(--accent)", "Сдача": "var(--accent-2)", "Архив": "var(--faint)" };
+const STAGE_NEXT = {
+  "Сбор": "собрать смету и отправить клиенту",
+  "Согласование": "получить решение клиента по смете",
+  "Закупка": "вести заказы и поставки по позициям",
+  "Сдача": "выгрузить клиентский пакет документов",
+};
 
 /* ---------------- СОХРАНЁННЫЕ ПРОЕКТЫ (рабочий список) ---------------- */
 function Projects() {
@@ -376,6 +350,12 @@ function ProjectCard({ p, menuOpen, onOpen, onMenu, onRename, onDuplicate, onSta
         <div>
           <h3 style={{ fontSize: 18, fontWeight: 700, letterSpacing: "-0.01em" }}>{p.name}</h3>
           <div style={{ color: "var(--muted)", fontSize: 13.5, marginTop: 3 }}>{[p.style, p.room].filter(Boolean).join(" · ")}</div>
+          {STAGE_NEXT[p.status] && (
+            <div style={{ display: "flex", alignItems: "baseline", gap: 6, fontSize: 12.5, color: "var(--faint)", marginTop: 7 }}>
+              <span style={{ fontWeight: 700, color: "var(--muted)", whiteSpace: "nowrap" }}>Дальше:</span>
+              <span style={{ lineHeight: 1.35 }}>{STAGE_NEXT[p.status]}</span>
+            </div>
+          )}
         </div>
         <div style={{ display: "flex", gap: 16, fontSize: 13, color: "var(--muted)", marginTop: "auto" }}>
           <span style={{ display: "flex", alignItems: "center", gap: 6 }}><I.ruler size={15} />{p.area} м²</span>
@@ -531,14 +511,8 @@ function Favorites() {
             </div>
           </div>
           <button className="btn btn-primary btn-block" style={{ marginTop: 16 }} disabled={!shown || shown.length === 0} onClick={() => setPickOpen(true)}><I.layers size={16} />Перенести в проект</button>
-          <button className="btn btn-ghost btn-block" style={{ marginTop: 10 }} onClick={() => {
-            if (navigator.clipboard && navigator.clipboard.writeText) {
-              navigator.clipboard.writeText(location.href).then(
-                () => toast("Ссылка на доску скопирована"),
-                () => toast("Не удалось скопировать ссылку — скопируйте адрес из строки браузера.", "warn", 5000)
-              );
-            } else toast("Буфер обмена недоступен — скопируйте адрес из строки браузера.", "warn", 5000);
-          }}>Поделиться доской</button>
+          {/* «Поделиться доской» убрана: механизма шаринга нет (URL доски ничего не открывает
+              без этого браузера) — вернётся настоящей ссылкой вместе с Worker-шарингом */}
         </div>
       </div>
 
@@ -614,5 +588,4 @@ function FavCard({ item, onRemove, ar }) {
 window.Profile = Profile;
 window.Projects = Projects;
 window.Favorites = Favorites;
-window.Toggle = Toggle;
 window.NewProjectModal = NewProjectModal;

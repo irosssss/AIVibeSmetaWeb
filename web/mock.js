@@ -37,12 +37,13 @@
     ],
 
     // сохранённые проекты текущего пользователя
+    // status = стадия петли комплектатора: Сбор → Согласование → Закупка → Сдача (+ Архив)
     projects: [
-      { id: "p_1", name: "Гостиная на Патриках", room: "Гостиная", style: "Neo Deco", area: 38, items: 12, budget: 480000, updated: "2026-05-27", cover: "living", status: "В работе" },
-      { id: "p_2", name: "Спальня — тёплый минимализм", room: "Спальня", style: "Тёплый минимализм", area: 18, items: 8, budget: 210000, updated: "2026-05-19", cover: "bedroom", status: "Готов" },
-      { id: "p_3", name: "Кухня-столовая", room: "Кухня", style: "Сканди", area: 22, items: 15, budget: 365000, updated: "2026-05-11", cover: "kitchen", status: "В работе" },
+      { id: "p_1", name: "Гостиная на Патриках", room: "Гостиная", style: "Neo Deco", area: 38, items: 12, budget: 480000, updated: "2026-05-27", cover: "living", status: "Сбор" },
+      { id: "p_2", name: "Спальня — тёплый минимализм", room: "Спальня", style: "Тёплый минимализм", area: 18, items: 8, budget: 210000, updated: "2026-05-19", cover: "bedroom", status: "Сдача" },
+      { id: "p_3", name: "Кухня-столовая", room: "Кухня", style: "Сканди", area: 22, items: 15, budget: 365000, updated: "2026-05-11", cover: "kitchen", status: "Согласование" },
       { id: "p_4", name: "Домашний кабинет", room: "Кабинет", style: "Индустриальный", area: 12, items: 6, budget: 145000, updated: "2026-04-30", cover: "office", status: "Архив" },
-      { id: "p_kirova", name: "Кирова 17к1", room: "3 комнаты · 87,59 м²", style: "По дизайн-проекту", area: 87.59, items: 50, budget: 2700000, updated: "2025-01-30", cover: "living", status: "В работе" },
+      { id: "p_kirova", name: "Кирова 17к1", room: "3 комнаты · 87,59 м²", style: "По дизайн-проекту", area: 87.59, items: 50, budget: 2700000, updated: "2025-01-30", cover: "living", status: "Закупка" },
     ],
 
     // избранные товары (мудборд + шоп-лист)
@@ -84,11 +85,21 @@
   ];
 
   /* гидрация из localStorage поверх дефолтов */
-  db.settings = LS.get("settings", { normsOverride: {}, enabledNorms: {}, toggles: { pushReady: true, factoryCatalog: true, autoNorms: true, publicLinks: false } });
+  db.settings = LS.get("settings", { normsOverride: {}, enabledNorms: {} });
   db.styles   = LS.get("styles", SEED_STYLES);
   const _lsProjects = LS.get("projects", null); if (_lsProjects) db.projects = _lsProjects;
   const _lsFav = LS.get("favorites", null); if (_lsFav) db.favorites = _lsFav;
   db.session  = LS.get("session", null);
+
+  /* миграция статусов проектов → стадии петли (06.07): старые значения из
+     localStorage переводим один раз («В работе» — консервативно в «Сбор»,
+     точную стадию пользователь выставит сам; «Готов» → «Сдача»). */
+  (function migrateStages() {
+    const MAP = { "В работе": "Сбор", "Готов": "Сдача" };
+    let touched = false;
+    db.projects.forEach((p) => { if (MAP[p.status]) { p.status = MAP[p.status]; touched = true; } });
+    if (touched) LS.set("projects", db.projects);
+  })();
 
   /* ----------------------------- AUTH ----------------------------- */
   // → API: POST /api/auth/oauth/{provider}  (обмен кода на токен → сессия/JWT)
@@ -139,19 +150,22 @@
       get: async () => { await delay(LATENCY); return clone(db.session && db.session.user); }, // → GET /api/profile
 
       // → GET /api/profile/analytics  (персональная аналитика по проектам пользователя)
-      // Паттерн «личный кабинет-аналитика»: KPI с дельтами, тренд активности,
-      // распределение по стилям (доля бюджета), траты по проектам.
+      // Всё считается из реальных данных localStorage: проекты, стили, нормы.
+      // Дельт и «активности по неделям» нет — событий, из которых они считались бы,
+      // пока не существует (появятся с версиями/статусами после слияния веток).
       analytics: async () => {
         await delay(LATENCY);
         const projects = db.projects;
         const totalBudget = projects.reduce((s, p) => s + p.budget, 0);
         const totalItems = projects.reduce((s, p) => s + p.items, 0);
+        const myStyles = db.styles.filter((s) => s.owner !== null).length;
+        const normsTouched = Object.keys(db.settings.normsOverride || {}).length;
 
         // доля бюджета по стилям (донат)
         const byStyle = {};
-        projects.forEach((p) => { byStyle[p.style] = (byStyle[p.style] || 0) + p.budget; });
+        projects.forEach((p) => { byStyle[p.style || "Без стиля"] = (byStyle[p.style || "Без стиля"] || 0) + p.budget; });
         const styleSplit = Object.entries(byStyle)
-          .map(([label, v]) => ({ label, value: Math.round((v / totalBudget) * 100) }))
+          .map(([label, v]) => ({ label, value: totalBudget ? Math.round((v / totalBudget) * 100) : 0 }))
           .sort((a, b) => b.value - a.value);
 
         // траты по проектам (бары)
@@ -161,13 +175,11 @@
 
         return clone({
           kpis: [
-            { key: "scans", label: "Смет собрано", value: 12, delta: +25, unit: "" },
-            { key: "ai", label: "AI-сессий с дизайнером", value: 38, delta: +31, unit: "" },
-            { key: "proj", label: "Проектов сохранено", value: projects.length, delta: +1, unit: "abs" },
-            { key: "spend", label: "Подобрано на сумму", value: totalBudget, delta: +18.4, unit: "₽" },
+            { key: "proj", label: "Проектов сохранено", value: projects.length, unit: "abs" },
+            { key: "items", label: "Предметов в сметах", value: totalItems, unit: "abs" },
+            { key: "styles", label: "Своих стилей", value: myStyles, unit: "abs" },
+            { key: "norms", label: "Норм настроено", value: normsTouched, unit: "abs" },
           ],
-          activity: [4, 6, 5, 8, 7, 6, 9, 8, 11, 9, 12, 14],   // AI-сессии по неделям
-          scans:    [1, 1, 2, 1, 2, 2, 1, 3, 2, 2, 3, 2],       // сметы по неделям
           styleSplit,
           spendByProject,
           totalItems,
@@ -205,10 +217,10 @@
         const totalItems = projects.reduce((s, p) => s + p.items, 0);
         const avg = Math.round(totalBudget / projects.length);
 
-        // распределение по статусу (донат)
+        // распределение по стадиям петли (донат)
         const byStatus = {};
         projects.forEach((p) => { byStatus[p.status] = (byStatus[p.status] || 0) + 1; });
-        const statusOrder = ["В работе", "Готов", "Архив"];
+        const statusOrder = ["Сбор", "Согласование", "Закупка", "Сдача", "Архив"];
         const statusSplit = statusOrder
           .filter((s) => byStatus[s])
           .map((s) => ({ label: s, value: Math.round((byStatus[s] / projects.length) * 100) }));

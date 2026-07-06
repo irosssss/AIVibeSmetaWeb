@@ -6,8 +6,11 @@ const { useState: useC, useEffect: useCE } = React;
 
 /* ---------- Хеш-роутинг: #view/tab/sub (переживает F5, работает «назад»,
    sub — открытый проект: #cabinet/projects/p_1 → deep-link на смету) ---------- */
-const CAB_TABS = [["projects", "Проекты"], ["styles", "Мои стили"], ["norms", "Нормы"], ["favorites", "Избранное"], ["profile", "Профиль"]];
+const CAB_TABS = [["projects", "Проекты"], ["workshop", "Мастерская"], ["favorites", "Избранное"], ["profile", "Профиль"]];
 const CAB_TAB_IDS = CAB_TABS.map((t) => t[0]);
+/* старые адреса вкладок-редакторов живут как deep-links внутрь Мастерской:
+   #cabinet/styles → #cabinet/workshop/styles, #cabinet/norms → #cabinet/workshop/norms */
+const LEGACY_WORKSHOP = { styles: "styles", norms: "norms" };
 function parseRoute() {
   const h = (location.hash || "").replace(/^#\/?/, "");
   const [view, tab, sub] = h.split("/");
@@ -67,13 +70,8 @@ function AuthScreen({ onAuthed, go }) {
         <div style={{ position: "relative", zIndex: 2, color: "#FCF6EE" }}>
           <h2 className="display" style={{ fontSize: "clamp(30px,3.4vw,46px)", lineHeight: 1 }}>С возвращением<br />в студию</h2>
           <p style={{ color: "rgba(252,246,238,.82)", marginTop: 18, maxWidth: 380, fontSize: 15.5, lineHeight: 1.6 }}>
-            Ваши проекты, сметы и переписка с AI-дизайнером — синхронизированы и под рукой.
+            Проекты, сметы-комплектации, свои нормы и стили — рабочее место дизайнера в одном месте.
           </p>
-          <div style={{ display: "flex", gap: 26, marginTop: 30 }}>
-            {[["4", "проекта"], ["38", "AI-сессий"], ["12", "смет"]].map(([v, l]) => (
-              <div key={l}><div className="display" style={{ fontSize: 26 }}>{v}</div><div style={{ color: "rgba(252,246,238,.7)", fontSize: 13 }}>{l}</div></div>
-            ))}
-          </div>
         </div>
       </div>
 
@@ -97,20 +95,9 @@ function AuthScreen({ onAuthed, go }) {
 
           {loading && <div style={{ marginTop: 16, fontSize: 13.5, color: "var(--accent-2)", display: "flex", alignItems: "center", gap: 8 }}><span className="spin" />Авторизация через {loading === "yandex" ? "Яндекс ID" : "VK ID"}…</div>}
 
-          <div style={{ display: "flex", alignItems: "center", gap: 14, margin: "26px 0", color: "var(--faint)", fontSize: 12.5 }}>
-            <span style={{ flex: 1, height: 1, background: "var(--hairline)" }} />или по e-mail<span style={{ flex: 1, height: 1, background: "var(--hairline)" }} />
-          </div>
+          {/* вход по e-mail появится вместе с реальной аутентификацией — декоративную форму убрали (честность превыше «полноты» экрана) */}
 
-          <div style={{ display: "flex", flexDirection: "column", gap: 12, opacity: .9 }}>
-            {mode === "register" && <Field label="Имя" placeholder="Как к вам обращаться" />}
-            <Field label="E-mail" placeholder="you@example.ru" type="email" />
-            <Field label="Пароль" placeholder="••••••••" type="password" />
-            <button className="btn btn-ghost btn-block" style={{ padding: "14px", marginTop: 4 }} onClick={() => login("yandex")}>
-              {mode === "login" ? "Войти" : "Зарегистрироваться"}
-            </button>
-          </div>
-
-          <p style={{ color: "var(--faint)", fontSize: 12.5, marginTop: 22, textAlign: "center", lineHeight: 1.5 }}>
+          <p style={{ color: "var(--faint)", fontSize: 12.5, marginTop: 26, textAlign: "center", lineHeight: 1.5 }}>
             Продолжая, вы соглашаетесь с условиями и политикой конфиденциальности AIVibe.
           </p>
           <div style={{ textAlign: "center", marginTop: 14 }}>
@@ -122,28 +109,32 @@ function AuthScreen({ onAuthed, go }) {
   );
 }
 
-function Field({ label, ...p }) {
-  return (
-    <label style={{ display: "block" }}>
-      <span style={{ display: "block", fontSize: 13, color: "var(--muted)", marginBottom: 7, fontWeight: 600 }}>{label}</span>
-      <input {...p} className="fld" />
-    </label>
-  );
-}
-
 /* ---------------- КАБИНЕТ (рабочее пространство) ---------------- */
 function Cabinet({ user, onLogout, go }) {
-  const [tab, setTab] = useC(() => { const t = parseRoute().tab; return CAB_TAB_IDS.includes(t) ? t : "projects"; });
-  const changeTab = (t) => { setTab(t); setRoute("cabinet", t); };
+  // старые адреса #cabinet/styles|norms сразу переписываем на Мастерскую
+  const normTab = (t) => (LEGACY_WORKSHOP[t] ? "workshop" : t);
+  const [tab, setTab] = useC(() => { const t = normTab(parseRoute().tab); return CAB_TAB_IDS.includes(t) ? t : "projects"; });
+  const changeTab = (t) => {
+    if (LEGACY_WORKSHOP[t]) { setTab("workshop"); setRoute("cabinet", "workshop", LEGACY_WORKSHOP[t]); return; }
+    setTab(t); setRoute("cabinet", t);
+  };
 
   // синхронизация с адресом (кнопка «назад», deep-link, ручная правка hash)
   useCE(() => {
-    const on = () => { const t = parseRoute().tab; if (CAB_TAB_IDS.includes(t)) setTab(t); };
+    const on = () => {
+      const r = parseRoute();
+      if (LEGACY_WORKSHOP[r.tab]) { setRoute("cabinet", "workshop", LEGACY_WORKSHOP[r.tab]); return; }
+      if (CAB_TAB_IDS.includes(r.tab)) setTab(r.tab);
+    };
     window.addEventListener("hashchange", on);
     return () => window.removeEventListener("hashchange", on);
   }, []);
-  // при заходе без явной вкладки — зафиксировать дефолт в адресе
-  useCE(() => { if (!CAB_TAB_IDS.includes(parseRoute().tab)) setRoute("cabinet", tab); }, []);
+  // при заходе без явной вкладки (или по старому адресу) — зафиксировать дефолт в адресе
+  useCE(() => {
+    const r = parseRoute();
+    if (LEGACY_WORKSHOP[r.tab]) setRoute("cabinet", "workshop", LEGACY_WORKSHOP[r.tab]);
+    else if (!CAB_TAB_IDS.includes(r.tab)) setRoute("cabinet", tab);
+  }, []);
 
   const newProject = () => { changeTab("projects"); setTimeout(() => window.dispatchEvent(new CustomEvent("aivibe:new-project")), 0); };
 
@@ -153,10 +144,31 @@ function Cabinet({ user, onLogout, go }) {
       <main id="main" className="container" style={{ paddingBlock: "clamp(28px,4vh,48px)", paddingTop: "calc(var(--nav-h) + 28px)" }}>
         {tab === "profile" ? <Profile user={user} />
           : tab === "favorites" ? <Favorites />
-          : tab === "styles" ? <StylesLibrary />
-          : tab === "norms" ? <NormsSettings />
+          : tab === "workshop" ? <Workshop />
           : <Projects />}
       </main>
+    </div>
+  );
+}
+
+/* ---------------- МАСТЕРСКАЯ: стили + нормы под одной крышей ----------------
+   Редакторы недельного ритма (библиотека стилей, правила эргономики) собраны
+   в один раздел — топбар остаётся языку петли дня. Каждый редактор рендерит
+   свою шапку сам, здесь только переключатель и sub-роут #cabinet/workshop/{sub}. */
+const WS_SUBS = [{ id: "styles", label: "Мои стили" }, { id: "norms", label: "Нормы" }];
+function Workshop() {
+  const [sub, setSub] = useC(() => { const s = parseRoute().sub; return WS_SUBS.some((x) => x.id === s) ? s : "styles"; });
+  const change = (s) => { setSub(s); setRoute("cabinet", "workshop", s); };
+  useCE(() => {
+    const on = () => { const r = parseRoute(); if (r.tab === "workshop" && WS_SUBS.some((x) => x.id === r.sub)) setSub(r.sub); };
+    window.addEventListener("hashchange", on);
+    return () => window.removeEventListener("hashchange", on);
+  }, []);
+  useCE(() => { const r = parseRoute(); if (r.tab === "workshop" && !WS_SUBS.some((x) => x.id === r.sub)) setRoute("cabinet", "workshop", sub); }, []);
+  return (
+    <div>
+      <SegTabs className="pd-seg" items={WS_SUBS} value={sub} onChange={change} ariaLabel="Раздел мастерской" style={{ marginBottom: 22 }} />
+      {sub === "norms" ? <NormsSettings /> : <StylesLibrary />}
     </div>
   );
 }
@@ -237,4 +249,3 @@ window.AuthScreen = AuthScreen;
 window.Cabinet = Cabinet;
 window.AppTopBar = AppTopBar;
 window.Avatar = Avatar;
-window.Field = Field;
