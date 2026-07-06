@@ -380,7 +380,7 @@ function OverlayHead({ onBack, crumbs, title, sub, budget, right }) {
         <div className="pd-sub">{sub}</div>
       </div>
       {budget != null && (
-        <span className="glass" style={{ display: "flex", alignItems: "center", gap: 7, padding: "7px 13px", borderRadius: 99, fontSize: 12.5, fontWeight: 700, whiteSpace: "nowrap" }}>
+        <span className="glass pd-bud" style={{ display: "flex", alignItems: "center", gap: 7, padding: "7px 13px", borderRadius: 99, fontSize: 12.5, fontWeight: 700, whiteSpace: "nowrap" }}>
           <I.wallet size={15} style={{ color: "var(--accent-2)" }} />Бюджет {fmtMoney(budget)}
         </span>
       )}

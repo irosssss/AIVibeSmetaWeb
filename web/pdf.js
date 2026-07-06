@@ -90,9 +90,12 @@
   // mode: "work" (по умолчанию) — две цены (себестоимость + клиент) и бюджет;
   //       "client" — только цена клиента, без себестоимости/наценки/бюджета.
   // catMarkupPct: {раздел: %} — свои наценки поверх базовой markupPct (как на экране сметы).
-  function exportRoomSpec({ project, area, rooms, grand, markupPct, catMarkupPct, clientTotal, budget, mode }) {
+  function exportRoomSpec({ project, area, rooms, grand, markupPct, catMarkupPct, clientTotal, discountPct, deliveryCost, installCost, budget, mode }) {
     if (!window.pdfMake) { (window.toast ? toast("PDF-модуль ещё загружается — попробуйте через секунду.", "info") : 0); return false; }
     const clientMode = mode === "client";
+    // итог структурой: скидка округляется до рубля от подытога — та же формула, что в UI/Excel
+    const discountAmt = Math.round((clientTotal || 0) * (discountPct || 0) / 100);
+    const totalClient = (clientTotal || 0) - discountAmt + (deliveryCost || 0) + (installCost || 0);
     const pctOf = (it) => { const c = it.cat || "Прочее"; return catMarkupPct && catMarkupPct[c] != null ? catMarkupPct[c] : (markupPct || 0); };
     const lineCost = (it) => it.price * (it.qty || 1);
     const unitClient = (it) => Math.round(it.price * (1 + pctOf(it) / 100));       // округляется цена/шт,
@@ -120,13 +123,27 @@
       content.push({ columns: [ { text: "", width: "*" }, { text: "Итого по комнате: " + money(clientMode ? subClient : sub), alignment: "right", bold: true, fontSize: 10.5, margin: [0, 4, 0, 0] } ] });
     });
     content.push({ canvas: [{ type: "line", x1: 0, y1: 0, x2: 515, y2: 0, lineWidth: 0.5, lineColor: "#E5E0DA" }], margin: [0, 14, 0, 8] });
+    // итог структурой: подытог → скидка → наценка → доставка/монтаж → ИТОГО (нулевые строки опускаем)
+    const totalRows = [];
     if (clientMode) {
-      content.push({ columns: [ { text: "", width: "*" }, { text: "Итого: " + money(clientTotal), alignment: "right", style: "total", margin: [0, 6, 0, 0] } ] });
+      if (discountAmt > 0 || deliveryCost > 0 || installCost > 0) totalRows.push({ text: "Подытог: " + money(clientTotal), alignment: "right", fontSize: 10.5 });
+      if (discountAmt > 0) totalRows.push({ text: "Скидка (−" + discountPct + "%): −" + money(discountAmt), alignment: "right", fontSize: 10.5 });
+      if (deliveryCost > 0) totalRows.push({ text: "Доставка: +" + money(deliveryCost), alignment: "right", fontSize: 10.5 });
+      if (installCost > 0) totalRows.push({ text: "Монтаж и сборка: +" + money(installCost), alignment: "right", fontSize: 10.5 });
+      totalRows.push({ text: "Итого: " + money(totalClient), alignment: "right", style: "total", margin: [0, 3, 0, 0] });
+      content.push({ columns: [ { text: "", width: "*" }, { stack: totalRows, margin: [0, 6, 0, 0] } ] });
     } else {
       const over = grand > budget;
+      totalRows.push({ text: "Подытог — себестоимость (фабрика): " + money(grand), alignment: "right", fontSize: 10.5 });
+      totalRows.push({ text: "Наценка дизайнера " + (hasCatMk ? "(по разделам)" : "(+" + (markupPct || 0) + "%)") + ": +" + money(clientTotal - grand), alignment: "right", fontSize: 10.5 });
+      totalRows.push({ text: "Подытог для клиента: " + money(clientTotal), alignment: "right", fontSize: 10.5 });
+      if (discountAmt > 0) totalRows.push({ text: "Скидка клиенту (−" + discountPct + "%): −" + money(discountAmt), alignment: "right", fontSize: 10.5 });
+      if (deliveryCost > 0) totalRows.push({ text: "Доставка: +" + money(deliveryCost), alignment: "right", fontSize: 10.5 });
+      if (installCost > 0) totalRows.push({ text: "Монтаж и сборка: +" + money(installCost), alignment: "right", fontSize: 10.5 });
+      totalRows.push({ text: "Итого для клиента: " + money(totalClient), alignment: "right", style: "total", margin: [0, 3, 0, 0] });
       content.push({ columns: [
         { text: over ? "Превышение бюджета на " + money(grand - budget) : "В рамках бюджета (" + money(budget) + ")", color: over ? "#B45309" : "#2F7A52", fontSize: 10, margin: [0, 6, 0, 0] },
-        { stack: [ { text: "Себестоимость: " + money(grand), alignment: "right", fontSize: 11 }, { text: "Для клиента " + (hasCatMk ? "(наценка по разделам)" : "(+" + (markupPct || 0) + "%)") + ": " + money(clientTotal), alignment: "right", style: "total" } ] },
+        { stack: totalRows, margin: [0, 6, 0, 0] },
       ] });
     }
     content.push({ text: "Комплектация (мебель, техника, сантехника, свет, текстиль). Ремонтные работы и отделочные материалы — отдельной сметой. Цены — рыночный ориентир. Документ сформирован в AIVibe.", style: "foot", margin: [0, 16, 0, 0] });

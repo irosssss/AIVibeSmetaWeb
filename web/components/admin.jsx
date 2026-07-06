@@ -77,19 +77,19 @@ function Dashboard() {
       {/* графики */}
       <div className="chart-row" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 18 }}>
         <ChartCard title="Визиты в день" source="Яндекс Метрика" accent="var(--chart)">
-          {data ? <AreaChart data={data.traffic} color="var(--chart)" id="traffic" /> : <ChartSkel />}
+          {data ? <AreaChart data={data.traffic} color="var(--chart)" id="traffic" /> : <AdminChartSkel />}
         </ChartCard>
         <ChartCard title="AI-события" source="AppMetrica" accent="var(--info)">
-          {data ? <AreaChart data={data.aiEvents} color="var(--info)" id="ai" /> : <ChartSkel />}
+          {data ? <AreaChart data={data.aiEvents} color="var(--info)" id="ai" /> : <AdminChartSkel />}
         </ChartCard>
       </div>
 
       <div className="chart-row" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
         <ChartCard title="Источники трафика" source="Яндекс Метрика">
-          {data ? <div style={{ paddingTop: 8 }}><Donut data={data.sources} /></div> : <ChartSkel />}
+          {data ? <div style={{ paddingTop: 8 }}><Donut data={data.sources} /></div> : <AdminChartSkel />}
         </ChartCard>
         <ChartCard title="Популярные стили дизайна" source="AppMetrica · события">
-          {data ? <div style={{ paddingTop: 8 }}><BarList data={data.styles} color="var(--chart)" /></div> : <ChartSkel />}
+          {data ? <div style={{ paddingTop: 8 }}><BarList data={data.styles} color="var(--chart)" /></div> : <AdminChartSkel />}
         </ChartCard>
       </div>
     </div>
@@ -107,7 +107,7 @@ function ChartCard({ title, source, accent, children }) {
     </div>
   );
 }
-function ChartSkel() { return <div className="skel" style={{ height: 150, borderRadius: 12 }} />; }
+function AdminChartSkel() { return <div className="skel" style={{ height: 150, borderRadius: 12 }} />; }   /* не ChartSkel — то имя занято скелетоном кабинета (cabinet-views.jsx, проп h) */
 
 function PageHead({ title, sub, right }) {
   return (

@@ -348,7 +348,15 @@ select.fld { appearance: none; cursor: pointer;
 .pd-crumbs span[aria-current] { color: var(--text); }   /* текущий уровень — самый сильный (стандартный breadcrumb) */
 .pd-crumbs > span:not([aria-current]) { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 180px; }
 
+/* тесная шапка оверлея на телефоне: бюджет-чип уходит (он дублируется статусом в sticky-итоге),
+   крошкам — короче потолок, чтобы «Проекты / Имя / Смета» не выдавливали заголовок */
+@media (max-width: 560px) {
+  .pd-head .pd-bud { display: none !important; }   /* !important: у чипа инлайновый display:flex */
+  .pd-crumbs > span:not([aria-current]) { max-width: 90px; }
+}
+
 /* ---- Смета по комнатам: адаптив колонок документа ---- */
+.rs-val { white-space: nowrap; flex: none; }   /* деньги в итоговом блоке не переносим («₽» не уезжает на строку) */
 @media (max-width: 760px) {
   .rs-unit { display: none !important; }   /* Цена/шт уходит первой */
 }

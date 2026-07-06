@@ -33,10 +33,13 @@
   // mode: "work" (по умолчанию) — две цены (себестоимость + клиент) и бюджет;
   //       "client" — только цена клиента, без себестоимости/наценки/бюджета.
   // catMarkupPct: {раздел: %} — свои наценки поверх базовой markupPct (как на экране сметы).
-  function exportRoomSpec({ project, area, rooms, grand, markupPct, catMarkupPct, clientTotal, budget, mode }) {
+  function exportRoomSpec({ project, area, rooms, grand, markupPct, catMarkupPct, clientTotal, discountPct, deliveryCost, installCost, budget, mode }) {
     if (!window.XLSX) { (window.toast ? toast("Excel-библиотека ещё загружается — попробуйте через секунду.", "info") : 0); return false; }
     rooms = rooms || [];
     const clientMode = mode === "client";
+    // итог структурой: скидка округляется до рубля от подытога — та же формула, что в UI/PDF
+    const discountAmt = Math.round((clientTotal || 0) * (discountPct || 0) / 100);
+    const totalClient = (clientTotal || 0) - discountAmt + (deliveryCost || 0) + (installCost || 0);
     const catOf = (it) => it.cat || "Прочее";
     const pctOf = (it) => (catMarkupPct && catMarkupPct[catOf(it)] != null ? catMarkupPct[catOf(it)] : (markupPct || 0));
     const hasCatMk = !!catMarkupPct && Object.keys(catMarkupPct).length > 0;
@@ -71,8 +74,8 @@
       if (clientMode) { const ri = push([roomLabel(r), roomClient(r)]); mc.push([ri, 1]); }
       else { const ri = push([roomLabel(r), roomCost(r), roomClient(r)]); mc.push([ri, 1], [ri, 2]); }
     });
-    if (clientMode) { const ri = push(["Итого", clientTotal]); mc.push([ri, 1]); }
-    else { const ri = push(["Итого", grand, clientTotal]); mc.push([ri, 1], [ri, 2]); }
+    if (clientMode) { const ri = push(["Итого по позициям", clientTotal]); mc.push([ri, 1]); }
+    else { const ri = push(["Итого по позициям", grand, clientTotal]); mc.push([ri, 1], [ri, 2]); }
     push([]);
     // по разделам (закупочным категориям) — по убыванию суммы; в рабочем режиме виден и процент наценки раздела
     const byCat = {}, byCatCli = {};
@@ -85,6 +88,20 @@
         const ri = push([cat, byCat[cat], byCatCli[cat], pct]); mc.push([ri, 1], [ri, 2]);   // процент — не деньги
       }
     });
+    // итог структурой: подытог → скидка → наценка → доставка/монтаж → ИТОГО (нулевые строки опускаем)
+    push([]);
+    push(["Итог"]);
+    if (!clientMode) {
+      { const ri = push(["Подытог — себестоимость (фабрика)", grand]); mc.push([ri, 1]); }
+      { const ri = push(["Наценка дизайнера" + (hasCatMk ? " (по разделам)" : " (+" + (markupPct || 0) + "%)"), clientTotal - grand]); mc.push([ri, 1]); }
+    }
+    if (!clientMode || discountAmt > 0 || deliveryCost > 0 || installCost > 0) {
+      const ri = push([clientMode ? "Подытог" : "Подытог для клиента", clientTotal]); mc.push([ri, 1]);
+    }
+    if (discountAmt > 0) { const ri = push(["Скидка клиенту (−" + discountPct + "%)", -discountAmt]); mc.push([ri, 1]); }
+    if (deliveryCost > 0) { const ri = push(["Доставка", deliveryCost]); mc.push([ri, 1]); }
+    if (installCost > 0) { const ri = push(["Монтаж и сборка", installCost]); mc.push([ri, 1]); }
+    { const ri = push([clientMode ? "ИТОГО" : "ИТОГО ДЛЯ КЛИЕНТА", totalClient]); mc.push([ri, 1]); }
     if (!clientMode) {   // бюджет/себестоимость — внутренняя кухня, в клиентскую версию не выгружаем
       push([]);
       { const ri = push(["Бюджет проекта", budget]); mc.push([ri, 1]); }
@@ -97,8 +114,10 @@
     XLSX.utils.book_append_sheet(wb, wsS, uniqueSheet("Свод"));
 
     /* ---------- Лист «Все позиции» (плоская мастер-таблица) ---------- */
+    // в клиентском файле цены — клиентские, и заголовок говорит об этом прямо: иначе при
+    // обратном импорте «Цена, ₽» приняли бы за себестоимость и наценили второй раз
     const all = [clientMode
-      ? ["№", "Помещение", "Раздел", "Наименование", "Кол-во", "Цена, ₽", "Сумма, ₽"]
+      ? ["№", "Помещение", "Раздел", "Наименование", "Кол-во", "Цена клиенту, ₽", "Сумма клиенту, ₽"]
       : ["№", "Помещение", "Раздел", "Наименование", "Кол-во", "Цена, ₽", "Сумма, ₽", "Цена клиенту, ₽", "Сумма клиенту, ₽"]];
     let n = 0;
     rooms.forEach((r) => r.items.forEach((it) => {
@@ -107,7 +126,7 @@
         ? [++n, r.name, catOf(it), it.title, it.qty || 1, unitClient(it), lineClient(it)]
         : [++n, r.name, catOf(it), it.title, it.qty || 1, it.price, lc, unitClient(it), lineClient(it)]);
     }));
-    all.push(clientMode ? ["", "", "", "Итого", "", "", clientTotal] : ["", "", "", "Итого", "", "", grand, "", clientTotal]);
+    all.push(clientMode ? ["", "", "", "Итого по позициям", "", "", clientTotal] : ["", "", "", "Итого по позициям", "", "", grand, "", clientTotal]);
     const wsA = XLSX.utils.aoa_to_sheet(all);
     setCols(wsA, clientMode ? [5, 18, 16, 46, 7, 15, 16] : [5, 18, 16, 46, 7, 13, 14, 15, 16]);
     fmtMoneyCols(wsA, clientMode ? [5, 6] : [5, 6, 7, 8], 1, all.length - 1);
@@ -116,7 +135,7 @@
 
     /* ---------- Лист на каждую комнату ---------- */
     const rHead = clientMode
-      ? ["№", "Раздел", "Наименование", "Кол-во", "Цена, ₽", "Сумма, ₽"]
+      ? ["№", "Раздел", "Наименование", "Кол-во", "Цена клиенту, ₽", "Сумма клиенту, ₽"]
       : ["№", "Раздел", "Наименование", "Кол-во", "Цена, ₽", "Сумма, ₽", "Цена клиенту, ₽", "Сумма клиенту, ₽"];
     rooms.forEach((r) => {
       const rows = [[roomLabel(r)], [], rHead];
@@ -175,6 +194,12 @@
           // цена за единицу: «цена/стоимость» без «клиент»; если нет — выводим из суммы/кол-во
           const cPrice = head.findIndex((h) => /цена|стоим|price/.test(norm(h)) && !/клиент/.test(norm(h)));
           const cSum = head.findIndex((h) => /сумма|total/.test(norm(h)) && !/клиент/.test(norm(h)));
+          // клиентская выгрузка (только «Цена клиенту»): берём её, но наценку НЕ наносим второй раз
+          const cPriceCli = cPrice < 0 ? head.findIndex((h) => /цена|стоим|price/.test(norm(h))) : -1;
+          const cSumCli = cSum < 0 ? head.findIndex((h) => /сумма|total/.test(norm(h))) : -1;
+          const clientPrices = cPrice < 0 && (cPriceCli >= 0 || cSumCli >= 0);
+          const colPrice = cPrice >= 0 ? cPrice : cPriceCli;
+          const colSum = cSum >= 0 ? cSum : cSumCli;
 
           const byRoom = new Map();
           for (let i = hr + 1; i < aoa.length; i++) {
@@ -182,8 +207,9 @@
             const title = String(row[cTitle] == null ? "" : row[cTitle]).trim();
             if (!title || /^итог/.test(norm(title))) continue;       // пропускаем «Итого»
             const qty = cQty >= 0 ? (num(row[cQty]) || 1) : 1;
-            let price = cPrice >= 0 ? num(row[cPrice]) : 0;
-            if (!price && cSum >= 0) price = Math.round(num(row[cSum]) / qty);
+            // цену округляем до рубля: дробные копейки ломали бы инвариант «строки бьются» в UI/PDF/Excel
+            let price = colPrice >= 0 ? Math.round(num(row[colPrice])) : 0;
+            if (!price && colSum >= 0) price = Math.round(num(row[colSum]) / qty);
             const roomName = (cRoom >= 0 ? String(row[cRoom] == null ? "" : row[cRoom]).trim() : "") || "Без помещения";
             const cat = cCat >= 0 ? String(row[cCat] == null ? "" : row[cCat]).trim() : "";
             if (!byRoom.has(roomName)) byRoom.set(roomName, []);
@@ -196,8 +222,11 @@
           const baseName = String(file.name || "Импорт").replace(/\.[^.]+$/, "");
           resolve({
             name: baseName, area: "—", budget: total, rooms,
-            summaryShort: "Импортировано из Excel: " + (file.name || "") + " · " + itemsCount + " позиций. Цены — как в файле; проверьте перед выгрузкой.",
+            summaryShort: "Импортировано из Excel: " + (file.name || "") + " · " + itemsCount + " позиций. "
+              + (clientPrices ? "В файле цены клиентские — наценка не применялась (базовая 0%). " : "")
+              + "Цены — как в файле; проверьте перед выгрузкой.",
             imported: true,
+            ...(clientPrices ? { markupPct: 0 } : {}),   // клиентские цены не наценяем повторно
           });
         } catch (err) { reject(err); }
       };

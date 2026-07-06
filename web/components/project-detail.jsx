@@ -69,6 +69,9 @@ const LAYOUT_K = {
   rug:    { stroke: "rgba(46,42,38,.35)", fill: "transparent",         ink: "var(--spec-meta)", dashed: true },
 };
 
+/* строка итогового блока сметы-документа (подытог → скидка → доставка/монтаж → ИТОГО) */
+const RS_ROW = { display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, padding: "8px 0", fontSize: 13.5 };
+
 /* цена предмета с поправкой на выбранный стиль (округляем до сотен) */
 const adjustPrice = (price, factor) => (price == null ? price : Math.round((price * factor) / 100) * 100);
 
@@ -169,7 +172,9 @@ function ProjectDetail({ id, onClose, initialStyle }) {
     );
   }
 
-  if (data.rooms) return <RoomSpecOverlay data={data} onClose={onClose} />;
+  // key: при смене id через hash state оверлея (наценки/скидка/savedId) обязан переинициализироваться,
+  // иначе «Сохранить» запишет значения предыдущего проекта в новый
+  if (data.rooms) return <RoomSpecOverlay key={data.id || "imported"} data={data} onClose={onClose} />;
 
   const activeStyle = [...data.styles, ...myStyles].find((s) => s.id === styleId) || data.styles[0];
   const activeLayout = LAYOUTS.find((l) => l.id === layoutId) || LAYOUTS[0];
@@ -227,12 +232,20 @@ function RoomSpecOverlay({ data, onClose }) {
   const [markup, setMarkup] = usePD(data.markupPct != null ? data.markupPct : 25);
   const [catMarkup, setCatMarkup] = usePD(data.catMarkupPct || {});  // {раздел: %} — своя наценка поверх базовой (пусто = наследует)
   const [catOpen, setCatOpen] = usePD(false);
+  const [discount, setDiscount] = usePD(data.discountPct || 0);      // скидка клиенту, % от подытога
+  const [delivery, setDelivery] = usePD(data.deliveryCost || 0);     // доставка, ₽ (транзитом, без наценки)
+  const [install, setInstall] = usePD(data.installCost || 0);        // монтаж и сборка, ₽
   const [mode, setMode] = usePD("work");   // режим выгрузки: "work" (рабочая) / "client" (для клиента)
   const [roomSaved, setRoomSaved] = usePD(false);
+  const [roomSaving, setRoomSaving] = usePD(false);   // guard: двойной клик «Сохранить» не должен создать проект-дубль
   const [savedId, setSavedId] = usePD(data.id || null);
+  const [settings, setSettings] = usePD(null);   // мои нормы — для проверки эргономики по комнатам
+  usePDE(() => { AIVibeAPI.settings.get().then(setSettings); }, []);
   const saveRoom = () => {
-    const done = () => { setRoomSaved(true); setTimeout(() => setRoomSaved(false), 1700); };
-    const patch = { markupPct: markup, catMarkupPct: catMarkup };
+    if (roomSaving) return;
+    setRoomSaving(true);
+    const done = () => { setRoomSaving(false); setRoomSaved(true); setTimeout(() => setRoomSaved(false), 1700); };
+    const patch = { markupPct: markup, catMarkupPct: catMarkup, discountPct: discount, deliveryCost: delivery, installCost: install };
     if (savedId) { AIVibeAPI.projects.update(savedId, patch).then(done); return; }
     // импортированная из Excel смета не привязана к проекту — создаём его,
     // иначе «Сохранено» врало бы, а наценки терялись при закрытии оверлея
@@ -275,7 +288,19 @@ function RoomSpecOverlay({ data, onClose }) {
   const ovrCount = cats.filter((c) => catMarkup[c] != null).length;
   const setCatPct = (cat, v) => setCatMarkup((m) => { const n = { ...m }; if (v == null) delete n[cat]; else n[cat] = v; return n; });
   const effPct = grand > 0 ? Math.round((client / grand - 1) * 100) : markup;
-  const specArgs = () => ({ project: data.name, area: data.area, rooms, grand, markupPct: markup, catMarkupPct: catMarkup, clientTotal: client, budget: data.budget, mode });
+  // итог структурой: подытог (client) → скидка → доставка/монтаж → ИТОГО.
+  // Скидка округляется до рубля от подытога — та же формула в PDF/Excel (инвариант выгрузок)
+  const discountAmt = Math.round(client * discount / 100);
+  const totalClient = client - discountAmt + delivery + install;
+  // эргономика по комнатам: там, где в РД есть план расстановки (plan+layout); мои нормы учитываются.
+  // До прихода settings не считаем — иначе первый кадр показан по канону и «мигает» при загрузке моих норм
+  const effNorms = settings ? { ...(settings.normsOverride || {}), enabled: settings.enabledNorms || {} } : undefined;
+  const ergo = window.AIVibeEngine && settings
+    ? rooms.filter((r) => r.plan && r.layout).map((r) => ({ name: r.name, res: AIVibeEngine.checkErgonomics({ plan: r.layout }, r.plan, effNorms) }))
+    : [];
+  const ergoWarns = ergo.reduce((s, e) => s + e.res.warns, 0);
+  const ergoSkipped = rooms.length - ergo.length;
+  const specArgs = () => ({ project: data.name, area: data.area, rooms, grand, markupPct: markup, catMarkupPct: catMarkup, clientTotal: client, discountPct: discount, deliveryCost: delivery, installCost: install, budget: data.budget, mode });
   const exportPDF = () => { if (window.AIVibePDF && AIVibePDF.exportRoomSpec) withLib("pdf", () => AIVibePDF.exportRoomSpec(specArgs())); };
   const exportXLSX = () => { if (window.AIVibeXLSX) withLib("xlsx", () => AIVibeXLSX.exportRoomSpec(specArgs())); };
 
@@ -288,7 +313,7 @@ function RoomSpecOverlay({ data, onClose }) {
 
       <div className="pd-body">
         <div className="pd-main">
-          <section className="pd-section" style={{ borderBottom: "none" }}>
+          <section className="pd-section" style={ergo.length ? undefined : { borderBottom: "none" }}>
             <div className="pd-eyebrow"><span className="dot" />Спецификация-комплектация</div>
             <h3 className="pd-h">Смета по комнатам</h3>
             <p style={{ color: "var(--muted)", fontSize: 14.5, marginTop: 4, marginBottom: 18, maxWidth: 820, lineHeight: 1.6 }}>{data.summaryShort}</p>
@@ -300,10 +325,11 @@ function RoomSpecOverlay({ data, onClose }) {
                 <span className="mono" style={{ fontWeight: 600, fontSize: 17, color: "var(--accent-ink)" }}>+{markup}%</span>
               </div>
               <input type="range" min="0" max="100" step="5" value={markup} onChange={(e) => setMarkup(+e.target.value)} className="quiz-range" style={{ marginTop: 10 }}
-                aria-label="Базовая наценка дизайнера, %" aria-valuetext={"+" + markup + "% — клиенту " + fmtMoney(client)} />
+                aria-label="Базовая наценка дизайнера, %" aria-valuetext={"+" + markup + "% — итого клиенту " + fmtMoney(totalClient)} />
               <div style={{ display: "flex", justifyContent: "space-between", marginTop: 12, fontSize: 13.5, flexWrap: "wrap", gap: 8 }}>
                 <span style={{ color: "var(--muted)" }}>Себестоимость (фабрика): <b style={{ color: "var(--text)" }}>{fmtMoney(grand)}</b></span>
-                <span style={{ color: "var(--muted)" }}>Для клиента: <b style={{ color: "var(--accent-2)" }}>{fmtMoney(client)}</b></span>
+                {/* это подытог ДО скидки/доставки — не путать с «Итого для клиента» в блоке итога */}
+                <span style={{ color: "var(--muted)" }}>Подытог для клиента: <b style={{ color: "var(--accent-2)" }}>{fmtMoney(client)}</b></span>
               </div>
 
               {/* свои наценки по разделам: пустое поле = раздел наследует базовую */}
@@ -325,7 +351,7 @@ function RoomSpecOverlay({ data, onClose }) {
                           <input className="fld" type="number" min="0" max="300" step="5" inputMode="numeric"
                             value={ovr ? catMarkup[cat] : ""} placeholder={"+" + markup}
                             aria-label={"Наценка на раздел «" + cat + "», % — пусто: базовая"}
-                            onKeyDown={(e) => { if (["e", "E", "+", "-", ".", ","].includes(e.key)) e.preventDefault(); }}
+                            onKeyDown={(e) => { if (!e.ctrlKey && !e.metaKey && ["e", "E", "+", "-", ".", ","].includes(e.key)) e.preventDefault(); }}
                             onChange={(e) => { const v = e.target.value; if (v === "") { setCatPct(cat, null); return; } const n = Math.max(0, Math.min(300, Math.round(+v))); if (!isNaN(n)) setCatPct(cat, n); }}
                             style={{ width: 64, padding: "6px 8px", fontSize: 12.5, fontFamily: "var(--font-mono)", textAlign: "right" }} />
                           <span className="mono" style={{ fontSize: 11.5, color: "var(--faint)" }}>%</span>
@@ -384,17 +410,148 @@ function RoomSpecOverlay({ data, onClose }) {
                 </div>
               ))}
             </div>
+
+            {/* итог документа: подытог → скидка → наценка → доставка/монтаж → ИТОГО (роадмап #6) */}
+            <div className="glass" style={{ borderRadius: "var(--r-lg)", padding: "16px 20px", marginTop: 18, maxWidth: 560, marginLeft: "auto" }}>
+              <div className="mono" style={{ fontSize: 10.5, letterSpacing: ".08em", textTransform: "uppercase", color: "var(--spec-meta)", paddingBottom: 8, borderBottom: "1px solid var(--hairline)" }}>Итог сметы</div>
+              {mode === "work" && (
+                <React.Fragment>
+                  <div style={RS_ROW}>
+                    <span style={{ color: "var(--muted)" }}>Подытог — себестоимость (фабрика)</span>
+                    <span className="mono rs-val">{fmtMoney(grand)}</span>
+                  </div>
+                  <div style={{ ...RS_ROW, borderTop: "1px solid var(--hairline-2)" }}>
+                    <span style={{ color: "var(--muted)" }}>Наценка дизайнера {ovrCount > 0 ? "· по разделам ≈ +" + effPct + "%" : "+" + markup + "%"}</span>
+                    <span className="mono rs-val" style={{ color: "var(--accent-2-ink)" }}>+{fmtMoney(client - grand)}</span>
+                  </div>
+                </React.Fragment>
+              )}
+              {(mode === "work" || discountAmt > 0 || delivery > 0 || install > 0) && (
+                <div style={{ ...RS_ROW, borderTop: "1px solid var(--hairline-2)" }}>
+                  <span style={{ fontWeight: 600 }}>{mode === "work" ? "Подытог для клиента" : "Подытог"}</span>
+                  <span className="mono rs-val" style={{ fontWeight: 600 }}>{fmtMoney(client)}</span>
+                </div>
+              )}
+              {mode === "work" ? (
+                <React.Fragment>
+                  <div style={{ ...RS_ROW, borderTop: "1px solid var(--hairline-2)" }}>
+                    <span style={{ color: "var(--muted)", display: "inline-flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                      Скидка клиенту
+                      <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
+                        <input className="fld" type="number" min="0" max="50" step="1" inputMode="numeric"
+                          value={discount || ""} placeholder="0" aria-label="Скидка клиенту, % от подытога"
+                          aria-describedby="rs-disc-val rs-total-val"
+                          onKeyDown={(e) => { if (!e.ctrlKey && !e.metaKey && ["e", "E", "+", "-", ".", ","].includes(e.key)) e.preventDefault(); }}
+                          onChange={(e) => { const v = e.target.value; if (v === "") { setDiscount(0); return; } const n = Math.max(0, Math.min(50, Math.round(+v))); if (!isNaN(n)) setDiscount(n); }}
+                          style={{ width: 56, padding: "5px 8px", fontSize: 12.5, fontFamily: "var(--font-mono)", textAlign: "right" }} />
+                        <span className="mono" style={{ fontSize: 11.5, color: "var(--spec-meta)" }}>%</span>
+                      </span>
+                    </span>
+                    {/* ноль — прочерк (не-данные, faint допустим); сумма — терракота-текст */}
+                    <span id="rs-disc-val" className="mono rs-val" style={{ color: discountAmt > 0 ? "var(--accent-ink)" : "var(--faint)" }}>{discountAmt > 0 ? "−" + fmtMoney(discountAmt) : "—"}</span>
+                  </div>
+                  <div style={{ ...RS_ROW, borderTop: "1px solid var(--hairline-2)" }}>
+                    <span style={{ color: "var(--muted)", display: "inline-flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                      Доставка
+                      <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
+                        <input className="fld" type="number" min="0" max="1000000" step="500" inputMode="numeric"
+                          value={delivery || ""} placeholder="0" aria-label="Доставка, ₽ — транзитом, без наценки"
+                          aria-describedby="rs-deliv-val rs-total-val"
+                          onKeyDown={(e) => { if (!e.ctrlKey && !e.metaKey && ["e", "E", "+", "-", ".", ","].includes(e.key)) e.preventDefault(); }}
+                          onChange={(e) => { const v = e.target.value; if (v === "") { setDelivery(0); return; } const n = Math.max(0, Math.min(1000000, Math.round(+v))); if (!isNaN(n)) setDelivery(n); }}
+                          style={{ width: 88, padding: "5px 8px", fontSize: 12.5, fontFamily: "var(--font-mono)", textAlign: "right" }} />
+                        <span className="mono" style={{ fontSize: 11.5, color: "var(--spec-meta)" }}>₽</span>
+                      </span>
+                    </span>
+                    <span id="rs-deliv-val" className="mono rs-val" style={{ color: delivery > 0 ? undefined : "var(--faint)" }}>{delivery > 0 ? "+" + fmtMoney(delivery) : "—"}</span>
+                  </div>
+                  <div style={{ ...RS_ROW, borderTop: "1px solid var(--hairline-2)" }}>
+                    <span style={{ color: "var(--muted)", display: "inline-flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                      Монтаж и сборка
+                      <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
+                        <input className="fld" type="number" min="0" max="1000000" step="500" inputMode="numeric"
+                          value={install || ""} placeholder="0" aria-label="Монтаж и сборка, ₽"
+                          aria-describedby="rs-inst-val rs-total-val"
+                          onKeyDown={(e) => { if (!e.ctrlKey && !e.metaKey && ["e", "E", "+", "-", ".", ","].includes(e.key)) e.preventDefault(); }}
+                          onChange={(e) => { const v = e.target.value; if (v === "") { setInstall(0); return; } const n = Math.max(0, Math.min(1000000, Math.round(+v))); if (!isNaN(n)) setInstall(n); }}
+                          style={{ width: 88, padding: "5px 8px", fontSize: 12.5, fontFamily: "var(--font-mono)", textAlign: "right" }} />
+                        <span className="mono" style={{ fontSize: 11.5, color: "var(--spec-meta)" }}>₽</span>
+                      </span>
+                    </span>
+                    <span id="rs-inst-val" className="mono rs-val" style={{ color: install > 0 ? undefined : "var(--faint)" }}>{install > 0 ? "+" + fmtMoney(install) : "—"}</span>
+                  </div>
+                </React.Fragment>
+              ) : (
+                <React.Fragment>
+                  {discountAmt > 0 && <div style={{ ...RS_ROW, borderTop: "1px solid var(--hairline-2)" }}><span style={{ color: "var(--muted)" }}>Скидка −{discount}%</span><span className="mono rs-val">−{fmtMoney(discountAmt)}</span></div>}
+                  {delivery > 0 && <div style={{ ...RS_ROW, borderTop: "1px solid var(--hairline-2)" }}><span style={{ color: "var(--muted)" }}>Доставка</span><span className="mono rs-val">+{fmtMoney(delivery)}</span></div>}
+                  {install > 0 && <div style={{ ...RS_ROW, borderTop: "1px solid var(--hairline-2)" }}><span style={{ color: "var(--muted)" }}>Монтаж и сборка</span><span className="mono rs-val">+{fmtMoney(install)}</span></div>}
+                </React.Fragment>
+              )}
+              {/* ИТОГО — жирная чертёжная линия + крупный mono */}
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 12, paddingTop: 12, marginTop: 4, borderTop: "2px solid var(--text)" }}>
+                <span style={{ fontWeight: 800, fontFamily: "var(--font-display)", fontSize: 15 }}>{mode === "work" ? "Итого для клиента" : "Итого"}</span>
+                <span id="rs-total-val" className="mono rs-val" style={{ fontWeight: 600, fontSize: 24, letterSpacing: "-0.01em" }} aria-live="off">{fmtMoney(totalClient)}</span>
+              </div>
+            </div>
           </section>
+
+          {/* проверка норм: эргономика по помещениям с планом расстановки из РД */}
+          {ergo.length > 0 && (
+            <section className="pd-section" style={{ borderBottom: "none" }}>
+              <div className="pd-eyebrow"><span className="dot" />Проверка норм · движок эргономики</div>
+              <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+                <h3 className="pd-h" style={{ marginBottom: 0 }}>Эргономика по помещениям</h3>
+                <span className="glass" style={{ display: "inline-flex", alignItems: "center", gap: 7, padding: "6px 12px", borderRadius: 99, fontSize: 12.5, fontWeight: 700,
+                  color: ergoWarns === 0 ? "var(--accent-2-ink)" : "var(--accent-ink)", borderColor: ergoWarns === 0 ? "rgba(94,107,91,.4)" : "rgba(183,80,44,.4)" }}>
+                  <span style={{ width: 8, height: 8, borderRadius: "50%", background: ergoWarns === 0 ? "var(--accent-2)" : "var(--accent)", flex: "none" }} />
+                  {ergoWarns === 0 ? "Все нормы соблюдены" : ergoWarns + " " + plural(ergoWarns, ["замечание", "замечания", "замечаний"])}
+                </span>
+              </div>
+              <p style={{ color: "var(--muted)", fontSize: 14.5, marginTop: 8, marginBottom: 4, maxWidth: 820, lineHeight: 1.6 }}>
+                Движок проверил проходы, дистанции и плотность по плану расстановки из дизайн-проекта — детерминированно, по тем же нормам, что и подбор (правки из «Моих норм» учтены).
+              </p>
+              {ergo.map((e) => (
+                <div key={e.name} style={{ marginTop: 16 }}>
+                  <div style={{ display: "flex", alignItems: "baseline", gap: 10, marginBottom: 9 }}>
+                    <span style={{ fontWeight: 800, fontFamily: "var(--font-display)", fontSize: 15.5 }}>{e.name}</span>
+                    <span className="mono" style={{ fontSize: 11.5, color: e.res.warns ? "var(--accent-ink)" : "var(--accent-2-ink)" }}>
+                      {e.res.warns ? e.res.warns + " " + plural(e.res.warns, ["замечание", "замечания", "замечаний"]) : "в норме"}
+                    </span>
+                  </div>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 9 }}>
+                    {/* замечания первыми — иерархия критичности (терракотовое ребро), «в норме» подчинённо */}
+                    {[...e.res.findings].sort((a, b) => (a.kind === "warn" ? 0 : 1) - (b.kind === "warn" ? 0 : 1)).map((f, i) => {
+                      const Ico = FIND_ICON[f.kind] || FIND_ICON.idea;
+                      return (
+                        <div key={i} className={"find " + f.kind}>
+                          <span className="fi"><Ico size={15} /></span>
+                          <span style={{ fontSize: 14, lineHeight: 1.5, color: "var(--text)" }}>{f.text}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+              {ergoSkipped > 0 && (
+                <div style={{ marginTop: 14, fontSize: 12.5, color: "var(--muted)", maxWidth: 820, lineHeight: 1.55 }}>
+                  Ещё {ergoSkipped} {plural(ergoSkipped, ["помещение", "помещения", "помещений"])} без плана расстановки (мокрые зоны, хранение) — движок проверяет комнаты, где в проекте есть геометрия. Проверяются крупные напольные предметы с плана; примыкающие вплотную и настенные позиции — вне геометрической проверки.
+                </div>
+              )}
+            </section>
+          )}
 
           {/* итог (sticky) */}
           <div className="pd-cart">
             <div style={{ display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
               {/* без aria-live: сумму при драге озвучивает aria-valuetext слайдера; live — только статус бюджета */}
-              <SmetaTotal amount={client}
-                caption={<React.Fragment>итого клиенту · {itemsCount} {plural(itemsCount, ["позиция", "позиции", "позиций"])} · <span role="status" aria-atomic="true">{over ? <span style={{ color: "var(--accent-ink)" }}>закупка сверх бюджета</span> : <span style={{ color: "var(--accent-2)" }}>закупка в бюджете</span>}</span></React.Fragment>} />
+              {/* статус — с суммой бюджета: на ≤560px чип шапки скрыт, и это единственная цифра бюджета */}
+              <SmetaTotal amount={totalClient}
+                caption={<React.Fragment>итого клиенту · {itemsCount} {plural(itemsCount, ["позиция", "позиции", "позиций"])} · <span role="status" aria-atomic="true">{over ? <span style={{ color: "var(--accent-ink)" }}>закупка сверх бюджета {fmtMoney(data.budget)}</span> : <span style={{ color: "var(--accent-2)" }}>закупка в бюджете {fmtMoney(data.budget)}</span>}</span></React.Fragment>} />
               {mode === "work" && (
                 <span className="glass mono" style={{ padding: "7px 12px", borderRadius: 99, fontSize: 12, fontWeight: 500, color: "var(--muted)" }}>
-                  себестоимость {fmtMoney(grand)} · наценка {ovrCount > 0 ? "≈ +" + effPct + "%" : "+" + markup + "%"} = <b style={{ color: "var(--accent-2)", fontWeight: 600 }}>{fmtMoney(client - grand)}</b>
+                  {/* маржа после скидки: убыток — терракотой, не оливой-успехом */}
+                  себестоимость {fmtMoney(grand)} · наценка {ovrCount > 0 ? "≈ +" + effPct + "%" : "+" + markup + "%"}{discountAmt > 0 && " − скидка " + discount + "%"} = <b style={{ color: client - discountAmt - grand < 0 ? "var(--accent-ink)" : "var(--accent-2)", fontWeight: 600 }}>{fmtMoney(client - discountAmt - grand)}</b>
                 </span>
               )}
               <div style={{ marginLeft: "auto", display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
@@ -405,7 +562,7 @@ function RoomSpecOverlay({ data, onClose }) {
                   ]} />
                 <button className="btn btn-ghost" style={{ padding: "11px 16px" }} onClick={exportXLSX}><I.grid size={16} />Выгрузить Excel</button>
                 <button className="btn btn-ghost" style={{ padding: "11px 16px" }} onClick={exportPDF}><I.layers size={16} />Выгрузить PDF</button>
-                <button className="btn btn-primary" style={{ padding: "11px 18px" }} onClick={saveRoom}>{roomSaved ? <React.Fragment><I.check size={16} />Сохранено</React.Fragment> : <React.Fragment><I.check size={16} />Сохранить смету</React.Fragment>}</button>
+                <button className="btn btn-primary" style={{ padding: "11px 18px" }} onClick={saveRoom} disabled={roomSaving}>{roomSaved ? <React.Fragment><I.check size={16} />Сохранено</React.Fragment> : <React.Fragment><I.check size={16} />Сохранить смету</React.Fragment>}</button>
               </div>
             </div>
           </div>
