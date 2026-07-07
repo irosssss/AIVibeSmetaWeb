@@ -30,12 +30,17 @@
     fmtMoney(ws, cells);
   };
 
+  // ISO-дата → «ДД.ММ.ГГГГ» для колонки «Цена от» (давность цены скопированной позиции)
+  const fmtDateCell = (d) => { const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(d || "")); return m ? m[3] + "." + m[2] + "." + m[1] : ""; };
+
   // mode: "work" (по умолчанию) — две цены (себестоимость + клиент) и бюджет;
-  //       "client" — только цена клиента, без себестоимости/наценки/бюджета.
+  //       "client" — только цена клиента, без себестоимости/наценки/бюджета;
+  //       "procure" — закупочный лист: только себестоимость, свод и лист на поставщика.
   // catMarkupPct: {раздел: %} — свои наценки поверх базовой markupPct (как на экране сметы).
   function exportRoomSpec({ project, area, rooms, grand, markupPct, catMarkupPct, clientTotal, discountPct, deliveryCost, installCost, budget, mode }) {
     if (!window.XLSX) { (window.toast ? toast("Excel-библиотека ещё загружается — попробуйте через секунду.", "info") : 0); return false; }
     rooms = rooms || [];
+    if (mode === "procure") return exportProcure({ project, area, rooms, grand, budget });
     const clientMode = mode === "client";
     // итог структурой: скидка округляется до рубля от подытога — та же формула, что в UI/PDF
     const discountAmt = Math.round((clientTotal || 0) * (discountPct || 0) / 100);
@@ -115,22 +120,39 @@
 
     /* ---------- Лист «Все позиции» (плоская мастер-таблица) ---------- */
     // в клиентском файле цены — клиентские, и заголовок говорит об этом прямо: иначе при
-    // обратном импорте «Цена, ₽» приняли бы за себестоимость и наценили второй раз
-    const all = [clientMode
-      ? ["№", "Помещение", "Раздел", "Наименование", "Кол-во", "Цена клиенту, ₽", "Сумма клиенту, ₽"]
-      : ["№", "Помещение", "Раздел", "Наименование", "Кол-во", "Цена, ₽", "Сумма, ₽", "Цена клиенту, ₽", "Сумма клиенту, ₽"]];
+    // обратном импорте «Цена, ₽» приняли бы за себестоимость и наценили второй раз.
+    // Поставщик и давность цены — внутренняя кухня: только в рабочем файле и только
+    // когда данные есть (импортёр находит колонки по заголовку — состав не фиксирован)
+    const hasSup = !clientMode && rooms.some((r) => r.items.some((it) => it.sup));
+    const hasPD = !clientMode && rooms.some((r) => r.items.some((it) => it.priceDate));
+    const head = ["№", "Помещение", "Раздел"];
+    if (hasSup) head.push("Поставщик");
+    head.push("Наименование", "Кол-во");
+    if (clientMode) head.push("Цена клиенту, ₽", "Сумма клиенту, ₽");
+    else head.push("Цена, ₽", "Сумма, ₽", "Цена клиенту, ₽", "Сумма клиенту, ₽");
+    if (hasPD) head.push("Цена от");
+    const col = (name) => head.indexOf(name);
+    const all = [head];
     let n = 0;
     rooms.forEach((r) => r.items.forEach((it) => {
-      const lc = lineCost(it);
-      all.push(clientMode
-        ? [++n, r.name, catOf(it), it.title, it.qty || 1, unitClient(it), lineClient(it)]
-        : [++n, r.name, catOf(it), it.title, it.qty || 1, it.price, lc, unitClient(it), lineClient(it)]);
+      const row = [++n, r.name, catOf(it)];
+      if (hasSup) row.push(it.sup || "");
+      row.push(it.title, it.qty || 1);
+      if (clientMode) row.push(unitClient(it), lineClient(it));
+      else row.push(it.price, lineCost(it), unitClient(it), lineClient(it));
+      if (hasPD) row.push(fmtDateCell(it.priceDate));
+      all.push(row);
     }));
-    all.push(clientMode ? ["", "", "", "Итого по позициям", "", "", clientTotal] : ["", "", "", "Итого по позициям", "", "", grand, "", clientTotal]);
+    const trow = new Array(head.length).fill("");
+    trow[col("Наименование")] = "Итого по позициям";
+    if (!clientMode) trow[col("Сумма, ₽")] = grand;
+    trow[col("Сумма клиенту, ₽")] = clientTotal;
+    all.push(trow);
     const wsA = XLSX.utils.aoa_to_sheet(all);
-    setCols(wsA, clientMode ? [5, 18, 16, 46, 7, 15, 16] : [5, 18, 16, 46, 7, 13, 14, 15, 16]);
-    fmtMoneyCols(wsA, clientMode ? [5, 6] : [5, 6, 7, 8], 1, all.length - 1);
-    wsA["!autofilter"] = { ref: clientMode ? "A1:G1" : "A1:I1" };   // фильтр по шапке — дизайнер крутит сводную как хочет
+    setCols(wsA, head.map((h) => ({ "№": 5, "Помещение": 18, "Раздел": 16, "Поставщик": 20, "Наименование": 46, "Кол-во": 7, "Цена, ₽": 13, "Сумма, ₽": 14, "Цена клиенту, ₽": 15, "Сумма клиенту, ₽": 16, "Цена от": 11 }[h] || 12)));
+    const moneyCols = ["Цена, ₽", "Сумма, ₽", "Цена клиенту, ₽", "Сумма клиенту, ₽"].map(col).filter((c) => c >= 0);
+    fmtMoneyCols(wsA, moneyCols, 1, all.length - 1);
+    wsA["!autofilter"] = { ref: "A1:" + XLSX.utils.encode_col(head.length - 1) + "1" };   // фильтр по шапке — дизайнер крутит сводную как хочет
     XLSX.utils.book_append_sheet(wb, wsA, uniqueSheet("Все позиции"));
 
     /* ---------- Лист на каждую комнату ---------- */
@@ -155,6 +177,70 @@
 
     const suffix = clientMode ? "-klientu" : "-rabochaya";
     XLSX.writeFile(wb, "smeta-" + String(project || "aivibe").replace(/\s+/g, "-").toLowerCase() + suffix + ".xlsx");
+    return true;
+  }
+
+  /* ---------- Режим «Закупка» (роадмап #10): группировка по поставщикам ----------
+     Книга: «Свод закупки» (суммы по поставщикам + бюджет) → «Все позиции» (плоская,
+     с колонками Поставщик/Цена от — её же ест обратный импорт) → лист на поставщика.
+     Только себестоимость — наценки и клиентских цен в закупочном документе нет. */
+  function exportProcure({ project, area, rooms, grand, budget }) {
+    const NO_SUP = "Поставщик не указан";
+    const supOf = (it) => (it.sup || "").trim() || NO_SUP;
+    const lineCost = (it) => it.price * (it.qty || 1);
+    const groups = {};
+    rooms.forEach((r) => r.items.forEach((it) => { const key = supOf(it); (groups[key] = groups[key] || []).push({ it, room: r.name }); }));
+    const supTotal = (name) => groups[name].reduce((s, x) => s + lineCost(x.it), 0);
+    const names = Object.keys(groups).sort((a, b) => (a === NO_SUP ? 1 : b === NO_SUP ? -1 : supTotal(b) - supTotal(a)));
+
+    const wb = XLSX.utils.book_new();
+    const used = new Set();
+    const uniqueSheet = (s) => {
+      let name = cleanName(s), i = 2;
+      while (used.has(name)) { const suf = " (" + i++ + ")"; name = cleanName(s).slice(0, 31 - suf.length) + suf; }
+      used.add(name);
+      return name;
+    };
+
+    /* свод по поставщикам */
+    const sv = [["AIVibe — закупочный лист"], [project || "Проект", "", area ? area + " м²" : ""], [], ["По поставщикам", "Позиций", "Сумма"]];
+    const smc = [];
+    names.forEach((nm) => { sv.push([nm, groups[nm].length, supTotal(nm)]); smc.push([sv.length - 1, 2]); });
+    sv.push(["ИТОГО ЗАКУПКА", rooms.reduce((s, r) => s + r.items.length, 0), grand]); smc.push([sv.length - 1, 2]);
+    sv.push([]);
+    sv.push(["Бюджет проекта", "", budget]); smc.push([sv.length - 1, 2]);
+    sv.push([grand > budget ? "Превышение бюджета" : "Остаток бюджета", "", Math.abs(budget - grand)]); smc.push([sv.length - 1, 2]);
+    const wsS = XLSX.utils.aoa_to_sheet(sv);
+    setCols(wsS, [34, 9, 16]);
+    fmtMoney(wsS, smc);
+    XLSX.utils.book_append_sheet(wb, wsS, uniqueSheet("Свод закупки"));
+
+    /* плоская мастер-таблица — полная картина + обратный импорт */
+    const all = [["№", "Поставщик", "Помещение", "Раздел", "Наименование", "Кол-во", "Цена, ₽", "Сумма, ₽", "Цена от"]];
+    let n = 0;
+    names.forEach((nm) => groups[nm].forEach((x) => {
+      all.push([++n, x.it.sup || "", x.room, x.it.cat || "Прочее", x.it.title, x.it.qty || 1, x.it.price, lineCost(x.it), fmtDateCell(x.it.priceDate)]);
+    }));
+    all.push(["", "", "", "", "ИТОГО ЗАКУПКА", "", "", grand, ""]);
+    const wsA = XLSX.utils.aoa_to_sheet(all);
+    setCols(wsA, [5, 20, 18, 16, 46, 7, 13, 14, 11]);
+    fmtMoneyCols(wsA, [6, 7], 1, all.length - 1);
+    wsA["!autofilter"] = { ref: "A1:I1" };
+    XLSX.utils.book_append_sheet(wb, wsA, uniqueSheet("Все позиции"));
+
+    /* лист на поставщика — рабочий документ для салона/магазина */
+    names.forEach((nm) => {
+      const rows = [[nm], [], ["№", "Помещение", "Раздел", "Наименование", "Кол-во", "Цена, ₽", "Сумма, ₽", "Цена от"]];
+      let m = 0;
+      groups[nm].forEach((x) => rows.push([++m, x.room, x.it.cat || "Прочее", x.it.title, x.it.qty || 1, x.it.price, lineCost(x.it), fmtDateCell(x.it.priceDate)]));
+      rows.push(["", "", "", "Итого по поставщику", "", "", supTotal(nm), ""]);
+      const ws = XLSX.utils.aoa_to_sheet(rows);
+      setCols(ws, [5, 18, 16, 46, 7, 13, 14, 11]);
+      fmtMoneyCols(ws, [5, 6], 2, rows.length - 1);
+      XLSX.utils.book_append_sheet(wb, ws, uniqueSheet(nm));
+    });
+
+    XLSX.writeFile(wb, "smeta-" + String(project || "aivibe").replace(/\s+/g, "-").toLowerCase() + "-zakupka.xlsx");
     return true;
   }
 
@@ -191,6 +277,8 @@
           const cRoom = colOf(head, /помещ|комнат|room/);
           const cCat = colOf(head, /раздел|категор|^тип|cat/);
           const cQty = colOf(head, /кол|кол-во|шт|qty|количеств/);
+          const cSup = colOf(head, /поставщ|supplier/);          // закупочный лист / рабочая мастер-таблица
+          const cPD = colOf(head, /цена от|дата цены/);           // давность цены (ДД.ММ.ГГГГ → ISO)
           // цена за единицу: «цена/стоимость» без «клиент»; если нет — выводим из суммы/кол-во
           const cPrice = head.findIndex((h) => /цена|стоим|price/.test(norm(h)) && !/клиент/.test(norm(h)));
           const cSum = head.findIndex((h) => /сумма|total/.test(norm(h)) && !/клиент/.test(norm(h)));
@@ -212,8 +300,14 @@
             if (!price && colSum >= 0) price = Math.round(num(row[colSum]) / qty);
             const roomName = (cRoom >= 0 ? String(row[cRoom] == null ? "" : row[cRoom]).trim() : "") || "Без помещения";
             const cat = cCat >= 0 ? String(row[cCat] == null ? "" : row[cCat]).trim() : "";
+            const sup = cSup >= 0 ? String(row[cSup] == null ? "" : row[cSup]).trim() : "";
+            let priceDate = "";
+            if (cPD >= 0) {
+              const pdm = /^(\d{1,2})\.(\d{1,2})\.(\d{4})$/.exec(String(row[cPD] == null ? "" : row[cPD]).trim());
+              if (pdm) priceDate = pdm[3] + "-" + pdm[2].padStart(2, "0") + "-" + pdm[1].padStart(2, "0");
+            }
             if (!byRoom.has(roomName)) byRoom.set(roomName, []);
-            byRoom.get(roomName).push({ title, cat, price, qty });
+            byRoom.get(roomName).push({ title, cat, price, qty, ...(sup ? { sup } : {}), ...(priceDate ? { priceDate } : {}) });
           }
 
           const rooms = [...byRoom.entries()].map(([name, items]) => ({ name, items }));

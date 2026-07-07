@@ -88,10 +88,12 @@
 
   // Многокомнатная смета-комплектация (реальный дизайн-проект): разделы по комнатам.
   // mode: "work" (по умолчанию) — две цены (себестоимость + клиент) и бюджет;
-  //       "client" — только цена клиента, без себестоимости/наценки/бюджета.
+  //       "client" — только цена клиента, без себестоимости/наценки/бюджета;
+  //       "procure" — закупочный лист: группировка по поставщикам, только себестоимость.
   // catMarkupPct: {раздел: %} — свои наценки поверх базовой markupPct (как на экране сметы).
   function exportRoomSpec({ project, area, rooms, grand, markupPct, catMarkupPct, clientTotal, discountPct, deliveryCost, installCost, budget, mode }) {
     if (!window.pdfMake) { (window.toast ? toast("PDF-модуль ещё загружается — попробуйте через секунду.", "info") : 0); return false; }
+    if (mode === "procure") return exportProcurePDF({ project, area, rooms: rooms || [], grand, budget });
     const clientMode = mode === "client";
     // итог структурой: скидка округляется до рубля от подытога — та же формула, что в UI/Excel
     const discountAmt = Math.round((clientTotal || 0) * (discountPct || 0) / 100);
@@ -163,6 +165,63 @@
     };
     const suffix = clientMode ? "-klientu" : "-rabochaya";
     window.pdfMake.createPdf(doc).download("smeta-" + String(project || "aivibe").replace(/\s+/g, "-").toLowerCase() + suffix + ".pdf");
+    return true;
+  }
+
+  // Закупочный лист (роадмап #10): группы по поставщикам, только себестоимость;
+  // «цена от …» — давность цены скопированной позиции (тем же цветом-варнингом после 30 дней)
+  function exportProcurePDF({ project, area, rooms, grand, budget }) {
+    const NO_SUP = "Поставщик не указан";
+    const lineCost = (it) => it.price * (it.qty || 1);
+    const fmtD = (d) => { const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(d || "")); return m ? m[3] + "." + m[2] + "." + m[1] : ""; };
+    const stale = (d) => { const t = new Date(d + "T00:00:00").getTime(); return !isNaN(t) && (Date.now() - t) / 86400000 > 30; };
+    const groups = {};
+    rooms.forEach((r) => r.items.forEach((it) => { const k = (it.sup || "").trim() || NO_SUP; (groups[k] = groups[k] || []).push({ it, room: r.name }); }));
+    const total = (k) => groups[k].reduce((s, x) => s + lineCost(x.it), 0);
+    const names = Object.keys(groups).sort((a, b) => (a === NO_SUP ? 1 : b === NO_SUP ? -1 : total(b) - total(a)));
+
+    const content = [
+      { columns: [ { text: "AIVibe", style: "logo" }, { text: "Закупочный лист", alignment: "right", style: "muted", margin: [0, 6, 0, 0] } ] },
+      { canvas: [{ type: "line", x1: 0, y1: 0, x2: 515, y2: 0, lineWidth: 1, lineColor: "#B7502C" }], margin: [0, 8, 0, 0] },
+      { text: project || "Проект", style: "h1", margin: [0, 14, 0, 2] },
+      { text: "Закупка по поставщикам · " + (area || "—") + " м² · цены — себестоимость, без наценки", style: "muted", margin: [0, 0, 0, 14] },
+    ];
+    names.forEach((nm) => {
+      content.push({ text: nm + "   ·   " + money(total(nm)), style: "h2", margin: [0, 12, 0, 4] });
+      content.push({
+        table: { headerRows: 0, widths: ["*", 84, 26, "auto"], body: groups[nm].map((x) => [
+          x.it.priceDate
+            ? { stack: [ { text: x.it.title }, { text: "цена от " + fmtD(x.it.priceDate), fontSize: 8, color: stale(x.it.priceDate) ? "#B45309" : "#8A8088", margin: [0, 1, 0, 0] } ] }
+            : x.it.title,
+          { text: x.room, color: "#8A8088", fontSize: 9 },
+          { text: "×" + (x.it.qty || 1), alignment: "right", fontSize: 9, color: "#8A8088" },
+          { text: money(lineCost(x.it)), alignment: "right" },
+        ]) },
+        layout: { hLineWidth: () => 0.5, hLineColor: () => "#EFEAE4", vLineWidth: () => 0, paddingTop: () => 3.5, paddingBottom: () => 3.5 },
+      });
+    });
+    content.push({ canvas: [{ type: "line", x1: 0, y1: 0, x2: 515, y2: 0, lineWidth: 0.5, lineColor: "#E5E0DA" }], margin: [0, 14, 0, 8] });
+    const over = grand > budget;
+    content.push({ columns: [
+      { text: over ? "Превышение бюджета на " + money(grand - budget) : "В рамках бюджета (" + money(budget) + ")", color: over ? "#B45309" : "#2F7A52", fontSize: 10, margin: [0, 6, 0, 0] },
+      { text: "Итого закупка: " + money(grand), alignment: "right", style: "total", margin: [0, 3, 0, 0] },
+    ] });
+    content.push({ text: "Закупочный лист для работы с поставщиками: только себестоимость, без наценки и клиентских цен. Документ сформирован в AIVibe.", style: "foot", margin: [0, 16, 0, 0] });
+
+    const doc = {
+      pageMargins: [40, 46, 40, 44],
+      content,
+      styles: {
+        logo: { fontSize: 18, bold: true, color: "#B7502C" },
+        h1: { fontSize: 20, bold: true, color: "#1A1417" },
+        h2: { fontSize: 12, bold: true, color: "#3A3338" },
+        muted: { color: "#8A8088", fontSize: 10 },
+        total: { fontSize: 14, bold: true, color: "#1A1417" },
+        foot: { fontSize: 8, color: "#B0A8AE" },
+      },
+      defaultStyle: { fontSize: 10, color: "#241A26" },
+    };
+    window.pdfMake.createPdf(doc).download("smeta-" + String(project || "aivibe").replace(/\s+/g, "-").toLowerCase() + "-zakupka.pdf");
     return true;
   }
 

@@ -72,6 +72,24 @@ const LAYOUT_K = {
 /* строка итогового блока сметы-документа (подытог → скидка → доставка/монтаж → ИТОГО) */
 const RS_ROW = { display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, padding: "8px 0", fontSize: 13.5 };
 
+/* давность цены: priceDate (ISO) ставится позиции при копировании из прошлого проекта.
+   Чип «цене N дней» — терракота после 30 дней (RU-волатильность цен). В клиентском
+   режиме не показывается — это внутренняя кухня дизайнера */
+const priceAgeDays = (d) => { const t = new Date(d + "T00:00:00").getTime(); return isNaN(t) ? null : Math.max(0, Math.floor((Date.now() - t) / 86400000)); };
+const fmtDateRu = (d) => { const t = new Date(d + "T00:00:00"); return isNaN(t.getTime()) ? String(d) : t.toLocaleDateString("ru-RU"); };
+function PriceAge({ d }) {
+  const days = priceAgeDays(d);
+  if (days == null) return null;
+  const stale = days > 30;
+  return (
+    <span className="mono" title={"Цена скопирована из прошлого проекта, от " + fmtDateRu(d) + (stale ? " — стоит перепроверить" : "")}
+      style={{ flex: "none", fontSize: 10.5, whiteSpace: "nowrap", padding: "1px 7px", borderRadius: 99,
+        border: "1px solid " + (stale ? "rgba(183,80,44,.4)" : "var(--hairline)"), color: stale ? "var(--accent-ink)" : "var(--spec-meta)" }}>
+      {days === 0 ? "цена от сегодня" : "цене " + days + " " + plural(days, ["день", "дня", "дней"])}
+    </span>
+  );
+}
+
 /* цена предмета с поправкой на выбранный стиль (округляем до сотен) */
 const adjustPrice = (price, factor) => (price == null ? price : Math.round((price * factor) / 100) * 100);
 
@@ -235,7 +253,9 @@ function RoomSpecOverlay({ data, onClose }) {
   const [discount, setDiscount] = usePD(data.discountPct || 0);      // скидка клиенту, % от подытога
   const [delivery, setDelivery] = usePD(data.deliveryCost || 0);     // доставка, ₽ (транзитом, без наценки)
   const [install, setInstall] = usePD(data.installCost || 0);        // монтаж и сборка, ₽
-  const [mode, setMode] = usePD("work");   // режим выгрузки: "work" (рабочая) / "client" (для клиента)
+  const [mode, setMode] = usePD("work");   // режим выгрузки: "work" (рабочая) / "client" (для клиента) / "procure" (закупка)
+  const [rooms, setRooms] = usePD(data.rooms || []);  // позиции редактируемы: копии из прошлых проектов, шаблоны, поставщики
+  const [addOpen, setAddOpen] = usePD(false);         // модалка «Из прошлого проекта / шаблона»
   const [roomSaved, setRoomSaved] = usePD(false);
   const [roomSaving, setRoomSaving] = usePD(false);   // guard: двойной клик «Сохранить» не должен создать проект-дубль
   const [savedId, setSavedId] = usePD(data.id || null);
@@ -245,15 +265,31 @@ function RoomSpecOverlay({ data, onClose }) {
     if (roomSaving) return;
     setRoomSaving(true);
     const done = () => { setRoomSaving(false); setRoomSaved(true); setTimeout(() => setRoomSaved(false), 1700); };
-    const patch = { markupPct: markup, catMarkupPct: catMarkup, discountPct: discount, deliveryCost: delivery, installCost: install };
+    const patch = { markupPct: markup, catMarkupPct: catMarkup, discountPct: discount, deliveryCost: delivery, installCost: install, rooms, items: itemsCount };
     if (savedId) { AIVibeAPI.projects.update(savedId, patch).then(done); return; }
     // импортированная из Excel смета не привязана к проекту — создаём его,
     // иначе «Сохранено» врало бы, а наценки терялись при закрытии оверлея
     AIVibeAPI.projects.create({
       name: data.name || "Смета из Excel", room: "Комплектация из Excel", style: "",
-      area: data.area, budget: data.budget || 0, items: (data.rooms || []).reduce((s, r) => s + r.items.length, 0),
-      rooms: data.rooms, summaryShort: data.summaryShort, ...patch,
+      area: data.area, budget: data.budget || 0,
+      summaryShort: data.summaryShort, ...patch,
     }).then((p) => { setSavedId(p.id); toast("Смета сохранена в «Мои проекты»"); done(); });
+  };
+
+  // копии из прошлого проекта / шаблона: комнаты с одинаковым именем сливаются
+  const addFrom = (entries, srcLabel) => {
+    const n = entries.reduce((s, e) => s + e.items.length, 0);
+    setRooms((prev) => {
+      const next = prev.map((r) => ({ ...r, items: [...r.items] }));
+      entries.forEach((e) => {
+        const tgt = next.find((r) => r.name === e.name);
+        if (tgt) tgt.items.push(...e.items);
+        else next.push({ name: e.name, ...(e.area ? { area: e.area } : {}), items: e.items });
+      });
+      return next;
+    });
+    setAddOpen(false);
+    toast("Добавлено " + n + " " + plural(n, ["позиция", "позиции", "позиций"]) + " — «" + srcLabel + "». Не забудьте сохранить смету.");
   };
 
   // Esc закрывает смету-оверлей (когда открыта напрямую, напр. из импорта Excel);
@@ -267,7 +303,6 @@ function RoomSpecOverlay({ data, onClose }) {
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
   }, []);
-  const rooms = data.rooms || [];
   // наценка: базовая + необязательный оверрайд по разделу. Округляется ЦЕНА ЗА ШТУКУ,
   // сумма строки = цена × кол-во — тогда колонки документа бьются арифметически (UI = PDF = Excel)
   const catOf = (it) => it.cat || "Прочее";
@@ -288,6 +323,24 @@ function RoomSpecOverlay({ data, onClose }) {
   const ovrCount = cats.filter((c) => catMarkup[c] != null).length;
   const setCatPct = (cat, v) => setCatMarkup((m) => { const n = { ...m }; if (v == null) delete n[cat]; else n[cat] = v; return n; });
   const effPct = grand > 0 ? Math.round((client / grand - 1) * 100) : markup;
+  // режим «Закупка»: группировка по поставщику позиции (поле sup, редактируется тут же);
+  // без поставщика — отдельная группа в конце. Цены — только себестоимость
+  const NO_SUP = "Поставщик не указан";
+  const supOf = (it) => (it.sup || "").trim();
+  const supList = [...new Set(rooms.flatMap((r) => r.items.map(supOf)).filter(Boolean))].sort((a, b) => a.localeCompare(b, "ru"));
+  const supGroups = (() => {
+    const g = {};
+    rooms.forEach((r, ri) => r.items.forEach((it, ii) => {
+      const k = supOf(it) || NO_SUP;
+      (g[k] = g[k] || []).push({ it, ri, ii, room: r.name });
+    }));
+    const total = (k) => g[k].reduce((s, x) => s + lineCost(x.it), 0);
+    return Object.keys(g)
+      .sort((a, b) => (a === NO_SUP ? 1 : b === NO_SUP ? -1 : total(b) - total(a)))
+      .map((name) => ({ name, rows: g[name], total: total(name) }));
+  })();
+  const setSup = (ri, ii, v) => setRooms((prev) => prev.map((r, i) => i !== ri ? r
+    : { ...r, items: r.items.map((it, j) => j !== ii ? it : (() => { const { sup, ...rest } = it; const s = (v || "").trim(); return s ? { ...rest, sup: s } : rest; })()) }));
   // итог структурой: подытог (client) → скидка → доставка/монтаж → ИТОГО.
   // Скидка округляется до рубля от подытога — та же формула в PDF/Excel (инвариант выгрузок)
   const discountAmt = Math.round(client * discount / 100);
@@ -316,10 +369,18 @@ function RoomSpecOverlay({ data, onClose }) {
           <section className="pd-section" style={ergo.length ? undefined : { borderBottom: "none" }}>
             <div className="pd-eyebrow"><span className="dot" />Спецификация-комплектация</div>
             <h3 className="pd-h">Смета по комнатам</h3>
-            <p style={{ color: "var(--muted)", fontSize: 14.5, marginTop: 4, marginBottom: 18, maxWidth: 820, lineHeight: 1.6 }}>{data.summaryShort}</p>
+            <p style={{ color: "var(--muted)", fontSize: 14.5, marginTop: 4, marginBottom: 14, maxWidth: 820, lineHeight: 1.6 }}>{data.summaryShort}</p>
 
-            {/* наценка дизайнера: базовая на всё + свои проценты по разделам */}
-            <div className="glass" style={{ borderRadius: "var(--r-lg)", padding: "16px 20px", marginBottom: 22, maxWidth: 640 }}>
+            {/* переиспользование наработанного: копии позиций из прошлых смет + типовые комплектации */}
+            <div style={{ marginBottom: 20 }}>
+              <button className="btn btn-ghost" onClick={() => setAddOpen(true)}
+                title="Скопировать позиции из прошлого проекта (с пометкой давности цены) или добавить типовую комплектацию">
+                <I.plus size={16} />Из прошлого проекта / шаблона
+              </button>
+            </div>
+
+            {/* наценка дизайнера: базовая на всё + свои проценты по разделам (в закупке не участвует) */}
+            {mode !== "procure" && <div className="glass" style={{ borderRadius: "var(--r-lg)", padding: "16px 20px", marginBottom: 22, maxWidth: 640 }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
                 <span style={{ fontWeight: 700, fontSize: 14.5 }}>Наценка дизайнера{ovrCount > 0 && <span style={{ fontWeight: 500, fontSize: 12.5, color: "var(--muted)" }}> · базовая</span>}</span>
                 <span className="mono" style={{ fontWeight: 600, fontSize: 17, color: "var(--accent-ink)" }}>+{markup}%</span>
@@ -370,10 +431,10 @@ function RoomSpecOverlay({ data, onClose }) {
                   </div>
                 </div>
               )}
-            </div>
+            </div>}
 
             {/* комнаты — читаются как документ: шапка колонок + две цены построчно */}
-            <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+            {mode !== "procure" && <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
               {rooms.map((r) => (
                 <div key={r.name} className="glass" style={{ borderRadius: "var(--r-lg)", padding: "16px 18px" }}>
                   <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 12, marginBottom: 8, flexWrap: "wrap" }}>
@@ -397,7 +458,7 @@ function RoomSpecOverlay({ data, onClose }) {
                       const qty = it.qty || 1;
                       return (
                       <div key={i} style={{ display: "flex", alignItems: "baseline", gap: 10, padding: "7px 0", borderTop: i ? "1px solid var(--hairline-2)" : "none", fontSize: 13.5 }}>
-                        <span style={{ flex: 1, color: "var(--text)", lineHeight: 1.4 }}>{it.title}</span>
+                        <span style={{ flex: 1, color: "var(--text)", lineHeight: 1.4 }}>{it.title}{mode === "work" && it.priceDate && <React.Fragment>{" "}<PriceAge d={it.priceDate} /></React.Fragment>}</span>
                         <span className="rs-cat" style={{ color: "var(--spec-meta)", whiteSpace: "nowrap", fontSize: 12, width: 78, textAlign: "right", overflow: "hidden", textOverflow: "ellipsis" }}>{catOf(it)}</span>
                         <span className="mono" style={{ color: "var(--spec-meta)", whiteSpace: "nowrap", width: 34, textAlign: "right", fontSize: 12.5 }}>×{qty}</span>
                         <span className="mono rs-unit" style={{ color: "var(--spec-meta)", whiteSpace: "nowrap", width: 88, textAlign: "right", fontSize: 12.5 }}>{fmtMoney(mode === "client" ? unitClient(it) : it.price)}</span>
@@ -409,10 +470,75 @@ function RoomSpecOverlay({ data, onClose }) {
                   </div>
                 </div>
               ))}
-            </div>
+            </div>}
+
+            {/* закупочный лист (роадмап #10): группы по поставщикам, только себестоимость,
+                поставщик — редактируемое поле позиции (datalist подсказывает уже введённых) */}
+            {mode === "procure" && (
+              <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+                <div style={{ fontSize: 12.5, color: "var(--muted)", maxWidth: 820, lineHeight: 1.55 }}>
+                  Позиции сгруппированы по поставщикам, цены — себестоимость без наценки. Поле «поставщик» редактируется прямо в строке; позиции без поставщика собраны в конце. В Excel каждый поставщик получает отдельный лист.
+                </div>
+                {supGroups.map((g) => (
+                  <div key={g.name} className="glass" style={{ borderRadius: "var(--r-lg)", padding: "16px 18px" }}>
+                    <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 12, marginBottom: 8, flexWrap: "wrap" }}>
+                      <span style={{ fontWeight: 800, fontFamily: "var(--font-display)", fontSize: 16.5, color: g.name === NO_SUP ? "var(--muted)" : undefined }}>
+                        {g.name}<span style={{ color: "var(--faint)", fontWeight: 500, fontSize: 13 }}> · {g.rows.length} {plural(g.rows.length, ["позиция", "позиции", "позиций"])}</span>
+                      </span>
+                      <span className="mono" style={{ fontWeight: 600, fontSize: 15 }}>{fmtMoney(g.total)}</span>
+                    </div>
+                    <div className="mono" style={{ display: "flex", alignItems: "baseline", gap: 10, padding: "2px 0 6px", fontSize: 10.5, letterSpacing: ".06em", textTransform: "uppercase", color: "var(--spec-meta)", borderBottom: "1px solid var(--hairline)" }}>
+                      <span style={{ flex: 1 }}>Позиция</span>
+                      <span className="rs-cat" style={{ width: 104, textAlign: "right" }}>Помещение</span>
+                      <span style={{ width: 34, textAlign: "right" }}>Кол</span>
+                      <span className="rs-unit" style={{ width: 88, textAlign: "right" }}>Цена/шт</span>
+                      <span style={{ width: 100, textAlign: "right" }}>Сумма</span>
+                      <span style={{ width: 128, textAlign: "right" }}>Поставщик</span>
+                    </div>
+                    <div style={{ display: "flex", flexDirection: "column" }}>
+                      {g.rows.map((x, i) => {
+                        const qty = x.it.qty || 1;
+                        return (
+                          <div key={x.ri + ":" + x.ii} className="rs-prow" style={{ display: "flex", alignItems: "baseline", gap: 10, padding: "7px 0", borderTop: i ? "1px solid var(--hairline-2)" : "none", fontSize: 13.5 }}>
+                            <span style={{ flex: 1, minWidth: 0, color: "var(--text)", lineHeight: 1.4, overflowWrap: "anywhere" }}>{x.it.title}{x.it.priceDate && <React.Fragment>{" "}<PriceAge d={x.it.priceDate} /></React.Fragment>}</span>
+                            <span className="rs-cat" style={{ color: "var(--spec-meta)", whiteSpace: "nowrap", fontSize: 12, width: 104, textAlign: "right", overflow: "hidden", textOverflow: "ellipsis" }}>{x.room}</span>
+                            <span className="mono" style={{ color: "var(--spec-meta)", whiteSpace: "nowrap", width: 34, textAlign: "right", fontSize: 12.5 }}>×{qty}</span>
+                            <span className="mono rs-unit" style={{ color: "var(--spec-meta)", whiteSpace: "nowrap", width: 88, textAlign: "right", fontSize: 12.5 }}>{fmtMoney(x.it.price)}</span>
+                            <span className="mono" style={{ fontWeight: 600, whiteSpace: "nowrap", width: 100, textAlign: "right" }}>{fmtMoney(lineCost(x.it))}</span>
+                            <input className="fld rs-sup" list="rs-sup-list" defaultValue={supOf(x.it)} key={"sup-" + x.ri + "-" + x.ii + "-" + supOf(x.it)}
+                              placeholder="поставщик" aria-label={"Поставщик позиции «" + x.it.title + "»"}
+                              onBlur={(e) => { const v = e.target.value.trim(); if (v !== supOf(x.it)) setSup(x.ri, x.ii, v); }}
+                              onKeyDown={(e) => { if (e.key === "Enter") e.target.blur(); }}
+                              style={{ width: 128, flex: "none", padding: "5px 8px", fontSize: 12 }} />
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ))}
+                <datalist id="rs-sup-list">{supList.map((s) => <option key={s} value={s} />)}</datalist>
+              </div>
+            )}
+
+            {/* итог закупки: суммы по поставщикам + ИТОГО (зеркалит Excel-«Свод закупки») */}
+            {mode === "procure" && (
+              <div className="glass" style={{ borderRadius: "var(--r-lg)", padding: "16px 20px", marginTop: 18, maxWidth: 560, marginLeft: "auto" }}>
+                <div className="mono" style={{ fontSize: 10.5, letterSpacing: ".08em", textTransform: "uppercase", color: "var(--spec-meta)", paddingBottom: 8, borderBottom: "1px solid var(--hairline)" }}>Итог закупки</div>
+                {supGroups.map((g) => (
+                  <div key={g.name} style={{ ...RS_ROW, borderTop: "1px solid var(--hairline-2)" }}>
+                    <span style={{ color: g.name === NO_SUP ? "var(--faint)" : "var(--muted)" }}>{g.name}</span>
+                    <span className="mono rs-val">{fmtMoney(g.total)}</span>
+                  </div>
+                ))}
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 12, paddingTop: 12, marginTop: 4, borderTop: "2px solid var(--text)" }}>
+                  <span style={{ fontWeight: 800, fontFamily: "var(--font-display)", fontSize: 15 }}>Итого закупка</span>
+                  <span className="mono rs-val" style={{ fontWeight: 600, fontSize: 24, letterSpacing: "-0.01em" }}>{fmtMoney(grand)}</span>
+                </div>
+              </div>
+            )}
 
             {/* итог документа: подытог → скидка → наценка → доставка/монтаж → ИТОГО (роадмап #6) */}
-            <div className="glass" style={{ borderRadius: "var(--r-lg)", padding: "16px 20px", marginTop: 18, maxWidth: 560, marginLeft: "auto" }}>
+            {mode !== "procure" && <div className="glass" style={{ borderRadius: "var(--r-lg)", padding: "16px 20px", marginTop: 18, maxWidth: 560, marginLeft: "auto" }}>
               <div className="mono" style={{ fontSize: 10.5, letterSpacing: ".08em", textTransform: "uppercase", color: "var(--spec-meta)", paddingBottom: 8, borderBottom: "1px solid var(--hairline)" }}>Итог сметы</div>
               {mode === "work" && (
                 <React.Fragment>
@@ -493,7 +619,7 @@ function RoomSpecOverlay({ data, onClose }) {
                 <span style={{ fontWeight: 800, fontFamily: "var(--font-display)", fontSize: 15 }}>{mode === "work" ? "Итого для клиента" : "Итого"}</span>
                 <span id="rs-total-val" className="mono rs-val" style={{ fontWeight: 600, fontSize: 24, letterSpacing: "-0.01em" }} aria-live="off">{fmtMoney(totalClient)}</span>
               </div>
-            </div>
+            </div>}
           </section>
 
           {/* проверка норм: эргономика по помещениям с планом расстановки из РД */}
@@ -546,8 +672,8 @@ function RoomSpecOverlay({ data, onClose }) {
             <div style={{ display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
               {/* без aria-live: сумму при драге озвучивает aria-valuetext слайдера; live — только статус бюджета */}
               {/* статус — с суммой бюджета: на ≤560px чип шапки скрыт, и это единственная цифра бюджета */}
-              <SmetaTotal amount={totalClient}
-                caption={<React.Fragment>итого клиенту · {itemsCount} {plural(itemsCount, ["позиция", "позиции", "позиций"])} · <span role="status" aria-atomic="true">{over ? <span style={{ color: "var(--accent-ink)" }}>закупка сверх бюджета {fmtMoney(data.budget)}</span> : <span style={{ color: "var(--accent-2)" }}>закупка в бюджете {fmtMoney(data.budget)}</span>}</span></React.Fragment>} />
+              <SmetaTotal amount={mode === "procure" ? grand : totalClient}
+                caption={<React.Fragment>{mode === "procure" ? "итого закупка" : "итого клиенту"} · {itemsCount} {plural(itemsCount, ["позиция", "позиции", "позиций"])} · <span role="status" aria-atomic="true">{over ? <span style={{ color: "var(--accent-ink)" }}>закупка сверх бюджета {fmtMoney(data.budget)}</span> : <span style={{ color: "var(--accent-2)" }}>закупка в бюджете {fmtMoney(data.budget)}</span>}</span></React.Fragment>} />
               {mode === "work" && (
                 <span className="glass mono" style={{ padding: "7px 12px", borderRadius: 99, fontSize: 12, fontWeight: 500, color: "var(--muted)" }}>
                   {/* маржа после скидки: убыток — терракотой, не оливой-успехом */}
@@ -559,6 +685,7 @@ function RoomSpecOverlay({ data, onClose }) {
                   items={[
                     { id: "work", label: "Рабочая", title: "Рабочая смета: себестоимость, наценка и цена клиента" },
                     { id: "client", label: "Для клиента", title: "Для клиента: только итоговая цена, без себестоимости и наценки" },
+                    { id: "procure", label: "Закупка", title: "Закупочный лист: только себестоимость, группировка по поставщикам, в Excel — лист на поставщика" },
                   ]} />
                 <button className="btn btn-ghost" style={{ padding: "11px 16px" }} onClick={exportXLSX}><I.grid size={16} />Выгрузить Excel</button>
                 <button className="btn btn-ghost" style={{ padding: "11px 16px" }} onClick={exportPDF}><I.layers size={16} />Выгрузить PDF</button>
@@ -568,7 +695,163 @@ function RoomSpecOverlay({ data, onClose }) {
           </div>
         </div>
       </div>
+      {addOpen && <AddPositionsModal excludeId={savedId} onClose={() => setAddOpen(false)} onAdd={addFrom} />}
     </div>
+  );
+}
+
+/* ---------------- «ИЗ ПРОШЛОГО ПРОЕКТА / ШАБЛОНА» (роадмап #10) ----------------
+   Копирование позиций/комнат из прошлых смет (цены получают пометку давности —
+   priceDate = дата обновления проекта-источника) и вставка типовых комплектаций
+   (структура — главная ценность, цены — рыночный ориентир). Двухшаговый выбор:
+   источник → чекбоксы по комнатам/позициям. */
+function AddPositionsModal({ excludeId, onClose, onAdd }) {
+  const [tab, setTab] = usePD("past");        // past | tpl
+  const [sources, setSources] = usePD(null);  // прошлые проекты со сметой по комнатам
+  const [tpls, setTpls] = usePD(null);        // типовые комплектации
+  const [src, setSrc] = usePD(null);          // выбранный источник {label, stamp?, note?, rooms}
+  const [sel, setSel] = usePD({});            // {"ri:ii": true}
+
+  usePDE(() => {
+    // источники: только проекты со сметой по комнатам (каталожные демо-проекты отпадают)
+    AIVibeAPI.projects.list()
+      .then((list) => Promise.all(list.filter((p) => p.id !== excludeId).map((p) =>
+        AIVibeAPI.projects.get(p.id).then((d) => (d && d.rooms && d.rooms.length
+          ? { id: p.id, label: p.name, stamp: p.updated, rooms: d.rooms }
+          : null)))))
+      .then((xs) => setSources(xs.filter(Boolean)));
+    AIVibeAPI.templates.list().then(setTpls);
+  }, []);
+
+  const cost = (items) => items.reduce((s, it) => s + it.price * (it.qty || 1), 0);
+  const srcCount = (rooms) => rooms.reduce((s, r) => s + r.items.length, 0);
+  const k = (ri, ii) => ri + ":" + ii;
+  const pickSrc = (s, allSelected) => {
+    setSrc(s);
+    const n = {};
+    if (allSelected) s.rooms.forEach((r, ri) => r.items.forEach((_, ii) => { n[k(ri, ii)] = true; }));
+    setSel(n);
+  };
+  const roomAll = (ri) => src.rooms[ri].items.every((_, ii) => sel[k(ri, ii)]);
+  const toggleRoom = (ri) => { const on = !roomAll(ri); setSel((s) => { const n = { ...s }; src.rooms[ri].items.forEach((_, ii) => { n[k(ri, ii)] = on; }); return n; }); };
+  const chosen = src ? src.rooms.map((r, ri) => ({
+    name: r.name, area: r.area,
+    items: r.items.filter((_, ii) => sel[k(ri, ii)]).map((it) => {
+      // копируем только данные позиции (без геометрии комнаты); давность цены:
+      // своя пометка позиции сохраняется, иначе — дата проекта-источника
+      const { title, qty, price, cat, sup, priceDate } = it;
+      const pd = priceDate || src.stamp;
+      return { title, qty: qty || 1, price, ...(cat ? { cat } : {}), ...(sup ? { sup } : {}), ...(pd ? { priceDate: pd } : {}) };
+    }),
+  })).filter((e) => e.items.length) : [];
+  const nSel = chosen.reduce((s, e) => s + e.items.length, 0);
+  const sumSel = chosen.reduce((s, e) => s + cost(e.items), 0);
+
+  const switchTab = (t) => { setTab(t); setSrc(null); setSel({}); };
+  const rowBtn = { display: "flex", alignItems: "center", gap: 12, padding: 12, borderRadius: 12, border: "1px solid var(--hairline)", background: "var(--surface)", textAlign: "left" };
+
+  return (
+    <Modal onClose={onClose} label="Добавить позиции в смету" maxWidth={620}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, padding: "20px 24px", borderBottom: "1px solid var(--hairline)", flexWrap: "wrap" }}>
+        <div>
+          <h3 className="display" style={{ fontSize: 20 }}>Добавить позиции</h3>
+          <div style={{ fontSize: 13, color: "var(--muted)", marginTop: 3 }}>Из прошлого проекта или типовой комплектации</div>
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <SegTabs className="spec-mode" ariaLabel="Источник позиций" value={tab} onChange={switchTab}
+            items={[{ id: "past", label: "Из проекта" }, { id: "tpl", label: "Из шаблона" }]} />
+          <button className="icon-btn" onClick={onClose} aria-label="Закрыть"><I.close size={18} /></button>
+        </div>
+      </div>
+
+      {/* шаг 1 — выбор источника */}
+      {!src && (
+        <div style={{ padding: 16, display: "flex", flexDirection: "column", gap: 8, maxHeight: "54vh", overflow: "auto" }}>
+          {tab === "past" && !sources && Array.from({ length: 2 }).map((_, i) => <div key={i} className="skel" style={{ height: 62, borderRadius: 12 }} />)}
+          {tab === "past" && sources && sources.length === 0 && (
+            <div style={{ padding: "28px 16px", textAlign: "center", color: "var(--muted)", fontSize: 14, lineHeight: 1.55 }}>
+              Пока нет прошлых проектов со сметой по комнатам.<br />Сохраните смету — и её позиции можно будет переиспользовать здесь.
+            </div>
+          )}
+          {tab === "past" && sources && sources.map((s) => (
+            <button key={s.id} onClick={() => pickSrc(s, false)} style={rowBtn}
+              onMouseEnter={(e) => (e.currentTarget.style.borderColor = "var(--accent)")} onMouseLeave={(e) => (e.currentTarget.style.borderColor = "var(--hairline)")}>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontWeight: 700, fontSize: 14.5, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{s.label}</div>
+                <div style={{ fontSize: 12.5, color: "var(--muted)", marginTop: 2 }}>
+                  {srcCount(s.rooms)} {plural(srcCount(s.rooms), ["позиция", "позиции", "позиций"])} · себестоимость {fmtMoney(s.rooms.reduce((a, r) => a + cost(r.items), 0))} · цены от {fmtDateRu(s.stamp)}
+                </div>
+              </div>
+              <I.arrow size={16} style={{ color: "var(--faint)", flex: "none" }} />
+            </button>
+          ))}
+          {tab === "tpl" && !tpls && Array.from({ length: 3 }).map((_, i) => <div key={i} className="skel" style={{ height: 62, borderRadius: 12 }} />)}
+          {tab === "tpl" && tpls && tpls.map((t) => (
+            <button key={t.id} onClick={() => pickSrc({ label: t.name, rooms: [{ name: t.room, items: t.items }] }, true)} style={rowBtn}
+              onMouseEnter={(e) => (e.currentTarget.style.borderColor = "var(--accent)")} onMouseLeave={(e) => (e.currentTarget.style.borderColor = "var(--hairline)")}>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontWeight: 700, fontSize: 14.5 }}>{t.name}</div>
+                <div style={{ fontSize: 12.5, color: "var(--muted)", marginTop: 2, lineHeight: 1.4 }}>{t.note}</div>
+                <div className="mono" style={{ fontSize: 11.5, color: "var(--spec-meta)", marginTop: 4 }}>{t.items.length} {plural(t.items.length, ["позиция", "позиции", "позиций"])} · ≈ {fmtMoney(cost(t.items))}</div>
+              </div>
+              <I.arrow size={16} style={{ color: "var(--faint)", flex: "none" }} />
+            </button>
+          ))}
+          {tab === "tpl" && (
+            <div style={{ padding: "6px 4px 0", fontSize: 12, color: "var(--muted)", lineHeight: 1.5 }}>
+              Цены в шаблонах — рыночный ориентир (средний сегмент), поставщики — типовые точки закупки. Всё редактируется после вставки.
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* шаг 2 — чекбоксы по комнатам и позициям */}
+      {src && (
+        <React.Fragment>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "12px 24px 0" }}>
+            <button className="btn btn-ghost" style={{ padding: "7px 12px", fontSize: 13 }} onClick={() => { setSrc(null); setSel({}); }}>
+              <I.arrow size={14} style={{ transform: "rotate(180deg)" }} />Назад
+            </button>
+            <span style={{ fontWeight: 700, fontSize: 14.5, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{src.label}</span>
+            {src.stamp && <span className="mono" style={{ fontSize: 11.5, color: "var(--spec-meta)", whiteSpace: "nowrap" }}>цены от {fmtDateRu(src.stamp)}</span>}
+          </div>
+          <div style={{ padding: "12px 24px 4px", display: "flex", flexDirection: "column", gap: 12, maxHeight: "46vh", overflow: "auto" }}>
+            {src.rooms.map((r, ri) => (
+              <div key={ri} style={{ border: "1px solid var(--hairline)", borderRadius: 12, padding: "10px 14px" }}>
+                <label style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer", padding: "2px 0 6px" }}>
+                  <input type="checkbox" checked={roomAll(ri)} onChange={() => toggleRoom(ri)} style={{ accentColor: "var(--accent)", width: 15, height: 15, flex: "none" }} />
+                  <span style={{ fontWeight: 700, fontSize: 14, flex: 1 }}>{r.name}{r.area ? <span style={{ color: "var(--faint)", fontWeight: 500, fontSize: 12.5 }}> · {r.area} м²</span> : null}</span>
+                  <span className="mono" style={{ fontSize: 12, color: "var(--spec-meta)", whiteSpace: "nowrap" }}>{fmtMoney(cost(r.items))}</span>
+                </label>
+                <div style={{ display: "flex", flexDirection: "column", borderTop: "1px solid var(--hairline-2)" }}>
+                  {r.items.map((it, ii) => (
+                    <label key={ii} style={{ display: "flex", alignItems: "baseline", gap: 10, padding: "6px 0", borderTop: ii ? "1px solid var(--hairline-2)" : "none", fontSize: 13, cursor: "pointer" }}>
+                      <input type="checkbox" checked={!!sel[k(ri, ii)]} onChange={() => setSel((s) => ({ ...s, [k(ri, ii)]: !s[k(ri, ii)] }))} style={{ accentColor: "var(--accent)", width: 14, height: 14, flex: "none", position: "relative", top: 2 }} />
+                      <span style={{ flex: 1, lineHeight: 1.4 }}>{it.title}</span>
+                      <span className="mono" style={{ color: "var(--spec-meta)", whiteSpace: "nowrap", fontSize: 12 }}>×{it.qty || 1}</span>
+                      <span className="mono" style={{ whiteSpace: "nowrap", fontSize: 12.5 }}>{fmtMoney(it.price * (it.qty || 1))}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+            ))}
+            {src.stamp && (
+              <div style={{ fontSize: 12, color: "var(--muted)", lineHeight: 1.5 }}>
+                Скопированные позиции получат пометку давности цены — от {fmtDateRu(src.stamp)}; старше 30 дней она подсвечивается терракотой.
+              </div>
+            )}
+          </div>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, padding: "14px 24px 18px", borderTop: "1px solid var(--hairline)", marginTop: 10, flexWrap: "wrap" }}>
+            <span className="mono" style={{ fontSize: 12.5, color: nSel ? "var(--text)" : "var(--faint)" }}>
+              {nSel ? nSel + " " + plural(nSel, ["позиция", "позиции", "позиций"]) + " · +" + fmtMoney(sumSel) : "позиции не выбраны"}
+            </span>
+            <button className="btn btn-primary" disabled={!nSel} onClick={() => onAdd(chosen, src.label)}>
+              <I.plus size={16} />Добавить в смету
+            </button>
+          </div>
+        </React.Fragment>
+      )}
+    </Modal>
   );
 }
 

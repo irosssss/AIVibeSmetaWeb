@@ -364,6 +364,12 @@ select.fld { appearance: none; cursor: pointer;
   .rs-cat { display: none !important; }    /* затем Раздел — остаются Кол·Себест·Клиенту */
 }
 
+/* ---- Закупочный лист: строка позиции с инпутом поставщика ---- */
+@media (max-width: 560px) {
+  .rs-prow { flex-wrap: wrap; }                 /* не хватает места — инпут уходит на свою строку, без h-скролла */
+  .rs-prow .rs-sup { width: 108px !important; }
+}
+
 /* ---- Редактор норм: success-пульс сохранения + адаптив ---- */
 .save-pulse { animation: savePulse .5s var(--ease); }
 @keyframes savePulse { 0% { transform: scale(.92); opacity: .4; } 60% { transform: scale(1.04); } 100% { transform: scale(1); opacity: 1; } }
