@@ -9,7 +9,7 @@ const { useEffect: useE3 } = React;
 function Footer({ go }) {
   /* [название, якорь|null] — null = раздел ещё не написан, честная заглушка без мёртвого клика */
   const cols = [
-    ["Продукт", [["Возможности", "#features"], ["Как работает", "#how"], ["Тарифы", "#pricing"], ["Новости", "#news"]]],
+    ["Продукт", [["Возможности", "#features"], ["Как работает", "#how"], ["Для кого", "#whofor"], ["Окупаемость", "#payoff"], ["Тарифы", "#pricing"], ["Новости", "#news"]]],
     ["Технологии", [["Движок эргономики", "#how"], ["Каталог фабрик", "#komplektacia"], ["YandexGPT 5", "#features"], ["Выгрузка сметы", "#komplektacia"]]],
     ["Компания", [["О проекте", null], ["Контакты", null], ["Политика", null], ["Оферта", null]]],
   ];
@@ -84,10 +84,12 @@ function SitePage({ go }) {
       <main id="main">
         <Hero go={go} />
         <SpecCategories />
+        <WhoFor />
         <SocialProof />
         <HowItWorks />
         <Bento />
         <NewsFeed />
+        <PayoffCalc />
         <Pricing go={go} />
       </main>
       <Footer go={go} />

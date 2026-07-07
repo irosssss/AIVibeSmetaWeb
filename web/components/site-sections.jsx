@@ -158,7 +158,7 @@ function DemoStage({ active, sub }) {
   const scanFill = active === 0 ? sub : 1;
   return (
     <div className="glass" style={{ position: "relative", borderRadius: "var(--r-xl)", overflow: "hidden", aspectRatio: "4/3.4", boxShadow: "var(--shadow-pop)" }}>
-      <Img src={PHOTOS.living} label="визуализация комнаты" />
+      <Img src={PHOTOS.living} label="фото интерьера" />
       <div style={{ position: "absolute", inset: 0, background: "linear-gradient(180deg, rgba(46,42,38,.10), rgba(46,42,38,.5))" }} />
 
       {/* СТАДИЯ 0 — скан (терракота) */}
@@ -196,7 +196,7 @@ function DemoStage({ active, sub }) {
       {/* верхний статус-бар сцены */}
       <div className="glass" style={{ position: "absolute", top: 16, left: 16, padding: "8px 14px", borderRadius: 99, fontSize: 12.5, fontWeight: 700, display: "flex", alignItems: "center", gap: 9, boxShadow: "var(--shadow-card)" }}>
         <span style={{ width: 8, height: 8, borderRadius: "50%", background: "var(--accent)" }} />
-        {["План комнаты", "Подбор и смета", "Проверка норм"][active]}
+        {["Ссылка или фото", "Подбор и смета", "Проверка норм"][active]}
       </div>
     </div>
   );
@@ -235,6 +235,137 @@ function SpecCategories() {
               </div>
             </div>
           ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/* --------------------------------------------------------------
+   ДЛЯ КОГО — отстройка жанра (разбор конкурентов 07.07): смета
+   КОМПЛЕКТАЦИИ, не смета ремонта. Режет нецелевые лиды из выдачи
+   «смета ИИ»; сметчикам честно называем профильные сервисы.
+-------------------------------------------------------------- */
+function WhoFor() {
+  const ref = useReveal();
+  const YES = [
+    "Мебель, свет, сантехника и декор — позициями с артикулами и поставщиками",
+    "Две цены в одном документе: себестоимость и цена клиенту, наценка по разделам",
+    "Три выгрузки: рабочая, для клиента и закупочный лист по поставщикам",
+    "Проверка эргономики по нормам NKBA и Нойферта — до отправки клиенту",
+  ];
+  const NO = [
+    "Сметы ремонтных работ: демонтаж, стяжка, штукатурка — не считаем",
+    "Формы КС-2 / КС-3, ГРАНД-Смета и нормативные базы — не делаем",
+    "Расчёт стройматериалов по чертежам — не наш жанр",
+  ];
+  return (
+    <section id="whofor" style={{ paddingBlock: "clamp(60px,9vh,110px)" }} ref={ref}>
+      <div className="container reveal">
+        <div className="catsec-head">
+          <div>
+            <div className="eyebrow"><span style={{ width: 22, height: 1, background: "var(--accent)" }} />ДЛЯ КОГО</div>
+            <h2 className="display" style={{ fontSize: "clamp(30px,4vw,50px)", marginTop: 14 }}>Смета комплектации —<br />не смета ремонта</h2>
+          </div>
+          <p style={{ color: "var(--muted)", maxWidth: 340, fontSize: 14.5 }}>AIVibe считает то, что дизайнер ставит в интерьер. И честно говорит, для кого он не подходит.</p>
+        </div>
+        <div className="who-grid">
+          <div className="glass" style={{ borderRadius: "var(--r-lg)", padding: "26px 28px", borderColor: "rgba(94,107,91,.45)", background: "rgba(94,107,91,.07)", boxShadow: "var(--shadow-card)" }}>
+            <h3 style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 20, margin: "0 0 18px" }}>Мы — для дизайнеров и комплектаторов</h3>
+            {/* role=list: listStyle:none снимает роль списка в Safari/VoiceOver */}
+            <ul role="list" style={{ listStyle: "none", margin: 0, padding: 0, display: "flex", flexDirection: "column", gap: 12 }}>
+              {YES.map((t) => (
+                <li key={t} style={{ display: "flex", gap: 10, alignItems: "flex-start", fontSize: 14.5, color: "var(--text)", lineHeight: 1.5 }}>
+                  <I.check size={16} style={{ color: "var(--accent-2-ink)", flex: "none", marginTop: 2 }} />{t}
+                </li>
+              ))}
+            </ul>
+          </div>
+          <div className="glass" style={{ borderRadius: "var(--r-lg)", padding: "26px 28px", display: "flex", flexDirection: "column" }}>
+            <h3 style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 20, margin: "0 0 18px", color: "var(--muted)" }}>Мы — не про ремонт</h3>
+            <ul role="list" style={{ listStyle: "none", margin: 0, padding: 0, display: "flex", flexDirection: "column", gap: 12 }}>
+              {NO.map((t) => (
+                <li key={t} style={{ display: "flex", gap: 10, alignItems: "flex-start", fontSize: 14.5, color: "var(--muted)", lineHeight: 1.5 }}>
+                  <I.close size={16} style={{ color: "var(--spec-meta)", flex: "none", marginTop: 2 }} />{t}
+                </li>
+              ))}
+            </ul>
+            <p className="mono" style={{ marginTop: "auto", paddingTop: 18, fontSize: 12, color: "var(--spec-meta)", lineHeight: 1.6 }}>
+              за сметой работ — к профильным сервисам для прорабов (ПростоСмета, Gectaro): это другой жанр
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/* --------------------------------------------------------------
+   ОКУПАЕМОСТЬ — калькулятор «подписка = доли процента от наценки».
+   Переводит цену из «расход на софт» в «доля с заработка»
+   (разбор конкурентов 07.07: их жанр продаёт документ за 150 ₽,
+   мы — инструмент, которым дизайнер зарабатывает наценку).
+-------------------------------------------------------------- */
+function PayoffCalc() {
+  const ref = useReveal();
+  const [budget, setBudget] = useS2(2700000);
+  const [markup, setMarkup] = useS2(25);
+  const f = (n) => new Intl.NumberFormat("ru-RU").format(Math.round(n));
+  const SUB = 2900;
+  const profit = (budget * markup) / 100;
+  const share = profit > 0 ? (SUB / profit) * 100 : 0;
+  const shareTxt = share < 0.1 ? "менее 0,1" : share.toFixed(1).replace(".", ",");
+  /* сколько подписки покрывает наценка одного проекта — честная динамика
+     вместо статичного лозунга (минимум слайдеров: 30 000 ₽ → 10 месяцев) */
+  const months = Math.floor(profit / SUB);
+  const years = Math.floor(months / 12);
+  const coverTxt = months < 12
+    ? months + " " + plural(months, ["месяц", "месяца", "месяцев"])
+    : "≈ " + years + " " + plural(years, ["год", "года", "лет"]);
+  return (
+    <section id="payoff" style={{ paddingBlock: "clamp(60px,9vh,110px)" }} ref={ref}>
+      <div className="container reveal">
+        <div className="eyebrow jade" style={{ marginBottom: 18 }}><span style={{ width: 22, height: 1, background: "var(--accent-2)" }} />ОКУПАЕМОСТЬ</div>
+        <h2 className="display" style={{ fontSize: "clamp(30px,4vw,50px)", maxWidth: 720 }}>Подписка окупается одним проектом</h2>
+        <p style={{ color: "var(--muted)", maxWidth: 520, fontSize: 15.5, marginTop: 16 }}>
+          AIVibe — не расход на софт, а инструмент, которым вы зарабатываете наценку. Посчитайте на своём проекте.
+        </p>
+        <div className="glass calc-grid" style={{ borderRadius: "var(--r-xl)", padding: "clamp(24px,4vw,44px)", marginTop: 34, boxShadow: "var(--shadow-card)" }}>
+          <div>
+            <div className="calc-ctrl">
+              <div className="lab"><span>Бюджет комплектации проекта</span><b className="mono" style={{ color: "var(--text)", fontSize: 16, whiteSpace: "nowrap" }}>{f(budget)}{" "}₽</b></div>
+              <input type="range" className="quiz-range" min="300000" max="10000000" step="100000" value={budget}
+                onChange={(e) => setBudget(+e.target.value)}
+                aria-label="Бюджет комплектации проекта" aria-valuetext={f(budget) + " рублей"} />
+            </div>
+            <div className="calc-ctrl">
+              <div className="lab"><span>Ваша наценка</span><b className="mono" style={{ color: "var(--text)", fontSize: 16, whiteSpace: "nowrap" }}>+{markup}%</b></div>
+              <input type="range" className="quiz-range" min="10" max="40" step="1" value={markup}
+                onChange={(e) => setMarkup(+e.target.value)}
+                aria-label="Ваша наценка" aria-valuetext={"плюс " + markup + " " + plural(markup, ["процент", "процента", "процентов"])} />
+            </div>
+            <p className="mono" style={{ fontSize: 11.5, color: "var(--spec-meta)", marginTop: 14, lineHeight: 1.6 }}>
+              по умолчанию — реальный проект: комплектация 2,7 млн ₽, 50 позиций
+            </p>
+          </div>
+          <div>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 14, paddingBlock: 12, borderBottom: "1px solid var(--hairline-2)" }}>
+              <span style={{ fontSize: 14.5, color: "var(--muted)" }}>Наценка с одного проекта</span>
+              <b className="mono" style={{ fontSize: "clamp(22px,2.6vw,30px)", fontWeight: 600, color: "var(--accent-2-ink)", whiteSpace: "nowrap" }}>+{f(profit)} ₽</b>
+            </div>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 14, paddingBlock: 12, borderBottom: "1px solid var(--hairline-2)" }}>
+              <span style={{ fontSize: 14.5, color: "var(--muted)" }}>Подписка «Практика»</span>
+              <b className="mono" style={{ fontSize: 16, fontWeight: 500, whiteSpace: "nowrap" }}>{f(SUB)} ₽ / мес</b>
+            </div>
+            {/* live-регион только на итоге и atomic — иначе скринридер читает
+               бессвязные куски изменившихся узлов на каждый шаг слайдера */}
+            <div style={{ paddingTop: 18 }} aria-live="polite" aria-atomic="true">
+              <div style={{ fontFamily: "var(--font-display)", fontSize: "clamp(20px,2.4vw,26px)", fontWeight: 700, lineHeight: 1.3 }}>
+                = <span style={{ color: "var(--accent-ink)" }}>{shareTxt}%</span> от наценки одного проекта
+              </div>
+              <p style={{ fontSize: 13.5, color: "var(--muted)", marginTop: 8, lineHeight: 1.55 }}>Наценка одного такого проекта покрывает {coverTxt} подписки.</p>
+            </div>
+          </div>
         </div>
       </div>
     </section>
@@ -365,8 +496,8 @@ function Bento() {
           <article className="bento-card">
             <div className="bento-body">
               <I.spark size={24} style={{ color: "var(--accent)" }} />
-              <h3>AI-дизайнер</h3>
-              <p>YandexGPT 5 и GigaChat подбирают стиль, мебель и свет под запрос, бюджет и нормы.</p>
+              <h3>AI-подбор мебели и света</h3>
+              <p>YandexGPT 5 и GigaChat подбирают предметы под запрос, бюджет и нормы — сразу позициями сметы.</p>
             </div>
           </article>
 
@@ -443,3 +574,5 @@ window.Bento = Bento;
 window.NewsFeed = NewsFeed;
 window.SocialProof = SocialProof;
 window.Pricing = Pricing;
+window.WhoFor = WhoFor;
+window.PayoffCalc = PayoffCalc;
