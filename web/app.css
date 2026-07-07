@@ -201,6 +201,17 @@ select.fld { appearance: none; cursor: pointer;
 .pd-main { overflow-y: auto; overflow-x: hidden; scroll-behavior: smooth; }
 .pd-rail { border-left: 1px solid var(--hairline); display: flex; flex-direction: column; min-height: 0; background: rgba(243,235,221,.6); }
 
+/* Оверлей без правого чат-рейла (смета по комнатам): одна колонка вместо
+   грида «1fr 384px» — иначе справа резервируются пустые 384px и контент
+   липнет влево. Колонку чтения центрируем и ограничиваем. */
+.pd-body.solo { grid-template-columns: 1fr; }
+.pd-body.solo .pd-section { max-width: 1280px; margin-inline: auto; width: 100%; }
+.pd-body.solo .pd-cart > div { max-width: 1200px; margin-inline: auto; }
+
+/* внутри открытого оверлея dev-переключатель областей не плавает поверх
+   sticky-панели сметы (наезжал на «Выгрузка: Рабочая/Клиенту/Закупка») */
+body:has(.pd-overlay) .proto-switch { display: none; }
+
 .pd-section { padding: clamp(22px,3vw,40px) clamp(16px,3vw,40px); border-bottom: 1px solid var(--hairline); }
 .pd-eyebrow { display: inline-flex; align-items: center; gap: 9px; font-size: 11.5px; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; color: var(--accent-2); margin-bottom: 14px; }
 .pd-eyebrow .dot { width: 22px; height: 1px; background: var(--accent-2); }

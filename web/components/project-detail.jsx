@@ -364,7 +364,8 @@ function RoomSpecOverlay({ data, onClose }) {
         title={data.name}
         sub={"Комплектация по дизайн-проекту · " + data.area + " м² · " + itemsCount + " " + plural(itemsCount, ["позиция", "позиции", "позиций"])} />
 
-      <div className="pd-body">
+      {/* solo: у сметы нет правого чат-рейла — грид 1fr, контент центрируется */}
+      <div className="pd-body solo">
         <div className="pd-main">
           <section className="pd-section" style={ergo.length ? undefined : { borderBottom: "none" }}>
             <div className="pd-eyebrow"><span className="dot" />Спецификация-комплектация</div>

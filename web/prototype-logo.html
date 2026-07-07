@@ -9,7 +9,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Spectral:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400;1,500;1,600&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
 <style>
   :root {
-    --ink: #2E2A26; --cream: #FBF8F2; --paper: #F6F1E8; --accent: #B7502C;
+    --ink: #2E2A26; --cream: #EFE9DE; --card: #FFFDF7; --accent: #B7502C;
     --hairline: rgba(46,42,38,.14); --faint: rgba(46,42,38,.55);
     --font-display: "Spectral", Georgia, serif;
     --font-body: "Inter", system-ui, sans-serif;
@@ -17,47 +17,50 @@
   }
   * { box-sizing: border-box; margin: 0; }
   body { background: var(--cream); color: var(--ink); font-family: var(--font-body); padding: 48px 40px 80px; }
-  h1 { font-family: var(--font-display); font-weight: 600; font-size: 30px; letter-spacing: -.01em; }
+  h1 { font-family: var(--font-display); font-weight: 700; font-size: 30px; letter-spacing: -.01em; }
   .sub { color: var(--faint); font-size: 14px; margin-top: 6px; margin-bottom: 40px; }
-  .grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 26px; max-width: 1060px; }
-  .card { background: var(--paper); border: 1px solid var(--hairline); border-radius: 16px; padding: 26px 28px 22px; }
-  .stage { min-height: 190px; display: flex; align-items: center; justify-content: center; padding: 18px 0 26px; }
-  .meta { border-top: 1px solid var(--hairline); padding-top: 14px; display: flex; justify-content: space-between; align-items: center; gap: 14px; }
+  .grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 30px; max-width: 1060px; }
+  .card { background: var(--card); border: 1px solid rgba(46,42,38,.08); border-radius: 24px; padding: 28px 30px 24px;
+    box-shadow: 0 22px 44px -18px rgba(46,42,38,.22), 0 4px 12px rgba(46,42,38,.05); }
+  .stage { min-height: 200px; display: flex; align-items: center; justify-content: center; padding: 18px 0 26px; }
+  .meta { border-top: 1px solid var(--hairline); padding-top: 15px; display: flex; justify-content: space-between; align-items: center; gap: 14px; }
   .meta .name { font-weight: 600; font-size: 14px; }
   .meta .name b { font-family: var(--font-mono); font-weight: 500; color: var(--accent); font-size: 12px; margin-right: 8px; }
   .meta .note { color: var(--faint); font-size: 12.5px; line-height: 1.45; max-width: 330px; }
-  .fav { width: 34px; height: 34px; border-radius: 8px; flex: none; display: flex; align-items: center; justify-content: center; white-space: nowrap; line-height: 1; }
+  .fav { width: 36px; height: 36px; border-radius: 10px; flex: none; display: flex; align-items: center; justify-content: center; white-space: nowrap; line-height: 1; }
 
-  /* — Вариант 1: издательский вордмарк, терракотовая точка над i — */
-  .v1 { font-family: var(--font-display); font-weight: 600; font-size: 64px; letter-spacing: -.02em; position: relative; }
+  /* — 01: издательский вордмарк, огонёк-капля над i — */
+  .v1 { font-family: var(--font-display); font-weight: 600; font-size: 64px; letter-spacing: -.02em; }
   .v1 .idot { position: relative; }
-  .v1 .idot::before { content: ""; position: absolute; top: .135em; left: 50%; transform: translateX(-50%);
-    width: .13em; height: .13em; border-radius: 50%; background: var(--accent); }
+  .v1 .idot::before { content: ""; position: absolute; top: .075em; left: 50%;
+    width: .15em; height: .15em; background: var(--accent);
+    border-radius: 50% 6% 50% 50%; transform: translateX(-50%) rotate(45deg); }
   .v1 .idot span { visibility: hidden; }
   .v1 .idot::after { content: "ı"; position: absolute; left: 0; top: 0; }
-  .fav-1 { background: var(--ink); color: var(--cream); font-family: var(--font-display); font-weight: 600; font-size: 19px; }
+  .fav-1 { background: var(--ink); color: var(--card); font-family: var(--font-display); font-weight: 600; font-size: 20px; }
   .fav-1 i { font-style: normal; color: var(--accent); }
 
-  /* — Вариант 2: печать ателье (монограмма AV) — */
-  .v2 { width: 168px; height: 168px; }
-  .fav-2 { background: var(--cream); border: 1.6px solid var(--accent); border-radius: 50%;
-    color: var(--accent); font-family: var(--font-display); font-weight: 700; font-size: 15px; }
+  /* — 02: печать ателье — */
+  .v2 { width: 190px; height: 190px; }
+  .fav-2 { background: var(--card); border: 1.6px solid var(--accent); border-radius: 50%;
+    color: var(--accent); font-family: var(--font-display); font-weight: 700; font-size: 15px; letter-spacing: -.06em; }
 
-  /* — Вариант 3: строка сметы — */
-  .v3 { width: 380px; max-width: 100%; }
+  /* — 03: строка сметы — */
+  .v3 { width: 400px; max-width: 100%; }
   .v3 .word { font-family: var(--font-display); font-weight: 600; font-size: 52px; letter-spacing: -.02em; }
   .v3 .word em { font-style: normal; color: var(--accent); }
-  .v3 .rule { display: flex; justify-content: space-between; align-items: baseline; border-top: 1.5px solid var(--ink);
-    margin-top: 10px; padding-top: 8px; font-family: var(--font-mono); font-size: 12px; color: var(--faint); }
-  .v3 .rule b { font-weight: 500; color: var(--accent); }
-  .fav-3 { background: var(--accent); color: var(--cream); font-family: var(--font-mono); font-weight: 600; font-size: 15px; }
+  .v3 .rule { display: flex; gap: 10px; margin-top: 14px; font-family: var(--font-mono); font-size: 12px; }
+  .v3 .chip { border: 1.3px solid rgba(46,42,38,.5); border-radius: 9px; padding: 8px 13px; white-space: nowrap; }
+  .v3 .chip.grow { flex: 1; color: var(--faint); }
+  .v3 .chip b { font-weight: 500; color: var(--accent); }
+  .fav-3 { background: var(--accent); color: var(--card); font-family: var(--font-mono); font-weight: 600; font-size: 16px; }
 
-  /* — Вариант 4: подпись дизайнера — */
+  /* — 04: подпись дизайнера — */
   .v4 { text-align: center; }
   .v4 .word { font-family: var(--font-display); font-style: italic; font-weight: 500; font-size: 62px; letter-spacing: -.01em; }
-  .v4 svg { display: block; margin: 2px auto 0; }
-  .fav-4 { background: var(--paper); border: 1px solid var(--hairline); color: var(--ink);
-    font-family: var(--font-display); font-style: italic; font-weight: 600; font-size: 19px; }
+  .v4 svg { display: block; margin: 4px auto 0; }
+  .fav-4 { background: var(--card); border: 1px solid var(--hairline); color: var(--ink);
+    font-family: var(--font-display); font-style: italic; font-weight: 600; font-size: 20px; }
   .fav-4 i { font-style: italic; color: var(--accent); }
 </style>
 </head>
@@ -74,7 +77,7 @@
       <div class="meta">
         <div>
           <div class="name"><b>01</b>Издательский</div>
-          <div class="note">Чистый вордмарк Spectral, единственный акцент — терракотовая точка над i. Самый спокойный и «книжный».</div>
+          <div class="note">Чистый вордмарк Spectral, единственный акцент — терракотовый огонёк над i. Самый спокойный и «книжный».</div>
         </div>
         <div class="fav fav-1">A<i>i</i></div>
       </div>
@@ -82,14 +85,21 @@
 
     <div class="card">
       <div class="stage">
-        <svg class="v2" viewBox="0 0 168 168">
-          <circle cx="84" cy="84" r="80" fill="none" stroke="#B7502C" stroke-width="2.2"/>
-          <circle cx="84" cy="84" r="56" fill="none" stroke="#B7502C" stroke-width="1.1"/>
-          <text font-family="JetBrains Mono, monospace" font-size="10.5" letter-spacing="2.6" fill="#B7502C">
-            <textPath href="#arc" startOffset="50%" text-anchor="middle">СМЕТА · КОМПЛЕКТАЦИЯ · ИНТЕРЬЕР ·</textPath>
+        <svg class="v2" viewBox="0 0 190 190">
+          <circle cx="95" cy="95" r="90" fill="none" stroke="#B7502C" stroke-width="2.4"/>
+          <defs>
+            <path id="arcTop" d="M 33 95 A 62 62 0 0 1 157 95" fill="none"/>
+            <path id="arcBottom" d="M 27 95 A 68 68 0 0 0 163 95" fill="none"/>
+          </defs>
+          <text font-family="JetBrains Mono, monospace" font-size="14" font-weight="600" letter-spacing="4" fill="#B7502C">
+            <textPath href="#arcTop" startOffset="50%" text-anchor="middle">ИНТЕРЬЕР</textPath>
           </text>
-          <defs><path id="arc" d="M84 16 a68 68 0 1 1 -0.01 0" fill="none"/></defs>
-          <text x="84" y="99" text-anchor="middle" font-family="Spectral, serif" font-weight="700" font-size="44" fill="#B7502C">AV</text>
+          <text font-family="JetBrains Mono, monospace" font-size="10.5" font-weight="500" letter-spacing="2" fill="#B7502C">
+            <textPath href="#arcBottom" startOffset="50%" text-anchor="middle">КОМПЛЕКТАЦИЯ · СМЕТА</textPath>
+          </text>
+          <rect x="-3.6" y="-3.6" width="7.2" height="7.2" fill="#B7502C" transform="translate(24 95) rotate(45)"/>
+          <rect x="-3.6" y="-3.6" width="7.2" height="7.2" fill="#B7502C" transform="translate(166 95) rotate(45)"/>
+          <text x="95" y="112" text-anchor="middle" font-family="Spectral, serif" font-weight="700" font-size="52" letter-spacing="-4" fill="#B7502C">AV</text>
         </svg>
       </div>
       <div class="meta">
@@ -105,13 +115,16 @@
       <div class="stage">
         <div class="v3">
           <div class="word">AI<em>Vibe</em></div>
-          <div class="rule"><span>смета-комплектация</span><b>№ 001 · ₽</b></div>
+          <div class="rule">
+            <span class="chip grow">смета-комплектация</span>
+            <span class="chip"><b>№ 001 · ₽</b></span>
+          </div>
         </div>
       </div>
       <div class="meta">
         <div>
           <div class="name"><b>03</b>Строка сметы</div>
-          <div class="note">Вордмарк, подчёркнутый как строка таблицы, с моноширинной подписью. Прямо говорит, что продукт — документ с цифрами.</div>
+          <div class="note">Вордмарк с подписью-полями, как шапка документа. Прямо говорит, что продукт — смета с цифрами.</div>
         </div>
         <div class="fav fav-3">₽</div>
       </div>
@@ -121,8 +134,9 @@
       <div class="stage">
         <div class="v4">
           <div class="word">AIVibe</div>
-          <svg width="200" height="16" viewBox="0 0 200 16">
-            <path d="M4 9 C 50 3, 110 13, 196 6" fill="none" stroke="#B7502C" stroke-width="2.4" stroke-linecap="round"/>
+          <svg width="230" height="30" viewBox="0 0 230 30">
+            <path d="M14 20 C 60 4, 118 2, 148 9 C 160 12, 152 18, 128 21 C 96 25, 60 24, 96 18 C 140 11, 190 10, 218 13"
+              fill="none" stroke="#B7502C" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
           </svg>
         </div>
       </div>
