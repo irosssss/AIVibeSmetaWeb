@@ -6,6 +6,12 @@
       "runtimeExecutable": "python3",
       "runtimeArgs": ["-m", "http.server", "8753", "--directory", "web"],
       "port": 8753
+    },
+    {
+      "name": "aivibe-web-alt",
+      "runtimeExecutable": "python3",
+      "runtimeArgs": ["-m", "http.server", "8781", "--directory", "web"],
+      "port": 8781
     }
   ]
 }

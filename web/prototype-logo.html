@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>AIVibe — варианты лого (прототип)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Spectral:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400;1,500;1,600&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --ink: #2E2A26; --cream: #FBF8F2; --paper: #F6F1E8; --accent: #B7502C;
+    --hairline: rgba(46,42,38,.14); --faint: rgba(46,42,38,.55);
+    --font-display: "Spectral", Georgia, serif;
+    --font-body: "Inter", system-ui, sans-serif;
+    --font-mono: "JetBrains Mono", ui-monospace, monospace;
+  }
+  * { box-sizing: border-box; margin: 0; }
+  body { background: var(--cream); color: var(--ink); font-family: var(--font-body); padding: 48px 40px 80px; }
+  h1 { font-family: var(--font-display); font-weight: 600; font-size: 30px; letter-spacing: -.01em; }
+  .sub { color: var(--faint); font-size: 14px; margin-top: 6px; margin-bottom: 40px; }
+  .grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 26px; max-width: 1060px; }
+  .card { background: var(--paper); border: 1px solid var(--hairline); border-radius: 16px; padding: 26px 28px 22px; }
+  .stage { min-height: 190px; display: flex; align-items: center; justify-content: center; padding: 18px 0 26px; }
+  .meta { border-top: 1px solid var(--hairline); padding-top: 14px; display: flex; justify-content: space-between; align-items: center; gap: 14px; }
+  .meta .name { font-weight: 600; font-size: 14px; }
+  .meta .name b { font-family: var(--font-mono); font-weight: 500; color: var(--accent); font-size: 12px; margin-right: 8px; }
+  .meta .note { color: var(--faint); font-size: 12.5px; line-height: 1.45; max-width: 330px; }
+  .fav { width: 34px; height: 34px; border-radius: 8px; flex: none; display: flex; align-items: center; justify-content: center; white-space: nowrap; line-height: 1; }
+
+  /* — Вариант 1: издательский вордмарк, терракотовая точка над i — */
+  .v1 { font-family: var(--font-display); font-weight: 600; font-size: 64px; letter-spacing: -.02em; position: relative; }
+  .v1 .idot { position: relative; }
+  .v1 .idot::before { content: ""; position: absolute; top: .135em; left: 50%; transform: translateX(-50%);
+    width: .13em; height: .13em; border-radius: 50%; background: var(--accent); }
+  .v1 .idot span { visibility: hidden; }
+  .v1 .idot::after { content: "ı"; position: absolute; left: 0; top: 0; }
+  .fav-1 { background: var(--ink); color: var(--cream); font-family: var(--font-display); font-weight: 600; font-size: 19px; }
+  .fav-1 i { font-style: normal; color: var(--accent); }
+
+  /* — Вариант 2: печать ателье (монограмма AV) — */
+  .v2 { width: 168px; height: 168px; }
+  .fav-2 { background: var(--cream); border: 1.6px solid var(--accent); border-radius: 50%;
+    color: var(--accent); font-family: var(--font-display); font-weight: 700; font-size: 15px; }
+
+  /* — Вариант 3: строка сметы — */
+  .v3 { width: 380px; max-width: 100%; }
+  .v3 .word { font-family: var(--font-display); font-weight: 600; font-size: 52px; letter-spacing: -.02em; }
+  .v3 .word em { font-style: normal; color: var(--accent); }
+  .v3 .rule { display: flex; justify-content: space-between; align-items: baseline; border-top: 1.5px solid var(--ink);
+    margin-top: 10px; padding-top: 8px; font-family: var(--font-mono); font-size: 12px; color: var(--faint); }
+  .v3 .rule b { font-weight: 500; color: var(--accent); }
+  .fav-3 { background: var(--accent); color: var(--cream); font-family: var(--font-mono); font-weight: 600; font-size: 15px; }
+
+  /* — Вариант 4: подпись дизайнера — */
+  .v4 { text-align: center; }
+  .v4 .word { font-family: var(--font-display); font-style: italic; font-weight: 500; font-size: 62px; letter-spacing: -.01em; }
+  .v4 svg { display: block; margin: 2px auto 0; }
+  .fav-4 { background: var(--paper); border: 1px solid var(--hairline); color: var(--ink);
+    font-family: var(--font-display); font-style: italic; font-weight: 600; font-size: 19px; }
+  .fav-4 i { font-style: italic; color: var(--accent); }
+</style>
+</head>
+<body>
+  <h1>AIVibe — четыре хода для лейбла</h1>
+  <div class="sub">Всё из фирменных шрифтов и палитры сайта: Spectral · JetBrains Mono · чернила #2E2A26 · терракота #B7502C</div>
+
+  <div class="grid">
+
+    <div class="card">
+      <div class="stage">
+        <div class="v1">AIV<span class="idot"><span>i</span></span>be</div>
+      </div>
+      <div class="meta">
+        <div>
+          <div class="name"><b>01</b>Издательский</div>
+          <div class="note">Чистый вордмарк Spectral, единственный акцент — терракотовая точка над i. Самый спокойный и «книжный».</div>
+        </div>
+        <div class="fav fav-1">A<i>i</i></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="stage">
+        <svg class="v2" viewBox="0 0 168 168">
+          <circle cx="84" cy="84" r="80" fill="none" stroke="#B7502C" stroke-width="2.2"/>
+          <circle cx="84" cy="84" r="56" fill="none" stroke="#B7502C" stroke-width="1.1"/>
+          <text font-family="JetBrains Mono, monospace" font-size="10.5" letter-spacing="2.6" fill="#B7502C">
+            <textPath href="#arc" startOffset="50%" text-anchor="middle">СМЕТА · КОМПЛЕКТАЦИЯ · ИНТЕРЬЕР ·</textPath>
+          </text>
+          <defs><path id="arc" d="M84 16 a68 68 0 1 1 -0.01 0" fill="none"/></defs>
+          <text x="84" y="99" text-anchor="middle" font-family="Spectral, serif" font-weight="700" font-size="44" fill="#B7502C">AV</text>
+        </svg>
+      </div>
+      <div class="meta">
+        <div>
+          <div class="name"><b>02</b>Печать ателье</div>
+          <div class="note">Монограмма-штамп, как оттиск на документе. Родной мотив для продукта-сметы; хорош как фавикон и водяной знак на PDF.</div>
+        </div>
+        <div class="fav fav-2">AV</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="stage">
+        <div class="v3">
+          <div class="word">AI<em>Vibe</em></div>
+          <div class="rule"><span>смета-комплектация</span><b>№ 001 · ₽</b></div>
+        </div>
+      </div>
+      <div class="meta">
+        <div>
+          <div class="name"><b>03</b>Строка сметы</div>
+          <div class="note">Вордмарк, подчёркнутый как строка таблицы, с моноширинной подписью. Прямо говорит, что продукт — документ с цифрами.</div>
+        </div>
+        <div class="fav fav-3">₽</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="stage">
+        <div class="v4">
+          <div class="word">AIVibe</div>
+          <svg width="200" height="16" viewBox="0 0 200 16">
+            <path d="M4 9 C 50 3, 110 13, 196 6" fill="none" stroke="#B7502C" stroke-width="2.4" stroke-linecap="round"/>
+          </svg>
+        </div>
+      </div>
+      <div class="meta">
+        <div>
+          <div class="name"><b>04</b>Подпись дизайнера</div>
+          <div class="note">Курсивный Spectral с росчерком — жест «дизайнер подписал смету клиенту». Самый тёплый и личный.</div>
+        </div>
+        <div class="fav fav-4">A<i>i</i></div>
+      </div>
+    </div>
+
+  </div>
+</body>
+</html>

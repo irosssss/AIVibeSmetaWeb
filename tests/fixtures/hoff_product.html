@@ -1,0 +1,39 @@
+<!doctype html>
+<!-- Фикстура: дистиллят реальной карточки hoff.ru (снято 2026-06-29) с сохранением
+     реальных особенностей: ЕСТЬ schema.org/Product (name/price/brand/sku/image), но БЕЗ
+     габаритов и материала; они только в видимом тексте, где 4 варианта «размер×цена»
+     (ловушка для naive-regex: первый размер 156 идёт с первой ценой 44 999, а каноничная
+     цена 49 999 из JSON-LD соответствует комплектации 196×92×106). -->
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta property="og:title" content="Диван-кровать DREAMART Канзас - купить по цене 49 999 руб | арт. 80561357">
+  <title>Диван-кровать DREAMART Канзас — Hoff</title>
+  <script type="application/ld+json">
+  {"@context":"https://schema.org","@type":"Product",
+   "name":"Диван-кровать DREAMART Канзас","sku":"80561357",
+   "brand":{"@type":"Brand","name":"DREAMART"},
+   "image":"https://hoff.ru/upload/iblock/2df/l6x5qu2c3mr0ijbszq2r9bxfvb94d1b0.jpg",
+   "offers":{"@type":"Offer","price":"49999","priceCurrency":"RUB","availability":"https://schema.org/InStock"}}
+  </script>
+</head>
+<body>
+  <h1>Диван-кровать DREAMART Канзас</h1>
+  <div class="variants">
+    Размеры:
+    156х92х106 см 44 999 ₽
+    176х92х106 см 46 999 ₽
+    196х92х106 см 49 999 ₽
+    216х92х106 см 54 999 ₽
+  </div>
+  <section class="characteristics">
+    Механизм трансформации Аккордеон
+    Размеры дивана (ШхВхГ) 196х92х106 см
+    Размеры спального места (ШхГ) 160х202 см
+    Обивка: рогожка
+    Наполнитель: ППУ
+    Страна производства: Россия
+  </section>
+  <aside class="delivery">Курьером послезавтра от 1 999 ₽</aside>
+</body>
+</html>

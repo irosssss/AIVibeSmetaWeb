@@ -1,0 +1,14 @@
+{
+  "name": "aivibe-web-smeta",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "AIVibe — веб-кабинет дизайнера со сметой-комплектацией (FF&E)",
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "devDependencies": {
+    "vitest": "^2.1.4"
+  }
+}

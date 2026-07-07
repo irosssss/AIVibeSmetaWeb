@@ -135,21 +135,25 @@
     const sel = catalog.map((c) => [...c.items].sort((a, b) => a.price - b.price)[0]);
     let total = sel.reduce((s, it) => s + adj(it.price), 0);
 
-    const upgrades = [];
-    catalog.forEach((c, ci) => {
-      const base = sel[ci];
-      c.items.forEach((it) => {
-        const cost = adj(it.price) - adj(base.price);
-        if (cost > 0) upgrades.push({ ci, it, ratio: ((it.rating - base.rating) + 0.4) / cost });
+    /* жадный подбор с пересчётом на каждой итерации: ratio считается от
+       ТЕКУЩЕГО выбора категории, а не от стартового эконома — иначе после
+       первого апгрейда список ratio устаревает и ключевой предмет застревает
+       в экономе (баг optimize-stale-ratio, регресс-тест tests/engine.test.js) */
+    for (;;) {
+      let best = null;
+      catalog.forEach((c, ci) => {
+        const curPrice = adj(sel[ci].price), curRating = sel[ci].rating;
+        c.items.forEach((it) => {
+          const delta = adj(it.price) - curPrice;
+          const gain = it.rating - curRating;
+          if (delta <= 0 || gain <= 0) return;       // только дороже текущего и с реальным приростом
+          if (total + delta > budget) return;        // влезает в бюджет
+          const ratio = gain / delta;                // чистое качество за рубль (от текущего выбора)
+          if (!best || ratio > best.ratio) best = { ci, it, delta, ratio };
+        });
       });
-    });
-    upgrades.sort((a, b) => b.ratio - a.ratio);
-
-    for (const up of upgrades) {
-      const curPrice = adj(sel[up.ci].price);
-      const newPrice = adj(up.it.price);
-      const delta = newPrice - curPrice;
-      if (delta > 0 && total + delta <= budget) { sel[up.ci] = up.it; total += delta; }
+      if (!best) break;
+      sel[best.ci] = best.it; total += best.delta;
     }
 
     const selection = {};

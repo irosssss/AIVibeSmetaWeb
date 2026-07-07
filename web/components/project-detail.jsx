@@ -695,22 +695,31 @@ function RoomSpecOverlay({ data, onClose }) {
           </div>
         </div>
       </div>
-      {addOpen && <AddPositionsModal excludeId={savedId} onClose={() => setAddOpen(false)} onAdd={addFrom} />}
+      {addOpen && <AddPositionsModal excludeId={savedId} roomNames={rooms.map((r) => r.name)} onClose={() => setAddOpen(false)} onAdd={addFrom} />}
     </div>
   );
 }
 
-/* ---------------- «ИЗ ПРОШЛОГО ПРОЕКТА / ШАБЛОНА» (роадмап #10) ----------------
-   Копирование позиций/комнат из прошлых смет (цены получают пометку давности —
-   priceDate = дата обновления проекта-источника) и вставка типовых комплектаций
-   (структура — главная ценность, цены — рыночный ориентир). Двухшаговый выбор:
-   источник → чекбоксы по комнатам/позициям. */
-function AddPositionsModal({ excludeId, onClose, onAdd }) {
-  const [tab, setTab] = usePD("past");        // past | tpl
+/* ---------------- «ИЗ ПРОШЛОГО ПРОЕКТА / ШАБЛОНА / ПО ССЫЛКЕ» ----------------
+   Роадмап #10: копирование позиций/комнат из прошлых смет (цены получают
+   пометку давности — priceDate = дата обновления проекта-источника) и вставка
+   типовых комплектаций. Двухшаговый выбор: источник → чекбоксы.
+   Роадмап #1 (фаза 1 слияния): вкладка «По ссылке» — клиппер URL/HTML →
+   позиция сметы через window.AIVibeClipper (перенос с vite-ветки); при
+   CORS-блоке честный фолбэк «вставьте HTML страницы вручную». */
+function AddPositionsModal({ excludeId, roomNames, onClose, onAdd }) {
+  const [tab, setTab] = usePD("past");        // past | tpl | clip
   const [sources, setSources] = usePD(null);  // прошлые проекты со сметой по комнатам
   const [tpls, setTpls] = usePD(null);        // типовые комплектации
   const [src, setSrc] = usePD(null);          // выбранный источник {label, stamp?, note?, rooms}
   const [sel, setSel] = usePD({});            // {"ri:ii": true}
+  /* --- состояние вкладки «По ссылке» --- */
+  const [clipUrl, setClipUrl] = usePD("");
+  const [clipBusy, setClipBusy] = usePD(false);
+  const [clipErr, setClipErr] = usePD("");
+  const [clipHtmlMode, setClipHtmlMode] = usePD(false); // CORS-блок → ручная вставка HTML
+  const [clipHtml, setClipHtml] = usePD("");
+  const [clipForm, setClipForm] = usePD(null);          // {title, price, qty, sup, room, note}
 
   usePDE(() => {
     // источники: только проекты со сметой по комнатам (каталожные демо-проекты отпадают)
@@ -747,8 +756,56 @@ function AddPositionsModal({ excludeId, onClose, onAdd }) {
   const nSel = chosen.reduce((s, e) => s + e.items.length, 0);
   const sumSel = chosen.reduce((s, e) => s + cost(e.items), 0);
 
-  const switchTab = (t) => { setTab(t); setSrc(null); setSel({}); };
+  const switchTab = (t) => { setTab(t); setSrc(null); setSel({}); setClipErr(""); setClipForm(null); setClipHtmlMode(false); };
   const rowBtn = { display: "flex", alignItems: "center", gap: 12, padding: 12, borderRadius: 12, border: "1px solid var(--hairline)", background: "var(--surface)", textAlign: "left" };
+
+  /* --- клиппер: извлечение и форма-превью --- */
+  const clipPrefill = (extracted, via) => {
+    const f = (extracted && extracted.fields) || {};
+    const conf = (extracted && extracted.confidence) || {};
+    setClipForm({
+      title: f.title || "",
+      price: f.price != null ? String(Math.round(f.price)) : "",
+      qty: "1",
+      sup: f.supplier || "",
+      room: (roomNames && roomNames[0]) || "Гостиная",
+      // низкая уверенность или отсутствие цены → предупреждение в форме
+      warnPrice: f.price == null || (conf.price != null && conf.price < 0.7),
+      via: via || "",
+    });
+    setClipErr("");
+  };
+  const doClip = async () => {
+    const u = clipUrl.trim();
+    if (!u || clipBusy) return;
+    setClipBusy(true); setClipErr(""); setClipForm(null);
+    try {
+      const r = await window.AIVibeClipper.clip(u);
+      if (r.ok) clipPrefill(r.extracted, r.via);
+      else if (r.blocked) { setClipHtmlMode(true); setClipErr("Магазин не отдаёт страницу напрямую (защита/CORS). Откройте товар в соседней вкладке, скопируйте HTML (Ctrl+U → выделить всё) и вставьте ниже."); }
+      else setClipErr(r.error || "Не удалось разобрать страницу.");
+    } finally { setClipBusy(false); }
+  };
+  const doParseHtml = () => {
+    const h = clipHtml.trim();
+    if (!h) return;
+    const ex = window.AIVibeClipper.extractFromHtml(h, clipUrl.trim());
+    if (!ex.fields.title && ex.fields.price == null) setClipErr("В этом HTML не нашлось данных товара — проверьте, что скопирована страница целиком.");
+    else clipPrefill(ex, "html");
+  };
+  const clipPrice = clipForm ? Math.round(+clipForm.price || 0) : 0;
+  const clipQty = clipForm ? Math.max(1, Math.round(+clipForm.qty || 1)) : 1;
+  const clipOk = clipForm && clipForm.title.trim() && clipPrice > 0 && clipForm.room.trim();
+  const clipAdd = () => {
+    if (!clipOk) return;
+    const item = {
+      title: clipForm.title.trim(), qty: clipQty, price: clipPrice,
+      ...(clipForm.sup.trim() ? { sup: clipForm.sup.trim() } : {}),
+      priceDate: new Date().toISOString().slice(0, 10), // цена свежая — извлечена сейчас
+    };
+    onAdd([{ name: clipForm.room.trim(), items: [item] }], "по ссылке");
+  };
+  const clipField = { width: "100%", padding: "10px 12px", borderRadius: 10, border: "1px solid var(--hairline)", background: "var(--surface)", fontSize: 14, color: "var(--text)" };
 
   return (
     <Modal onClose={onClose} label="Добавить позиции в смету" maxWidth={620}>
@@ -759,7 +816,7 @@ function AddPositionsModal({ excludeId, onClose, onAdd }) {
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <SegTabs className="spec-mode" ariaLabel="Источник позиций" value={tab} onChange={switchTab}
-            items={[{ id: "past", label: "Из проекта" }, { id: "tpl", label: "Из шаблона" }]} />
+            items={[{ id: "past", label: "Из проекта" }, { id: "tpl", label: "Из шаблона" }, { id: "clip", label: "По ссылке" }]} />
           <button className="icon-btn" onClick={onClose} aria-label="Закрыть"><I.close size={18} /></button>
         </div>
       </div>
@@ -800,6 +857,62 @@ function AddPositionsModal({ excludeId, onClose, onAdd }) {
           {tab === "tpl" && (
             <div style={{ padding: "6px 4px 0", fontSize: 12, color: "var(--muted)", lineHeight: 1.5 }}>
               Цены в шаблонах — рыночный ориентир (средний сегмент), поставщики — типовые точки закупки. Всё редактируется после вставки.
+            </div>
+          )}
+
+          {/* «По ссылке» — клиппер: URL → извлечение → форма-превью → позиция */}
+          {tab === "clip" && (
+            <div style={{ padding: "4px 8px 8px", display: "flex", flexDirection: "column", gap: 12 }}>
+              <div style={{ display: "flex", gap: 8 }}>
+                <input style={{ ...clipField, flex: 1 }} type="url" placeholder="https://ссылка-на-товар в магазине или у фабрики"
+                  value={clipUrl} onChange={(e) => setClipUrl(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === "Enter") doClip(); }} aria-label="Ссылка на товар" />
+                <button className="btn btn-primary" style={{ padding: "10px 16px", flex: "none" }} disabled={!clipUrl.trim() || clipBusy} onClick={doClip}>
+                  {clipBusy ? <span className="spin" style={{ width: 15, height: 15 }} /> : <I.spark size={15} />}Извлечь
+                </button>
+              </div>
+              {clipErr && <div className="find warn" style={{ fontSize: 13, lineHeight: 1.5 }}><span className="fi"><I.info size={14} /></span><span>{clipErr}</span></div>}
+              {clipHtmlMode && !clipForm && (
+                <React.Fragment>
+                  <textarea style={{ ...clipField, minHeight: 110, resize: "vertical", fontFamily: "var(--font-mono)", fontSize: 12 }}
+                    placeholder="Вставьте сюда HTML страницы товара…" value={clipHtml} onChange={(e) => setClipHtml(e.target.value)} aria-label="HTML страницы товара" />
+                  <button className="btn btn-ghost" style={{ alignSelf: "flex-start", padding: "9px 14px" }} disabled={!clipHtml.trim()} onClick={doParseHtml}>Разобрать HTML</button>
+                </React.Fragment>
+              )}
+              {clipForm && (
+                <div style={{ border: "1px solid var(--hairline)", borderRadius: 12, padding: "14px 16px", display: "flex", flexDirection: "column", gap: 10 }}>
+                  <label style={{ fontSize: 12.5, color: "var(--muted)" }}>Название позиции
+                    <input style={{ ...clipField, marginTop: 4 }} value={clipForm.title} onChange={(e) => setClipForm((f) => ({ ...f, title: e.target.value }))} />
+                  </label>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 90px 1fr", gap: 10 }}>
+                    <label style={{ fontSize: 12.5, color: "var(--muted)" }}>Цена, ₽ (себестоимость)
+                      <input style={{ ...clipField, marginTop: 4, fontFamily: "var(--font-mono)" }} type="number" min="1" value={clipForm.price} onChange={(e) => setClipForm((f) => ({ ...f, price: e.target.value }))} />
+                    </label>
+                    <label style={{ fontSize: 12.5, color: "var(--muted)" }}>Кол-во
+                      <input style={{ ...clipField, marginTop: 4, fontFamily: "var(--font-mono)" }} type="number" min="1" value={clipForm.qty} onChange={(e) => setClipForm((f) => ({ ...f, qty: e.target.value }))} />
+                    </label>
+                    <label style={{ fontSize: 12.5, color: "var(--muted)" }}>Поставщик
+                      <input style={{ ...clipField, marginTop: 4 }} value={clipForm.sup} onChange={(e) => setClipForm((f) => ({ ...f, sup: e.target.value }))} />
+                    </label>
+                  </div>
+                  <label style={{ fontSize: 12.5, color: "var(--muted)" }}>Комната
+                    <input style={{ ...clipField, marginTop: 4 }} list="clip-rooms" value={clipForm.room} onChange={(e) => setClipForm((f) => ({ ...f, room: e.target.value }))} />
+                    <datalist id="clip-rooms">{(roomNames || []).map((n) => <option key={n} value={n} />)}</datalist>
+                  </label>
+                  {clipForm.warnPrice && (
+                    <div style={{ fontSize: 12.5, color: "var(--accent-ink)", lineHeight: 1.45 }}>Цена не извлеклась или извлечена неуверенно — проверьте её по странице товара.</div>
+                  )}
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+                    <span className="mono" style={{ fontSize: 12.5, color: clipOk ? "var(--text)" : "var(--faint)" }}>
+                      {clipOk ? "+" + fmtMoney(clipPrice * clipQty) + " · цена от " + fmtDateRu(new Date().toISOString().slice(0, 10)) : "заполните название и цену"}
+                    </span>
+                    <button className="btn btn-primary" disabled={!clipOk} onClick={clipAdd}><I.plus size={16} />Добавить в смету</button>
+                  </div>
+                </div>
+              )}
+              <div style={{ fontSize: 12, color: "var(--muted)", lineHeight: 1.5 }}>
+                Клиппер читает структурированные данные страницы (JSON-LD, микроразметку, OpenGraph) и подставляет название, цену и поставщика. Извлечение автоматическое — проверьте значения перед добавлением.
+              </div>
             </div>
           )}
         </div>
