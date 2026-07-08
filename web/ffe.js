@@ -183,21 +183,27 @@
       url:     str(o.url),                       // Ссылка на товар
       note:    str(o.note),                      // Примечание
       dims: { w: d(dims.w), d: d(dims.d), h: d(dims.h) }, // Габариты, см (Ш×Г×В)
+      priceDate: str(o.priceDate),               // Дата последней проверки цены (свежесть — волна B3); "" = неизвестно
+      feedSku:   str(o.feedSku),                 // Артикул фида фабрик (волна B4, мостик) — пусто, пока фида нет
     };
   }
-  // позиция сметы → мастер-запись (собрать библиотеку из реальной работы)
+  // позиция сметы → мастер-запись (собрать библиотеку из реальной работы); дата
+  // проверки цены переезжает вместе с позицией — сбор в библиотеку не «освежает» цену
   const productFromPosition = (it) => {
     const o = it || {};
     return blankProduct({ title: o.title, cat: o.cat, unit: o.unit, price: o.price,
-      sup: o.sup || o.supplier, article: o.sku || o.article, url: o.url, note: o.note, dims: o.dims });
+      sup: o.sup || o.supplier, article: o.sku || o.article, url: o.url, note: o.note, dims: o.dims,
+      priceDate: o.priceDate });
   };
-  // мастер-запись → черновик позиции сметы (кол-во 1; цена свежая на момент добавления)
+  // мастер-запись → черновик позиции сметы (кол-во 1). Давность цены наследуется
+  // от товара (библиотека не «протухает» молча — волна B3); если у товара своей
+  // даты нет, используем переданную или сегодня (совместимость со старыми записями).
   const positionFromProduct = (p, date) => {
     const o = p || {};
     const pos = { title: str(o.title), qty: 1, price: Math.max(0, Math.round(num(o.price, 0))) };
     if (str(o.cat)) pos.cat = str(o.cat);
     if (str(o.sup)) pos.sup = str(o.sup);
-    pos.priceDate = date || today();
+    pos.priceDate = str(o.priceDate) || date || today();
     return pos;
   };
 

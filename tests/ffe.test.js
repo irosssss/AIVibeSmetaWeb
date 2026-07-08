@@ -52,6 +52,13 @@ describe("blankProduct — мастер-запись товара студии (
     expect(p.status).toBeUndefined();
     expect(p.approve).toBeUndefined();
   });
+  it("свежесть цены и артикул фида (волна B3/B4) — пусто по умолчанию, сохраняются если заданы", () => {
+    expect(FFE.blankProduct({ title: "Стол" }).priceDate).toBe("");
+    expect(FFE.blankProduct({ title: "Стол" }).feedSku).toBe("");
+    const p = FFE.blankProduct({ title: "Стол", priceDate: "2026-06-01", feedSku: "FCT-4471" });
+    expect(p.priceDate).toBe("2026-06-01");
+    expect(p.feedSku).toBe("FCT-4471");
+  });
 });
 
 describe("мапперы позиция ↔ товар библиотеки", () => {
@@ -79,6 +86,20 @@ describe("мапперы позиция ↔ товар библиотеки", ()
     const src = { title: "Стол дуб", cat: "Мебель", price: 44900, sup: "Дубрава" };
     const back = FFE.positionFromProduct(FFE.productFromPosition(src), "2026-07-08");
     expect(back).toMatchObject({ title: "Стол дуб", qty: 1, price: 44900, cat: "Мебель", sup: "Дубрава" });
+  });
+  it("давность цены переезжает вместе с товаром — библиотека не «освежает» молча (волна B3)", () => {
+    // позиция с известной (возможно старой) датой проверки цены → товар → обратно в позицию:
+    // дата должна пережить обе стороны round-trip, а не молча замениться на «сегодня»
+    const prod = FFE.productFromPosition({ title: "Кресло", price: 68750, priceDate: "2026-05-01" });
+    expect(prod.priceDate).toBe("2026-05-01");
+    const pos = FFE.positionFromProduct(prod, "2026-07-08"); // явная дата-параметр не должна перебить свою дату товара
+    expect(pos.priceDate).toBe("2026-05-01");
+  });
+  it("товар без своей даты — берёт переданную дату, иначе сегодня", () => {
+    const posWithArg = FFE.positionFromProduct({ title: "Пуф", price: 12000 }, "2026-07-01");
+    expect(posWithArg.priceDate).toBe("2026-07-01");
+    const posNoArg = FFE.positionFromProduct({ title: "Пуф", price: 12000 });
+    expect(posNoArg.priceDate).toBe(FFE.today());
   });
 });
 

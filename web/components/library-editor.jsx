@@ -13,13 +13,29 @@ const { useState: useL, useEffect: useLE } = React;
 
 /* поставщик + артикул одной строкой карточки/пикера */
 const libMeta = (p) => [p.sup, p.article ? "арт. " + p.article : ""].filter(Boolean).join(" · ");
-const libBlankDraft = () => ({ __new: true, title: "", cat: "", unit: "шт", price: "", sup: "", article: "", url: "", note: "", dims: { w: "", d: "", h: "" } });
+const libBlankDraft = () => ({ __new: true, title: "", cat: "", unit: "шт", price: "", sup: "", article: "", url: "", note: "", feedSku: "", dims: { w: "", d: "", h: "" } });
 // запись из хранилища → черновик редактора (числа → строки для полей ввода)
 const libToDraft = (p) => {
   const s = (v) => (v === "" || v == null ? "" : String(v));
   const d = p.dims || {};
   return { ...p, price: s(p.price), dims: { w: s(d.w), d: s(d.d), h: s(d.h) } };
 };
+
+/* свежесть цены (волна B3) — та же механика, что у позиций «взять из прошлого
+   проекта»: дата последней проверки, терракота после 30 дней (не «протухаем» молча). */
+const libPriceAgeDays = (d) => { const t = new Date(d + "T00:00:00").getTime(); return isNaN(t) ? null : Math.max(0, Math.floor((Date.now() - t) / 86400000)); };
+function LibPriceAge({ d }) {
+  const days = libPriceAgeDays(d);
+  if (days == null) return null;
+  const stale = days > 30;
+  return (
+    <span className="mono" title={"Цена проверена " + (days === 0 ? "сегодня" : days + " " + plural(days, ["день", "дня", "дней"]) + " назад") + (stale ? " — стоит перепроверить" : "")}
+      style={{ fontSize: 10.5, whiteSpace: "nowrap", padding: "1px 7px", borderRadius: 99,
+        border: "1px solid " + (stale ? "rgba(183,80,44,.4)" : "var(--hairline)"), color: stale ? "var(--accent-ink)" : "var(--spec-meta)" }}>
+      {days === 0 ? "цена от сегодня" : "цене " + days + " " + plural(days, ["день", "дня", "дней"])}
+    </span>
+  );
+}
 
 function ProductsLibrary() {
   const [rows, setRows] = useL(null);
@@ -115,6 +131,18 @@ function ProductCard({ p, onEdit, onRemove }) {
         </div>
       )}
 
+      {(p.priceDate || p.feedSku) && (
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+          {p.priceDate && <LibPriceAge d={p.priceDate} />}
+          {p.feedSku && (
+            <span className="mono" title={"Артикул фида: " + p.feedSku + " — автообновление цены подключится вместе с фидом фабрик"}
+              style={{ fontSize: 10.5, whiteSpace: "nowrap", padding: "1px 7px", borderRadius: 99, border: "1px solid var(--hairline)", color: "var(--info)" }}>
+              Фид · {p.feedSku}
+            </span>
+          )}
+        </div>
+      )}
+
       <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 6, paddingTop: 10, marginTop: "auto", borderTop: "1px solid var(--hairline)" }}>
         {p.url && <a className="btn btn-ghost" href={p.url} target="_blank" rel="noopener noreferrer" style={{ padding: "6px 11px", fontSize: 12, marginRight: "auto" }} title="Открыть страницу товара"><I.arrow size={13} />Ссылка</a>}
         <button className="icon-btn sm" title="Редактировать" aria-label={"Редактировать «" + p.title + "»"} onClick={onEdit}><I.edit size={15} /></button>
@@ -145,7 +173,7 @@ function ProductEditor({ draft, onClose, onSaved }) {
       setNameErr("Товар «" + title + "» уже есть в библиотеке — назовите этот иначе или отредактируйте существующий.");
       return;
     }
-    const payload = { title, cat: d.cat, unit: d.unit, price: d.price, sup: d.sup, article: d.article, url: d.url, note: d.note, dims: d.dims };
+    const payload = { title, cat: d.cat, unit: d.unit, price: d.price, sup: d.sup, article: d.article, url: d.url, note: d.note, feedSku: d.feedSku, dims: d.dims };
     setBusy(true);
     if (d.__new) await AIVibeAPI.library.create(payload);
     else await AIVibeAPI.library.update(d.id, payload);
@@ -183,6 +211,9 @@ function ProductEditor({ draft, onClose, onSaved }) {
               value={d.price} onChange={(e) => set({ price: e.target.value })} placeholder="0" />
           </LibFld>
         </div>
+        {!d.__new && d.priceDate && (
+          <div style={{ marginTop: -10 }}><LibPriceAge d={d.priceDate} /></div>
+        )}
 
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
           <LibFld label="Поставщик / фабрика">
@@ -192,6 +223,13 @@ function ProductEditor({ draft, onClose, onSaved }) {
             <input className="fld" value={d.article} onChange={(e) => set({ article: e.target.value })} placeholder="SKU / код" />
           </LibFld>
         </div>
+
+        <LibFld label="Артикул фида фабрик (SKU)">
+          <input className="fld" value={d.feedSku || ""} onChange={(e) => set({ feedSku: e.target.value })} placeholder="пока вводится вручную" />
+          <span style={{ display: "block", fontSize: 12, color: "var(--faint)", marginTop: 5, lineHeight: 1.5 }}>
+            Задел под фид фабрик: когда он подключится, цены по этому артикулу начнут обновляться сами.
+          </span>
+        </LibFld>
 
         <LibFld label="Ссылка на товар">
           <input className="fld" type="url" value={d.url} onChange={(e) => set({ url: e.target.value })} placeholder="https://…" />

@@ -351,6 +351,7 @@
         await delay(150);
         const F = window.AIVibeFFE;
         const body = F && F.blankProduct ? F.blankProduct(patch) : patch;
+        if (F) body.priceDate = body.priceDate || today();  // новый товар — цена только что введена/собрана (волна B3)
         const row = { id: "lib_" + Date.now(), ...body, createdAt: today(), updatedAt: today() };
         db.library.push(row);
         LS.set("library", db.library);
@@ -361,8 +362,11 @@
         const i = db.library.findIndex((p) => p.id === id);
         if (i >= 0) {
           const F = window.AIVibeFFE;
-          const body = F && F.blankProduct ? F.blankProduct({ ...db.library[i], ...patch }) : { ...db.library[i], ...patch };
-          db.library[i] = { ...db.library[i], ...body, updatedAt: today() };
+          const prev = db.library[i];
+          const body = F && F.blankProduct ? F.blankProduct({ ...prev, ...patch }) : { ...prev, ...patch };
+          // цену поправили руками — проверили сейчас, пометка давности обнуляется (та же механика, что у позиций сметы)
+          if (F && body.price !== prev.price) body.priceDate = today();
+          db.library[i] = { ...prev, ...body, updatedAt: today() };
           LS.set("library", db.library);
         }
         return clone(db.library[i]);
