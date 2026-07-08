@@ -140,7 +140,7 @@
   ];
 
   /* гидрация из localStorage поверх дефолтов */
-  db.settings = LS.get("settings", { normsOverride: {}, enabledNorms: {} });
+  db.settings = LS.get("settings", { normsOverride: {}, enabledNorms: {}, studioName: "" }); // studioName — брендинг клиентского портала (волна A5)
   db.styles   = LS.get("styles", SEED_STYLES);
   db.library  = LS.get("library", []);   // библиотека товаров студии (волна B1) — пустая до первого товара
   const _lsProjects = LS.get("projects", null); if (_lsProjects) db.projects = _lsProjects;

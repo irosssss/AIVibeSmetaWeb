@@ -40,7 +40,16 @@ function ChartSkel({ h = 150 }) { return <div className="skel" style={{ height: 
 
 function Profile({ user }) {
   const [an, setAn] = useCV(null);
-  useCVE(() => { AIVibeAPI.profile.analytics().then(setAn); }, []);
+  const [studioName, setStudioName] = useCV("");   // брендинг клиентского портала (волна A5)
+  useCVE(() => {
+    AIVibeAPI.profile.analytics().then(setAn);
+    AIVibeAPI.settings.get().then((s) => setStudioName((s && s.studioName) || ""));
+  }, []);
+  const saveStudioName = () => {
+    const v = studioName.trim();
+    setStudioName(v);
+    AIVibeAPI.settings.update({ studioName: v }).then(() => toast(v ? "Имя для клиентского портала сохранено." : "Портал будет показывать имя вашего аккаунта.", "info", 3000));
+  };
   return (
     <div className="reveal in" style={{ display: "flex", flexDirection: "column", gap: 22 }} ref={useReveal()}>
       {/* заголовок вкладки — та же модель шапки, что у Проектов/Избранного */}
@@ -110,6 +119,21 @@ function Profile({ user }) {
           <button className="btn btn-ghost" onClick={() => setRoute("cabinet", "workshop", "products")}><I.layers size={16} />Мои товары</button>
           <button className="btn btn-ghost" onClick={() => setRoute("cabinet", "workshop", "norms")}><I.sliders size={16} />Мои нормы</button>
           <button className="btn btn-ghost" onClick={() => setRoute("cabinet", "workshop", "styles")}><I.spark size={16} />Мои стили</button>
+        </div>
+      </div>
+
+      {/* ── брендинг клиентского портала (волна A5): имя студии над платформенной
+          подписью «Design Ledger» — её отключение (white-label) появится с платным
+          тарифом и настоящим биллингом, см. роадмап п.9 */}
+      <div className="glass" style={{ borderRadius: "var(--r-xl)", padding: 30 }}>
+        <h3 style={{ fontSize: 18, fontWeight: 700, marginBottom: 6 }}>Брендинг клиентского портала</h3>
+        <p style={{ color: "var(--muted)", fontSize: 13.5, lineHeight: 1.5, marginBottom: 16, maxWidth: 640 }}>
+          Это имя клиент увидит на портале согласования и в протоколе — пусто, и мы покажем имя вашего аккаунта. Подпись «Design Ledger» внизу портала останется бесплатно; убрать её (white-label) можно будет на платном тарифе.
+        </p>
+        <div style={{ display: "flex", gap: 8, maxWidth: 420 }}>
+          <input className="fld" value={studioName} onChange={(e) => setStudioName(e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }}
+            onBlur={saveStudioName} placeholder={user.name} aria-label="Имя студии для клиентского портала" />
         </div>
       </div>
     </div>

@@ -261,6 +261,8 @@ function RoomSpecOverlay({ data, onClose }) {
   const [savedId, setSavedId] = usePD(data.id || null);
   const [settings, setSettings] = usePD(null);   // мои нормы — для проверки эргономики по комнатам
   usePDE(() => { AIVibeAPI.settings.get().then(setSettings); }, []);
+  const [me, setMe] = usePD(null);               // аккаунт — фолбэк имени студии для брендинга портала (волна A5)
+  usePDE(() => { AIVibeAPI.profile.get().then(setMe); }, []);
   const [library, setLibrary] = usePD([]);       // библиотека товаров студии (волна B1): автоподстановка + пикер
   const reloadLibrary = () => AIVibeAPI.library.list().then(setLibrary);
   usePDE(() => { reloadLibrary(); }, []);
@@ -501,7 +503,9 @@ function RoomSpecOverlay({ data, onClose }) {
   const shareVersion = (v) => {
     let rec = v.shareId ? FFE.loadPortalShare(v.shareId) : null;
     if (!rec) {
-      rec = FFE.createPortalShare({ projectId: savedId, projectName: data.name, versionId: v.id, versionLabel: v.label, snapshot: v.snapshot });
+      // брендинг портала (волна A5): своё имя студии из настроек, иначе — имя аккаунта
+      const studioName = (settings && settings.studioName) || (me && me.name) || "";
+      rec = FFE.createPortalShare({ projectId: savedId, projectName: data.name, versionId: v.id, versionLabel: v.label, snapshot: v.snapshot, studioName });
       patchVersion(v.id, { shareId: rec.shareId, status: v.status === "draft" ? "sent" : v.status, statusAt: FFE.today() });
     }
     setShareModal(rec);
@@ -958,7 +962,7 @@ function RoomSpecOverlay({ data, onClose }) {
       </div>
       {addOpen && <AddPositionsModal excludeId={savedId} roomNames={rooms.map((r) => r.name)} onClose={() => setAddOpen(false)} onAdd={addFrom} />}
       {versionsOpen && (
-        <VersionsModal versions={versions} current={{ project: data.name, rooms, grand, totalClient, itemsCount }}
+        <VersionsModal versions={versions} current={{ project: data.name, studioName: (settings && settings.studioName) || (me && me.name) || "", rooms, grand, totalClient, itemsCount }}
           onSave={saveVersion} onRestore={restoreVersion} onSetStatus={setVersionStatus}
           onPatch={patchVersion} onRemove={removeVersion} onShare={shareVersion} onClose={() => setVersionsOpen(false)} />
       )}
@@ -1079,6 +1083,7 @@ function VersionsModal({ versions, current, onSave, onRestore, onSetStatus, onPa
                   onClick={() => withLib("pdf", () => AIVibePDF.exportApprovalProtocol({
                     project: current.project, versionLabel: v.label, createdAt: v.createdAt,
                     vStatusLabel: sm.label, statusAt: v.statusAt, respondedAt: sh && sh.respondedAt,
+                    studioName: (sh && sh.studioName) || current.studioName,
                     snapshot: sh ? sh.snapshot : v.snapshot,
                   }))}
                   title="Скачать протокол согласования: решения клиента по позициям, переписка и таймстампы">

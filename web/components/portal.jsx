@@ -111,12 +111,13 @@ function ClientPortal({ shareId }) {
   const RS_ROW = { display: "flex", justifyContent: "space-between", alignItems: "baseline", padding: "6px 0", fontSize: 14 };
   return (
     <PortalWrap>
-      {/* шапка студии */}
+      {/* шапка студии — брендинг портала (волна A5): имя студии дизайнера над платформенным лого */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, flexWrap: "wrap", marginBottom: 8 }}>
         <Logo size={24} />
         <span style={{ fontSize: 12, fontWeight: 700, letterSpacing: ".04em", textTransform: "uppercase", color: "var(--faint)" }}>Смета на согласование</span>
       </div>
-      <h1 className="display" style={{ fontSize: "clamp(26px,4vw,34px)", marginTop: 14 }}>{rec.projectName || "Смета комплектации"}</h1>
+      {rec.studioName && <div style={{ fontSize: 13.5, fontWeight: 700, color: "var(--accent-ink)", marginTop: 14 }}>{rec.studioName}</div>}
+      <h1 className="display" style={{ fontSize: "clamp(26px,4vw,34px)", marginTop: rec.studioName ? 4 : 14 }}>{rec.projectName || "Смета комплектации"}</h1>
       <p style={{ color: "var(--muted)", fontSize: 14.5, marginTop: 6 }}>
         {itemsCount} {plural(itemsCount, ["позиция", "позиции", "позиций"])} · итог {fmtMoney(cp.totalClient)}
         {okCount > 0 ? " · согласовано " + okCount + " из " + itemsCount : ""}

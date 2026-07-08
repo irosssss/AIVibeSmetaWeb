@@ -440,6 +440,7 @@
       projectName: str(src.projectName),
       versionId: src.versionId || null,
       versionLabel: str(src.versionLabel),
+      studioName: str(src.studioName),          // брендинг портала (волна A5): имя студии на момент публикации ссылки
       snapshot: JSON.parse(JSON.stringify(src.snapshot || {})),
       createdAt: new Date().toISOString(),
       respondedAt: null,

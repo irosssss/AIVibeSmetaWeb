@@ -244,7 +244,7 @@
      и на что отвечает дизайнер в «Версиях»), иначе — собственный снимок версии
      (решения могли быть проставлены дизайнером вручную ещё до портала, волна A1).
      Юридически фиксирует состояние переговоров на момент выгрузки. */
-  function exportApprovalProtocol({ project, versionLabel, createdAt, vStatusLabel, statusAt, respondedAt, snapshot }) {
+  function exportApprovalProtocol({ project, versionLabel, createdAt, vStatusLabel, statusAt, respondedAt, studioName, snapshot }) {
     if (!window.pdfMake) { (window.toast ? toast("PDF-модуль ещё загружается — попробуйте через секунду.", "info") : 0); return false; }
     const FFE = window.AIVibeFFE;
     const snap = snapshot || {};
@@ -264,6 +264,7 @@
       { columns: [ { text: "Design Ledger", style: "logo" }, { text: "Протокол согласования", alignment: "right", style: "muted", margin: [0, 6, 0, 0] } ] },
       { canvas: [{ type: "line", x1: 0, y1: 0, x2: 515, y2: 0, lineWidth: 1, lineColor: "#B7502C" }], margin: [0, 8, 0, 0] },
       { text: project || "Проект", style: "h1", margin: [0, 14, 0, 2] },
+      ...(studioName ? [{ text: studioName, bold: true, fontSize: 10.5, color: "#B7502C", margin: [0, 0, 0, 2] }] : []),
       { text: "Версия «" + (versionLabel || "—") + "»" + (createdAt ? " · снимок от " + fmtDT(createdAt) : ""), style: "muted", margin: [0, 0, 0, 2] },
       { text: "Статус: " + (vStatusLabel || "—") + (statusAt ? " · " + fmtD(statusAt) : "") + (respondedAt ? "   ·   клиент отвечал " + fmtDT(respondedAt) : ""), style: "muted", margin: [0, 0, 0, 14] },
     ];
