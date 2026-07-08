@@ -292,6 +292,39 @@ function RoomSpecOverlay({ data, onClose }) {
     toast("Добавлено " + n + " " + plural(n, ["позиция", "позиции", "позиций"]) + " — «" + srcLabel + "». Не забудьте сохранить смету.");
   };
 
+  /* --- живое редактирование сметы (фаза 2 слияния, шаг 1) --- */
+  const [editPos, setEditPos] = usePD(null); // {ri, ii} — открытый редактор строки; ii === -1 — новая позиция в комнате ri
+  const todayISO = () => new Date().toISOString().slice(0, 10);
+  // d — нормализованный черновик из PosEditor: {title, qty, price, cat, sup} (строки trim, числа целые)
+  const savePos = (ri, ii, d) => {
+    setRooms((prev) => prev.map((r, i) => {
+      if (i !== ri) return r;
+      const items = [...r.items];
+      const base = ii === -1 ? {} : items[ii];
+      const next = { ...base, title: d.title, qty: d.qty, price: d.price };
+      if (d.cat) next.cat = d.cat; else delete next.cat;
+      if (d.sup) next.sup = d.sup; else delete next.sup;
+      // цену ввели/поменяли руками — значит проверили сейчас, пометка давности обнуляется
+      if (ii === -1 || d.price !== base.price) next.priceDate = todayISO();
+      if (ii === -1) items.push(next); else items[ii] = next;
+      return { ...r, items };
+    }));
+    setEditPos(null);
+  };
+  const removePos = (ri, ii) => {
+    const it = rooms[ri].items[ii];
+    setRooms((prev) => prev.map((r, i) => (i !== ri ? r : { ...r, items: r.items.filter((_, j) => j !== ii) })));
+    setEditPos(null);
+    toast("Позиция «" + it.title + "» удалена. Не забудьте сохранить смету.");
+  };
+  const renameRoom = async (ri) => {
+    const name = await promptDialog({ title: "Переименовать комнату", label: "Название", value: rooms[ri].name });
+    if (!name || !name.trim() || name.trim() === rooms[ri].name) return;
+    const v = name.trim();
+    if (rooms.some((r, i) => i !== ri && r.name === v)) { toast("Комната «" + v + "» уже есть — выберите другое имя"); return; }
+    setRooms((prev) => prev.map((r, i) => (i === ri ? { ...r, name: v } : r)));
+  };
+
   // Esc закрывает смету-оверлей (когда открыта напрямую, напр. из импорта Excel);
   // из полей ввода Esc не закрывает, а отдаёт фокус
   usePDE(() => {
@@ -434,12 +467,22 @@ function RoomSpecOverlay({ data, onClose }) {
               )}
             </div>}
 
-            {/* комнаты — читаются как документ: шапка колонок + две цены построчно */}
+            {/* комнаты — читаются как документ: шапка колонок + две цены построчно.
+               В «Рабочей» каждая строка редактируема (карандаш → PosEditor), комнату
+               можно переименовать, позицию — добавить вручную. «Для клиента» — чистый просмотр. */}
             {mode !== "procure" && <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-              {rooms.map((r) => (
+              {rooms.map((r, ri) => (
                 <div key={r.name} className="glass" style={{ borderRadius: "var(--r-lg)", padding: "16px 18px" }}>
                   <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 12, marginBottom: 8, flexWrap: "wrap" }}>
-                    <span style={{ fontWeight: 800, fontFamily: "var(--font-display)", fontSize: 16.5 }}>{r.name}{r.area ? <span style={{ color: "var(--faint)", fontWeight: 500, fontSize: 13 }}> · {r.area} м²</span> : null}</span>
+                    <span style={{ display: "flex", alignItems: "baseline", gap: 6, minWidth: 0 }}>
+                      <span style={{ fontWeight: 800, fontFamily: "var(--font-display)", fontSize: 16.5 }}>{r.name}{r.area ? <span style={{ color: "var(--faint)", fontWeight: 500, fontSize: 13 }}> · {r.area} м²</span> : null}</span>
+                      {mode === "work" && (
+                        <button className="icon-btn" aria-label={"Переименовать комнату «" + r.name + "»"} title="Переименовать комнату"
+                          onClick={() => renameRoom(ri)} style={{ width: 24, height: 24, flex: "none", alignSelf: "center", color: "var(--spec-meta)" }}>
+                          <I.edit size={13} />
+                        </button>
+                      )}
+                    </span>
                     <span style={{ display: "flex", alignItems: "baseline", gap: 12 }}>
                       {mode === "work" && <span className="mono" style={{ fontSize: 13, color: "var(--muted)" }}>{fmtMoney(roomTotal(r))}</span>}
                       <span className="mono" style={{ fontWeight: 600, fontSize: 15, color: mode === "work" ? "var(--accent-2)" : "var(--text)" }}>{fmtMoney(roomClient(r))}</span>
@@ -453,22 +496,41 @@ function RoomSpecOverlay({ data, onClose }) {
                     <span className="rs-unit" style={{ width: 88, textAlign: "right" }}>Цена/шт</span>
                     {mode === "work" && <span style={{ width: 100, textAlign: "right" }}>Себест.</span>}
                     <span style={{ width: 104, textAlign: "right" }}>Клиенту</span>
+                    {mode === "work" && <span style={{ width: 26 }} aria-hidden="true" />}
                   </div>
                   <div style={{ display: "flex", flexDirection: "column" }}>
                     {r.items.map((it, i) => {
                       const qty = it.qty || 1;
+                      const editing = mode === "work" && editPos && editPos.ri === ri && editPos.ii === i;
                       return (
-                      <div key={i} style={{ display: "flex", alignItems: "baseline", gap: 10, padding: "7px 0", borderTop: i ? "1px solid var(--hairline-2)" : "none", fontSize: 13.5 }}>
+                      <React.Fragment key={i}>
+                      <div style={{ display: "flex", alignItems: "baseline", gap: 10, padding: "7px 0", borderTop: i ? "1px solid var(--hairline-2)" : "none", fontSize: 13.5 }}>
                         <span style={{ flex: 1, color: "var(--text)", lineHeight: 1.4 }}>{it.title}{mode === "work" && it.priceDate && <React.Fragment>{" "}<PriceAge d={it.priceDate} /></React.Fragment>}</span>
                         <span className="rs-cat" style={{ color: "var(--spec-meta)", whiteSpace: "nowrap", fontSize: 12, width: 78, textAlign: "right", overflow: "hidden", textOverflow: "ellipsis" }}>{catOf(it)}</span>
                         <span className="mono" style={{ color: "var(--spec-meta)", whiteSpace: "nowrap", width: 34, textAlign: "right", fontSize: 12.5 }}>×{qty}</span>
                         <span className="mono rs-unit" style={{ color: "var(--spec-meta)", whiteSpace: "nowrap", width: 88, textAlign: "right", fontSize: 12.5 }}>{fmtMoney(mode === "client" ? unitClient(it) : it.price)}</span>
                         {mode === "work" && <span className="mono" style={{ color: "var(--muted)", whiteSpace: "nowrap", width: 100, textAlign: "right" }}>{fmtMoney(it.price * qty)}</span>}
                         <span className="mono" style={{ fontWeight: 600, whiteSpace: "nowrap", width: 104, textAlign: "right", color: mode === "work" ? "var(--accent-2)" : "var(--text)" }}>{fmtMoney(lineClient(it))}</span>
+                        {mode === "work" && (
+                          <button className="icon-btn" aria-label={"Редактировать позицию «" + it.title + "»"} aria-expanded={!!editing} title="Редактировать позицию"
+                            onClick={() => setEditPos(editing ? null : { ri, ii: i })}
+                            style={{ width: 26, height: 26, flex: "none", alignSelf: "center", color: editing ? "var(--accent-ink)" : "var(--spec-meta)" }}>
+                            <I.edit size={14} />
+                          </button>
+                        )}
                       </div>
+                      {editing && (
+                        <PosEditor item={it} cats={cats} sups={supList}
+                          onCancel={() => setEditPos(null)} onSave={(d) => savePos(ri, i, d)} onDelete={() => removePos(ri, i)} />
+                      )}
+                      </React.Fragment>
                       );
                     })}
                   </div>
+                  {mode === "work" && (editPos && editPos.ri === ri && editPos.ii === -1
+                    ? <PosEditor isNew cats={cats} sups={supList} onCancel={() => setEditPos(null)} onSave={(d) => savePos(ri, -1, d)} />
+                    : <button className="btn btn-ghost" style={{ marginTop: 10, padding: "7px 12px", fontSize: 12.5 }}
+                        onClick={() => setEditPos({ ri, ii: -1 })}><I.plus size={14} />Позиция вручную</button>)}
                 </div>
               ))}
             </div>}
@@ -697,6 +759,61 @@ function RoomSpecOverlay({ data, onClose }) {
         </div>
       </div>
       {addOpen && <AddPositionsModal excludeId={savedId} roomNames={rooms.map((r) => r.name)} onClose={() => setAddOpen(false)} onAdd={addFrom} />}
+    </div>
+  );
+}
+
+/* ---------------- КАРТОЧКА-РЕДАКТОР ПОЗИЦИИ (фаза 2 слияния, шаг 1) ----------------
+   Название/раздел/кол-во/цена/поставщик + удаление. Меняет только данные —
+   деньги нормализуются до целых рублей, расчёты идут прежним конвейером
+   (инвариант UI=PDF=Excel не трогаем). Enter — сохранить, Esc — закрыть
+   редактор (не оверлей: stopPropagation до window-слушателя). */
+function PosEditor({ item, cats, sups, isNew, onSave, onDelete, onCancel }) {
+  const [d, setD] = usePD({
+    title: item ? item.title : "",
+    cat: (item && item.cat) || "",
+    qty: String((item && item.qty) || 1),
+    price: item ? String(item.price) : "",
+    sup: (item && item.sup) || "",
+  });
+  // кламп 1–999: реальный fat-finger из проверки — 350 000 «штук» гарнитура
+  const qty = Math.max(1, Math.min(999, Math.round(+d.qty || 1)));
+  const price = Math.round(+d.price || 0);
+  const ok = !!d.title.trim() && price > 0;
+  const submit = () => { if (ok) onSave({ title: d.title.trim(), qty, price, cat: d.cat.trim(), sup: d.sup.trim() }); };
+  const fld = { width: "100%", padding: "8px 10px", borderRadius: 9, border: "1px solid var(--hairline)", background: "var(--surface)", fontSize: 13, color: "var(--text)", marginTop: 3 };
+  const lab = { fontSize: 11.5, color: "var(--muted)", display: "block", minWidth: 0 };
+  return (
+    <div style={{ margin: "6px 0 8px", padding: "12px 14px", borderRadius: 12, border: "1px solid rgba(94,107,91,.45)", background: "rgba(94,107,91,.06)", display: "flex", flexDirection: "column", gap: 10 }}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" && e.target.tagName === "INPUT") { e.preventDefault(); submit(); }
+        if (e.key === "Escape") { e.stopPropagation(); onCancel(); }
+      }}>
+      <label style={lab}>Название
+        <input style={fld} value={d.title} autoFocus onChange={(e) => setD((x) => ({ ...x, title: e.target.value }))} />
+      </label>
+      <div className="pe-grid" style={{ display: "grid", gridTemplateColumns: "1fr 76px 116px 1fr", gap: 10 }}>
+        <label style={lab}>Раздел
+          <input style={fld} list="pe-cat-list" value={d.cat} placeholder="Прочее" onChange={(e) => setD((x) => ({ ...x, cat: e.target.value }))} />
+        </label>
+        <label style={lab}>Кол-во
+          <input style={{ ...fld, fontFamily: "var(--font-mono)" }} type="number" min="1" max="999" step="1" inputMode="numeric" value={d.qty} onChange={(e) => setD((x) => ({ ...x, qty: e.target.value }))} />
+        </label>
+        <label style={lab}>Цена/шт, ₽
+          <input style={{ ...fld, fontFamily: "var(--font-mono)" }} type="number" min="1" step="100" inputMode="numeric" value={d.price} onChange={(e) => setD((x) => ({ ...x, price: e.target.value }))} />
+        </label>
+        <label style={lab}>Поставщик
+          <input style={fld} list="pe-sup-list" value={d.sup} placeholder="точка закупки" onChange={(e) => setD((x) => ({ ...x, sup: e.target.value }))} />
+        </label>
+      </div>
+      <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+        <button className="btn btn-primary" style={{ padding: "8px 14px", fontSize: 13 }} disabled={!ok} onClick={submit}><I.check size={14} />{isNew ? "Добавить" : "Готово"}</button>
+        <button className="btn btn-ghost" style={{ padding: "8px 14px", fontSize: 13 }} onClick={onCancel}>Отмена</button>
+        {!isNew && <button className="btn btn-ghost" style={{ padding: "8px 14px", fontSize: 13, color: "var(--accent-ink)", marginLeft: "auto" }} onClick={onDelete}>Удалить позицию</button>}
+      </div>
+      {/* редактор открыт один за раз — id datalist'ов не коллидируют */}
+      <datalist id="pe-cat-list">{cats.map((c) => <option key={c} value={c} />)}</datalist>
+      <datalist id="pe-sup-list">{sups.map((s) => <option key={s} value={s} />)}</datalist>
     </div>
   );
 }

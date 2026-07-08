@@ -158,7 +158,9 @@ function Projects() {
 
   useCVE(() => {
     refresh();
-    try { if (!localStorage.getItem("aivibe_quiz_done")) setTimeout(() => setQuizOpen(true), 700); } catch (e) {}
+    // онбординг-квиз не всплывает поверх открытого по диплинку проекта/сметы
+    // (первый заход по ссылке «#cabinet/projects/id» — человек пришёл смотреть смету)
+    try { if (!localStorage.getItem("aivibe_quiz_done") && !parseRoute().sub) setTimeout(() => setQuizOpen(true), 700); } catch (e) {}
     const onNew = () => setNewOpen(true);   // кнопка «+ Новый проект» из топбара
     window.addEventListener("aivibe:new-project", onNew);
     // back/forward и ручная правка адреса — синхронизируем открытый проект;
