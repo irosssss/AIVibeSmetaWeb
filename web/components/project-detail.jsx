@@ -1,5 +1,5 @@
 /* ============================================================
-   AIVibe — ДЕТАЛЬ ПРОЕКТА
+   Design Ledger — ДЕТАЛЬ ПРОЕКТА
    Анализ помещения · Стиль и варианты · Бюджет · Спецификация
    (каталог фабрик-партнёров) · AI-чат с дизайнером.
    Открывается из раздела «Мои проекты».
@@ -181,10 +181,10 @@ function ProjectDetail({ id, onClose, initialStyle }) {
     return (
       <div className="pd-overlay" style={{ alignItems: "center", justifyContent: "center" }}>
         <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 10, color: "var(--muted)" }}>
-          <Lottie name="loader" playOnView={false} ariaLabel="AIVibe собирает смету"
+          <Lottie name="loader" playOnView={false} ariaLabel="Design Ledger собирает смету"
                   fallback={<span className="spin" style={{ width: 30, height: 30 }} />}
                   style={{ width: 230, height: 150 }} />
-          AIVibe собирает смету и проверяет расстановку…
+          Design Ledger собирает смету и проверяет расстановку…
         </div>
       </div>
     );
@@ -1472,7 +1472,7 @@ function RoomAnalysis({ a, sref }) {
   return (
     <section className="pd-section" ref={sref}>
       <div className="pd-eyebrow"><span className="dot" />Анализ помещения · по плану и габаритам</div>
-      <h3 className="pd-h">Что AIVibe увидел в комнате</h3>
+      <h3 className="pd-h">Что Design Ledger увидел в комнате</h3>
 
       <div style={{ display: "grid", gridTemplateColumns: "minmax(220px,300px) 1fr", gap: 22, alignItems: "start", marginTop: 18 }} className="pd-an-top">
         <div className="glass" style={{ borderRadius: "var(--r-lg)", padding: 18 }}>

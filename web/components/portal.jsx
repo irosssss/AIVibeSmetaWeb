@@ -1,5 +1,5 @@
 /* ============================================================
-   AIVibe — КЛИЕНТСКИЙ ПОРТАЛ (волна A2 бенчмарка Programa, groundwork)
+   Design Ledger — КЛИЕНТСКИЙ ПОРТАЛ (волна A2 бенчмарка Programa, groundwork)
    ------------------------------------------------------------
    Отдельная клиент-facing страница по ссылке #portal/{shareId}: клиент
    видит смету в режиме «для клиента» (цены с наценкой, без себестоимости,
@@ -29,7 +29,7 @@ function PortalWrap({ children }) {
 function ClientPortal({ shareId }) {
   const F = window.AIVibeFFE || null;
   const [rec, setRec] = useP(() => (F ? F.loadPortalShare(shareId) : null));
-  usePE(() => { document.title = "AIVibe · Смета на согласование"; }, []);
+  usePE(() => { document.title = "Design Ledger · Смета на согласование"; }, []);
 
   if (!F || !rec) {
     return (
@@ -138,7 +138,7 @@ function ClientPortal({ shareId }) {
       </div>
 
       <p style={{ textAlign: "center", color: "var(--faint)", fontSize: 12.5, marginTop: 22, lineHeight: 1.6 }}>
-        {answered > 0 ? "Ваши решения сохранены (" + answered + " из " + itemsCount + "). " : ""}Дизайнер увидит ответы и свяжется с вами. · AIVibe
+        {answered > 0 ? "Ваши решения сохранены (" + answered + " из " + itemsCount + "). " : ""}Дизайнер увидит ответы и свяжется с вами. · Design Ledger
       </p>
     </PortalWrap>
   );

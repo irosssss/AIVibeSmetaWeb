@@ -1,7 +1,7 @@
 /* ============================================================
-   AIVibe — НОРМЫ ДИЗАЙНА (редактируемый канон эргономики)
+   Design Ledger — НОРМЫ ДИЗАЙНА (редактируемый канон эргономики)
    ------------------------------------------------------------
-   Вшитый канон AIVibe (AIVibeEngine.NORMS) → слой правок пользователя.
+   Вшитый канон Design Ledger (AIVibeEngine.NORMS) → слой правок пользователя.
    Храним ТОЛЬКО дельту (изменённые поля) в AIVibeAPI.settings.normsOverride —
    обновили эталон, подтянулось всё, что не трогали (модель Style Dictionary).
    UX редактируемых-с-дефолтом значений — из VS Code Settings: бейдж «изменено»,
@@ -21,7 +21,7 @@ const N_PRESETS = {
   small:      { walkwayMin: 60, walkwayComfort: 75,  seatToCoffee: { min: 25, max: 40 }, tvComfort: { min: 130, max: 300 }, doorSwing: 80,  occupancyWarn: 0.70 },
   commercial: { walkwayMin: 90, walkwayComfort: 120, seatToCoffee: { min: 35, max: 50 }, tvComfort: { min: 200, max: 400 }, doorSwing: 100, occupancyWarn: 0.50 },
 };
-const N_PRESET_LABEL = { canon: "канон AIVibe", nkba: "NKBA", neufert: "Нойферт", small: "малометражка", commercial: "коммерция" };
+const N_PRESET_LABEL = { canon: "канон Design Ledger", nkba: "NKBA", neufert: "Нойферт", small: "малометражка", commercial: "коммерция" };
 
 /* определения строк (диапазоны — в единицах отображения) */
 const NORM_DEFS = [
@@ -138,7 +138,7 @@ function NormsSettings() {
         </span>
         <h1 className="display" style={{ fontSize: 30, marginTop: 10 }}>Правила эргономики</h1>
         <p style={{ color: "var(--muted)", fontSize: 14.5, marginTop: 8, maxWidth: 680, lineHeight: 1.6 }}>
-          Вшитый канон AIVibe (NKBA / Нойферт) работает по умолчанию — здесь вы подстраиваете пороги под себя. Слой правок ложится поверх канона, хранится только отличие. Проверка проектов сразу считает по этим нормам.
+          Вшитый канон Design Ledger (NKBA / Нойферт) работает по умолчанию — здесь вы подстраиваете пороги под себя. Слой правок ложится поверх канона, хранится только отличие. Проверка проектов сразу считает по этим нормам.
         </p>
       </div>
 
@@ -147,7 +147,7 @@ function NormsSettings() {
         <label style={{ display: "inline-flex", alignItems: "center", gap: 8, fontSize: 13, color: "var(--muted)" }}>
           Заполнить из:
           <select value={baseKey} onChange={(e) => applyPreset(e.target.value)} className="fld" style={{ width: "auto", padding: "8px 12px", fontSize: 13, fontWeight: 700, cursor: "pointer" }}>
-            <option value="canon">Канон AIVibe</option>
+            <option value="canon">Канон Design Ledger</option>
             <option value="nkba">NKBA (США)</option>
             <option value="neufert">Нойферт (ЕС)</option>
             <option value="small">Малометражка</option>
@@ -179,7 +179,7 @@ function NormsSettings() {
               onChange={(v) => setKey(d.key, v)} onReset={() => resetKey(d.key)} onToggle={() => toggleKey(d.key)} />
           ))}
           {onlyMod && modCount === 0 && (
-            <div style={{ padding: "34px 22px", textAlign: "center", color: "var(--muted)", fontSize: 14 }}>Пока ничего не изменено — все нормы по канону AIVibe.</div>
+            <div style={{ padding: "34px 22px", textAlign: "center", color: "var(--muted)", fontSize: 14 }}>Пока ничего не изменено — все нормы по канону Design Ledger.</div>
           )}
 
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 14, padding: "14px 22px", borderTop: "1px solid var(--hairline)", background: justSaved ? "rgba(94,107,91,.08)" : saved ? "transparent" : "rgba(183,80,44,.05)", transition: "background .3s" }}>
@@ -262,7 +262,7 @@ function NormRow({ def, value, modified, enabled, onChange, onReset, onToggle })
         </div>
         <div style={{ color: "var(--muted)", fontSize: 13, marginTop: 3 }}>{def.hint}</div>
         <div style={{ fontFamily: "var(--font-mono)", fontSize: 11, color: "var(--faint)", marginTop: 6 }}>
-          {modified ? "источник: мой канон" : "дефолт: канон AIVibe · " + canonDisp + " " + def.unit}
+          {modified ? "источник: мой канон" : "дефолт: канон Design Ledger · " + canonDisp + " " + def.unit}
         </div>
       </div>
       <div className="norm-ctrl" style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 10, minWidth: 230 }}>

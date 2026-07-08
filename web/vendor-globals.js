@@ -1,5 +1,5 @@
 /* ============================================================
-   AIVibe — мост npm-зависимостей в глобальный реестр window.*
+   Design Ledger — мост npm-зависимостей в глобальный реестр window.*
    (перенос с ветки audit-sprint0-1-vite, адаптация 08.07)
    ------------------------------------------------------------
    Код фронта исторически написан на глобалах (React, ReactDOM,
@@ -43,7 +43,7 @@ function loadPdf() {
       const pf = pdfFontsMod.default || pdfFontsMod;
       const vfs = (pf && pf.pdfMake && pf.pdfMake.vfs) || (pf && pf.vfs) || pf; // pf сам = карта шрифтов
       if (vfs && typeof vfs === "object" && Object.keys(vfs).length) pdfMake.vfs = vfs;
-      else console.warn("[AIVibe] pdfmake vfs (шрифты) не найдены — кириллица в PDF может не отрисоваться");
+      else console.warn("[Design Ledger] pdfmake vfs (шрифты) не найдены — кириллица в PDF может не отрисоваться");
       window.pdfMake = pdfMake;
       return pdfMake;
       // Кэшируем только успешную загрузку: при ошибке чанка сбрасываем промис,

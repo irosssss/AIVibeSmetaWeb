@@ -1,5 +1,5 @@
 /* ============================================================
-   AIVibe — ЛИЧНЫЙ КАБИНЕТ
+   Design Ledger — ЛИЧНЫЙ КАБИНЕТ
    Вход (OAuth Яндекс ID / VK ID) · Профиль · Сохранённые проекты
    ============================================================ */
 const { useState: useC, useEffect: useCE } = React;
@@ -85,7 +85,7 @@ function AuthScreen({ onAuthed, go }) {
             ))}
           </div>
 
-          <h1 className="display" style={{ fontSize: 30, marginBottom: 8 }}>{mode === "login" ? "Вход в AIVibe" : "Создать аккаунт"}</h1>
+          <h1 className="display" style={{ fontSize: 30, marginBottom: 8 }}>{mode === "login" ? "Вход в Design Ledger" : "Создать аккаунт"}</h1>
           <p style={{ color: "var(--muted)", fontSize: 14.5, marginBottom: 26 }}>{mode === "login" ? "Войдите через российские сервисы — быстро и без пароля." : "Регистрация в один тап через Яндекс ID или VK ID."}</p>
 
           <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
@@ -98,7 +98,7 @@ function AuthScreen({ onAuthed, go }) {
           {/* вход по e-mail появится вместе с реальной аутентификацией — декоративную форму убрали (честность превыше «полноты» экрана) */}
 
           <p style={{ color: "var(--faint)", fontSize: 12.5, marginTop: 26, textAlign: "center", lineHeight: 1.5 }}>
-            Продолжая, вы соглашаетесь с условиями и политикой конфиденциальности AIVibe.
+            Продолжая, вы соглашаетесь с условиями и политикой конфиденциальности Design Ledger.
           </p>
           <div style={{ textAlign: "center", marginTop: 14 }}>
             <button onClick={() => go("site")} style={{ color: "var(--muted)", fontSize: 13.5, textDecoration: "underline" }}>← На главную</button>

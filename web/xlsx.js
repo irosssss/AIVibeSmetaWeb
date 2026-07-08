@@ -1,5 +1,5 @@
 /* ============================================================
-   AIVibe — выгрузка сметы-комплектации в Excel (SheetJS, client-side)
+   Design Ledger — выгрузка сметы-комплектации в Excel (SheetJS, client-side)
    Экспортирует window.AIVibeXLSX.exportRoomSpec(...)
    Структура книги:
      • «Свод»        — итоги по помещениям и по разделам + бюджет;
@@ -69,7 +69,7 @@
     const svod = [], mc = [];
     const push = (row) => { svod.push(row); return svod.length - 1; };
 
-    push(["AIVibe — смета-комплектация"]);
+    push(["Design Ledger — смета-комплектация"]);
     push([project || "Проект", "", area ? area + " м²" : ""]);
     push([]);
     if (!clientMode) { push([hasCatMk ? "Наценка дизайнера (базовая), %" : "Наценка дизайнера, %", markupPct || 0]); push([]); }   // процент, не деньги
@@ -220,7 +220,7 @@
     };
 
     /* свод по поставщикам */
-    const sv = [["AIVibe — закупочный лист"], [project || "Проект", "", area ? area + " м²" : ""], [], ["По поставщикам", "Позиций", "Сумма", "Готовность"]];
+    const sv = [["Design Ledger — закупочный лист"], [project || "Проект", "", area ? area + " м²" : ""], [], ["По поставщикам", "Позиций", "Сумма", "Готовность"]];
     const smc = [];
     names.forEach((nm) => { sv.push([nm, groups[nm].length, supTotal(nm), supProgress(nm)]); smc.push([sv.length - 1, 2]); });
     sv.push(["ИТОГО ЗАКУПКА", rooms.reduce((s, r) => s + r.items.length, 0), grand, allProgress]); smc.push([sv.length - 1, 2]);

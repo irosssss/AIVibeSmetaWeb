@@ -1,5 +1,5 @@
 /* ============================================================
-   AIVibe — секции промо-сайта (часть 2)
+   Design Ledger — секции промо-сайта (часть 2)
    How-it-works (sticky scroll-сторителлинг) · Bento · Новости ·
    GitHub · Footer
    ============================================================ */
@@ -16,7 +16,7 @@ const staticHow = prefersReduced || narrowVP;
 -------------------------------------------------------------- */
 const STEPS = [
   { n: "01", icon: I.ruler, lot: "stepMeasure", tag: "Источник",     title: "Вставьте ссылку на товар или фото комнаты", text: "Клиппер затянет товар с сайта фабрики — с ценой и артикулом, или начните с фото комнаты. Без обмеров и 3D-программ." },
-  { n: "02", icon: I.spark, lot: "stepAI",      tag: "Смета и нормы", title: "AIVibe собирает смету и проверяет её по нормам", text: "Спецификация с артикулами и ценами под стиль и бюджет — а движок эргономики проверяет проходы и дистанции по NKBA и Нойферту." },
+  { n: "02", icon: I.spark, lot: "stepAI",      tag: "Смета и нормы", title: "Design Ledger собирает смету и проверяет её по нормам", text: "Спецификация с артикулами и ценами под стиль и бюджет — а движок эргономики проверяет проходы и дистанции по NKBA и Нойферту." },
   { n: "03", icon: I.layers, lot: "stepSpec",   tag: "3 варианта",  title: "Готовая смета в трёх бюджетах", text: "Эконом, база, премиум — выгружайте спецификацию клиенту. Меняете предмет — итог и проверка пересчитываются." },
 ];
 
@@ -267,7 +267,7 @@ function WhoFor() {
             <div className="eyebrow"><span style={{ width: 22, height: 1, background: "var(--accent)" }} />ДЛЯ КОГО</div>
             <h2 className="display" style={{ fontSize: "clamp(30px,4vw,50px)", marginTop: 14 }}>Смета комплектации —<br />не смета ремонта</h2>
           </div>
-          <p style={{ color: "var(--muted)", maxWidth: 340, fontSize: 14.5 }}>AIVibe считает то, что дизайнер ставит в интерьер. И честно говорит, для кого он не подходит.</p>
+          <p style={{ color: "var(--muted)", maxWidth: 340, fontSize: 14.5 }}>Design Ledger считает то, что дизайнер ставит в интерьер. И честно говорит, для кого он не подходит.</p>
         </div>
         <div className="who-grid">
           <div className="glass" style={{ borderRadius: "var(--r-lg)", padding: "26px 28px", borderColor: "rgba(94,107,91,.45)", background: "rgba(94,107,91,.07)", boxShadow: "var(--shadow-card)" }}>
@@ -328,7 +328,7 @@ function PayoffCalc() {
         <div className="eyebrow jade" style={{ marginBottom: 18 }}><span style={{ width: 22, height: 1, background: "var(--accent-2)" }} />ОКУПАЕМОСТЬ</div>
         <h2 className="display" style={{ fontSize: "clamp(30px,4vw,50px)", maxWidth: 720 }}>Подписка окупается одним проектом</h2>
         <p style={{ color: "var(--muted)", maxWidth: 520, fontSize: 15.5, marginTop: 16 }}>
-          AIVibe — не расход на софт, а инструмент, которым вы зарабатываете наценку. Посчитайте на своём проекте.
+          Design Ledger — не расход на софт, а инструмент, которым вы зарабатываете наценку. Посчитайте на своём проекте.
         </p>
         <div className="glass calc-grid" style={{ borderRadius: "var(--r-xl)", padding: "clamp(24px,4vw,44px)", marginTop: 34, boxShadow: "var(--shadow-card)" }}>
           <div>
@@ -388,7 +388,7 @@ function SocialProof() {
     <section id="designers" style={{ paddingBlock: "clamp(60px,9vh,110px)" }} ref={ref}>
       <div className="container reveal">
         <div className="eyebrow jade" style={{ marginBottom: 18 }}><span style={{ width: 22, height: 1, background: "var(--accent-2)" }} />ДИЗАЙНЕРЫ О СМЕТЕ</div>
-        <h2 className="display" style={{ fontSize: "clamp(30px,4vw,50px)", maxWidth: 700 }}>Считают в AIVibe — отправляют клиенту</h2>
+        <h2 className="display" style={{ fontSize: "clamp(30px,4vw,50px)", maxWidth: 700 }}>Считают в Design Ledger — отправляют клиенту</h2>
 
         {/* моно-метрики */}
         <div className="sp-metrics">
@@ -426,7 +426,7 @@ function SocialProof() {
 function Pricing({ go }) {
   const ref = useReveal();
   const PLANS = [
-    { name: "Старт", price: 1490, note: "для первых проектов", feats: ["2 активных проекта", "Смета: две цены и наценка по разделам", "Экспорт PDF", "Канон норм AIVibe"] },
+    { name: "Старт", price: 1490, note: "для первых проектов", feats: ["2 активных проекта", "Смета: две цены и наценка по разделам", "Экспорт PDF", "Канон норм Design Ledger"] },
     { name: "Практика", price: 2900, hot: true, note: "выбор дизайнеров", feats: ["10 активных проектов", "Экспорт PDF + Excel: рабочая, клиенту, закупка", "Импорт смет из Excel", "Свои нормы и библиотека стилей"] },
     { name: "Студия", price: 4900, note: "для команды", feats: ["Проекты без лимита", "Команда до 5 человек", "Смета под логотипом студии", "Приоритетная поддержка"] },
   ];

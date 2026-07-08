@@ -1,5 +1,5 @@
 /* ============================================================
-   AIVibe — Кабинет: Профиль и Сохранённые проекты
+   Design Ledger — Кабинет: Профиль и Сохранённые проекты
    ============================================================ */
 const { useState: useCV, useEffect: useCVE, useRef: useCVR } = React;
 
@@ -278,7 +278,7 @@ function Projects() {
         <div className="glass" style={{ borderRadius: "var(--r-xl)", padding: "56px 32px", textAlign: "center" }}>
           <span style={{ width: 60, height: 60, borderRadius: 18, background: "var(--surface-2)", color: "var(--accent)", display: "grid", placeItems: "center", margin: "0 auto 18px" }}><I.layers size={28} /></span>
           <h3 className="display" style={{ fontSize: 22 }}>Пока нет проектов</h3>
-          <p style={{ color: "var(--muted)", fontSize: 14.5, marginTop: 8, maxWidth: 420, marginInline: "auto", lineHeight: 1.6 }}>Создайте первый проект — задайте комнату и бюджет, дальше AIVibe соберёт смету и проверит эргономику.</p>
+          <p style={{ color: "var(--muted)", fontSize: 14.5, marginTop: 8, maxWidth: 420, marginInline: "auto", lineHeight: 1.6 }}>Создайте первый проект — задайте комнату и бюджет, дальше Design Ledger соберёт смету и проверит эргономику.</p>
           <button className="btn btn-primary" style={{ marginTop: 20 }} onClick={() => setNewOpen(true)}><I.plus size={17} />Создать первый проект</button>
         </div>
       )}

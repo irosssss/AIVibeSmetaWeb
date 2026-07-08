@@ -1,5 +1,5 @@
 /* ============================================================
-   AIVibe — выгрузка спецификации в PDF (pdfmake, шрифт Roboto/кириллица)
+   Design Ledger — выгрузка спецификации в PDF (pdfmake, шрифт Roboto/кириллица)
    Экспортирует window.AIVibePDF.exportSpec(...)
    ============================================================ */
 (function () {
@@ -40,7 +40,7 @@
       content: [
         {
           columns: [
-            { text: "AIVibe", style: "logo" },
+            { text: "Design Ledger", style: "logo" },
             { text: "Спецификация проекта", alignment: "right", style: "muted", margin: [0, 6, 0, 0] },
           ],
         },
@@ -67,7 +67,7 @@
             { text: "Итого: " + money(total), alignment: "right", style: "total", margin: [0, 9, 0, 0] },
           ],
         },
-        { text: "Цены, наличие и сроки — по каталогу фабрик-партнёров. Документ сформирован в AIVibe.", style: "foot", margin: [0, 20, 0, 0] },
+        { text: "Цены, наличие и сроки — по каталогу фабрик-партнёров. Документ сформирован в Design Ledger.", style: "foot", margin: [0, 20, 0, 0] },
       ],
       styles: {
         logo: { fontSize: 18, bold: true, color: "#B7502C" },
@@ -104,7 +104,7 @@
     const lineClient = (it) => unitClient(it) * (it.qty || 1);                     // сумма = цена × кол-во — как в UI, документ бьётся
     const hasCatMk = !!catMarkupPct && Object.keys(catMarkupPct).length > 0;
     const content = [
-      { columns: [ { text: "AIVibe", style: "logo" }, { text: "Смета-комплектация", alignment: "right", style: "muted", margin: [0, 6, 0, 0] } ] },
+      { columns: [ { text: "Design Ledger", style: "logo" }, { text: "Смета-комплектация", alignment: "right", style: "muted", margin: [0, 6, 0, 0] } ] },
       { canvas: [{ type: "line", x1: 0, y1: 0, x2: 515, y2: 0, lineWidth: 1, lineColor: "#B7502C" }], margin: [0, 8, 0, 0] },
       { text: project || "Проект", style: "h1", margin: [0, 14, 0, 2] },
       { text: "Комплектация по дизайн-проекту · " + (area || "—") + " м²", style: "muted", margin: [0, 0, 0, 14] },
@@ -148,7 +148,7 @@
         { stack: totalRows, margin: [0, 6, 0, 0] },
       ] });
     }
-    content.push({ text: "Комплектация (мебель, техника, сантехника, свет, текстиль). Ремонтные работы и отделочные материалы — отдельной сметой. Цены — рыночный ориентир. Документ сформирован в AIVibe.", style: "foot", margin: [0, 16, 0, 0] });
+    content.push({ text: "Комплектация (мебель, техника, сантехника, свет, текстиль). Ремонтные работы и отделочные материалы — отдельной сметой. Цены — рыночный ориентир. Документ сформирован в Design Ledger.", style: "foot", margin: [0, 16, 0, 0] });
 
     const doc = {
       pageMargins: [40, 46, 40, 44],
@@ -188,7 +188,7 @@
       ? Math.round(groups[k].reduce((s, x) => s + FFE.statusProgress(stId(x.it)), 0) / groups[k].length * 100) : null);
 
     const content = [
-      { columns: [ { text: "AIVibe", style: "logo" }, { text: "Закупочный лист", alignment: "right", style: "muted", margin: [0, 6, 0, 0] } ] },
+      { columns: [ { text: "Design Ledger", style: "logo" }, { text: "Закупочный лист", alignment: "right", style: "muted", margin: [0, 6, 0, 0] } ] },
       { canvas: [{ type: "line", x1: 0, y1: 0, x2: 515, y2: 0, lineWidth: 1, lineColor: "#B7502C" }], margin: [0, 8, 0, 0] },
       { text: project || "Проект", style: "h1", margin: [0, 14, 0, 2] },
       { text: "Закупка по поставщикам · " + (area || "—") + " м² · цены — себестоимость, без наценки", style: "muted", margin: [0, 0, 0, 14] },
@@ -219,7 +219,7 @@
       { text: over ? "Превышение бюджета на " + money(grand - budget) : "В рамках бюджета (" + money(budget) + ")", color: over ? "#B45309" : "#2F7A52", fontSize: 10, margin: [0, 6, 0, 0] },
       { text: "Итого закупка: " + money(grand), alignment: "right", style: "total", margin: [0, 3, 0, 0] },
     ] });
-    content.push({ text: "Закупочный лист для работы с поставщиками: только себестоимость, без наценки и клиентских цен. Документ сформирован в AIVibe.", style: "foot", margin: [0, 16, 0, 0] });
+    content.push({ text: "Закупочный лист для работы с поставщиками: только себестоимость, без наценки и клиентских цен. Документ сформирован в Design Ledger.", style: "foot", margin: [0, 16, 0, 0] });
 
     const doc = {
       pageMargins: [40, 46, 40, 44],

@@ -1,5 +1,5 @@
 /* ============================================================
-   AIVibe — App shell: роутинг между промо / кабинет / админка
+   Design Ledger — App shell: роутинг между промо / кабинет / админка
    + прототип-навигация (свитчер)
    ============================================================ */
 const { useState: useApp, useEffect: useAppE } = React;
@@ -14,7 +14,7 @@ function App() {
   const initView = useApp(routeView())[0];      // куда целились при загрузке (для гейта мигания)
 
   // синтетический админ для прямого входа в админку из dev-свитчера
-  const ADMIN = { id: "u_1", name: "Ирина Соколова", email: "irina@aivibe.ru", role: "admin", provider: "yandex", avatar: "#B7502C" };
+  const ADMIN = { id: "u_1", name: "Ирина Соколова", email: "irina@designledger.ru", role: "admin", provider: "yandex", avatar: "#B7502C" };
 
   // регидратация сессии: без неё F5 всегда выкидывал на промо
   useAppE(() => {
@@ -72,7 +72,7 @@ function ProtoSwitch({ view, go, user }) {
   const items = [["site", "Промо"], ["cabinet", "Кабинет"], ["admin", "Админка"]];
   return (
     <div className="proto-switch" role="tablist" aria-label="Навигация по прототипу">
-      <span className="pl">AIVibe</span>
+      <span className="pl">Design Ledger</span>
       {items.map(([k, t]) => (
         <button key={k} className={cur === k ? "on" : ""} onClick={() => go(k)} role="tab" aria-selected={cur === k}>{t}</button>
       ))}
@@ -84,7 +84,7 @@ function ProtoSwitch({ view, go, user }) {
 class ErrorBoundary extends React.Component {
   constructor(props) { super(props); this.state = { err: null }; }
   static getDerivedStateFromError(err) { return { err }; }
-  componentDidCatch(err, info) { console.error("[AIVibe] render error:", err, info); }
+  componentDidCatch(err, info) { console.error("[Design Ledger] render error:", err, info); }
   render() {
     if (!this.state.err) return this.props.children;
     return (

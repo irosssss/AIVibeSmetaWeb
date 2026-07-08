@@ -1,5 +1,5 @@
 /* ============================================================
-   AIVibe — единый mock-слой данных (AIVibeAPI)
+   Design Ledger — единый mock-слой данных (AIVibeAPI)
    ------------------------------------------------------------
    Все экраны ходят ТОЛЬКО сюда. Сигнатуры методов совпадают с
    будущим реальным API (Yandex Cloud Functions + YDB), поэтому
@@ -18,7 +18,7 @@
     session: null, // { user } | null
 
     users: [
-      { id: "u_1", name: "Ирина Соколова", email: "irina@aivibe.ru", role: "admin", provider: "yandex", status: "active", joined: "2026-01-12", projects: 14, avatar: "#B7502C" },
+      { id: "u_1", name: "Ирина Соколова", email: "irina@designledger.ru", role: "admin", provider: "yandex", status: "active", joined: "2026-01-12", projects: 14, avatar: "#B7502C" },
       { id: "u_2", name: "Максим Орлов", email: "max.orlov@vk.com", role: "user", provider: "vk", status: "active", joined: "2026-02-03", projects: 6, avatar: "#6B9BE8" },
       { id: "u_3", name: "Алина Гусева", email: "alina.g@yandex.ru", role: "user", provider: "yandex", status: "active", joined: "2026-02-21", projects: 9, avatar: "#1F8A6B" },
       { id: "u_4", name: "Дмитрий Лебедев", email: "d.lebedev@vk.com", role: "user", provider: "vk", status: "blocked", joined: "2026-03-01", projects: 2, avatar: "#A6B24E" },
@@ -28,12 +28,12 @@
     ],
 
     news: [
-      { id: "n_1", title: "Тёплый минимализм вытесняет холодный сканди", category: "Тренды 2026", excerpt: "Природные текстуры, терракота и приглушённый плюм — палитра года по версии дизайн-сообщества.", body: "Полный текст материала о тёплом минимализме...", cover: "warm", author: "Редакция AIVibe", date: "2026-05-28", status: "published", views: 4820 },
+      { id: "n_1", title: "Тёплый минимализм вытесняет холодный сканди", category: "Тренды 2026", excerpt: "Природные текстуры, терракота и приглушённый плюм — палитра года по версии дизайн-сообщества.", body: "Полный текст материала о тёплом минимализме...", cover: "warm", author: "Редакция Design Ledger", date: "2026-05-28", status: "published", views: 4820 },
       { id: "n_2", title: "Почему диван «не встаёт»: проверка эргономики", category: "Технологии", excerpt: "Детерминированный движок ловит узкие проходы и конфликты зон до того, как смета уйдёт клиенту — разбор на примерах.", body: "Полный текст про проверку норм...", cover: "ar", author: "Ирина Соколова", date: "2026-05-21", status: "published", views: 7310 },
       { id: "n_3", title: "Neo Deco: геометрия и латунь возвращаются", category: "Стили", excerpt: "Веерные мотивы, рифлёные поверхности и глубокие винные оттенки в интерьере 2026.", body: "Полный текст про Neo Deco...", cover: "deco", author: "Алина Гусева", date: "2026-05-14", status: "published", views: 3950 },
       { id: "n_4", title: "Смета за минуту: как не считать предметы вручную", category: "Гайды", excerpt: "Движок собирает спецификацию с ценами и проверяет расстановку по нормам — разбор на реальном проекте.", body: "Полный текст гайда по смете и проверке норм...", cover: "market", author: "Максим Орлов", date: "2026-05-06", status: "published", views: 2640 },
       { id: "n_5", title: "Свет как материал: сценарии освещения от AI", category: "Идеи", excerpt: "Тёплые сценарии вечером, холодные утром — советник строит световые схемы под образ жизни.", body: "Полный текст про освещение...", cover: "light", author: "Полина Зайцева", date: "2026-04-29", status: "draft", views: 0 },
-      { id: "n_6", title: "Маленькая студия: 24 м² без потери воздуха", category: "Кейсы", excerpt: "Зонирование, зеркала и встроенное хранение — кейс комплектации студии в AIVibe.", body: "Полный текст кейса...", cover: "studio", author: "Ева Морозова", date: "2026-04-20", status: "published", views: 5180 },
+      { id: "n_6", title: "Маленькая студия: 24 м² без потери воздуха", category: "Кейсы", excerpt: "Зонирование, зеркала и встроенное хранение — кейс комплектации студии в Design Ledger.", body: "Полный текст кейса...", cover: "studio", author: "Ева Морозова", date: "2026-04-20", status: "published", views: 5180 },
     ],
 
     // сохранённые проекты текущего пользователя
@@ -162,7 +162,7 @@
   async function oauth(provider) {
     await delay(700);
     const base = provider === "yandex"
-      ? { id: "u_1", name: "Ирина Соколова", email: "irina@aivibe.ru", role: "admin" }
+      ? { id: "u_1", name: "Ирина Соколова", email: "irina@designledger.ru", role: "admin" }
       : { id: "u_2", name: "Максим Орлов", email: "max.orlov@vk.com", role: "user" };
     db.session = { user: { ...base, provider, avatar: provider === "yandex" ? "#B7502C" : "#6B9BE8" } };
     LS.set("session", db.session);
@@ -391,7 +391,7 @@
       get: async (id) => { await delay(200); return clone(db.news.find((n) => n.id === id)); }, // → GET /api/news/:id
       create: async (payload) => {                  // → POST /api/news
         await delay(300);
-        const row = { id: "n_" + Date.now(), views: 0, author: (db.session && db.session.user.name) || "Редакция AIVibe", ...payload };
+        const row = { id: "n_" + Date.now(), views: 0, author: (db.session && db.session.user.name) || "Редакция Design Ledger", ...payload };
         db.news.unshift(row);
         return clone(row);
       },
@@ -464,7 +464,7 @@
         description: "iOS-приложение для дизайна интерьеров с AR и российским AI",
         language: "Swift",
         stars: 248, forks: 31, issues: 7,
-        license: "© 2026 AIVibe",
+        license: "© 2026 Design Ledger",
         sessions: [
           { tag: "SESSION_07", title: "Смета · движок эргономики + каталог фабрик" },
           { tag: "SESSION_05", title: "AI Advisor · agent loop + skills" },

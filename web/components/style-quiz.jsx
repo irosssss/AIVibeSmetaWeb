@@ -1,5 +1,5 @@
 /* ============================================================
-   AIVibe — СТИЛЬ-КВИЗ (онбординг)
+   Design Ledger — СТИЛЬ-КВИЗ (онбординг)
    Несколько визуальных вопросов → AI рекомендует направление.
    Паттерн style-quiz из Modsy / Havenly: набор баллов по стилям,
    затем показ победителя с палитрой и CTA.
@@ -232,7 +232,7 @@ function BudgetStep({ budget, setBudget }) {
   return (
     <div>
       <h2 className="display" style={{ fontSize: 25, letterSpacing: "-0.02em" }}>Какой бюджет на комнату?</h2>
-      <p style={{ color: "var(--muted)", fontSize: 14.5, marginTop: 6, marginBottom: 28 }}>AIVibe соберёт смету с артикулами и ценами в этих рамках</p>
+      <p style={{ color: "var(--muted)", fontSize: 14.5, marginTop: 6, marginBottom: 28 }}>Design Ledger соберёт смету с артикулами и ценами в этих рамках</p>
       <div style={{ textAlign: "center", marginBottom: 18 }}>
         <span className="display" style={{ fontSize: 42, letterSpacing: "-0.03em" }}>{fmtMoney(budget)}</span>
       </div>

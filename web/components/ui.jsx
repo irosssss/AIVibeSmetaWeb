@@ -1,5 +1,5 @@
 /* ============================================================
-   AIVibe — общие UI-примитивы (иконки, логотип, графики, утилиты)
+   Design Ledger — общие UI-примитивы (иконки, логотип, графики, утилиты)
    Экспортируется в window для других babel-скриптов.
    ============================================================ */
 const { useState, useEffect, useRef, useCallback } = React;
@@ -14,8 +14,8 @@ function Logo({ size = 26, onClick }) {
         <path d="M16 6 L20.5 25 M16 6 L11.5 25 M16 6 L25 25 M16 6 L7 25" stroke="var(--accent)" strokeWidth="1" opacity="0.45" />
         <circle cx="16" cy="6" r="2.4" fill="var(--accent)" />
       </svg>
-      <span className="logo-word" style={{ fontFamily: "var(--font-display)", fontWeight: 800, fontSize: size * 0.74, letterSpacing: "-0.04em" }}>
-        AI<span style={{ color: "var(--accent)" }}>Vibe</span>
+      <span className="logo-word" style={{ fontFamily: "var(--font-display)", fontWeight: 800, fontSize: size * 0.72, letterSpacing: "-0.03em", whiteSpace: "nowrap" }}>
+        Design <span style={{ color: "var(--accent)" }}>Ledger</span>
       </span>
     </div>
   );
@@ -441,7 +441,7 @@ function withLib(kind, run) {
   if (!loaded) toast("Готовим модуль " + label + "…", "info", 1800);
   return AIVibeLibs[kind]().then(
     () => Promise.resolve().then(run).catch((e) => {
-      console.error("[AIVibe] " + label + "-экспорт упал:", e);
+      console.error("[Design Ledger] " + label + "-экспорт упал:", e);
       toast("Не удалось выполнить экспорт " + label + " — попробуйте ещё раз.", "warn", 5000);
     }),
     () => toast("Не удалось загрузить модуль " + label + " — проверьте сеть и попробуйте ещё раз.", "warn", 5000)
