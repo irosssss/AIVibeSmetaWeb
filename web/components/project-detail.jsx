@@ -958,7 +958,7 @@ function RoomSpecOverlay({ data, onClose }) {
       </div>
       {addOpen && <AddPositionsModal excludeId={savedId} roomNames={rooms.map((r) => r.name)} onClose={() => setAddOpen(false)} onAdd={addFrom} />}
       {versionsOpen && (
-        <VersionsModal versions={versions} current={{ rooms, grand, totalClient, itemsCount }}
+        <VersionsModal versions={versions} current={{ project: data.name, rooms, grand, totalClient, itemsCount }}
           onSave={saveVersion} onRestore={restoreVersion} onSetStatus={setVersionStatus}
           onPatch={patchVersion} onRemove={removeVersion} onShare={shareVersion} onClose={() => setVersionsOpen(false)} />
       )}
@@ -1075,6 +1075,15 @@ function VersionsModal({ versions, current, onSave, onRestore, onSetStatus, onPa
                     <I.chat size={14} />{cmtOpenId === v.id ? "Скрыть комментарии" : "Комментарии" + (cmCount ? " · " + cmCount : "")}
                   </button>
                 )}
+                <button className="btn btn-ghost" style={{ padding: "7px 12px", fontSize: 12.5 }}
+                  onClick={() => withLib("pdf", () => AIVibePDF.exportApprovalProtocol({
+                    project: current.project, versionLabel: v.label, createdAt: v.createdAt,
+                    vStatusLabel: sm.label, statusAt: v.statusAt, respondedAt: sh && sh.respondedAt,
+                    snapshot: sh ? sh.snapshot : v.snapshot,
+                  }))}
+                  title="Скачать протокол согласования: решения клиента по позициям, переписка и таймстампы">
+                  <I.news size={14} />Протокол PDF
+                </button>
                 <button className="icon-btn" onClick={() => onRemove(v)} title="Удалить версию" aria-label={"Удалить версию «" + v.label + "»"}
                   style={{ width: 30, height: 30, marginLeft: "auto", color: "var(--spec-meta)" }}><I.trash size={15} /></button>
               </div>

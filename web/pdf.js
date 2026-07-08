@@ -238,5 +238,85 @@
     return true;
   }
 
-  window.AIVibePDF = { exportSpec, exportRoomSpec };
+  /* Протокол согласования (волна A4, бенчмарк Programa): все решения клиента по
+     позициям + переписка + таймстампы, одной кнопкой из версии сметы. Источник —
+     снимок портал-шары, если версия отправлялась клиенту (то же, что видит клиент
+     и на что отвечает дизайнер в «Версиях»), иначе — собственный снимок версии
+     (решения могли быть проставлены дизайнером вручную ещё до портала, волна A1).
+     Юридически фиксирует состояние переговоров на момент выгрузки. */
+  function exportApprovalProtocol({ project, versionLabel, createdAt, vStatusLabel, statusAt, respondedAt, snapshot }) {
+    if (!window.pdfMake) { (window.toast ? toast("PDF-модуль ещё загружается — попробуйте через секунду.", "info") : 0); return false; }
+    const FFE = window.AIVibeFFE;
+    const snap = snapshot || {};
+    const rooms = Array.isArray(snap.rooms) ? snap.rooms : [];
+    const cp = FFE ? FFE.clientPricing(snap) : null;
+    const fmtD = (iso) => { const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(iso || "")); return m ? m[3] + "." + m[2] + "." + m[1] : ""; };
+    const fmtDT = (iso) => { try { return new Date(iso).toLocaleString("ru-RU", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" }); } catch { return ""; } };
+    const AP_COLOR = { pending: "#8A8088", ok: "#2F7A52", revise: "#3E4A59", rejected: "#B7502C" };
+    const apOf = (it) => (FFE && FFE.APPROVE_BY_ID[it.approve] ? it.approve : "pending");
+    const apLabel = (it) => (FFE ? FFE.approveMeta(apOf(it)).label : "—");
+
+    const counts = { pending: 0, ok: 0, revise: 0, rejected: 0 };
+    rooms.forEach((r) => (r.items || []).forEach((it) => { counts[apOf(it)]++; }));
+    const itemsCount = counts.pending + counts.ok + counts.revise + counts.rejected;
+
+    const content = [
+      { columns: [ { text: "Design Ledger", style: "logo" }, { text: "Протокол согласования", alignment: "right", style: "muted", margin: [0, 6, 0, 0] } ] },
+      { canvas: [{ type: "line", x1: 0, y1: 0, x2: 515, y2: 0, lineWidth: 1, lineColor: "#B7502C" }], margin: [0, 8, 0, 0] },
+      { text: project || "Проект", style: "h1", margin: [0, 14, 0, 2] },
+      { text: "Версия «" + (versionLabel || "—") + "»" + (createdAt ? " · снимок от " + fmtDT(createdAt) : ""), style: "muted", margin: [0, 0, 0, 2] },
+      { text: "Статус: " + (vStatusLabel || "—") + (statusAt ? " · " + fmtD(statusAt) : "") + (respondedAt ? "   ·   клиент отвечал " + fmtDT(respondedAt) : ""), style: "muted", margin: [0, 0, 0, 14] },
+    ];
+
+    if (!rooms.length) {
+      content.push({ text: "В снимке этой версии нет помещений с позициями.", fontSize: 9.5, color: "#8A8088", margin: [0, 8, 0, 8] });
+    }
+    rooms.forEach((r) => {
+      content.push({ text: r.name || "Помещение", style: "h2", margin: [0, 12, 0, 4] });
+      (r.items || []).forEach((it) => {
+        const aid = apOf(it);
+        content.push({
+          columns: [
+            { text: it.title + "  ×" + (it.qty || 1), width: "*" },
+            { text: apLabel(it) + (it.approveAt ? " · " + fmtD(it.approveAt) : ""), color: AP_COLOR[aid], bold: true, fontSize: 9.5, alignment: "right", width: 160 },
+          ],
+          margin: [0, 5, 0, (it.comments && it.comments.length) ? 2 : 5],
+        });
+        (it.comments || []).forEach((c) => {
+          content.push({
+            text: (c.author === "client" ? "Клиент" : "Студия") + " · " + fmtDT(c.at) + ":  " + c.text,
+            fontSize: 8.5, color: c.author === "client" ? "#3E4A59" : "#6B6168", margin: [12, 1, 0, 1],
+          });
+        });
+      });
+      content.push({ canvas: [{ type: "line", x1: 0, y1: 0, x2: 515, y2: 0, lineWidth: 0.5, lineColor: "#EFEAE4" }], margin: [0, 6, 0, 0] });
+    });
+
+    content.push({ text: "Итог решений", style: "h2", margin: [0, 14, 0, 4] });
+    content.push({
+      columns: [
+        { text: "Согласовано " + counts.ok + " · на пересмотр " + counts.revise + " · отклонено " + counts.rejected + " · ждут решения " + counts.pending + "  (всего " + itemsCount + ")", fontSize: 9.5, color: "#6B6168" },
+        cp ? { text: "Итого клиенту: " + money(cp.totalClient), alignment: "right", style: "total" } : { text: "" },
+      ],
+    });
+    content.push({ text: "Протокол фиксирует решения и переписку по снимку версии на момент выгрузки. Документ сформирован в Design Ledger.", style: "foot", margin: [0, 18, 0, 0] });
+
+    const doc = {
+      pageMargins: [40, 46, 40, 44],
+      content,
+      styles: {
+        logo: { fontSize: 18, bold: true, color: "#B7502C" },
+        h1: { fontSize: 20, bold: true, color: "#1A1417" },
+        h2: { fontSize: 12, bold: true, color: "#3A3338" },
+        muted: { color: "#8A8088", fontSize: 10 },
+        total: { fontSize: 13, bold: true, color: "#1A1417" },
+        foot: { fontSize: 8, color: "#B0A8AE" },
+      },
+      defaultStyle: { fontSize: 10, color: "#241A26" },
+    };
+    window.pdfMake.createPdf(doc).download("protokol-" + String(project || "aivibe").replace(/\s+/g, "-").toLowerCase() + ".pdf");
+    return true;
+  }
+
+  window.AIVibePDF = { exportSpec, exportRoomSpec, exportApprovalProtocol };
 })();
