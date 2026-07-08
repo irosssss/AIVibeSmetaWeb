@@ -4,7 +4,7 @@
    ============================================================ */
 const { useState: useApp, useEffect: useAppE } = React;
 
-const VIEWS = ["site", "auth", "cabinet", "admin"];
+const VIEWS = ["site", "auth", "cabinet", "admin", "portal"];
 const routeView = () => { const v = parseRoute().view; return VIEWS.includes(v) ? v : "site"; };
 
 function App() {
@@ -51,7 +51,9 @@ function App() {
   }
 
   let screen;
-  if (view === "auth") screen = <AuthScreen onAuthed={onAuthed} go={go} />;
+  // клиентский портал (волна A2): публичная страница-ссылка, без кабинет-хрома и авторизации
+  if (view === "portal") screen = <ClientPortal shareId={parseRoute().tab} />;
+  else if (view === "auth") screen = <AuthScreen onAuthed={onAuthed} go={go} />;
   else if (view === "cabinet") screen = user ? <Cabinet user={user} onLogout={onLogout} go={go} /> : <AuthScreen onAuthed={onAuthed} go={go} />;
   else if (view === "admin") screen = DEV_MODE ? <Admin user={user || ADMIN} onLogout={onLogout} go={go} /> : <SitePage go={go} />;
   else screen = <SitePage go={go} />;
@@ -59,7 +61,7 @@ function App() {
   return (
     <React.Fragment>
       {screen}
-      {DEV_MODE && <ProtoSwitch view={view} go={go} user={user} />}
+      {DEV_MODE && view !== "portal" && <ProtoSwitch view={view} go={go} user={user} />}
     </React.Fragment>
   );
 }

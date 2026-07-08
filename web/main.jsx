@@ -30,6 +30,7 @@ import "./components/style-editor.jsx";
 import "./components/library-editor.jsx";
 import "./components/admin.jsx";
 import "./components/admin-views.jsx";
+import "./components/portal.jsx";
 
 // последним — app.jsx: монтирует <App/> в #root
 import "./components/app.jsx";

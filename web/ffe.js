@@ -180,6 +180,28 @@
     return pos;
   };
 
+  /* ----------------------------- КЛИЕНТСКИЕ ЦЕНЫ (инвариант UI = PDF = Excel = портал) -----------------------------
+     Точное зеркало клиентской матши сметы (project-detail.jsx: catOf/pctOf/unitClient/
+     lineClient/client + discountAmt/totalClient) — чтобы клиентский портал (волна A2)
+     считал итог ТЕМИ ЖЕ числами, что видит дизайнер. Правило округления то же: округляем
+     ЦЕНУ ЗА ШТУКУ, сумма строки = цена × кол-во. snap = снимок версии
+     {rooms, markup, catMarkup, discount, delivery, install}. */
+  function clientPricing(snap) {
+    const s = snap || {};
+    const rooms = Array.isArray(s.rooms) ? s.rooms : [];
+    const markup = +s.markup || 0;
+    const catMarkup = s.catMarkup || {};
+    const discount = +s.discount || 0, delivery = +s.delivery || 0, install = +s.install || 0;
+    const catOf = (it) => it.cat || "Прочее";
+    const pctOf = (cat) => (catMarkup[cat] != null ? catMarkup[cat] : markup);
+    const unitClient = (it) => Math.round((it.price || 0) * (1 + pctOf(catOf(it)) / 100));
+    const lineClient = (it) => unitClient(it) * (it.qty || 1);
+    const client = rooms.reduce((a, r) => a + (r.items || []).reduce((x, it) => x + lineClient(it), 0), 0);
+    const discountAmt = Math.round(client * discount / 100);
+    const totalClient = client - discountAmt + delivery + install;
+    return { catOf, pctOf, unitClient, lineClient, client, discount, discountAmt, delivery, install, totalClient };
+  }
+
   /* ----------------------------- УСЛУГИ И СБОРЫ (доставка/монтаж/налог) -----------------------------
      Отдельные строки в итоге сметы (Фаза 2.3). kind:'percent' — % от стоимости товаров,
      kind:'fixed' — фиксированная сумма ₽. Считаем прозрачно, поверх товаров. */
@@ -381,6 +403,47 @@
     return JSON.parse(JSON.stringify({ rooms: state.rooms || [], extras: state.extras || [], markup: state.markup || 0, mode: state.mode || "work" }));
   }
 
+  /* ----------------------------- КЛИЕНТСКИЙ ПОРТАЛ (волна A2, groundwork) -----------------------------
+     Публикация снимка сметы по ссылке #portal/{shareId}: клиент видит смету «для клиента»
+     (только чтение) и отвечает по позициям (поле approve из A1). Хранение — localStorage
+     (ключ aivibe:portal:{shareId}); межустройственный доступ подключится с Worker+KV/доменом
+     БЕЗ переписывания UI — // → API: POST/GET/PATCH /api/portal/:id (Worker + KV).
+     Ответ клиента = изменённое поле approve прямо в позициях снимка (тот же словарь A1). */
+  const PKEY = (id) => "aivibe:portal:" + id;
+  const genShareId = () => "shr_" + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+  function createPortalShare(o) {
+    const src = o || {};
+    const rec = {
+      shareId: genShareId(),
+      projectId: src.projectId || null,
+      projectName: str(src.projectName),
+      versionId: src.versionId || null,
+      versionLabel: str(src.versionLabel),
+      snapshot: JSON.parse(JSON.stringify(src.snapshot || {})),
+      createdAt: new Date().toISOString(),
+      respondedAt: null,
+    };
+    try { localStorage.setItem(PKEY(rec.shareId), JSON.stringify(rec)); } catch {}
+    return rec;
+  }
+  function loadPortalShare(shareId) {
+    try { const raw = localStorage.getItem(PKEY(shareId)); const r = raw ? JSON.parse(raw) : null; return r && r.shareId ? r : null; }
+    catch { return null; }
+  }
+  // клиент ставит решение по позиции снимка (ri, ii); "pending"/мусор = снять поле
+  function setPortalApprove(shareId, ri, ii, approveId) {
+    const rec = loadPortalShare(shareId);
+    if (!rec || !rec.snapshot || !Array.isArray(rec.snapshot.rooms)) return null;
+    const room = rec.snapshot.rooms[ri];
+    if (!room || !Array.isArray(room.items) || !room.items[ii]) return rec;
+    const it = room.items[ii];
+    if (approveId === "pending" || !APPROVE_BY_ID[approveId]) { delete it.approve; delete it.approveAt; }
+    else { it.approve = approveId; it.approveAt = today(); }
+    rec.respondedAt = new Date().toISOString();
+    try { localStorage.setItem(PKEY(shareId), JSON.stringify(rec)); } catch {}
+    return rec;
+  }
+
   window.AIVibeFFE = {
     FFE_CATEGORIES, FFE_UNITS, FFE_STATUSES, STATUS_LABEL, STATUS_BY_ID, DEFAULT_STATUS,
     APPROVE_STATUSES, APPROVE_BY_ID, approveMeta,
@@ -391,5 +454,6 @@
     BENCHMARK, estimateBudget, generateEstimate, setPendingDraft, takePendingDraft,
     loadEstimate, saveEstimate, clearEstimate,
     VERSION_STATUSES, vStatusMeta, loadVersions, saveVersions, clearVersions, makeSnapshot,
+    clientPricing, createPortalShare, loadPortalShare, setPortalApprove,
   };
 })();

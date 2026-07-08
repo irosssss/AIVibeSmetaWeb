@@ -82,3 +82,55 @@ describe("мапперы позиция ↔ товар библиотеки", ()
     expect(back).toMatchObject({ title: "Стол дуб", qty: 1, price: 44900, cat: "Мебель", sup: "Дубрава" });
   });
 });
+
+describe("clientPricing — инвариант клиентских цен (портал = клиентский режим сметы)", () => {
+  it("базовая наценка + оверрайд раздела + скидка/доставка/монтаж", () => {
+    const snap = {
+      rooms: [{ name: "A", items: [
+        { title: "X", price: 1000, qty: 2, cat: "Мебель" },
+        { title: "Y", price: 500, qty: 1, cat: "Декор" },
+      ] }],
+      markup: 25, catMarkup: { "Декор": 40 }, discount: 10, delivery: 3000, install: 2000,
+    };
+    const cp = FFE.clientPricing(snap);
+    const [x, y] = snap.rooms[0].items;
+    expect(cp.unitClient(x)).toBe(1250);   // 1000 × 1.25 (округляем цену за штуку)
+    expect(cp.lineClient(x)).toBe(2500);
+    expect(cp.unitClient(y)).toBe(700);    // 500 × 1.40 — оверрайд раздела «Декор»
+    expect(cp.client).toBe(3200);
+    expect(cp.discountAmt).toBe(320);      // 10% от 3200
+    expect(cp.totalClient).toBe(7880);     // 3200 − 320 + 3000 + 2000
+  });
+  it("без раздела — базовая наценка; пустой снимок = 0", () => {
+    const cp = FFE.clientPricing({ rooms: [{ items: [{ title: "Z", price: 100, qty: 1 }] }], markup: 20 });
+    expect(cp.unitClient({ price: 100 })).toBe(120);
+    expect(cp.totalClient).toBe(120);
+    expect(FFE.clientPricing({}).totalClient).toBe(0);
+  });
+});
+
+describe("портал-шара — публикация снимка и ответы клиента (волна A2)", () => {
+  beforeAll(() => {
+    const store = {};
+    globalThis.localStorage = {
+      getItem: (k) => (k in store ? store[k] : null),
+      setItem: (k, v) => { store[k] = String(v); },
+      removeItem: (k) => { delete store[k]; },
+    };
+  });
+  it("создание → загрузка → ответ клиента (approve) → снятие; несуществующая = null", () => {
+    const rec = FFE.createPortalShare({ projectName: "Кирова", versionLabel: "v1",
+      snapshot: { rooms: [{ name: "A", items: [{ title: "X", price: 1000, qty: 1 }] }], markup: 25 } });
+    expect(rec.shareId).toMatch(/^shr_/);
+    expect(FFE.loadPortalShare(rec.shareId).projectName).toBe("Кирова");
+
+    const upd = FFE.setPortalApprove(rec.shareId, 0, 0, "ok");
+    expect(upd.snapshot.rooms[0].items[0].approve).toBe("ok");
+    expect(upd.respondedAt).toBeTruthy();
+    expect(FFE.loadPortalShare(rec.shareId).snapshot.rooms[0].items[0].approve).toBe("ok"); // персист
+
+    const cleared = FFE.setPortalApprove(rec.shareId, 0, 0, "pending");
+    expect("approve" in cleared.snapshot.rooms[0].items[0]).toBe(false);
+    expect(FFE.loadPortalShare("shr_missing")).toBe(null);
+  });
+});

@@ -462,6 +462,7 @@ function RoomSpecOverlay({ data, onClose }) {
      в момент отправки клиенту (включая стадии закупки — они живут в позициях).
      Версии привязаны к проекту — несохранённую смету просим сначала сохранить. */
   const [versionsOpen, setVersionsOpen] = usePD(false);
+  const [shareModal, setShareModal] = usePD(null);   // запись портал-шары для модалки «Ссылка для клиента» | null
   const [versions, setVersions] = usePD(() => (FFE && data.id ? FFE.loadVersions(data.id) : []));
   usePDE(() => { if (FFE && savedId) FFE.saveVersions(savedId, versions); }, [versions, savedId]);
   const approved = versions.find((v) => v.status === "approved");
@@ -494,6 +495,16 @@ function RoomSpecOverlay({ data, onClose }) {
   const removeVersion = async (v) => {
     const ok = await confirmDialog({ title: "Удалить версию?", text: "«" + v.label + "» исчезнет из истории. Рабочую смету это не меняет.", confirmLabel: "Удалить версию" });
     if (ok) setVersions((prev) => prev.filter((x) => x.id !== v.id));
+  };
+  // «Ссылка для клиента» (волна A2): опубликовать снимок версии в портал и показать ссылку.
+  // Ссылка на версию переиспользуется (снимок неизменен); первая выдача метит версию «Отправлена».
+  const shareVersion = (v) => {
+    let rec = v.shareId ? FFE.loadPortalShare(v.shareId) : null;
+    if (!rec) {
+      rec = FFE.createPortalShare({ projectId: savedId, projectName: data.name, versionId: v.id, versionLabel: v.label, snapshot: v.snapshot });
+      patchVersion(v.id, { shareId: rec.shareId, status: v.status === "draft" ? "sent" : v.status, statusAt: FFE.today() });
+    }
+    setShareModal(rec);
   };
 
   return (
@@ -949,8 +960,9 @@ function RoomSpecOverlay({ data, onClose }) {
       {versionsOpen && (
         <VersionsModal versions={versions} current={{ rooms, grand, totalClient, itemsCount }}
           onSave={saveVersion} onRestore={restoreVersion} onSetStatus={setVersionStatus}
-          onPatch={patchVersion} onRemove={removeVersion} onClose={() => setVersionsOpen(false)} />
+          onPatch={patchVersion} onRemove={removeVersion} onShare={shareVersion} onClose={() => setVersionsOpen(false)} />
       )}
+      {shareModal && <ShareLinkModal share={shareModal} onClose={() => setShareModal(null)} />}
       {pickerRoom != null && rooms[pickerRoom] && (
         <LibraryPickerModal roomName={rooms[pickerRoom].name} onClose={() => setPickerRoom(null)}
           onAdd={(products) => addLibToRoom(pickerRoom, products)} />
@@ -964,7 +976,7 @@ function RoomSpecOverlay({ data, onClose }) {
    (Δ итога клиенту, +добавлено/−удалено/~изменено), статус согласования с датой
    и комментарий клиента. Фундамент клиентского портала (роадмап #9).
    Позиции без id — диф по ключу «комната + название» с агрегацией дублей. */
-function VersionsModal({ versions, current, onSave, onRestore, onSetStatus, onPatch, onRemove, onClose }) {
+function VersionsModal({ versions, current, onSave, onRestore, onSetStatus, onPatch, onRemove, onShare, onClose }) {
   const FFE = window.AIVibeFFE;
   const [label, setLabel] = usePD("");
   const [compareId, setCompareId] = usePD(null);
@@ -1023,6 +1035,9 @@ function VersionsModal({ versions, current, onSave, onRestore, onSetStatus, onPa
         {versions.map((v) => {
           const sm = FFE.vStatusMeta(v.status);
           const d = compareId === v.id ? diff(v) : null;
+          // ответ клиента через портал (волна A2): читаем шару версии
+          const sh = v.shareId && FFE.loadPortalShare ? FFE.loadPortalShare(v.shareId) : null;
+          const shOk = sh && sh.snapshot ? (sh.snapshot.rooms || []).reduce((s, r) => s + (r.items || []).filter((it) => it.approve === "ok").length, 0) : 0;
           return (
             <div key={v.id} className="glass" style={{ borderRadius: "var(--r-lg)", padding: "13px 15px" }}>
               <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
@@ -1033,6 +1048,7 @@ function VersionsModal({ versions, current, onSave, onRestore, onSetStatus, onPa
               </div>
               <div className="mono" style={{ fontSize: 11.5, color: "var(--spec-meta)", margin: "7px 0 10px" }}>
                 {fmtDT(v.createdAt)} · себест. {fmtMoney(v.total)} · клиенту {fmtMoney(v.clientTotal)} · {v.positions} поз.
+                {sh && sh.respondedAt ? <span style={{ color: "var(--accent-2-ink)", fontWeight: 700 }}>{" · клиент ответил" + (shOk ? " · " + shOk + " ✓" : "")}</span> : ""}
               </div>
               <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
                 <select className="fld" value={v.status} onChange={(e) => onSetStatus(v.id, e.target.value)} aria-label={"Статус согласования версии «" + v.label + "»"}
@@ -1042,6 +1058,10 @@ function VersionsModal({ versions, current, onSave, onRestore, onSetStatus, onPa
                 <button className="btn btn-ghost" style={{ padding: "7px 12px", fontSize: 12.5 }} onClick={() => onRestore(v)} title="Загрузить эту версию в рабочую смету">Восстановить</button>
                 <button className="btn btn-ghost" style={{ padding: "7px 12px", fontSize: 12.5 }} onClick={() => setCompareId(compareId === v.id ? null : v.id)} aria-expanded={compareId === v.id}>
                   {compareId === v.id ? "Скрыть сравнение" : "Сравнить с текущей"}
+                </button>
+                <button className="btn btn-ghost" style={{ padding: "7px 12px", fontSize: 12.5, ...(v.shareId ? { color: "var(--accent-2-ink)" } : {}) }} onClick={() => onShare(v)}
+                  title={v.shareId ? "Показать ссылку для клиента" : "Создать ссылку для клиента"}>
+                  <I.send size={14} />{v.shareId ? "Ссылка ✓" : "Ссылка клиенту"}
                 </button>
                 <button className="icon-btn" onClick={() => onRemove(v)} title="Удалить версию" aria-label={"Удалить версию «" + v.label + "»"}
                   style={{ width: 30, height: 30, marginLeft: "auto", color: "var(--spec-meta)" }}><I.trash size={15} /></button>
