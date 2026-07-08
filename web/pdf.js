@@ -180,6 +180,13 @@
     const total = (k) => groups[k].reduce((s, x) => s + lineCost(x.it), 0);
     const names = Object.keys(groups).sort((a, b) => (a === NO_SUP ? 1 : b === NO_SUP ? -1 : total(b) - total(a)));
 
+    // стадии закупки (словарь — web/ffe.js; без модуля колонка не печатается)
+    const FFE = window.AIVibeFFE || null;
+    const stId = (it) => (FFE && FFE.STATUS_BY_ID[it.status] ? it.status : "specified");
+    const stShort = (it) => (FFE ? FFE.statusMeta(stId(it)).short : "");
+    const supProgress = (k) => (FFE && groups[k].length
+      ? Math.round(groups[k].reduce((s, x) => s + FFE.statusProgress(stId(x.it)), 0) / groups[k].length * 100) : null);
+
     const content = [
       { columns: [ { text: "AIVibe", style: "logo" }, { text: "Закупочный лист", alignment: "right", style: "muted", margin: [0, 6, 0, 0] } ] },
       { canvas: [{ type: "line", x1: 0, y1: 0, x2: 515, y2: 0, lineWidth: 1, lineColor: "#B7502C" }], margin: [0, 8, 0, 0] },
@@ -187,16 +194,22 @@
       { text: "Закупка по поставщикам · " + (area || "—") + " м² · цены — себестоимость, без наценки", style: "muted", margin: [0, 0, 0, 14] },
     ];
     names.forEach((nm) => {
-      content.push({ text: nm + "   ·   " + money(total(nm)), style: "h2", margin: [0, 12, 0, 4] });
+      const pr = supProgress(nm);
+      content.push({ text: nm + "   ·   " + money(total(nm)) + (pr != null ? "   ·   готовность " + pr + "%" : ""), style: "h2", margin: [0, 12, 0, 4] });
       content.push({
-        table: { headerRows: 0, widths: ["*", 84, 26, "auto"], body: groups[nm].map((x) => [
-          x.it.priceDate
-            ? { stack: [ { text: x.it.title }, { text: "цена от " + fmtD(x.it.priceDate), fontSize: 8, color: stale(x.it.priceDate) ? "#B45309" : "#8A8088", margin: [0, 1, 0, 0] } ] }
-            : x.it.title,
-          { text: x.room, color: "#8A8088", fontSize: 9 },
-          { text: "×" + (x.it.qty || 1), alignment: "right", fontSize: 9, color: "#8A8088" },
-          { text: money(lineCost(x.it)), alignment: "right" },
-        ]) },
+        table: { headerRows: 0, widths: FFE ? ["*", 76, 44, 26, "auto"] : ["*", 84, 26, "auto"], body: groups[nm].map((x) => {
+          const cells = [
+            x.it.priceDate
+              ? { stack: [ { text: x.it.title }, { text: "цена от " + fmtD(x.it.priceDate), fontSize: 8, color: stale(x.it.priceDate) ? "#B45309" : "#8A8088", margin: [0, 1, 0, 0] } ] }
+              : x.it.title,
+            { text: x.room, color: "#8A8088", fontSize: 9 },
+            { text: "×" + (x.it.qty || 1), alignment: "right", fontSize: 9, color: "#8A8088" },
+            { text: money(lineCost(x.it)), alignment: "right" },
+          ];
+          // колонка стадии — между помещением и количеством
+          if (FFE) cells.splice(2, 0, { text: stShort(x.it), fontSize: 8, color: "#8A8088", alignment: "right", margin: [0, 1, 0, 0] });
+          return cells;
+        }) },
         layout: { hLineWidth: () => 0.5, hLineColor: () => "#EFEAE4", vLineWidth: () => 0, paddingTop: () => 3.5, paddingBottom: () => 3.5 },
       });
     });

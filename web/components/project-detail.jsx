@@ -374,6 +374,17 @@ function RoomSpecOverlay({ data, onClose }) {
   })();
   const setSup = (ri, ii, v) => setRooms((prev) => prev.map((r, i) => i !== ri ? r
     : { ...r, items: r.items.map((it, j) => j !== ii ? it : (() => { const { sup, ...rest } = it; const s = (v || "").trim(); return s ? { ...rest, sup: s } : rest; })()) }));
+
+  /* --- стадии закупки по позициям (фаза 2 слияния, шаг 2; словарь стадий — web/ffe.js).
+     Позиция без status считается «Подбор»; смена стадии штампует дату (stampStatus
+     не затирает ранее пройденные). Живут только в «Закупке» — клиент их не видит. */
+  const FFE = window.AIVibeFFE || null;
+  const stOf = (it) => (FFE && FFE.STATUS_BY_ID[it.status] ? it.status : "specified");
+  const setStatus = (ri, ii, id) => setRooms((prev) => prev.map((r, i) => i !== ri ? r
+    : { ...r, items: r.items.map((it, j) => j !== ii ? it : { ...it, status: id, statusDates: FFE.stampStatus(it.statusDates, id) }) }));
+  const rowsProgress = (rws) => (rws.length ? rws.reduce((s, x) => s + FFE.statusProgress(stOf(x.it)), 0) / rws.length : 0); // 0..1
+  const allProcRows = supGroups.flatMap((g) => g.rows);
+  const acceptedCount = FFE ? allProcRows.filter((x) => stOf(x.it) === "accepted").length : 0;
   // итог структурой: подытог (client) → скидка → доставка/монтаж → ИТОГО.
   // Скидка округляется до рубля от подытога — та же формула в PDF/Excel (инвариант выгрузок)
   const discountAmt = Math.round(client * discount / 100);
@@ -548,7 +559,10 @@ function RoomSpecOverlay({ data, onClose }) {
                       <span style={{ fontWeight: 800, fontFamily: "var(--font-display)", fontSize: 16.5, color: g.name === NO_SUP ? "var(--muted)" : undefined }}>
                         {g.name}<span style={{ color: "var(--faint)", fontWeight: 500, fontSize: 13 }}> · {g.rows.length} {plural(g.rows.length, ["позиция", "позиции", "позиций"])}</span>
                       </span>
-                      <span className="mono" style={{ fontWeight: 600, fontSize: 15 }}>{fmtMoney(g.total)}</span>
+                      <span style={{ display: "flex", alignItems: "baseline", gap: 12 }}>
+                        {FFE && <span className="mono" title="Средний прогресс стадий закупки позиций поставщика" style={{ fontSize: 11.5, color: "var(--spec-meta)" }}>готовность {Math.round(rowsProgress(g.rows) * 100)}%</span>}
+                        <span className="mono" style={{ fontWeight: 600, fontSize: 15 }}>{fmtMoney(g.total)}</span>
+                      </span>
                     </div>
                     <div className="mono" style={{ display: "flex", alignItems: "baseline", gap: 10, padding: "2px 0 6px", fontSize: 10.5, letterSpacing: ".06em", textTransform: "uppercase", color: "var(--spec-meta)", borderBottom: "1px solid var(--hairline)" }}>
                       <span style={{ flex: 1 }}>Позиция</span>
@@ -557,6 +571,7 @@ function RoomSpecOverlay({ data, onClose }) {
                       <span className="rs-unit" style={{ width: 88, textAlign: "right" }}>Цена/шт</span>
                       <span style={{ width: 100, textAlign: "right" }}>Сумма</span>
                       <span style={{ width: 128, textAlign: "right" }}>Поставщик</span>
+                      {FFE && <span style={{ width: 130, textAlign: "right" }}>Стадия</span>}
                     </div>
                     <div style={{ display: "flex", flexDirection: "column" }}>
                       {g.rows.map((x, i) => {
@@ -573,6 +588,20 @@ function RoomSpecOverlay({ data, onClose }) {
                               onBlur={(e) => { const v = e.target.value.trim(); if (v !== supOf(x.it)) setSup(x.ri, x.ii, v); }}
                               onKeyDown={(e) => { if (e.key === "Enter") e.target.blur(); }}
                               style={{ width: 128, flex: "none", padding: "5px 8px", fontSize: 12 }} />
+                            {FFE && (() => {
+                              const sid = stOf(x.it), m = FFE.statusMeta(sid);
+                              const sd = x.it.statusDates && x.it.statusDates[sid];
+                              return (
+                                <span style={{ display: "inline-flex", alignItems: "center", gap: 6, flex: "none" }} title={m.label + (sd ? " — с " + fmtDateRu(sd) : "")}>
+                                  <span aria-hidden="true" style={{ width: 8, height: 8, borderRadius: "50%", background: m.color, flex: "none" }} />
+                                  <select className="fld rs-st" value={sid} aria-label={"Стадия закупки позиции «" + x.it.title + "»"}
+                                    onChange={(e) => setStatus(x.ri, x.ii, e.target.value)}
+                                    style={{ width: 116, flex: "none", padding: "5px 6px", fontSize: 12 }}>
+                                    {FFE.FFE_STATUSES.map((s) => <option key={s.id} value={s.id}>{s.label}</option>)}
+                                  </select>
+                                </span>
+                              );
+                            })()}
                           </div>
                         );
                       })}
@@ -593,6 +622,14 @@ function RoomSpecOverlay({ data, onClose }) {
                     <span className="mono rs-val">{fmtMoney(g.total)}</span>
                   </div>
                 ))}
+                {FFE && allProcRows.length > 0 && (
+                  <div style={{ ...RS_ROW, borderTop: "1px solid var(--hairline-2)" }}>
+                    <span style={{ color: "var(--muted)" }}>Готовность закупки</span>
+                    <span className="mono rs-val" style={{ color: "var(--accent-2-ink)" }}>
+                      {Math.round(rowsProgress(allProcRows) * 100)}% · принято {acceptedCount} из {allProcRows.length}
+                    </span>
+                  </div>
+                )}
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 12, paddingTop: 12, marginTop: 4, borderTop: "2px solid var(--text)" }}>
                   <span style={{ fontWeight: 800, fontFamily: "var(--font-display)", fontSize: 15 }}>Итого закупка</span>
                   <span className="mono rs-val" style={{ fontWeight: 600, fontSize: 24, letterSpacing: "-0.01em" }}>{fmtMoney(grand)}</span>

@@ -193,6 +193,17 @@
     const supTotal = (name) => groups[name].reduce((s, x) => s + lineCost(x.it), 0);
     const names = Object.keys(groups).sort((a, b) => (a === NO_SUP ? 1 : b === NO_SUP ? -1 : supTotal(b) - supTotal(a)));
 
+    // стадии закупки (словарь — web/ffe.js; при недоступном модуле колонки пустые)
+    const FFE = window.AIVibeFFE || null;
+    const stId = (it) => (FFE && FFE.STATUS_BY_ID[it.status] ? it.status : "specified");
+    const stLabel = (it) => (FFE ? FFE.statusMeta(stId(it)).label : "");
+    const stDate = (it) => fmtDateCell(it.statusDates && it.statusDates[stId(it)]);
+    const supProgress = (name) => (FFE && groups[name].length
+      ? Math.round(groups[name].reduce((s, x) => s + FFE.statusProgress(stId(x.it)), 0) / groups[name].length * 100) + "%" : "");
+    const allRows = names.flatMap((nm) => groups[nm]);
+    const allProgress = FFE && allRows.length
+      ? Math.round(allRows.reduce((s, x) => s + FFE.statusProgress(stId(x.it)), 0) / allRows.length * 100) + "%" : "";
+
     const wb = XLSX.utils.book_new();
     const used = new Set();
     const uniqueSheet = (s) => {
@@ -203,39 +214,39 @@
     };
 
     /* свод по поставщикам */
-    const sv = [["AIVibe — закупочный лист"], [project || "Проект", "", area ? area + " м²" : ""], [], ["По поставщикам", "Позиций", "Сумма"]];
+    const sv = [["AIVibe — закупочный лист"], [project || "Проект", "", area ? area + " м²" : ""], [], ["По поставщикам", "Позиций", "Сумма", "Готовность"]];
     const smc = [];
-    names.forEach((nm) => { sv.push([nm, groups[nm].length, supTotal(nm)]); smc.push([sv.length - 1, 2]); });
-    sv.push(["ИТОГО ЗАКУПКА", rooms.reduce((s, r) => s + r.items.length, 0), grand]); smc.push([sv.length - 1, 2]);
+    names.forEach((nm) => { sv.push([nm, groups[nm].length, supTotal(nm), supProgress(nm)]); smc.push([sv.length - 1, 2]); });
+    sv.push(["ИТОГО ЗАКУПКА", rooms.reduce((s, r) => s + r.items.length, 0), grand, allProgress]); smc.push([sv.length - 1, 2]);
     sv.push([]);
     sv.push(["Бюджет проекта", "", budget]); smc.push([sv.length - 1, 2]);
     sv.push([grand > budget ? "Превышение бюджета" : "Остаток бюджета", "", Math.abs(budget - grand)]); smc.push([sv.length - 1, 2]);
     const wsS = XLSX.utils.aoa_to_sheet(sv);
-    setCols(wsS, [34, 9, 16]);
+    setCols(wsS, [34, 9, 16, 11]);
     fmtMoney(wsS, smc);
     XLSX.utils.book_append_sheet(wb, wsS, uniqueSheet("Свод закупки"));
 
     /* плоская мастер-таблица — полная картина + обратный импорт */
-    const all = [["№", "Поставщик", "Помещение", "Раздел", "Наименование", "Кол-во", "Цена, ₽", "Сумма, ₽", "Цена от"]];
+    const all = [["№", "Поставщик", "Помещение", "Раздел", "Наименование", "Кол-во", "Цена, ₽", "Сумма, ₽", "Цена от", "Стадия", "С даты"]];
     let n = 0;
     names.forEach((nm) => groups[nm].forEach((x) => {
-      all.push([++n, x.it.sup || "", x.room, x.it.cat || "Прочее", x.it.title, x.it.qty || 1, x.it.price, lineCost(x.it), fmtDateCell(x.it.priceDate)]);
+      all.push([++n, x.it.sup || "", x.room, x.it.cat || "Прочее", x.it.title, x.it.qty || 1, x.it.price, lineCost(x.it), fmtDateCell(x.it.priceDate), stLabel(x.it), stDate(x.it)]);
     }));
-    all.push(["", "", "", "", "ИТОГО ЗАКУПКА", "", "", grand, ""]);
+    all.push(["", "", "", "", "ИТОГО ЗАКУПКА", "", "", grand, "", allProgress, ""]);
     const wsA = XLSX.utils.aoa_to_sheet(all);
-    setCols(wsA, [5, 20, 18, 16, 46, 7, 13, 14, 11]);
+    setCols(wsA, [5, 20, 18, 16, 46, 7, 13, 14, 11, 14, 11]);
     fmtMoneyCols(wsA, [6, 7], 1, all.length - 1);
-    wsA["!autofilter"] = { ref: "A1:I1" };
+    wsA["!autofilter"] = { ref: "A1:K1" };
     XLSX.utils.book_append_sheet(wb, wsA, uniqueSheet("Все позиции"));
 
     /* лист на поставщика — рабочий документ для салона/магазина */
     names.forEach((nm) => {
-      const rows = [[nm], [], ["№", "Помещение", "Раздел", "Наименование", "Кол-во", "Цена, ₽", "Сумма, ₽", "Цена от"]];
+      const rows = [[nm], [], ["№", "Помещение", "Раздел", "Наименование", "Кол-во", "Цена, ₽", "Сумма, ₽", "Цена от", "Стадия", "С даты"]];
       let m = 0;
-      groups[nm].forEach((x) => rows.push([++m, x.room, x.it.cat || "Прочее", x.it.title, x.it.qty || 1, x.it.price, lineCost(x.it), fmtDateCell(x.it.priceDate)]));
-      rows.push(["", "", "", "Итого по поставщику", "", "", supTotal(nm), ""]);
+      groups[nm].forEach((x) => rows.push([++m, x.room, x.it.cat || "Прочее", x.it.title, x.it.qty || 1, x.it.price, lineCost(x.it), fmtDateCell(x.it.priceDate), stLabel(x.it), stDate(x.it)]));
+      rows.push(["", "", "", "Итого по поставщику", "", "", supTotal(nm), "", supProgress(nm), ""]);
       const ws = XLSX.utils.aoa_to_sheet(rows);
-      setCols(ws, [5, 18, 16, 46, 7, 13, 14, 11]);
+      setCols(ws, [5, 18, 16, 46, 7, 13, 14, 11, 14, 11]);
       fmtMoneyCols(ws, [5, 6], 2, rows.length - 1);
       XLSX.utils.book_append_sheet(wb, ws, uniqueSheet(nm));
     });
@@ -279,6 +290,9 @@
           const cQty = colOf(head, /кол|кол-во|шт|qty|количеств/);
           const cSup = colOf(head, /поставщ|supplier/);          // закупочный лист / рабочая мастер-таблица
           const cPD = colOf(head, /цена от|дата цены/);           // давность цены (ДД.ММ.ГГГГ → ISO)
+          const cSt = colOf(head, /стади|статус/);                // стадия закупки (метка → id из ffe.js)
+          const stByLabel = window.AIVibeFFE
+            ? Object.fromEntries(window.AIVibeFFE.FFE_STATUSES.map((s) => [norm(s.label), s.id])) : {};
           // цена за единицу: «цена/стоимость» без «клиент»; если нет — выводим из суммы/кол-во
           const cPrice = head.findIndex((h) => /цена|стоим|price/.test(norm(h)) && !/клиент/.test(norm(h)));
           const cSum = head.findIndex((h) => /сумма|total/.test(norm(h)) && !/клиент/.test(norm(h)));
@@ -306,8 +320,10 @@
               const pdm = /^(\d{1,2})\.(\d{1,2})\.(\d{4})$/.exec(String(row[cPD] == null ? "" : row[cPD]).trim());
               if (pdm) priceDate = pdm[3] + "-" + pdm[2].padStart(2, "0") + "-" + pdm[1].padStart(2, "0");
             }
+            // стадия закупки: метка из ячейки → id (неизвестные метки игнорируем — позиция останется «Подбор»)
+            const status = cSt >= 0 ? stByLabel[norm(String(row[cSt] == null ? "" : row[cSt]).trim())] || "" : "";
             if (!byRoom.has(roomName)) byRoom.set(roomName, []);
-            byRoom.get(roomName).push({ title, cat, price, qty, ...(sup ? { sup } : {}), ...(priceDate ? { priceDate } : {}) });
+            byRoom.get(roomName).push({ title, cat, price, qty, ...(sup ? { sup } : {}), ...(priceDate ? { priceDate } : {}), ...(status ? { status } : {}) });
           }
 
           const rooms = [...byRoom.entries()].map(([name, items]) => ({ name, items }));
