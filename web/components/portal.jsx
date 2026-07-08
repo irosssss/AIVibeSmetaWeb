@@ -18,6 +18,51 @@ const PORTAL_CHOICES = [
   { id: "rejected", label: "Отклонить", color: "var(--accent)" },
 ];
 
+/* Дата+время треда — короче ISO, читаемо в переписке («08.07 14:32»). */
+const fmtCommentAt = (iso) => {
+  try { return new Date(iso).toLocaleString("ru-RU", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }); }
+  catch { return ""; }
+};
+
+/* ---------------- КОММЕНТАРИИ-ТРЕД НА ПОЗИЦИИ (волна A3) ----------------
+   Клиент пишет здесь; ответ студии появляется тем же треугольником (дизайнер
+   отвечает из «Версий» в кабинете — читают/пишут один и тот же снимок портал-шары). */
+function PortalCommentThread({ comments, onSend }) {
+  const [draft, setDraft] = useP("");
+  const send = (e) => {
+    e.preventDefault();
+    const t = draft.trim();
+    if (!t) return;
+    onSend(t);
+    setDraft("");
+  };
+  return (
+    <div style={{ marginTop: 10 }}>
+      {comments.length > 0 && (
+        <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 8 }}>
+          {comments.map((c) => (
+            <div key={c.id} style={{
+              alignSelf: c.author === "client" ? "flex-end" : "flex-start", maxWidth: "88%",
+              padding: "6px 10px", borderRadius: 10, fontSize: 12.5, lineHeight: 1.5,
+              background: c.author === "client" ? "var(--accent-2)" : "var(--glass-2)",
+              color: c.author === "client" ? "var(--on-accent)" : "var(--text)",
+              border: c.author === "client" ? "none" : "1px solid var(--hairline)",
+            }}>
+              <div>{c.text}</div>
+              <div style={{ fontSize: 10.5, opacity: .75, marginTop: 3 }}>{c.author === "client" ? "Вы" : "Студия"} · {fmtCommentAt(c.at)}</div>
+            </div>
+          ))}
+        </div>
+      )}
+      <form onSubmit={send} style={{ display: "flex", gap: 6 }}>
+        <input className="fld" value={draft} onChange={(e) => setDraft(e.target.value)} placeholder="Комментарий к позиции…"
+          aria-label="Комментарий к позиции" style={{ fontSize: 12.5, padding: "6px 9px", flex: 1 }} />
+        <button type="submit" className="btn btn-ghost" style={{ padding: "6px 12px", fontSize: 12, flex: "none" }} disabled={!draft.trim()}>Отправить</button>
+      </form>
+    </div>
+  );
+}
+
 function PortalWrap({ children }) {
   return (
     <div className="minh-screen" style={{ background: "var(--bg)" }}>
@@ -58,6 +103,10 @@ function ClientPortal({ shareId }) {
     const updated = F.setPortalApprove(shareId, ri, ii, cur === id ? "pending" : id); // повторный клик — снять
     if (updated) setRec({ ...updated });
   };
+  const comment = (ri, ii, text) => {
+    const updated = F.addPortalComment(shareId, ri, ii, "client", text);
+    if (updated) setRec({ ...updated });
+  };
 
   const RS_ROW = { display: "flex", justifyContent: "space-between", alignItems: "baseline", padding: "6px 0", fontSize: 14 };
   return (
@@ -76,7 +125,7 @@ function ClientPortal({ shareId }) {
       {/* честная заметка про демо-ссылку (доступ с др. устройства — с доменом) */}
       <div className="glass" style={{ borderRadius: 12, padding: "11px 14px", margin: "16px 0 22px", fontSize: 12.5, color: "var(--muted)", lineHeight: 1.5, display: "flex", gap: 10, alignItems: "flex-start" }}>
         <I.info size={16} style={{ color: "var(--accent)", flex: "none", marginTop: 1 }} />
-        <span>Отметьте по каждой позиции решение — <b>согласовать</b>, <b>на пересмотр</b> или <b>отклонить</b>. Ответы сохраняются автоматически. Это демо-ссылка (работает в этом браузере); доступ с другого устройства подключится вместе с доменом студии.</span>
+        <span>Отметьте по каждой позиции решение — <b>согласовать</b>, <b>на пересмотр</b> или <b>отклонить</b> — и, если нужно, напишите комментарий дизайнеру. Ответы сохраняются автоматически. Это демо-ссылка (работает в этом браузере); доступ с другого устройства подключится вместе с доменом студии.</span>
       </div>
 
       {/* комнаты и позиции */}
@@ -117,6 +166,7 @@ function ClientPortal({ shareId }) {
                         );
                       })}
                     </div>
+                    <PortalCommentThread comments={it.comments || []} onSend={(text) => comment(ri, ii, text)} />
                   </div>
                 );
               })}

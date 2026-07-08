@@ -980,7 +980,11 @@ function VersionsModal({ versions, current, onSave, onRestore, onSetStatus, onPa
   const FFE = window.AIVibeFFE;
   const [label, setLabel] = usePD("");
   const [compareId, setCompareId] = usePD(null);
+  const [cmtOpenId, setCmtOpenId] = usePD(null);   // id версии, у которой раскрыты комментарии-треды
+  const [cmtTick, setCmtTick] = usePD(0);          // бампается после ответа студии — форсирует перечитать shareId из хранилища
   const fmtDT = (iso) => (iso && iso.length >= 10 ? iso.slice(8, 10) + "." + iso.slice(5, 7) + "." + iso.slice(0, 4) : "");
+  const commentsCount = (sh) => (sh && sh.snapshot && Array.isArray(sh.snapshot.rooms)
+    ? sh.snapshot.rooms.reduce((s, r) => s + (r.items || []).reduce((x, it) => x + ((it.comments || []).length), 0), 0) : 0);
 
   // комната + название → {qty, себестоимость}; дубликаты строк складываются
   const agg = (rooms) => {
@@ -1038,6 +1042,7 @@ function VersionsModal({ versions, current, onSave, onRestore, onSetStatus, onPa
           // ответ клиента через портал (волна A2): читаем шару версии
           const sh = v.shareId && FFE.loadPortalShare ? FFE.loadPortalShare(v.shareId) : null;
           const shOk = sh && sh.snapshot ? (sh.snapshot.rooms || []).reduce((s, r) => s + (r.items || []).filter((it) => it.approve === "ok").length, 0) : 0;
+          const cmCount = commentsCount(sh);
           return (
             <div key={v.id} className="glass" style={{ borderRadius: "var(--r-lg)", padding: "13px 15px" }}>
               <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
@@ -1063,9 +1068,19 @@ function VersionsModal({ versions, current, onSave, onRestore, onSetStatus, onPa
                   title={v.shareId ? "Показать ссылку для клиента" : "Создать ссылку для клиента"}>
                   <I.send size={14} />{v.shareId ? "Ссылка ✓" : "Ссылка клиенту"}
                 </button>
+                {v.shareId && (
+                  <button className="btn btn-ghost" style={{ padding: "7px 12px", fontSize: 12.5, ...(cmCount > 0 ? { color: "var(--info)" } : {}) }}
+                    onClick={() => setCmtOpenId(cmtOpenId === v.id ? null : v.id)} aria-expanded={cmtOpenId === v.id}
+                    title="Комментарии клиента к позициям и ответы студии">
+                    <I.chat size={14} />{cmtOpenId === v.id ? "Скрыть комментарии" : "Комментарии" + (cmCount ? " · " + cmCount : "")}
+                  </button>
+                )}
                 <button className="icon-btn" onClick={() => onRemove(v)} title="Удалить версию" aria-label={"Удалить версию «" + v.label + "»"}
                   style={{ width: 30, height: 30, marginLeft: "auto", color: "var(--spec-meta)" }}><I.trash size={15} /></button>
               </div>
+              {cmtOpenId === v.id && sh && (
+                <PortalCommentsThreads sh={sh} onReply={(ri, ii, text) => { FFE.addPortalComment(v.shareId, ri, ii, "studio", text); setCmtTick((t) => t + 1); }} />
+              )}
               {d && (
                 <div style={{ marginTop: 10, padding: "10px 12px", borderRadius: 10, background: "var(--glass-2)", border: "1px solid var(--hairline)", fontSize: 12.5, lineHeight: 1.55 }}>
                   <div style={{ marginBottom: 6 }}>
@@ -1095,6 +1110,75 @@ function VersionsModal({ versions, current, onSave, onRestore, onSetStatus, onPa
         })}
       </div>
     </Modal>
+  );
+}
+
+/* Дата+время треда («08.07 14:32») — короче ISO, читаемо в переписке. */
+const fmtCommentAt = (iso) => {
+  try { return new Date(iso).toLocaleString("ru-RU", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }); }
+  catch { return ""; }
+};
+
+/* ---------------- КОММЕНТАРИИ-ТРЕДЫ (волна A3) ----------------
+   Клиент пишет через портал (`ClientPortal`); здесь дизайнер видит переписку по
+   снимку версии и отвечает — читают/пишут ОДИН и тот же объект (портал-шара),
+   поэтому не нужно сверять идентичность позиций между живой сметой и снимком.
+   Показываем только позиции, где уже есть хотя бы один комментарий, —
+   пустая переписка не начинается из кабинета (v1: инициатива — у клиента). */
+function PortalCommentsThreads({ sh, onReply }) {
+  const rooms = (sh.snapshot && sh.snapshot.rooms) || [];
+  const groups = [];
+  rooms.forEach((r, ri) => (r.items || []).forEach((it, ii) => {
+    if ((it.comments || []).length) groups.push({ ri, ii, room: r.name || "Помещение", title: it.title, comments: it.comments });
+  }));
+  if (!groups.length) {
+    return (
+      <div style={{ marginTop: 10, padding: "10px 12px", borderRadius: 10, background: "var(--glass-2)", border: "1px solid var(--hairline)", fontSize: 12.5, color: "var(--muted)" }}>
+        Клиент пока не оставил комментариев к позициям.
+      </div>
+    );
+  }
+  return (
+    <div style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: 10 }}>
+      {groups.map((g) => (
+        <CommentThreadCard key={g.ri + "_" + g.ii} group={g} onReply={(text) => onReply(g.ri, g.ii, text)} />
+      ))}
+    </div>
+  );
+}
+
+function CommentThreadCard({ group, onReply }) {
+  const [draft, setDraft] = usePD("");
+  const send = (e) => {
+    e.preventDefault();
+    const t = draft.trim();
+    if (!t) return;
+    onReply(t);
+    setDraft("");
+  };
+  return (
+    <div style={{ padding: "10px 12px", borderRadius: 10, background: "var(--glass-2)", border: "1px solid var(--hairline)" }}>
+      <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 6, color: "var(--spec-meta)" }}>{group.room} · {group.title}</div>
+      <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 8 }}>
+        {group.comments.map((c) => (
+          <div key={c.id} style={{
+            alignSelf: c.author === "client" ? "flex-start" : "flex-end", maxWidth: "88%",
+            padding: "6px 10px", borderRadius: 10, fontSize: 12.5, lineHeight: 1.5,
+            background: c.author === "client" ? "var(--glass)" : "var(--accent-2)",
+            color: c.author === "client" ? "var(--text)" : "var(--on-accent)",
+            border: c.author === "client" ? "1px solid var(--hairline)" : "none",
+          }}>
+            <div>{c.text}</div>
+            <div style={{ fontSize: 10.5, opacity: .75, marginTop: 3 }}>{c.author === "client" ? "Клиент" : "Вы"} · {fmtCommentAt(c.at)}</div>
+          </div>
+        ))}
+      </div>
+      <form onSubmit={send} style={{ display: "flex", gap: 6 }}>
+        <input className="fld" value={draft} onChange={(e) => setDraft(e.target.value)} placeholder="Ответить клиенту…"
+          aria-label={"Ответить клиенту по позиции «" + group.title + "»"} style={{ fontSize: 12.5, padding: "6px 9px", flex: 1 }} />
+        <button type="submit" className="btn btn-ghost" style={{ padding: "6px 12px", fontSize: 12, flex: "none" }} disabled={!draft.trim()}>Ответить</button>
+      </form>
+    </div>
   );
 }
 

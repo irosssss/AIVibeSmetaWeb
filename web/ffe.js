@@ -57,6 +57,27 @@
   const APPROVE_BY_ID = Object.fromEntries(APPROVE_STATUSES.map((s) => [s.id, s]));
   const approveMeta = (id) => APPROVE_BY_ID[id] || APPROVE_BY_ID.pending;
 
+  /* Комментарии-треды на позиции (волна A3, бенчмарк Programa) — отдельные от approve:
+     решение клиента фиксируется кнопками, а здесь — переписка вокруг позиции. Для v1
+     тред живёт на снимке портал-шары (клиент пишет через портал, дизайнер отвечает
+     в «Версиях» — обе стороны читают/пишут ОДИН и тот же объект, поэтому не нужно
+     сверять идентичность позиций между живой сметой дизайнера и снимком). */
+  function blankComment(over) {
+    const o = over || {};
+    return {
+      id: o.id || "cm_" + Date.now().toString(36) + Math.random().toString(36).slice(2, 7),
+      author: o.author === "client" ? "client" : "studio",
+      text: str(o.text),
+      at: o.at || new Date().toISOString(),
+    };
+  }
+  // добавить комментарий в тред (пустой текст игнорируется)
+  function addComment(comments, author, text) {
+    const t = str(text);
+    if (!t) return Array.isArray(comments) ? comments : [];
+    return [...(Array.isArray(comments) ? comments : []), blankComment({ author, text: t })];
+  }
+
   /* ----------------------------- УТИЛИТЫ ----------------------------- */
   const genId = () => "ffe_" + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
   const today = () => new Date().toISOString().slice(0, 10); // YYYY-MM-DD
@@ -106,7 +127,7 @@
       statusDates: o.statusDates && typeof o.statusDates === "object" ? { ...o.statusDates } : {}, // Даты по стадиям {id:YYYY-MM-DD}
       approve:  APPROVE_BY_ID[o.approve] && o.approve !== "pending" ? o.approve : "", // Решение клиента ("" = ждёт)
       approveAt: str(o.approveAt),             // Дата решения (YYYY-MM-DD)
-      approveNote: str(o.approveNote),         // Комментарий к решению (треды — волна A3)
+      comments: Array.isArray(o.comments) ? o.comments.map((c) => blankComment(c)).filter((c) => c.text) : [], // Тред комментариев (волна A3)
       eta:      str(o.eta),                     // Ожидаемая дата готовности/доставки (YYYY-MM-DD)
       note:     str(o.note),                   // Примечание
       analogOf: o.analogOf || null,            // id исходной позиции (если это аналог)
@@ -443,17 +464,32 @@
     try { localStorage.setItem(PKEY(shareId), JSON.stringify(rec)); } catch {}
     return rec;
   }
+  // комментарий к позиции снимка (волна A3): клиент пишет через портал, дизайнер —
+  // из «Версий» в кабинете; оба читают/пишут один и тот же снимок портал-шары.
+  // respondedAt штампуем только от клиента — ответ студии не должен выглядеть как «клиент ответил».
+  function addPortalComment(shareId, ri, ii, author, text) {
+    const rec = loadPortalShare(shareId);
+    if (!rec || !rec.snapshot || !Array.isArray(rec.snapshot.rooms)) return null;
+    const room = rec.snapshot.rooms[ri];
+    if (!room || !Array.isArray(room.items) || !room.items[ii]) return rec;
+    const it = room.items[ii];
+    it.comments = addComment(it.comments, author, text);
+    if (author === "client") rec.respondedAt = new Date().toISOString();
+    try { localStorage.setItem(PKEY(shareId), JSON.stringify(rec)); } catch {}
+    return rec;
+  }
 
   window.AIVibeFFE = {
     FFE_CATEGORIES, FFE_UNITS, FFE_STATUSES, STATUS_LABEL, STATUS_BY_ID, DEFAULT_STATUS,
     APPROVE_STATUSES, APPROVE_BY_ID, approveMeta,
     EXTRA_PRESETS, statusMeta, statusProgress, stampStatus, today,
     blankPosition, normalizePosition, dimsLabel, lineTotal,
+    blankComment, addComment,
     blankProduct, productFromPosition, positionFromProduct,
     blankExtra, extraAmount, extrasTotal,
     BENCHMARK, estimateBudget, generateEstimate, setPendingDraft, takePendingDraft,
     loadEstimate, saveEstimate, clearEstimate,
     VERSION_STATUSES, vStatusMeta, loadVersions, saveVersions, clearVersions, makeSnapshot,
-    clientPricing, createPortalShare, loadPortalShare, setPortalApprove,
+    clientPricing, createPortalShare, loadPortalShare, setPortalApprove, addPortalComment,
   };
 })();
