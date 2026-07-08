@@ -270,7 +270,7 @@ function RoomSpecOverlay({ data, onClose }) {
     // импортированная из Excel смета не привязана к проекту — создаём его,
     // иначе «Сохранено» врало бы, а наценки терялись при закрытии оверлея
     AIVibeAPI.projects.create({
-      name: data.name || "Смета из Excel", room: "Комплектация из Excel", style: "",
+      name: data.name || "Смета из Excel", room: data.generated ? "Черновик по площади" : "Комплектация из Excel", style: "",
       area: data.area, budget: data.budget || 0,
       summaryShort: data.summaryShort, ...patch,
     }).then((p) => { setSavedId(p.id); toast("Смета сохранена в «Мои проекты»"); done(); });
@@ -401,12 +401,57 @@ function RoomSpecOverlay({ data, onClose }) {
   const exportPDF = () => { if (window.AIVibePDF && AIVibePDF.exportRoomSpec) withLib("pdf", () => AIVibePDF.exportRoomSpec(specArgs())); };
   const exportXLSX = () => { if (window.AIVibeXLSX) withLib("xlsx", () => AIVibeXLSX.exportRoomSpec(specArgs())); };
 
+  /* --- версии + согласование (фаза 2 слияния, шаг 3; статусы и хранилище — web/ffe.js).
+     Снимок = позиции + наценки + скидка/доставка/монтаж: восстановление возвращает смету
+     в момент отправки клиенту (включая стадии закупки — они живут в позициях).
+     Версии привязаны к проекту — несохранённую смету просим сначала сохранить. */
+  const [versionsOpen, setVersionsOpen] = usePD(false);
+  const [versions, setVersions] = usePD(() => (FFE && data.id ? FFE.loadVersions(data.id) : []));
+  usePDE(() => { if (FFE && savedId) FFE.saveVersions(savedId, versions); }, [versions, savedId]);
+  const approved = versions.find((v) => v.status === "approved");
+  const openVersions = () => {
+    if (!savedId) { toast("Сначала сохраните смету — версии привязаны к проекту.", "warn", 5000); return; }
+    setVersionsOpen(true);
+  };
+  const saveVersion = (label) => {
+    setVersions((prev) => [{
+      id: "v_" + Date.now().toString(36),
+      label: (label || "").trim() || "Версия от " + fmtDateRu(FFE.today()),
+      createdAt: new Date().toISOString(),
+      total: grand, clientTotal: totalClient, positions: itemsCount,
+      status: "draft", statusAt: "", note: "",
+      snapshot: JSON.parse(JSON.stringify({ rooms, markup, catMarkup, discount, delivery, install })),
+    }, ...prev]);
+  };
+  const restoreVersion = (v) => {
+    const s = v.snapshot || {};
+    setRooms(Array.isArray(s.rooms) ? s.rooms : []);
+    if (typeof s.markup === "number") setMarkup(s.markup);
+    setCatMarkup(s.catMarkup || {});
+    setDiscount(s.discount || 0); setDelivery(s.delivery || 0); setInstall(s.install || 0);
+    setEditPos(null);
+    setVersionsOpen(false);
+    toast("Версия «" + v.label + "» загружена в рабочую смету. Не забудьте сохранить.");
+  };
+  const patchVersion = (id, patch) => setVersions((prev) => prev.map((v) => (v.id === id ? { ...v, ...patch } : v)));
+  const setVersionStatus = (id, status) => patchVersion(id, { status, statusAt: FFE.today() });
+  const removeVersion = async (v) => {
+    const ok = await confirmDialog({ title: "Удалить версию?", text: "«" + v.label + "» исчезнет из истории. Рабочую смету это не меняет.", confirmLabel: "Удалить версию" });
+    if (ok) setVersions((prev) => prev.filter((x) => x.id !== v.id));
+  };
+
   return (
     <div className="pd-overlay" role="dialog" aria-label={"Смета: " + data.name}>
       <OverlayHead onBack={onClose} budget={data.budget}
         crumbs={[{ label: "Проекты", onClick: onClose }, { label: data.name }, { label: "Смета" }]}
         title={data.name}
-        sub={"Комплектация по дизайн-проекту · " + data.area + " м² · " + itemsCount + " " + plural(itemsCount, ["позиция", "позиции", "позиций"])} />
+        sub={"Комплектация по дизайн-проекту · " + data.area + " м² · " + itemsCount + " " + plural(itemsCount, ["позиция", "позиции", "позиций"])}
+        right={approved ? (
+          <span className="glass" title={"Согласована версия «" + approved.label + "»" + (approved.statusAt ? " — " + fmtDateRu(approved.statusAt) : "")}
+            style={{ display: "flex", alignItems: "center", gap: 7, padding: "7px 13px", borderRadius: 99, fontSize: 12.5, fontWeight: 700, whiteSpace: "nowrap", color: "var(--accent-2-ink)", borderColor: "rgba(94,107,91,.4)" }}>
+            <I.check size={15} />Согласовано{approved.statusAt ? " · " + fmtDateRu(approved.statusAt) : ""}
+          </span>
+        ) : null} />
 
       {/* solo: у сметы нет правого чат-рейла — грид 1fr, контент центрируется */}
       <div className="pd-body solo">
@@ -422,6 +467,11 @@ function RoomSpecOverlay({ data, onClose }) {
                 title="Скопировать позиции из прошлого проекта (с пометкой давности цены) или добавить типовую комплектацию">
                 <I.plus size={16} />Из прошлого проекта / шаблона
               </button>
+              {FFE && (
+                <button className="btn btn-ghost" onClick={openVersions} title="Снимки сметы, сравнение с текущей и статус согласования с клиентом">
+                  <I.news size={16} />Версии{versions.length ? " · " + versions.length : ""}
+                </button>
+              )}
             </div>
 
             {/* наценка дизайнера: базовая на всё + свои проценты по разделам (в закупке не участвует) */}
@@ -796,7 +846,131 @@ function RoomSpecOverlay({ data, onClose }) {
         </div>
       </div>
       {addOpen && <AddPositionsModal excludeId={savedId} roomNames={rooms.map((r) => r.name)} onClose={() => setAddOpen(false)} onAdd={addFrom} />}
+      {versionsOpen && (
+        <VersionsModal versions={versions} current={{ rooms, grand, totalClient, itemsCount }}
+          onSave={saveVersion} onRestore={restoreVersion} onSetStatus={setVersionStatus}
+          onPatch={patchVersion} onRemove={removeVersion} onClose={() => setVersionsOpen(false)} />
+      )}
     </div>
+  );
+}
+
+/* ---------------- ВЕРСИИ + СОГЛАСОВАНИЕ (фаза 2 слияния, шаг 3) ----------------
+   История снимков сметы: сохранить текущую, восстановить, сравнить с текущей
+   (Δ итога клиенту, +добавлено/−удалено/~изменено), статус согласования с датой
+   и комментарий клиента. Фундамент клиентского портала (роадмап #9).
+   Позиции без id — диф по ключу «комната + название» с агрегацией дублей. */
+function VersionsModal({ versions, current, onSave, onRestore, onSetStatus, onPatch, onRemove, onClose }) {
+  const FFE = window.AIVibeFFE;
+  const [label, setLabel] = usePD("");
+  const [compareId, setCompareId] = usePD(null);
+  const fmtDT = (iso) => (iso && iso.length >= 10 ? iso.slice(8, 10) + "." + iso.slice(5, 7) + "." + iso.slice(0, 4) : "");
+
+  // комната + название → {qty, себестоимость}; дубликаты строк складываются
+  const agg = (rooms) => {
+    const m = new Map();
+    (rooms || []).forEach((r) => (r.items || []).forEach((it) => {
+      const k = r.name + "¶" + it.title;
+      const e = m.get(k) || { title: it.title, qty: 0, total: 0 };
+      e.qty += it.qty || 1; e.total += (it.price || 0) * (it.qty || 1);
+      m.set(k, e);
+    }));
+    return m;
+  };
+  const diff = (v) => {
+    const a = agg(v.snapshot && v.snapshot.rooms), b = agg(current.rooms);
+    return {
+      added: [...b.entries()].filter(([k]) => !a.has(k)).map(([, x]) => x),
+      removed: [...a.entries()].filter(([k]) => !b.has(k)).map(([, x]) => x),
+      changed: [...b.entries()].filter(([k, x]) => a.has(k) && (a.get(k).total !== x.total || a.get(k).qty !== x.qty)).map(([, x]) => x),
+      dTotal: current.totalClient - (v.clientTotal || 0),
+    };
+  };
+
+  const submit = (e) => { e.preventDefault(); onSave(label); setLabel(""); };
+
+  return (
+    <Modal onClose={onClose} label="Версии и согласование" maxWidth={680}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, padding: "20px 24px", borderBottom: "1px solid var(--hairline)" }}>
+        <div>
+          <h3 className="display" style={{ fontSize: 20 }}>Версии и согласование</h3>
+          <div style={{ fontSize: 13, color: "var(--muted)", marginTop: 3 }}>Снимки сметы и статус согласования с клиентом</div>
+        </div>
+        <button className="icon-btn" onClick={onClose} aria-label="Закрыть"><I.close size={18} /></button>
+      </div>
+
+      <div style={{ padding: "16px 24px 20px", display: "flex", flexDirection: "column", gap: 12, maxHeight: "62vh", overflow: "auto" }}>
+        {/* сохранить текущую смету как версию */}
+        <form onSubmit={submit} style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <input className="fld" style={{ flex: "1 1 240px" }} value={label} onChange={(e) => setLabel(e.target.value)}
+            placeholder="Название версии — например «Клиенту, вариант 1»" aria-label="Название версии" />
+          <button type="submit" className="btn btn-primary" style={{ padding: "10px 16px", whiteSpace: "nowrap", flex: "none" }}><I.plus size={15} />Сохранить версию</button>
+        </form>
+        <div style={{ fontSize: 12.5, color: "var(--muted)", marginTop: -4 }}>
+          Сейчас: себестоимость <b className="mono" style={{ color: "var(--text)", fontWeight: 600 }}>{fmtMoney(current.grand)}</b> · итог клиенту <b className="mono" style={{ color: "var(--accent-2-ink)", fontWeight: 600 }}>{fmtMoney(current.totalClient)}</b> · {current.itemsCount} {plural(current.itemsCount, ["позиция", "позиции", "позиций"])}. Снимок включает позиции, наценки, скидку и доставку/монтаж.
+        </div>
+
+        {!versions.length && (
+          <div style={{ padding: "22px 8px", textAlign: "center", color: "var(--muted)", fontSize: 14, lineHeight: 1.6 }}>
+            Пока нет сохранённых версий.<br />Сохраните снимок перед отправкой клиенту — и отмечайте статус согласования по ответу.
+          </div>
+        )}
+
+        {versions.map((v) => {
+          const sm = FFE.vStatusMeta(v.status);
+          const d = compareId === v.id ? diff(v) : null;
+          return (
+            <div key={v.id} className="glass" style={{ borderRadius: "var(--r-lg)", padding: "13px 15px" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+                <span style={{ fontWeight: 700, fontSize: 14.5, flex: 1, minWidth: 140 }}>{v.label}</span>
+                <span style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 11.5, fontWeight: 700, color: sm.color, padding: "3px 10px", borderRadius: 99, background: "var(--glass-2)", border: "1px solid var(--hairline)", whiteSpace: "nowrap" }}>
+                  <span aria-hidden="true" style={{ width: 6, height: 6, borderRadius: "50%", background: sm.color, flex: "none" }} />{sm.label}{v.statusAt ? " · " + fmtDT(v.statusAt) : ""}
+                </span>
+              </div>
+              <div className="mono" style={{ fontSize: 11.5, color: "var(--spec-meta)", margin: "7px 0 10px" }}>
+                {fmtDT(v.createdAt)} · себест. {fmtMoney(v.total)} · клиенту {fmtMoney(v.clientTotal)} · {v.positions} поз.
+              </div>
+              <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+                <select className="fld" value={v.status} onChange={(e) => onSetStatus(v.id, e.target.value)} aria-label={"Статус согласования версии «" + v.label + "»"}
+                  style={{ width: "auto", padding: "7px 9px", fontSize: 12.5, fontWeight: 600 }}>
+                  {FFE.VERSION_STATUSES.map((s) => <option key={s.id} value={s.id}>{s.label}</option>)}
+                </select>
+                <button className="btn btn-ghost" style={{ padding: "7px 12px", fontSize: 12.5 }} onClick={() => onRestore(v)} title="Загрузить эту версию в рабочую смету">Восстановить</button>
+                <button className="btn btn-ghost" style={{ padding: "7px 12px", fontSize: 12.5 }} onClick={() => setCompareId(compareId === v.id ? null : v.id)} aria-expanded={compareId === v.id}>
+                  {compareId === v.id ? "Скрыть сравнение" : "Сравнить с текущей"}
+                </button>
+                <button className="icon-btn" onClick={() => onRemove(v)} title="Удалить версию" aria-label={"Удалить версию «" + v.label + "»"}
+                  style={{ width: 30, height: 30, marginLeft: "auto", color: "var(--spec-meta)" }}><I.trash size={15} /></button>
+              </div>
+              {d && (
+                <div style={{ marginTop: 10, padding: "10px 12px", borderRadius: 10, background: "var(--glass-2)", border: "1px solid var(--hairline)", fontSize: 12.5, lineHeight: 1.55 }}>
+                  <div style={{ marginBottom: 6 }}>
+                    Текущая смета против этой версии: итог клиенту{" "}
+                    <b className="mono" style={{ fontWeight: 600, color: d.dTotal > 0 ? "var(--accent-ink)" : d.dTotal < 0 ? "var(--accent-2-ink)" : "var(--text)" }}>
+                      {d.dTotal === 0 ? "без изменений" : (d.dTotal > 0 ? "+" : "−") + fmtMoney(Math.abs(d.dTotal))}
+                    </b>
+                  </div>
+                  <div style={{ display: "flex", gap: 14, flexWrap: "wrap" }}>
+                    <span style={{ color: "var(--accent-2-ink)" }}>+{d.added.length} добавлено</span>
+                    <span style={{ color: "var(--accent-ink)" }}>−{d.removed.length} удалено</span>
+                    <span style={{ color: "var(--muted)" }}>~{d.changed.length} изменено</span>
+                  </div>
+                  {(d.added.length + d.removed.length + d.changed.length) > 0 && (
+                    <div style={{ marginTop: 7, color: "var(--spec-meta)" }}>
+                      {d.added.slice(0, 3).map((x) => "＋ " + x.title)
+                        .concat(d.removed.slice(0, 3).map((x) => "－ " + x.title), d.changed.slice(0, 3).map((x) => "≈ " + x.title))
+                        .join(" · ")}
+                    </div>
+                  )}
+                </div>
+              )}
+              <input className="fld" style={{ marginTop: 10, fontSize: 12.5 }} value={v.note || ""} onChange={(e) => onPatch(v.id, { note: e.target.value })}
+                placeholder="Комментарий клиента / замечания…" aria-label={"Комментарий к версии «" + v.label + "»"} />
+            </div>
+          );
+        })}
+      </div>
+    </Modal>
   );
 }
 

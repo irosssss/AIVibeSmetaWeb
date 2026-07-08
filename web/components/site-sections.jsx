@@ -571,7 +571,87 @@ function NewsFeed() {
   );
 }
 
+/* --------------------------------------------------------------
+   КАЛЬКУЛЯТОР ПЛОЩАДИ — лид-ген «ценность до регистрации»:
+   площадь + сегмент → ориентир бюджета по рыночному бенчмарку ₽/м²
+   (web/ffe.js: BENCHMARK из SMETA_BENCHMARK_2026-06) и CTA
+   «Собрать смету-черновик» — автогенерация комнат и позиций
+   под этот бюджет, черновик открывается в кабинете.
+-------------------------------------------------------------- */
+function BudgetCalc({ go }) {
+  const ref = useReveal();
+  const F = window.AIVibeFFE;
+  const [area, setArea] = useS2(70);
+  const [seg, setSeg] = useS2("mid");
+  if (!F) return null;   // модуль не загрузился — секция честно отсутствует
+  const res = F.estimateBudget(area, seg);
+  const makeDraft = () => {
+    const d = F.generateEstimate(area, seg);
+    // черновик в модель текущей сметы: услуги-строки vite-ветки → поле «Доставка, ₽»
+    const deliveryCost = (d.extras || []).reduce((s, e) => s + (e.kind === "fixed" ? Math.round(e.value) : 0), 0);
+    // без id: «Сохранить смету» создаст новый проект (канал Excel-импорта)
+    F.setPendingDraft({ name: d.name, area: d.area, budget: d.budget, rooms: d.rooms,
+      markupPct: d.markupPct, deliveryCost, summaryShort: d.summaryShort, generated: true });
+    go && go("cabinet");
+  };
+  return (
+    <section id="calc" style={{ paddingBlock: "clamp(60px,9vh,110px)" }} ref={ref}>
+      <div className="container reveal">
+        <div className="eyebrow" style={{ marginBottom: 18 }}><span style={{ width: 22, height: 1, background: "var(--accent)" }} />КАЛЬКУЛЯТОР ПЛОЩАДИ</div>
+        <h2 className="display" style={{ fontSize: "clamp(30px,4vw,50px)", maxWidth: 720 }}>Бюджет комплектации за 20 секунд</h2>
+        <p style={{ color: "var(--muted)", maxWidth: 560, fontSize: 15.5, marginTop: 16, lineHeight: 1.6 }}>
+          Площадь и сегмент — и сразу ориентир бюджета с раскладкой по категориям. Цифры — рыночный бенчмарк ₽/м², не оферта.
+        </p>
+        <div className="glass calc-grid" style={{ borderRadius: "var(--r-xl)", padding: "clamp(24px,4vw,44px)", marginTop: 34, boxShadow: "var(--shadow-card)" }}>
+          <div>
+            <div className="calc-ctrl">
+              <div className="lab"><span>Площадь квартиры</span><b className="mono" style={{ color: "var(--text)", fontSize: 16, whiteSpace: "nowrap" }}>{area} м²</b></div>
+              <input type="range" className="quiz-range" min="15" max="300" step="1" value={area}
+                onChange={(e) => setArea(+e.target.value)}
+                aria-label="Площадь квартиры, м²" aria-valuetext={area + " квадратных метров — ориентир " + fmtMoney(res.total)} />
+              <div className="mono" style={{ display: "flex", justifyContent: "space-between", fontSize: 11, color: "var(--spec-meta)", marginTop: 6 }}><span>15 м²</span><span>300 м²</span></div>
+            </div>
+            <div style={{ fontWeight: 700, fontSize: 14.5, margin: "18px 0 10px" }}>Сегмент</div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 9 }}>
+              {F.BENCHMARK.segments.map((s) => {
+                const on = s.id === seg;
+                return (
+                  <button key={s.id} onClick={() => setSeg(s.id)} aria-pressed={on}
+                    style={{ textAlign: "left", padding: "12px 15px", borderRadius: 12, color: "inherit", font: "inherit", transition: "border-color .2s, background .2s",
+                      border: "1px solid " + (on ? "var(--accent)" : "var(--hairline)"), background: on ? "rgba(183,80,44,.07)" : "var(--surface)" }}>
+                    <span style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                      <b style={{ fontSize: 14.5 }}>{s.label}</b>
+                      {s.recommended && <span style={{ fontSize: 10.5, fontWeight: 700, color: "var(--accent-2-ink)", padding: "2px 8px", borderRadius: 99, background: "rgba(94,107,91,.12)", border: "1px solid rgba(94,107,91,.3)" }}>частый выбор</span>}
+                      <span className="mono" style={{ marginLeft: "auto", fontWeight: 600, fontSize: 13 }}>{fmtMoney(s.rate)}/м²</span>
+                    </span>
+                    <span style={{ display: "block", fontSize: 12.5, color: "var(--muted)", marginTop: 3 }}>{s.note}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+          <div>
+            <div className="mono" style={{ fontSize: 11.5, letterSpacing: ".08em", textTransform: "uppercase", color: "var(--accent-2-ink)", fontWeight: 700 }}>Ориентир бюджета</div>
+            <div className="mono" style={{ fontSize: "clamp(30px,3.6vw,42px)", fontWeight: 600, lineHeight: 1.1, margin: "8px 0 4px" }} aria-live="polite" aria-atomic="true">{fmtMoney(res.total)}</div>
+            <div style={{ color: "var(--muted)", fontSize: 13.5 }}>≈ {fmtMoney(res.rate)}/м² · {res.seg.label} · {area} м²</div>
+            <div style={{ height: 1, background: "var(--hairline-2)", margin: "18px 0" }} />
+            <div className="mono" style={{ fontSize: 11, fontWeight: 700, color: "var(--spec-meta)", textTransform: "uppercase", letterSpacing: ".08em", marginBottom: 12 }}>Раскладка по категориям</div>
+            <BarList data={res.byCat.map((c) => ({ label: c.label, value: c.amount }))} money color="var(--accent-2)" />
+            <button className="btn btn-primary" style={{ marginTop: 20, padding: "12px 20px" }} onClick={makeDraft}>
+              Собрать смету-черновик <I.arrow size={16} />
+            </button>
+            <p style={{ fontSize: 12.5, color: "var(--muted)", marginTop: 12, lineHeight: 1.55, maxWidth: 420 }}>
+              Создадим черновик: комнаты и позиции под этот бюджет, цены — ориентир из бенчмарка. В кабинете замените их реальными — по ссылке на товар, из каталога или прошлых проектов.
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 window.HowItWorks = HowItWorks;
+window.BudgetCalc = BudgetCalc;
 window.Bento = Bento;
 window.NewsFeed = NewsFeed;
 window.SocialProof = SocialProof;

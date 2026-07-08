@@ -246,7 +246,8 @@
 
       create: async (patch = {}) => {                                          // → POST /api/projects
         await delay(220);
-        const row = { id: "p_" + Date.now(), name: "Новый проект", room: "Гостиная", style: "", area: 0, items: 0, budget: 0, updated: today(), cover: "living", status: "В работе", ...patch };
+        // статус — стадия петли (не «В работе»: старый словарь; миграция чинит только уже сохранённые строки)
+        const row = { id: "p_" + Date.now(), name: "Новый проект", room: "Гостиная", style: "", area: 0, items: 0, budget: 0, updated: today(), cover: "living", status: "Сбор", ...patch };
         db.projects.unshift(row);
         LS.set("projects", db.projects);
         return clone(row);

@@ -88,6 +88,7 @@ function SitePage({ go }) {
         <SocialProof />
         <HowItWorks />
         <Bento />
+        <BudgetCalc go={go} />
         <NewsFeed />
         <PayoffCalc />
         <Pricing go={go} />
