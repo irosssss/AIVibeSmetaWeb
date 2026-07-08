@@ -141,6 +141,45 @@
   // сумма строки = цена × кол-во × (1 + запас%)
   const lineTotal = (it) => Math.round(num(it.price, 0) * num(it.qty || 1, 1) * (1 + num(it.wastePct || 0, 0) / 100));
 
+  /* ----------------------------- БИБЛИОТЕКА ТОВАРОВ СТУДИИ (волна B1, бенчмарк Programa) -----------------------------
+     Мастер-запись товара студии — то, что дизайнер подбирает снова и снова (диван,
+     смеситель, люстра). Живёт отдельно от сметы (localStorage, AIVibeAPI.library),
+     втекает в позицию сметы и собирается обратно из неё. Схема — подмножество позиции
+     БЕЗ количества/стадии закупки/согласования: они рождаются в смете, а не в каталоге.
+     Поставщик хранится в поле `sup` (как в строке сметы и выгрузках), НЕ `supplier`
+     полной FF&E-схемы — так маппинг товар↔позиция идёт без трения. */
+  function blankProduct(over) {
+    const o = over || {};
+    const dims = o.dims || {};
+    const d = (v) => (v != null && v !== "" ? Math.max(0, Math.round(num(v, 0))) : "");
+    return {
+      title:   str(o.title),                    // Наименование (обяз.)
+      cat:     str(o.cat) || "Прочее",          // Раздел
+      unit:    o.unit || "шт",                  // Единица измерения
+      price:   Math.max(0, Math.round(num(o.price, 0))), // Цена за единицу, ₽ (ориентир студии)
+      sup:     str(o.sup || o.supplier),        // Поставщик / фабрика / магазин
+      article: str(o.article || o.sku),         // Артикул
+      url:     str(o.url),                       // Ссылка на товар
+      note:    str(o.note),                      // Примечание
+      dims: { w: d(dims.w), d: d(dims.d), h: d(dims.h) }, // Габариты, см (Ш×Г×В)
+    };
+  }
+  // позиция сметы → мастер-запись (собрать библиотеку из реальной работы)
+  const productFromPosition = (it) => {
+    const o = it || {};
+    return blankProduct({ title: o.title, cat: o.cat, unit: o.unit, price: o.price,
+      sup: o.sup || o.supplier, article: o.sku || o.article, url: o.url, note: o.note, dims: o.dims });
+  };
+  // мастер-запись → черновик позиции сметы (кол-во 1; цена свежая на момент добавления)
+  const positionFromProduct = (p, date) => {
+    const o = p || {};
+    const pos = { title: str(o.title), qty: 1, price: Math.max(0, Math.round(num(o.price, 0))) };
+    if (str(o.cat)) pos.cat = str(o.cat);
+    if (str(o.sup)) pos.sup = str(o.sup);
+    pos.priceDate = date || today();
+    return pos;
+  };
+
   /* ----------------------------- УСЛУГИ И СБОРЫ (доставка/монтаж/налог) -----------------------------
      Отдельные строки в итоге сметы (Фаза 2.3). kind:'percent' — % от стоимости товаров,
      kind:'fixed' — фиксированная сумма ₽. Считаем прозрачно, поверх товаров. */
@@ -347,6 +386,7 @@
     APPROVE_STATUSES, APPROVE_BY_ID, approveMeta,
     EXTRA_PRESETS, statusMeta, statusProgress, stampStatus, today,
     blankPosition, normalizePosition, dimsLabel, lineTotal,
+    blankProduct, productFromPosition, positionFromProduct,
     blankExtra, extraAmount, extrasTotal,
     BENCHMARK, estimateBudget, generateEstimate, setPendingDraft, takePendingDraft,
     loadEstimate, saveEstimate, clearEstimate,

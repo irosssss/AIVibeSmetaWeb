@@ -155,7 +155,7 @@ function Cabinet({ user, onLogout, go }) {
    Редакторы недельного ритма (библиотека стилей, правила эргономики) собраны
    в один раздел — топбар остаётся языку петли дня. Каждый редактор рендерит
    свою шапку сам, здесь только переключатель и sub-роут #cabinet/workshop/{sub}. */
-const WS_SUBS = [{ id: "styles", label: "Мои стили" }, { id: "norms", label: "Нормы" }];
+const WS_SUBS = [{ id: "styles", label: "Мои стили" }, { id: "products", label: "Товары" }, { id: "norms", label: "Нормы" }];
 function Workshop() {
   const [sub, setSub] = useC(() => { const s = parseRoute().sub; return WS_SUBS.some((x) => x.id === s) ? s : "styles"; });
   const change = (s) => { setSub(s); setRoute("cabinet", "workshop", s); };
@@ -168,7 +168,7 @@ function Workshop() {
   return (
     <div>
       <SegTabs className="pd-seg" items={WS_SUBS} value={sub} onChange={change} ariaLabel="Раздел мастерской" style={{ marginBottom: 22 }} />
-      {sub === "norms" ? <NormsSettings /> : <StylesLibrary />}
+      {sub === "norms" ? <NormsSettings /> : sub === "products" ? <ProductsLibrary /> : <StylesLibrary />}
     </div>
   );
 }

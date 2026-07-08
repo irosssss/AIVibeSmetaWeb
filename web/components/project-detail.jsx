@@ -261,6 +261,10 @@ function RoomSpecOverlay({ data, onClose }) {
   const [savedId, setSavedId] = usePD(data.id || null);
   const [settings, setSettings] = usePD(null);   // мои нормы — для проверки эргономики по комнатам
   usePDE(() => { AIVibeAPI.settings.get().then(setSettings); }, []);
+  const [library, setLibrary] = usePD([]);       // библиотека товаров студии (волна B1): автоподстановка + пикер
+  const reloadLibrary = () => AIVibeAPI.library.list().then(setLibrary);
+  usePDE(() => { reloadLibrary(); }, []);
+  const [pickerRoom, setPickerRoom] = usePD(null);   // индекс комнаты с открытым пикером библиотеки | null
   const saveRoom = () => {
     if (roomSaving) return;
     setRoomSaving(true);
@@ -415,6 +419,28 @@ function RoomSpecOverlay({ data, onClose }) {
   if (FFE) rooms.forEach((r) => r.items.forEach((it) => { apCnt[apOf(it)]++; }));
   const apWaiting = itemsCount - apCnt.ok;   // всё, что не «Согласовано», требует внимания
   const [apFilter, setApFilter] = usePD(false);   // «ждут решения»: спрятать согласованные строки
+
+  /* --- библиотека товаров студии (волна B1): собрать мастер-запись из позиции /
+     добавить товары в комнату. Позиции сметы — независимые копии: правка библиотеки
+     их не трогает (и наоборот). Дедуп по названию, чтобы не плодить дубли. */
+  const saveToLibrary = (pos) => {
+    if (!FFE || !pos || !String(pos.title || "").trim()) return;
+    const title = String(pos.title).trim();
+    if (library.some((p) => (p.title || "").trim().toLowerCase() === title.toLowerCase())) {
+      toast("«" + title + "» уже есть в библиотеке студии."); return;
+    }
+    AIVibeAPI.library.create(FFE.productFromPosition(pos)).then(() => {
+      reloadLibrary(); toast("«" + title + "» добавлен в библиотеку студии.");
+    });
+  };
+  const addLibToRoom = (ri, products) => {
+    if (!FFE || !products || !products.length) return;
+    setRooms((prev) => prev.map((r, i) => (i !== ri ? r
+      : { ...r, items: [...r.items, ...products.map((p) => FFE.positionFromProduct(p))] })));
+    setPickerRoom(null);
+    const n = products.length;
+    toast("Добавлено " + n + " " + plural(n, ["позиция", "позиции", "позиций"]) + " из библиотеки. Не забудьте сохранить смету.");
+  };
   // итог структурой: подытог (client) → скидка → доставка/монтаж → ИТОГО.
   // Скидка округляется до рубля от подытога — та же формула в PDF/Excel (инвариант выгрузок)
   const discountAmt = Math.round(client * discount / 100);
@@ -647,7 +673,7 @@ function RoomSpecOverlay({ data, onClose }) {
                         )}
                       </div>
                       {editing && (
-                        <PosEditor item={it} cats={cats} sups={supList}
+                        <PosEditor item={it} cats={cats} sups={supList} library={library} onToLibrary={saveToLibrary}
                           onCancel={() => setEditPos(null)} onSave={(d) => savePos(ri, i, d)} onDelete={() => removePos(ri, i)} />
                       )}
                       </React.Fragment>
@@ -659,9 +685,13 @@ function RoomSpecOverlay({ data, onClose }) {
                     <div style={{ padding: "8px 0 2px", fontSize: 12.5, color: "var(--muted)" }}>Все позиции комнаты согласованы клиентом ✓</div>
                   )}
                   {mode === "work" && (editPos && editPos.ri === ri && editPos.ii === -1
-                    ? <PosEditor isNew cats={cats} sups={supList} onCancel={() => setEditPos(null)} onSave={(d) => savePos(ri, -1, d)} />
-                    : <button className="btn btn-ghost" style={{ marginTop: 10, padding: "7px 12px", fontSize: 12.5 }}
-                        onClick={() => setEditPos({ ri, ii: -1 })}><I.plus size={14} />Позиция вручную</button>)}
+                    ? <PosEditor isNew cats={cats} sups={supList} library={library} onToLibrary={saveToLibrary} onCancel={() => setEditPos(null)} onSave={(d) => savePos(ri, -1, d)} />
+                    : <div style={{ display: "flex", gap: 8, marginTop: 10, flexWrap: "wrap" }}>
+                        <button className="btn btn-ghost" style={{ padding: "7px 12px", fontSize: 12.5 }}
+                          onClick={() => setEditPos({ ri, ii: -1 })}><I.plus size={14} />Позиция вручную</button>
+                        {FFE && <button className="btn btn-ghost" style={{ padding: "7px 12px", fontSize: 12.5 }}
+                          onClick={() => setPickerRoom(ri)}><I.layers size={14} />Из библиотеки</button>}
+                      </div>)}
                 </div>
               ))}
             </div>}
@@ -921,6 +951,10 @@ function RoomSpecOverlay({ data, onClose }) {
           onSave={saveVersion} onRestore={restoreVersion} onSetStatus={setVersionStatus}
           onPatch={patchVersion} onRemove={removeVersion} onClose={() => setVersionsOpen(false)} />
       )}
+      {pickerRoom != null && rooms[pickerRoom] && (
+        <LibraryPickerModal roomName={rooms[pickerRoom].name} onClose={() => setPickerRoom(null)}
+          onAdd={(products) => addLibToRoom(pickerRoom, products)} />
+      )}
     </div>
   );
 }
@@ -1049,7 +1083,7 @@ function VersionsModal({ versions, current, onSave, onRestore, onSetStatus, onPa
    деньги нормализуются до целых рублей, расчёты идут прежним конвейером
    (инвариант UI=PDF=Excel не трогаем). Enter — сохранить, Esc — закрыть
    редактор (не оверлей: stopPropagation до window-слушателя). */
-function PosEditor({ item, cats, sups, isNew, onSave, onDelete, onCancel }) {
+function PosEditor({ item, cats, sups, isNew, onSave, onDelete, onCancel, library, onToLibrary }) {
   const [d, setD] = usePD({
     title: item ? item.title : "",
     cat: (item && item.cat) || "",
@@ -1061,7 +1095,22 @@ function PosEditor({ item, cats, sups, isNew, onSave, onDelete, onCancel }) {
   const qty = Math.max(1, Math.min(999, Math.round(+d.qty || 1)));
   const price = Math.round(+d.price || 0);
   const ok = !!d.title.trim() && price > 0;
-  const submit = () => { if (ok) onSave({ title: d.title.trim(), qty, price, cat: d.cat.trim(), sup: d.sup.trim() }); };
+  const draft = () => ({ title: d.title.trim(), qty, price, cat: d.cat.trim(), sup: d.sup.trim() });
+  const submit = () => { if (ok) onSave(draft()); };
+  // библиотека товаров студии (волна B1): подсказки по названию + подстановка цены/раздела/поставщика
+  const lib = library || [];
+  const libMatch = d.title.trim() ? lib.find((p) => (p.title || "").trim().toLowerCase() === d.title.trim().toLowerCase()) : null;
+  const applyLib = (p, force) => setD((x) => ({
+    ...x,
+    price: force || !x.price ? String(p.price || 0) : x.price,
+    cat:   force || !x.cat ? (p.cat || "") : x.cat,
+    sup:   force || !x.sup ? (p.sup || "") : x.sup,
+  }));
+  // при вводе названия новой позиции — тихо подставить пустые поля из точного совпадения (не затирая введённое)
+  const onTitle = (v) => {
+    setD((x) => ({ ...x, title: v }));
+    if (isNew && !d.price) { const m = lib.find((p) => (p.title || "").trim().toLowerCase() === v.trim().toLowerCase()); if (m) applyLib(m, false); }
+  };
   const fld = { width: "100%", padding: "8px 10px", borderRadius: 9, border: "1px solid var(--hairline)", background: "var(--surface)", fontSize: 13, color: "var(--text)", marginTop: 3 };
   const lab = { fontSize: 11.5, color: "var(--muted)", display: "block", minWidth: 0 };
   return (
@@ -1071,8 +1120,17 @@ function PosEditor({ item, cats, sups, isNew, onSave, onDelete, onCancel }) {
         if (e.key === "Escape") { e.stopPropagation(); onCancel(); }
       }}>
       <label style={lab}>Название
-        <input style={fld} value={d.title} autoFocus onChange={(e) => setD((x) => ({ ...x, title: e.target.value }))} />
+        <input style={fld} value={d.title} autoFocus list="pe-lib-list" onChange={(e) => onTitle(e.target.value)} />
       </label>
+      {libMatch && (
+        <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, color: "var(--muted)", marginTop: -4 }}>
+          <span aria-hidden="true" style={{ width: 7, height: 7, borderRadius: "50%", background: "var(--accent-2)", flex: "none" }} />
+          <span style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            В библиотеке: {fmtMoney(libMatch.price || 0)}{libMatch.cat ? " · " + libMatch.cat : ""}{libMatch.sup ? " · " + libMatch.sup : ""}
+          </span>
+          <button type="button" className="btn btn-ghost" style={{ padding: "3px 9px", fontSize: 11.5, flex: "none" }} onClick={() => applyLib(libMatch, true)}>Подставить</button>
+        </div>
+      )}
       <div className="pe-grid" style={{ display: "grid", gridTemplateColumns: "1fr 76px 116px 1fr", gap: 10 }}>
         <label style={lab}>Раздел
           <input style={fld} list="pe-cat-list" value={d.cat} placeholder="Прочее" onChange={(e) => setD((x) => ({ ...x, cat: e.target.value }))} />
@@ -1090,11 +1148,15 @@ function PosEditor({ item, cats, sups, isNew, onSave, onDelete, onCancel }) {
       <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
         <button className="btn btn-primary" style={{ padding: "8px 14px", fontSize: 13 }} disabled={!ok} onClick={submit}><I.check size={14} />{isNew ? "Добавить" : "Готово"}</button>
         <button className="btn btn-ghost" style={{ padding: "8px 14px", fontSize: 13 }} onClick={onCancel}>Отмена</button>
+        {onToLibrary && (libMatch
+          ? <button className="btn btn-ghost" style={{ padding: "8px 14px", fontSize: 13, color: "var(--accent-2-ink)" }} disabled title="Этот товар уже есть в библиотеке студии"><I.check size={14} />В библиотеке</button>
+          : <button className="btn btn-ghost" style={{ padding: "8px 14px", fontSize: 13 }} disabled={!ok} title="Сохранить как мастер-запись в библиотеку студии" onClick={() => onToLibrary(draft())}><I.layers size={14} />В библиотеку</button>)}
         {!isNew && <button className="btn btn-ghost" style={{ padding: "8px 14px", fontSize: 13, color: "var(--accent-ink)", marginLeft: "auto" }} onClick={onDelete}>Удалить позицию</button>}
       </div>
       {/* редактор открыт один за раз — id datalist'ов не коллидируют */}
       <datalist id="pe-cat-list">{cats.map((c) => <option key={c} value={c} />)}</datalist>
       <datalist id="pe-sup-list">{sups.map((s) => <option key={s} value={s} />)}</datalist>
+      <datalist id="pe-lib-list">{lib.map((p) => <option key={p.id} value={p.title} />)}</datalist>
     </div>
   );
 }

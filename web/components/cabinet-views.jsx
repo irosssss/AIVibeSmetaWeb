@@ -104,9 +104,10 @@ function Profile({ user }) {
       <div className="glass" style={{ borderRadius: "var(--r-xl)", padding: 30 }}>
         <h3 style={{ fontSize: 18, fontWeight: 700, marginBottom: 6 }}>Рабочее место</h3>
         <p style={{ color: "var(--muted)", fontSize: 13.5, lineHeight: 1.5, marginBottom: 18, maxWidth: 640 }}>
-          Ваши нормы эргономики и библиотека стилей применяются к каждой смете. Уведомления и синхронизация между устройствами появятся вместе с реальными аккаунтами.
+          Ваши нормы эргономики, библиотека стилей и товары студии применяются к каждой смете. Уведомления и синхронизация между устройствами появятся вместе с реальными аккаунтами.
         </p>
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+          <button className="btn btn-ghost" onClick={() => setRoute("cabinet", "workshop", "products")}><I.layers size={16} />Мои товары</button>
           <button className="btn btn-ghost" onClick={() => setRoute("cabinet", "workshop", "norms")}><I.sliders size={16} />Мои нормы</button>
           <button className="btn btn-ghost" onClick={() => setRoute("cabinet", "workshop", "styles")}><I.spark size={16} />Мои стили</button>
         </div>

@@ -142,6 +142,7 @@
   /* гидрация из localStorage поверх дефолтов */
   db.settings = LS.get("settings", { normsOverride: {}, enabledNorms: {} });
   db.styles   = LS.get("styles", SEED_STYLES);
+  db.library  = LS.get("library", []);   // библиотека товаров студии (волна B1) — пустая до первого товара
   const _lsProjects = LS.get("projects", null); if (_lsProjects) db.projects = _lsProjects;
   const _lsFav = LS.get("favorites", null); if (_lsFav) db.favorites = _lsFav;
   db.session  = LS.get("session", null);
@@ -336,6 +337,40 @@
         await delay(140);
         db.styles = db.styles.filter((s) => !(s.id === id && s.owner !== null));
         LS.set("styles", db.styles);
+        return { ok: true };
+      },
+    },
+
+    /* — Библиотека товаров студии (мастер-записи, волна B1). Все записи свои
+         (системных пресетов нет). Нормализация схемы — через AIVibeFFE.blankProduct
+         (единый источник схемы; вызовы рантайм-асинхронные, модуль уже загружен). — */
+    library: {
+      list: async () => { await delay(120); return clone(db.library); },        // → GET /api/library
+      get: async (id) => { await delay(70); return clone(db.library.find((p) => p.id === id)); },
+      create: async (patch = {}) => {                                           // → POST /api/library
+        await delay(150);
+        const F = window.AIVibeFFE;
+        const body = F && F.blankProduct ? F.blankProduct(patch) : patch;
+        const row = { id: "lib_" + Date.now(), ...body, createdAt: today(), updatedAt: today() };
+        db.library.push(row);
+        LS.set("library", db.library);
+        return clone(row);
+      },
+      update: async (id, patch) => {                                            // → PATCH /api/library/:id
+        await delay(130);
+        const i = db.library.findIndex((p) => p.id === id);
+        if (i >= 0) {
+          const F = window.AIVibeFFE;
+          const body = F && F.blankProduct ? F.blankProduct({ ...db.library[i], ...patch }) : { ...db.library[i], ...patch };
+          db.library[i] = { ...db.library[i], ...body, updatedAt: today() };
+          LS.set("library", db.library);
+        }
+        return clone(db.library[i]);
+      },
+      remove: async (id) => {                                                    // → DELETE /api/library/:id
+        await delay(120);
+        db.library = db.library.filter((p) => p.id !== id);
+        LS.set("library", db.library);
         return { ok: true };
       },
     },
