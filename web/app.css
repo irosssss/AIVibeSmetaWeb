@@ -371,6 +371,9 @@ body:has(.pd-overlay) .proto-switch { display: none; }
 
 /* ---- Смета по комнатам: адаптив колонок документа ---- */
 .rs-val { white-space: nowrap; flex: none; }   /* деньги в итоговом блоке не переносим («₽» не уезжает на строку) */
+@media (max-width: 900px) {
+  .rs-ap { display: none !important; }     /* селект «Клиент решил» уходит первым — остаётся ✓-галка всей комнаты */
+}
 @media (max-width: 760px) {
   .rs-unit { display: none !important; }   /* Цена/шт уходит первой */
 }

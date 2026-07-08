@@ -306,6 +306,11 @@ function RoomSpecOverlay({ data, onClose }) {
       if (d.sup) next.sup = d.sup; else delete next.sup;
       // цену ввели/поменяли руками — значит проверили сейчас, пометка давности обнуляется
       if (ii === -1 || d.price !== base.price) next.priceDate = todayISO();
+      // цена изменилась после решения клиента — решение больше не действует (иначе протокол согласования врал бы)
+      if (ii !== -1 && base.approve && d.price !== base.price) {
+        delete next.approve; delete next.approveAt;
+        toast("Цена изменилась — позиция снова ждёт решения клиента.");
+      }
       if (ii === -1) items.push(next); else items[ii] = next;
       return { ...r, items };
     }));
@@ -385,6 +390,31 @@ function RoomSpecOverlay({ data, onClose }) {
   const rowsProgress = (rws) => (rws.length ? rws.reduce((s, x) => s + FFE.statusProgress(stOf(x.it)), 0) / rws.length : 0); // 0..1
   const allProcRows = supGroups.flatMap((g) => g.rows);
   const acceptedCount = FFE ? allProcRows.filter((x) => stOf(x.it) === "accepted").length : 0;
+
+  /* --- согласование с клиентом ПО ПОЗИЦИЯМ (волна A1, бенчмарк Programa; словарь — web/ffe.js).
+     Отдельное измерение от стадии закупки: пока портала нет, решения клиента отмечает
+     дизайнер по ходу созвона. Отсутствие поля approve = «ждёт решения» (старые сметы
+     не мигрируем). Живёт в «Рабочей» — клиентская выгрузка решений не показывает. */
+  const apOf = (it) => (FFE && FFE.APPROVE_BY_ID[it.approve] ? it.approve : "pending");
+  const setApprove = (ri, ii, id) => setRooms((prev) => prev.map((r, i) => i !== ri ? r
+    : { ...r, items: r.items.map((it, j) => {
+        if (j !== ii) return it;
+        if (id === "pending") { const { approve, approveAt, ...rest } = it; return rest; }
+        return { ...it, approve: id, approveAt: FFE.today() };
+      }) }));
+  // массовое согласование комнаты (паттерн Programa «bulk approve»): все ✓ → снять, иначе — всем ✓
+  const approveRoom = (ri) => setRooms((prev) => prev.map((r, i) => {
+    if (i !== ri) return r;
+    const allOk = r.items.length > 0 && r.items.every((it) => apOf(it) === "ok");
+    return { ...r, items: r.items.map((it) => {
+      if (allOk) { const { approve, approveAt, ...rest } = it; return rest; }
+      return { ...it, approve: "ok", approveAt: FFE.today() };
+    }) };
+  }));
+  const apCnt = { ok: 0, revise: 0, rejected: 0, pending: 0 };
+  if (FFE) rooms.forEach((r) => r.items.forEach((it) => { apCnt[apOf(it)]++; }));
+  const apWaiting = itemsCount - apCnt.ok;   // всё, что не «Согласовано», требует внимания
+  const [apFilter, setApFilter] = usePD(false);   // «ждут решения»: спрятать согласованные строки
   // итог структурой: подытог (client) → скидка → доставка/монтаж → ИТОГО.
   // Скидка округляется до рубля от подытога — та же формула в PDF/Excel (инвариант выгрузок)
   const discountAmt = Math.round(client * discount / 100);
@@ -445,7 +475,8 @@ function RoomSpecOverlay({ data, onClose }) {
       <OverlayHead onBack={onClose} budget={data.budget}
         crumbs={[{ label: "Проекты", onClick: onClose }, { label: data.name }, { label: "Смета" }]}
         title={data.name}
-        sub={"Комплектация по дизайн-проекту · " + data.area + " м² · " + itemsCount + " " + plural(itemsCount, ["позиция", "позиции", "позиций"])}
+        sub={"Комплектация по дизайн-проекту · " + data.area + " м² · " + itemsCount + " " + plural(itemsCount, ["позиция", "позиции", "позиций"])
+          + (FFE && apCnt.ok > 0 ? " · согласовано " + apCnt.ok + " из " + itemsCount : "")}
         right={approved ? (
           <span className="glass" title={"Согласована версия «" + approved.label + "»" + (approved.statusAt ? " — " + fmtDateRu(approved.statusAt) : "")}
             style={{ display: "flex", alignItems: "center", gap: 7, padding: "7px 13px", borderRadius: 99, fontSize: 12.5, fontWeight: 700, whiteSpace: "nowrap", color: "var(--accent-2-ink)", borderColor: "rgba(94,107,91,.4)" }}>
@@ -470,6 +501,13 @@ function RoomSpecOverlay({ data, onClose }) {
               {FFE && (
                 <button className="btn btn-ghost" onClick={openVersions} title="Снимки сметы, сравнение с текущей и статус согласования с клиентом">
                   <I.news size={16} />Версии{versions.length ? " · " + versions.length : ""}
+                </button>
+              )}
+              {FFE && mode === "work" && itemsCount > 0 && (
+                <button className="btn btn-ghost" onClick={() => setApFilter((f) => !f)} aria-pressed={apFilter}
+                  title={apFilter ? "Показать все позиции" : "Оставить только позиции, ждущие решения клиента (согласованные скрыть)"}
+                  style={apFilter ? { color: "var(--accent-ink)" } : undefined}>
+                  <I.check size={16} />{apFilter ? "Показать все" : "Ждут решения · " + apWaiting}
                 </button>
               )}
             </div>
@@ -543,6 +581,17 @@ function RoomSpecOverlay({ data, onClose }) {
                           <I.edit size={13} />
                         </button>
                       )}
+                      {mode === "work" && FFE && r.items.length > 0 && (() => {
+                        const allOk = r.items.every((it) => apOf(it) === "ok");
+                        const label = allOk ? "Снять отметку согласования со всей комнаты" : "Отметить всю комнату согласованной клиентом";
+                        return (
+                          <button className="icon-btn" aria-label={label + " «" + r.name + "»"} title={label}
+                            onClick={() => approveRoom(ri)}
+                            style={{ width: 24, height: 24, flex: "none", alignSelf: "center", color: allOk ? "var(--accent-2-ink)" : "var(--spec-meta)" }}>
+                            <I.check size={13} />
+                          </button>
+                        );
+                      })()}
                     </span>
                     <span style={{ display: "flex", alignItems: "baseline", gap: 12 }}>
                       {mode === "work" && <span className="mono" style={{ fontSize: 13, color: "var(--muted)" }}>{fmtMoney(roomTotal(r))}</span>}
@@ -557,12 +606,15 @@ function RoomSpecOverlay({ data, onClose }) {
                     <span className="rs-unit" style={{ width: 88, textAlign: "right" }}>Цена/шт</span>
                     {mode === "work" && <span style={{ width: 100, textAlign: "right" }}>Себест.</span>}
                     <span style={{ width: 104, textAlign: "right" }}>Клиенту</span>
+                    {mode === "work" && FFE && <span className="rs-ap" style={{ width: 122, textAlign: "right" }}>Клиент решил</span>}
                     {mode === "work" && <span style={{ width: 26 }} aria-hidden="true" />}
                   </div>
                   <div style={{ display: "flex", flexDirection: "column" }}>
                     {r.items.map((it, i) => {
                       const qty = it.qty || 1;
                       const editing = mode === "work" && editPos && editPos.ri === ri && editPos.ii === i;
+                      // фильтр «ждут решения»: согласованные строки скрываем (редактируемую — никогда)
+                      if (mode === "work" && apFilter && !editing && apOf(it) === "ok") return null;
                       return (
                       <React.Fragment key={i}>
                       <div style={{ display: "flex", alignItems: "baseline", gap: 10, padding: "7px 0", borderTop: i ? "1px solid var(--hairline-2)" : "none", fontSize: 13.5 }}>
@@ -572,6 +624,20 @@ function RoomSpecOverlay({ data, onClose }) {
                         <span className="mono rs-unit" style={{ color: "var(--spec-meta)", whiteSpace: "nowrap", width: 88, textAlign: "right", fontSize: 12.5 }}>{fmtMoney(mode === "client" ? unitClient(it) : it.price)}</span>
                         {mode === "work" && <span className="mono" style={{ color: "var(--muted)", whiteSpace: "nowrap", width: 100, textAlign: "right" }}>{fmtMoney(it.price * qty)}</span>}
                         <span className="mono" style={{ fontWeight: 600, whiteSpace: "nowrap", width: 104, textAlign: "right", color: mode === "work" ? "var(--accent-2)" : "var(--text)" }}>{fmtMoney(lineClient(it))}</span>
+                        {mode === "work" && FFE && (() => {
+                          const aid = apOf(it), m = FFE.approveMeta(aid);
+                          return (
+                            <span className="rs-ap" style={{ display: "inline-flex", alignItems: "center", justifyContent: "flex-end", gap: 6, width: 122, flex: "none", alignSelf: "center" }}
+                              title={"Решение клиента: " + m.label + (it.approveAt ? " — " + fmtDateRu(it.approveAt) : "")}>
+                              <span aria-hidden="true" style={{ width: 8, height: 8, borderRadius: "50%", background: m.color, flex: "none" }} />
+                              <select className="fld" value={aid} aria-label={"Решение клиента по позиции «" + it.title + "»"}
+                                onChange={(e) => setApprove(ri, i, e.target.value)}
+                                style={{ width: 108, flex: "none", padding: "5px 6px", fontSize: 12 }}>
+                                {FFE.APPROVE_STATUSES.map((s) => <option key={s.id} value={s.id}>{s.label}</option>)}
+                              </select>
+                            </span>
+                          );
+                        })()}
                         {mode === "work" && (
                           <button className="icon-btn" aria-label={"Редактировать позицию «" + it.title + "»"} aria-expanded={!!editing} title="Редактировать позицию"
                             onClick={() => setEditPos(editing ? null : { ri, ii: i })}
@@ -588,6 +654,10 @@ function RoomSpecOverlay({ data, onClose }) {
                       );
                     })}
                   </div>
+                  {mode === "work" && FFE && apFilter && r.items.length > 0 && !(editPos && editPos.ri === ri && editPos.ii >= 0)
+                    && r.items.every((it) => apOf(it) === "ok") && (
+                    <div style={{ padding: "8px 0 2px", fontSize: 12.5, color: "var(--muted)" }}>Все позиции комнаты согласованы клиентом ✓</div>
+                  )}
                   {mode === "work" && (editPos && editPos.ri === ri && editPos.ii === -1
                     ? <PosEditor isNew cats={cats} sups={supList} onCancel={() => setEditPos(null)} onSave={(d) => savePos(ri, -1, d)} />
                     : <button className="btn btn-ghost" style={{ marginTop: 10, padding: "7px 12px", fontSize: 12.5 }}

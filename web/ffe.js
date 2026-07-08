@@ -43,6 +43,20 @@
   const statusMeta = (id) => STATUS_BY_ID[id] || STATUS_BY_ID[DEFAULT_STATUS];
   const statusProgress = (id) => statusMeta(id).order / FFE_STATUSES.length; // 0..1
 
+  /* Согласование с клиентом ПО ПОЗИЦИЯМ (волна A1, бенчмарк Programa) — отдельное
+     измерение от стадии закупки: «Согласовано» в закупке = решение уже принято,
+     а здесь — сам диалог с клиентом. pending не пишется в данные (отсутствие поля
+     = ждёт решения) — старые сметы ничего не мигрируют. Это же поле будет ставить
+     клиент через портал (волна A2/A3). */
+  const APPROVE_STATUSES = [
+    { id: "pending",  label: "Ждёт решения", short: "Ждёт",    color: "var(--faint)" },
+    { id: "ok",       label: "Согласовано",  short: "Соглас.", color: "var(--accent-2)" },
+    { id: "revise",   label: "На пересмотр", short: "Пересм.", color: "var(--info)" },
+    { id: "rejected", label: "Отклонено",    short: "Откл.",   color: "var(--accent)" },
+  ];
+  const APPROVE_BY_ID = Object.fromEntries(APPROVE_STATUSES.map((s) => [s.id, s]));
+  const approveMeta = (id) => APPROVE_BY_ID[id] || APPROVE_BY_ID.pending;
+
   /* ----------------------------- УТИЛИТЫ ----------------------------- */
   const genId = () => "ffe_" + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
   const today = () => new Date().toISOString().slice(0, 10); // YYYY-MM-DD
@@ -90,6 +104,9 @@
       wastePct: o.wastePct != null && o.wastePct !== "" ? num(o.wastePct, 0) : "", // Запас/отход, % (для материалов: плитка, краска…)
       status:   STATUS_BY_ID[o.status] ? o.status : DEFAULT_STATUS, // Текущая стадия закупки
       statusDates: o.statusDates && typeof o.statusDates === "object" ? { ...o.statusDates } : {}, // Даты по стадиям {id:YYYY-MM-DD}
+      approve:  APPROVE_BY_ID[o.approve] && o.approve !== "pending" ? o.approve : "", // Решение клиента ("" = ждёт)
+      approveAt: str(o.approveAt),             // Дата решения (YYYY-MM-DD)
+      approveNote: str(o.approveNote),         // Комментарий к решению (треды — волна A3)
       eta:      str(o.eta),                     // Ожидаемая дата готовности/доставки (YYYY-MM-DD)
       note:     str(o.note),                   // Примечание
       analogOf: o.analogOf || null,            // id исходной позиции (если это аналог)
@@ -327,6 +344,7 @@
 
   window.AIVibeFFE = {
     FFE_CATEGORIES, FFE_UNITS, FFE_STATUSES, STATUS_LABEL, STATUS_BY_ID, DEFAULT_STATUS,
+    APPROVE_STATUSES, APPROVE_BY_ID, approveMeta,
     EXTRA_PRESETS, statusMeta, statusProgress, stampStatus, today,
     blankPosition, normalizePosition, dimsLabel, lineTotal,
     blankExtra, extraAmount, extrasTotal,

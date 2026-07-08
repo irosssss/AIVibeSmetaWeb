@@ -125,12 +125,17 @@
     // когда данные есть (импортёр находит колонки по заголовку — состав не фиксирован)
     const hasSup = !clientMode && rooms.some((r) => r.items.some((it) => it.sup));
     const hasPD = !clientMode && rooms.some((r) => r.items.some((it) => it.priceDate));
+    // согласование по позициям (волна A1): решения клиента — внутренняя кухня, только рабочий файл
+    const FFE = window.AIVibeFFE || null;
+    const apLabel = (it) => (FFE && it.approve && FFE.APPROVE_BY_ID[it.approve] ? FFE.APPROVE_BY_ID[it.approve].label : "");
+    const hasAp = !clientMode && !!FFE && rooms.some((r) => r.items.some((it) => apLabel(it)));
     const head = ["№", "Помещение", "Раздел"];
     if (hasSup) head.push("Поставщик");
     head.push("Наименование", "Кол-во");
     if (clientMode) head.push("Цена клиенту, ₽", "Сумма клиенту, ₽");
     else head.push("Цена, ₽", "Сумма, ₽", "Цена клиенту, ₽", "Сумма клиенту, ₽");
     if (hasPD) head.push("Цена от");
+    if (hasAp) head.push("Клиент решил", "Решение от");
     const col = (name) => head.indexOf(name);
     const all = [head];
     let n = 0;
@@ -141,6 +146,7 @@
       if (clientMode) row.push(unitClient(it), lineClient(it));
       else row.push(it.price, lineCost(it), unitClient(it), lineClient(it));
       if (hasPD) row.push(fmtDateCell(it.priceDate));
+      if (hasAp) row.push(apLabel(it), fmtDateCell(it.approveAt));
       all.push(row);
     }));
     const trow = new Array(head.length).fill("");
@@ -149,7 +155,7 @@
     trow[col("Сумма клиенту, ₽")] = clientTotal;
     all.push(trow);
     const wsA = XLSX.utils.aoa_to_sheet(all);
-    setCols(wsA, head.map((h) => ({ "№": 5, "Помещение": 18, "Раздел": 16, "Поставщик": 20, "Наименование": 46, "Кол-во": 7, "Цена, ₽": 13, "Сумма, ₽": 14, "Цена клиенту, ₽": 15, "Сумма клиенту, ₽": 16, "Цена от": 11 }[h] || 12)));
+    setCols(wsA, head.map((h) => ({ "№": 5, "Помещение": 18, "Раздел": 16, "Поставщик": 20, "Наименование": 46, "Кол-во": 7, "Цена, ₽": 13, "Сумма, ₽": 14, "Цена клиенту, ₽": 15, "Сумма клиенту, ₽": 16, "Цена от": 11, "Клиент решил": 14, "Решение от": 11 }[h] || 12)));
     const moneyCols = ["Цена, ₽", "Сумма, ₽", "Цена клиенту, ₽", "Сумма клиенту, ₽"].map(col).filter((c) => c >= 0);
     fmtMoneyCols(wsA, moneyCols, 1, all.length - 1);
     wsA["!autofilter"] = { ref: "A1:" + XLSX.utils.encode_col(head.length - 1) + "1" };   // фильтр по шапке — дизайнер крутит сводную как хочет
@@ -293,6 +299,12 @@
           const cSt = colOf(head, /стади|статус/);                // стадия закупки (метка → id из ffe.js)
           const stByLabel = window.AIVibeFFE
             ? Object.fromEntries(window.AIVibeFFE.FFE_STATUSES.map((s) => [norm(s.label), s.id])) : {};
+          const cAp = colOf(head, /клиент решил|согласован/);     // решение клиента по позиции (волна A1)
+          const cApD = colOf(head, /решение от/);
+          const apByLabel = window.AIVibeFFE
+            ? Object.fromEntries(window.AIVibeFFE.APPROVE_STATUSES.map((s) => [norm(s.label), s.id])) : {};
+          // «ДД.ММ.ГГГГ» → ISO (одна логика для «Цена от» и «Решение от»)
+          const isoDate = (v) => { const m = /^(\d{1,2})\.(\d{1,2})\.(\d{4})$/.exec(String(v == null ? "" : v).trim()); return m ? m[3] + "-" + m[2].padStart(2, "0") + "-" + m[1].padStart(2, "0") : ""; };
           // цена за единицу: «цена/стоимость» без «клиент»; если нет — выводим из суммы/кол-во
           const cPrice = head.findIndex((h) => /цена|стоим|price/.test(norm(h)) && !/клиент/.test(norm(h)));
           const cSum = head.findIndex((h) => /сумма|total/.test(norm(h)) && !/клиент/.test(norm(h)));
@@ -315,15 +327,16 @@
             const roomName = (cRoom >= 0 ? String(row[cRoom] == null ? "" : row[cRoom]).trim() : "") || "Без помещения";
             const cat = cCat >= 0 ? String(row[cCat] == null ? "" : row[cCat]).trim() : "";
             const sup = cSup >= 0 ? String(row[cSup] == null ? "" : row[cSup]).trim() : "";
-            let priceDate = "";
-            if (cPD >= 0) {
-              const pdm = /^(\d{1,2})\.(\d{1,2})\.(\d{4})$/.exec(String(row[cPD] == null ? "" : row[cPD]).trim());
-              if (pdm) priceDate = pdm[3] + "-" + pdm[2].padStart(2, "0") + "-" + pdm[1].padStart(2, "0");
-            }
+            const priceDate = cPD >= 0 ? isoDate(row[cPD]) : "";
             // стадия закупки: метка из ячейки → id (неизвестные метки игнорируем — позиция останется «Подбор»)
             const status = cSt >= 0 ? stByLabel[norm(String(row[cSt] == null ? "" : row[cSt]).trim())] || "" : "";
+            // решение клиента: метка → id; «ждёт решения»/неизвестное = отсутствие поля
+            const apId = cAp >= 0 ? apByLabel[norm(String(row[cAp] == null ? "" : row[cAp]).trim())] || "" : "";
+            const approve = apId && apId !== "pending" ? apId : "";
+            const approveAt = approve && cApD >= 0 ? isoDate(row[cApD]) : "";
             if (!byRoom.has(roomName)) byRoom.set(roomName, []);
-            byRoom.get(roomName).push({ title, cat, price, qty, ...(sup ? { sup } : {}), ...(priceDate ? { priceDate } : {}), ...(status ? { status } : {}) });
+            byRoom.get(roomName).push({ title, cat, price, qty, ...(sup ? { sup } : {}), ...(priceDate ? { priceDate } : {}), ...(status ? { status } : {}),
+              ...(approve ? { approve, ...(approveAt ? { approveAt } : {}) } : {}) });
           }
 
           const rooms = [...byRoom.entries()].map(([name, items]) => ({ name, items }));
