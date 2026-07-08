@@ -5,10 +5,22 @@
   "type": "module",
   "description": "AIVibe — веб-кабинет дизайнера со сметой-комплектацией (FF&E)",
   "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest"
   },
+  "dependencies": {
+    "lottie-web": "^5.12.2",
+    "pdfmake": "^0.2.12",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz"
+  },
   "devDependencies": {
+    "@vitejs/plugin-react": "^4.3.3",
+    "vite": "^6.0.0",
     "vitest": "^2.1.4"
   }
 }

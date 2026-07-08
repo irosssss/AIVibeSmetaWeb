@@ -3,14 +3,14 @@
   "configurations": [
     {
       "name": "aivibe-web",
-      "runtimeExecutable": "python3",
-      "runtimeArgs": ["-m", "http.server", "8753", "--directory", "web"],
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["vite", "--port", "8753", "--strictPort"],
       "port": 8753
     },
     {
-      "name": "aivibe-web-alt",
-      "runtimeExecutable": "python3",
-      "runtimeArgs": ["-m", "http.server", "8781", "--directory", "web"],
+      "name": "aivibe-build-preview",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["vite", "preview", "--port", "8781", "--strictPort"],
       "port": 8781
     }
   ]

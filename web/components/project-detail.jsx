@@ -1918,3 +1918,4 @@ function AdvisorChat({ id, hello, onAction, onClose }) {
 }
 
 window.ProjectDetail = ProjectDetail;
+window.RoomSpecOverlay = RoomSpecOverlay;   // рендерится из кабинета (импорт Excel / черновик калькулятора); в ES-модулях без явного экспорта был бы ReferenceError

@@ -419,14 +419,19 @@ function loadScript(src) {
   return _libCache[src];
 }
 window.AIVibeLibs = {
-  // pdfmake + шрифтовой vfs (порядок важен)
+  // pdfmake + шрифтовой vfs: npm-чанки Vite (AIVibeLoad, vendor-globals.js);
+  // CDN — фолбэк для окружений без сборки (standalone-прототипы)
   pdf: () => window.pdfMake && window.pdfMake.vfs
     ? Promise.resolve()
-    : loadScript("https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.10/pdfmake.min.js")
-        .then(() => loadScript("https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.10/vfs_fonts.js")),
+    : window.AIVibeLoad
+      ? AIVibeLoad.pdf()
+      : loadScript("https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.10/pdfmake.min.js")
+          .then(() => loadScript("https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.10/vfs_fonts.js")),
   xlsx: () => window.XLSX
     ? Promise.resolve()
-    : loadScript("https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"),
+    : window.AIVibeLoad
+      ? AIVibeLoad.xlsx()
+      : loadScript("https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"),
 };
 /* обёртка: тост «готовим…» только если реально грузим.
    Сбой сети и сбой самого экспорта — разные ошибки с разными текстами (и логом). */

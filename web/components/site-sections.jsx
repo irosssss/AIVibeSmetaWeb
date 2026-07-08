@@ -650,6 +650,7 @@ function BudgetCalc({ go }) {
   );
 }
 
+window.SpecCategories = SpecCategories;   // используется сборкой лендинга (site-github.jsx)
 window.HowItWorks = HowItWorks;
 window.BudgetCalc = BudgetCalc;
 window.Bento = Bento;

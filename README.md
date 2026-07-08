@@ -4,12 +4,15 @@
 Это **единственный дом** этого сервиса — работаем только здесь, чтобы не было копий и путаницы.
 
 ## Как запустить
-- Через **Claude Preview**: конфиг `.claude/launch.json` (имя `aivibe-web`).
-- Вручную: `python3 -m http.server 8753 --directory web`, открыть `http://localhost:8753`
-  (внизу страницы переключатель Промо / Кабинет / Админка).
+- `npm install`, затем `npm run dev` → `http://localhost:5173` (или через **Claude Preview**:
+  конфиг `.claude/launch.json`, имя `aivibe-web` — vite на порту 8753).
+  Внизу страницы переключатель Промо / Кабинет / Админка.
+- Продакшн: `npm run build` → статика в `dist/`; локальный просмотр — `npm run preview`.
+- Тесты: `npm test` (vitest, `tests/*.test.js`).
 
 ## Структура
-- `web/` — код сайта (React без сборки, Babel-standalone):
+- `web/` — код сайта (React + Vite; компоненты исторически общаются через `window.*`,
+  вход — `web/main.jsx`, мост npm→глобалы — `web/vendor-globals.js`):
   - `web/components/project-detail.jsx` — смета по комнатам (наценка, переключатель «Рабочая / Для клиента»);
   - `web/components/cabinet-views.jsx` — «Мои проекты», кнопка «Импорт из Excel»;
   - `web/engine.js` — движок сметы (эргономика + бюджет-оптимизатор);
