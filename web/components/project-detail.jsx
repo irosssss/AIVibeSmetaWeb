@@ -259,6 +259,7 @@ function RoomSpecOverlay({ data, onClose }) {
   const reloadProfiles = () => AIVibeAPI.markupProfiles.list().then(setProfiles);
   usePDE(() => { reloadProfiles(); }, []);
   const [profName, setProfName] = usePD("");
+  const [profSaving, setProfSaving] = usePD(false);   // guard: двойной клик «Сохранить как стандарт» не должен создать дубль
   const applyProfile = (p) => {
     setMarkup(p.markupPct != null ? p.markupPct : 25);
     setCatMarkup(p.catMarkupPct || {});
@@ -270,9 +271,10 @@ function RoomSpecOverlay({ data, onClose }) {
   const saveProfile = (e) => {
     e.preventDefault();
     const name = profName.trim();
-    if (!name) return;
+    if (!name || profSaving) return;
+    setProfSaving(true);
     AIVibeAPI.markupProfiles.create({ name, markupPct: markup, catMarkupPct: catMarkup, discountPct: discount, deliveryCost: delivery, installCost: install })
-      .then((row) => { setProfiles((ps) => [...ps, row]); setProfName(""); toast("Стандарт «" + row.name + "» сохранён"); });
+      .then((row) => { setProfiles((ps) => [...ps, row]); setProfName(""); setProfSaving(false); toast("Стандарт «" + row.name + "» сохранён"); });
   };
   const removeProfile = async (p) => {
     const ok = await confirmDialog({ title: "Удалить стандарт?", text: "«" + p.name + "» исчезнет из списка. На уже применённые проекты это не влияет.", confirmLabel: "Удалить стандарт" });
@@ -664,7 +666,7 @@ function RoomSpecOverlay({ data, onClose }) {
                 <form onSubmit={saveProfile} style={{ display: "flex", gap: 8, marginTop: 8, flexWrap: "wrap" }}>
                   <input className="fld" style={{ flex: "1 1 200px" }} value={profName} onChange={(e) => setProfName(e.target.value)}
                     placeholder="Название стандарта — например «Премиум»" aria-label="Название стандарта наценки" />
-                  <button type="submit" className="btn btn-ghost" style={{ padding: "7px 12px", fontSize: "var(--fs-12)", whiteSpace: "nowrap", flex: "none" }}><I.plus size={14} />Сохранить как стандарт</button>
+                  <button type="submit" className="btn btn-ghost" disabled={profSaving} style={{ padding: "7px 12px", fontSize: "var(--fs-12)", whiteSpace: "nowrap", flex: "none" }}><I.plus size={14} />Сохранить как стандарт</button>
                 </form>
               </div>
             </div>}

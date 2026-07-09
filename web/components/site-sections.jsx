@@ -259,11 +259,10 @@ function downloadSpecTemplate() {
       { title: "Прикроватная тумба", cat: "Мебель", price: 12000, qty: 2 },
     ] },
   ];
-  const unitClient = (price) => Math.round(price * (1 + markupPct / 100));
-  const lineCost = (it) => it.price * it.qty;
-  const lineClient = (it) => unitClient(it.price) * it.qty;
-  const grand = rooms.reduce((s, r) => s + r.items.reduce((a, it) => a + lineCost(it), 0), 0);
-  const clientTotal = rooms.reduce((s, r) => s + r.items.reduce((a, it) => a + lineClient(it), 0), 0);
+  // клиентская сторона — через тот же canonical-расчёт, что портал/деталь проекта (AIVibeFFE.clientPricing);
+  // себестоимость он не считает (не его забота), поэтому подытог — по факту той же формулой lineCost
+  const grand = rooms.reduce((s, r) => s + r.items.reduce((a, it) => a + it.price * it.qty, 0), 0);
+  const clientTotal = window.AIVibeFFE.clientPricing({ rooms, markup: markupPct }).client;
   withLib("xlsx", () => AIVibeXLSX.exportRoomSpec({ project: "Шаблон сметы", area: "", rooms, grand, markupPct, catMarkupPct: {}, clientTotal, discountPct: 0, deliveryCost: 0, installCost: 0, budget: 300000, mode: "work" }));
 }
 

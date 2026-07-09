@@ -116,7 +116,7 @@
     if (fresh) {  // паспорт свежести цен (роадмап «Стол комплектатора» шаг C1)
       push([]);
       push([(fresh.checked === fresh.total ? "Цены проверены не позднее" : "Цены проверены у " + fresh.checked + " из " + fresh.total + " позиций — не позднее")
-        + " " + fmtDateCell(fresh.oldest) + (fresh.stale ? " (" + fresh.days + " дн. назад)" : "")]);
+        + " " + fmtDateCell(fresh.oldest) + (fresh.stale ? " (" + fresh.days + " дн. назад — рекомендуем перепроверить)" : "")]);
     }
 
     const wsS = XLSX.utils.aoa_to_sheet(svod);
