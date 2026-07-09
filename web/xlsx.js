@@ -406,13 +406,62 @@
           const itemsCount = rooms.reduce((s, r) => s + r.items.length, 0);
           const total = rooms.reduce((s, r) => s + r.items.reduce((a, it) => a + it.price * (it.qty || 1), 0), 0);
           const baseName = String(file.name || "Импорт").replace(/\.[^.]+$/, "");
+
+          // «Свод» — наценка/скидка/доставка/монтаж/наценки по разделам живут только там
+          // (позиции их не несут), поэтому без этого прохода round-trip тихо сбрасывал их
+          // в дефолт при каждом переимпорте своей же выгрузки. Значения читаем текстом
+          // строки, не по номеру колонки — порядок строк в «Своде» может меняться
+          // (клиентский/рабочий режим). Секции различаем маркерами «По разделам»/«Итог» —
+          // без этого текст раздела/комнаты/поставщика «Доставка» (свободный ввод!) читался
+          // бы как строка доставки, а «Свод закупки» (другая книга, row[1] там — количество
+          // позиций, не деньги) — как рабочий «Свод».
+          let markupPct, discountPct, deliveryCost, installCost, catMarkupPct;
+          const svodSn = wb.SheetNames.find((sn) => /^свод/i.test(sn));
+          if (svodSn) {
+            let inCat = false, inItog = false;
+            const catOv = {};
+            XLSX.utils.sheet_to_json(wb.Sheets[svodSn], { header: 1, blankrows: false }).forEach((row) => {
+              if (!Array.isArray(row) || !row[0]) return;
+              const label = String(row[0]).trim();
+              // маркеры узнаём не только по тексту, но и по форме строки — иначе раздел,
+              // названный ровно «Итог»/«По разделам» (свободный текст!), сам сошёл бы за
+              // маркер и подмял бы своей меткой все строки после себя. У «Итога» ровно
+              // одна ячейка (push(["Итог"])); у заголовка «По разделам» вторая ячейка —
+              // текст («Себестоимость»/«Сумма»), у строки раздела — всегда число (сумма).
+              if (label === "Итог" && row.length === 1) { inItog = true; inCat = false; return; }
+              if (label === "По разделам" && typeof row[1] === "string") { inCat = true; return; }
+              // якорь «, %» на конце — иначе матчится и строка «Итога» с наценкой В РУБЛЯХ
+              // («Наценка дизайнера (+35%)»), а не только строка-заголовок с процентом
+              if (/наценка дизайнера.*,\s*%\s*$/i.test(label)) { markupPct = num(row[1]); return; }
+              // раздел с наценкой (4 колонки в рабочем режиме; в клиентском — только сумма,
+              // колонки наценки нет вовсе, что и держит клиентские файлы без catMarkupPct)
+              if (inCat && row.length >= 4) { catOv[label] = num(row[3]); return; }
+              if (!inItog) return;   // скидка/доставка/монтаж живут только внутри «Итога»
+              const pctM = /скидка клиенту[^\d]*(\d+(?:[.,]\d+)?)\s*%/i.exec(label);
+              if (pctM) discountPct = parseFloat(pctM[1].replace(",", "."));
+              else if (/^доставка$/i.test(label)) deliveryCost = num(row[1]);
+              else if (/монтаж и сборка/i.test(label)) installCost = num(row[1]);
+            });
+            // хранить только реальные отличия от базовой ставки — так же, как их пишет UI.
+            // Дефолт — из web/ffe.js (единая точка канона), а не свой литерал
+            const defMarkup = (window.AIVibeFFE && window.AIVibeFFE.DEFAULT_MARKUP_PCT) || 25;
+            const base = markupPct != null ? markupPct : defMarkup;
+            const ov = Object.fromEntries(Object.entries(catOv).filter(([, p]) => p !== base));
+            if (Object.keys(ov).length) catMarkupPct = ov;
+          }
+
           resolve({
             name: baseName, area: "—", budget: total, rooms,
             summaryShort: "Импортировано из Excel: " + (file.name || "") + " · " + itemsCount + " позиций. "
               + (clientPrices ? "В файле цены клиентские — наценка не применялась (базовая 0%). " : "")
               + "Цены — как в файле; проверьте перед выгрузкой.",
             imported: true,
-            ...(clientPrices ? { markupPct: 0 } : {}),   // клиентские цены не наценяем повторно
+            // клиентские цены не наценяем повторно — 0% сильнее того, что нашлось (или не нашлось) в «Своде»
+            ...(clientPrices ? { markupPct: 0 } : (markupPct != null ? { markupPct } : {})),
+            ...(discountPct != null ? { discountPct } : {}),
+            ...(deliveryCost != null ? { deliveryCost } : {}),
+            ...(installCost != null ? { installCost } : {}),
+            ...(catMarkupPct ? { catMarkupPct } : {}),
           });
         } catch (err) { reject(err); }
       };

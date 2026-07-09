@@ -6,6 +6,9 @@
    ============================================================ */
 const { useState: usePD, useEffect: usePDE, useRef: usePDR } = React;
 
+// единая точка канона наценки (web/ffe.js) — не дублировать литерал 25 по файлам
+const PD_DEFAULT_MARKUP = (window.AIVibeFFE && window.AIVibeFFE.DEFAULT_MARKUP_PCT) || 25;
+
 const MP_NAME = { f1: "Дубрава", f2: "Линея" };
 const TIER_NAME = { eco: "Эконом", opt: "Оптимально", prem: "Премиум" };
 const FIND_ICON = { plus: (p) => <I.check {...p} />, warn: (p) => <I.info {...p} />, idea: (p) => <I.spark {...p} /> };
@@ -232,7 +235,7 @@ function ProjectDetail({ id, onClose, initialStyle }) {
 
 /* ---------------- СМЕТА-КОМПЛЕКТАЦИЯ ПО КОМНАТАМ (реальный дизайн-проект) ---------------- */
 function RoomSpecOverlay({ data, onClose }) {
-  const [markup, setMarkup] = usePD(data.markupPct != null ? data.markupPct : 25);
+  const [markup, setMarkup] = usePD(data.markupPct != null ? data.markupPct : PD_DEFAULT_MARKUP);
   const [catMarkup, setCatMarkup] = usePD(data.catMarkupPct || {});  // {раздел: %} — своя наценка поверх базовой (пусто = наследует)
   const [catOpen, setCatOpen] = usePD(false);
   const [discount, setDiscount] = usePD(data.discountPct || 0);      // скидка клиенту, % от подытога
@@ -261,7 +264,7 @@ function RoomSpecOverlay({ data, onClose }) {
   const [profName, setProfName] = usePD("");
   const [profSaving, setProfSaving] = usePD(false);   // guard: двойной клик «Сохранить как стандарт» не должен создать дубль
   const applyProfile = (p) => {
-    setMarkup(p.markupPct != null ? p.markupPct : 25);
+    setMarkup(p.markupPct != null ? p.markupPct : PD_DEFAULT_MARKUP);
     setCatMarkup(p.catMarkupPct || {});
     setDiscount(p.discountPct || 0);
     setDelivery(p.deliveryCost || 0);

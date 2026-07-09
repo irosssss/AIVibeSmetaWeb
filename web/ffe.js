@@ -20,6 +20,10 @@
     "Освещение", "Текстиль", "Декор", "Хранение", "Отделка", "Прочее",
   ];
 
+  /* базовая наценка дизайнера по умолчанию (%) — единая точка, чтобы не разъезжаться
+     по копиям в project-detail.jsx/site-sections.jsx/xlsx.js при смене канона */
+  const DEFAULT_MARKUP_PCT = 25;
+
   /* Единицы измерения (Фаза 2.3 — доставка/монтаж строками, UOM). */
   const FFE_UNITS = ["шт", "компл", "м", "м²", "пог.м"];
 
@@ -432,7 +436,7 @@
     return {
       id: "p_calc",
       name: "Смета-черновик · " + a + " м² · " + res.seg.label,
-      area: a, budget: goods + delivery, markupPct: 25, mode: "work",
+      area: a, budget: goods + delivery, markupPct: DEFAULT_MARKUP_PCT, mode: "work",
       rooms,
       extras: delivery > 0 ? [blankExtra({ label: "Доставка и монтаж", kind: "fixed", value: delivery })] : [],
       summaryShort: "Черновик сметы по площади " + a + " м² (" + res.seg.label + ", ~" + res.rate + " ₽/м²). Цены — рыночный ориентир из бенчмарка; замените позиции реальными (вставь-ссылку/каталог). Состав комнат и доли категорий — по сегменту.",
@@ -574,6 +578,7 @@
 
   window.AIVibeFFE = {
     FFE_CATEGORIES, FFE_UNITS, FFE_STATUSES, STATUS_LABEL, STATUS_BY_ID, DEFAULT_STATUS,
+    DEFAULT_MARKUP_PCT,
     APPROVE_STATUSES, APPROVE_BY_ID, approveMeta,
     PAYMENT_KINDS, PAYKIND_BY_ID, blankPayment, blankPayments, blankTrack,
     URGENCY_BUCKETS, URGENCY_BY_ID, urgencyBucket, itemDueItems,
