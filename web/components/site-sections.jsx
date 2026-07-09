@@ -243,6 +243,30 @@ function DemoStage({ active, sub }) {
    КОМПЛЕКТАЦИЯ ПО КАТЕГОРИЯМ — витрина вывода: карточки с рендером,
    себестоимостью и ценой клиенту (две цены на каждую категорию).
 -------------------------------------------------------------- */
+// лид-магнит (роадмап п.12): пустой шаблон в НАШЕМ реальном формате — теми же
+// листами/заголовками, что и боевой экспорт AIVibeXLSX.exportRoomSpec, поэтому
+// designer может тут же скачать обратно через «Импорт из Excel» без переделок.
+function downloadSpecTemplate() {
+  const markupPct = 25;
+  const rooms = [
+    { name: "Гостиная", items: [
+      { title: "Диван 3-местный, велюр", cat: "Мебель", price: 120000, qty: 1 },
+      { title: "Журнальный столик", cat: "Мебель", price: 18000, qty: 1 },
+      { title: "Люстра подвесная", cat: "Свет", price: 25000, qty: 1 },
+    ] },
+    { name: "Спальня", items: [
+      { title: "Кровать с изголовьем 160×200", cat: "Мебель", price: 65000, qty: 1 },
+      { title: "Прикроватная тумба", cat: "Мебель", price: 12000, qty: 2 },
+    ] },
+  ];
+  const unitClient = (price) => Math.round(price * (1 + markupPct / 100));
+  const lineCost = (it) => it.price * it.qty;
+  const lineClient = (it) => unitClient(it.price) * it.qty;
+  const grand = rooms.reduce((s, r) => s + r.items.reduce((a, it) => a + lineCost(it), 0), 0);
+  const clientTotal = rooms.reduce((s, r) => s + r.items.reduce((a, it) => a + lineClient(it), 0), 0);
+  withLib("xlsx", () => AIVibeXLSX.exportRoomSpec({ project: "Шаблон сметы", area: "", rooms, grand, markupPct, catMarkupPct: {}, clientTotal, discountPct: 0, deliveryCost: 0, installCost: 0, budget: 300000, mode: "work" }));
+}
+
 function SpecCategories() {
   const ref = useReveal();
   const CATS = [
@@ -273,6 +297,9 @@ function SpecCategories() {
             </div>
           ))}
         </div>
+        <button type="button" className="btn btn-ghost" onClick={downloadSpecTemplate} style={{ marginTop: 24 }}>
+          <I.download size={15} />Скачать пустой шаблон Excel
+        </button>
       </div>
     </section>
   );
