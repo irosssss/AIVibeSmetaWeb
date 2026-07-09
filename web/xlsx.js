@@ -406,13 +406,38 @@
           const itemsCount = rooms.reduce((s, r) => s + r.items.length, 0);
           const total = rooms.reduce((s, r) => s + r.items.reduce((a, it) => a + it.price * (it.qty || 1), 0), 0);
           const baseName = String(file.name || "Импорт").replace(/\.[^.]+$/, "");
+
+          // «Свод»/«Свод закупки» — наценка/скидка/доставка/монтаж живут только там (позиции
+          // их не несут), поэтому без этого прохода round-trip тихо сбрасывал их в дефолт при
+          // каждом переимпорте своей же выгрузки. Значения читаем текстом строки, не по номеру
+          // колонки — порядок строк в «Своде» может меняться (клиентский/рабочий режим).
+          let markupPct, discountPct, deliveryCost, installCost;
+          const svodSn = wb.SheetNames.find((sn) => /^свод/i.test(sn));
+          if (svodSn) {
+            XLSX.utils.sheet_to_json(wb.Sheets[svodSn], { header: 1, blankrows: false }).forEach((row) => {
+              if (!Array.isArray(row) || !row[0]) return;
+              const label = String(row[0]);
+              const pctM = /скидка клиенту[^\d]*(\d+(?:[.,]\d+)?)\s*%/i.exec(label);
+              // якорь «, %» на конце — иначе матчится и строка «Итога» с наценкой В РУБЛЯХ
+              // («Наценка дизайнера (+35%)»), а не только строка-заголовок с процентом
+              if (/наценка дизайнера.*,\s*%\s*$/i.test(label)) markupPct = num(row[1]);
+              else if (pctM) discountPct = parseFloat(pctM[1].replace(",", "."));
+              else if (/^доставка$/i.test(label.trim())) deliveryCost = num(row[1]);
+              else if (/монтаж и сборка/i.test(label)) installCost = num(row[1]);
+            });
+          }
+
           resolve({
             name: baseName, area: "—", budget: total, rooms,
             summaryShort: "Импортировано из Excel: " + (file.name || "") + " · " + itemsCount + " позиций. "
               + (clientPrices ? "В файле цены клиентские — наценка не применялась (базовая 0%). " : "")
               + "Цены — как в файле; проверьте перед выгрузкой.",
             imported: true,
-            ...(clientPrices ? { markupPct: 0 } : {}),   // клиентские цены не наценяем повторно
+            // клиентские цены не наценяем повторно — 0% сильнее того, что нашлось (или не нашлось) в «Своде»
+            ...(clientPrices ? { markupPct: 0 } : (markupPct != null ? { markupPct } : {})),
+            ...(discountPct != null ? { discountPct } : {}),
+            ...(deliveryCost != null ? { deliveryCost } : {}),
+            ...(installCost != null ? { installCost } : {}),
           });
         } catch (err) { reject(err); }
       };

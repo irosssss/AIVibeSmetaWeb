@@ -167,10 +167,16 @@ function NormsSettings() {
               <I.info size={15} style={{ flex: "none" }} />{linkNote}
             </div>
           )}
-          {NORM_DEFS.filter((d) => !onlyMod || isMod(d.key)).map((d) => (
-            <NormRow key={d.key} def={d} value={eff(d.key)} modified={isMod(d.key)} enabled={on(d.key)}
-              onChange={(v) => setKey(d.key, v)} onReset={() => resetKey(d.key)} onToggle={() => toggleKey(d.key)} />
-          ))}
+          {NORM_DEFS.filter((d) => !onlyMod || isMod(d.key)).map((d) => {
+            // «Комфортный проход» по контракту движка (engine.js) считается только внутри
+            // блока «Минимального прохода» — выключенный минимум молча гасит и комфорт.
+            // Показываем эту связку явно тумблером, а не тихим расхождением UI↔движок.
+            const locked = d.key === "walkwayComfort" && !on("walkwayMin");
+            return (
+              <NormRow key={d.key} def={d} value={eff(d.key)} modified={isMod(d.key)} enabled={on(d.key)} locked={locked}
+                onChange={(v) => setKey(d.key, v)} onReset={() => resetKey(d.key)} onToggle={() => toggleKey(d.key)} />
+            );
+          })}
           {onlyMod && modCount === 0 && (
             <div style={{ padding: "34px 22px", textAlign: "center", color: "var(--muted)", fontSize: "var(--fs-14)" }}>Пока ничего не изменено — все нормы по канону Design Ledger.</div>
           )}
@@ -229,8 +235,11 @@ function NormsSettings() {
   );
 }
 
-/* строка-правило: слайдер/степперы + бейдж + reset + вкл/выкл */
-function NormRow({ def, value, modified, enabled, onChange, onReset, onToggle }) {
+/* строка-правило: слайдер/степперы + бейдж + reset + вкл/выкл.
+   locked — правило технически выключено связкой (см. вызывающий код), а не своим тумблером:
+   тумблер и контролы заблокированы, подпись объясняет причину вместо тихого расхождения с движком. */
+function NormRow({ def, value, modified, enabled, locked, onChange, onReset, onToggle }) {
+  const active = enabled && !locked;
   const clamp = (x) => Math.max(def.min, Math.min(def.max, Math.round(x / def.step) * def.step));
   const setSingle = (x) => onChange(store(def.key, clamp(x)));
   const setPart = (part, x) => {
@@ -245,7 +254,7 @@ function NormRow({ def, value, modified, enabled, onChange, onReset, onToggle })
     ? disp(def.key, N_CANON[def.key].min) + "–" + disp(def.key, N_CANON[def.key].max)
     : "" + disp(def.key, N_CANON[def.key]);
   return (
-    <div className="norm-row" style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: "14px 20px", alignItems: "start", padding: "18px 22px", borderBottom: "1px solid var(--hairline-2)", opacity: enabled ? 1 : 0.45 }}>
+    <div className="norm-row" style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: "14px 20px", alignItems: "start", padding: "18px 22px", borderBottom: "1px solid var(--hairline-2)", opacity: active ? 1 : 0.45 }}>
       <div style={{ minWidth: 0 }}>
         <div style={{ fontWeight: 600, fontSize: "var(--fs-15)", display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
           {def.label}
@@ -253,7 +262,9 @@ function NormRow({ def, value, modified, enabled, onChange, onReset, onToggle })
             ? <span style={{ fontSize: "var(--fs-11)", fontWeight: 600, padding: "2px 9px", borderRadius: 99, background: "rgba(183,80,44,.14)", color: "var(--accent-ink)" }}>изменено</span>
             : <span style={{ fontSize: "var(--fs-11)", fontWeight: 600, padding: "2px 9px", borderRadius: 99, background: "var(--surface-2)", color: "var(--faint)" }}>по канону</span>}
         </div>
-        <div style={{ color: "var(--muted)", fontSize: "var(--fs-13)", marginTop: 3 }}>{def.hint}</div>
+        <div style={{ color: locked ? "var(--accent-ink)" : "var(--muted)", fontSize: "var(--fs-13)", marginTop: 3 }}>
+          {locked ? "Считается только вместе с «Минимальным проходом» — включите его выше." : def.hint}
+        </div>
         <div style={{ fontFamily: "var(--font-mono)", fontSize: "var(--fs-11)", color: "var(--faint)", marginTop: 6 }}>
           {modified ? "источник: мой канон" : "дефолт: канон Design Ledger · " + canonDisp + " " + def.unit}
         </div>
@@ -262,22 +273,24 @@ function NormRow({ def, value, modified, enabled, onChange, onReset, onToggle })
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           {def.type === "range" ? (
             <React.Fragment>
-              <Stepper value={disp(def.key, value.min)} step={def.step} onSet={(x) => setPart("min", x)} disabled={!enabled} />
+              <Stepper value={disp(def.key, value.min)} step={def.step} onSet={(x) => setPart("min", x)} disabled={!active} />
               <span style={{ color: "var(--faint)", fontFamily: "var(--font-mono)" }}>–</span>
-              <Stepper value={disp(def.key, value.max)} step={def.step} onSet={(x) => setPart("max", x)} disabled={!enabled} />
+              <Stepper value={disp(def.key, value.max)} step={def.step} onSet={(x) => setPart("max", x)} disabled={!active} />
             </React.Fragment>
           ) : (
             <React.Fragment>
-              <input type="range" min={def.min} max={def.max} step={def.step} value={d1} disabled={!enabled}
+              <input type="range" min={def.min} max={def.max} step={def.step} value={d1} disabled={!active}
                 onChange={(e) => setSingle(+e.target.value)} style={{ width: 150, accentColor: "var(--accent)", cursor: "pointer" }} />
-              <Stepper value={d1} step={def.step} onSet={setSingle} disabled={!enabled} />
+              <Stepper value={d1} step={def.step} onSet={setSingle} disabled={!active} />
             </React.Fragment>
           )}
           <span style={{ fontFamily: "var(--font-mono)", fontSize: "var(--fs-12)", color: "var(--faint)", minWidth: 18 }}>{def.unit}</span>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           {modified && <button onClick={onReset} style={{ display: "inline-flex", alignItems: "center", gap: 5, fontFamily: "var(--font-mono)", fontSize: "var(--fs-11)", color: "var(--muted)", border: "1px solid var(--hairline)", borderRadius: 99, padding: "5px 10px" }}>↺ сброс</button>}
-          <Switch on={enabled} onChange={onToggle} title={enabled ? "Выключить правило" : "Включить правило"} ariaLabel={"Правило «" + def.label + "»"} />
+          <Switch on={enabled} disabled={locked} onChange={onToggle}
+            title={locked ? "Заблокировано — включите «Минимальный проход»" : (enabled ? "Выключить правило" : "Включить правило")}
+            ariaLabel={"Правило «" + def.label + "»"} />
         </div>
       </div>
     </div>
