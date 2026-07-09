@@ -66,6 +66,7 @@ const I = {
   rug: (p) => <Icon {...p} d={<><rect x="3" y="6" width="18" height="12" rx="1" /><path d="M3 9h18M3 15h18M7 6v12M17 6v12" /></>} />,
   plan: (p) => <Icon {...p} d={<><rect x="3" y="3" width="18" height="18" rx="1.5" /><path d="M3 14h7V3M10 14v7M14 3v6h7" /></>} />,
   spinner: (p) => <Icon {...p} d="M12 3a9 9 0 1 0 9 9" />,
+  download: (p) => <Icon {...p} d={<><path d="M12 3v12M7 10l5 5 5-5" /><path d="M5 21h14" /></>} />,
 };
 
 /* ---------- Картинка с striped-плейсхолдером и fallback ---------- */

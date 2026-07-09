@@ -143,6 +143,7 @@
   db.settings = LS.get("settings", { normsOverride: {}, enabledNorms: {}, studioName: "" }); // studioName — брендинг клиентского портала (волна A5)
   db.styles   = LS.get("styles", SEED_STYLES);
   db.library  = LS.get("library", []);   // библиотека товаров студии (волна B1) — пустая до первого товара
+  db.markupProfiles = LS.get("markupProfiles", []);   // сохранённые профили наценки — пусто до первого «мой стандарт»
   const _lsProjects = LS.get("projects", null); if (_lsProjects) db.projects = _lsProjects;
   const _lsFav = LS.get("favorites", null); if (_lsFav) db.favorites = _lsFav;
   db.session  = LS.get("session", null);
@@ -379,6 +380,26 @@
         await delay(120);
         db.library = db.library.filter((p) => p.id !== id);
         LS.set("library", db.library);
+        return { ok: true };
+      },
+    },
+
+    /* — Профили наценки дизайнера («мой стандарт»): базовая ставка + наценки
+         по разделам + скидка/доставка/монтаж, чтобы не настраивать заново
+         каждый новый проект (роадмап п.4, продолжение catMarkupPct) — */
+    markupProfiles: {
+      list: async () => { await delay(120); return clone(db.markupProfiles); },  // → GET /api/markup-profiles
+      create: async (patch = {}) => {                                            // → POST /api/markup-profiles
+        await delay(150);
+        const row = { id: "mp_" + Date.now(), name: "Мой стандарт", markupPct: 25, catMarkupPct: {}, discountPct: 0, deliveryCost: 0, installCost: 0, ...patch, createdAt: today() };
+        db.markupProfiles.push(row);
+        LS.set("markupProfiles", db.markupProfiles);
+        return clone(row);
+      },
+      remove: async (id) => {                                                    // → DELETE /api/markup-profiles/:id
+        await delay(120);
+        db.markupProfiles = db.markupProfiles.filter((p) => p.id !== id);
+        LS.set("markupProfiles", db.markupProfiles);
         return { ok: true };
       },
     },

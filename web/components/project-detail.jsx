@@ -252,6 +252,35 @@ function RoomSpecOverlay({ data, onClose }) {
   const reloadLibrary = () => AIVibeAPI.library.list().then(setLibrary);
   usePDE(() => { reloadLibrary(); }, []);
   const [pickerRoom, setPickerRoom] = usePD(null);   // индекс комнаты с открытым пикером библиотеки | null
+
+  /* --- профили наценки «мой стандарт» (роадмап п.4): применить одним кликом
+     на новый проект или сохранить текущую настройку под именем --- */
+  const [profiles, setProfiles] = usePD([]);
+  const reloadProfiles = () => AIVibeAPI.markupProfiles.list().then(setProfiles);
+  usePDE(() => { reloadProfiles(); }, []);
+  const [profName, setProfName] = usePD("");
+  const [profSaving, setProfSaving] = usePD(false);   // guard: двойной клик «Сохранить как стандарт» не должен создать дубль
+  const applyProfile = (p) => {
+    setMarkup(p.markupPct != null ? p.markupPct : 25);
+    setCatMarkup(p.catMarkupPct || {});
+    setDiscount(p.discountPct || 0);
+    setDelivery(p.deliveryCost || 0);
+    setInstall(p.installCost || 0);
+    toast("Применён стандарт «" + p.name + "»");
+  };
+  const saveProfile = (e) => {
+    e.preventDefault();
+    const name = profName.trim();
+    if (!name || profSaving) return;
+    setProfSaving(true);
+    AIVibeAPI.markupProfiles.create({ name, markupPct: markup, catMarkupPct: catMarkup, discountPct: discount, deliveryCost: delivery, installCost: install })
+      .then((row) => { setProfiles((ps) => [...ps, row]); setProfName(""); setProfSaving(false); toast("Стандарт «" + row.name + "» сохранён"); });
+  };
+  const removeProfile = async (p) => {
+    const ok = await confirmDialog({ title: "Удалить стандарт?", text: "«" + p.name + "» исчезнет из списка. На уже применённые проекты это не влияет.", confirmLabel: "Удалить стандарт" });
+    if (!ok) return;
+    AIVibeAPI.markupProfiles.remove(p.id).then(() => setProfiles((ps) => ps.filter((x) => x.id !== p.id)));
+  };
   const saveRoom = () => {
     if (roomSaving) return;
     setRoomSaving(true);
@@ -366,6 +395,8 @@ function RoomSpecOverlay({ data, onClose }) {
   const client = rooms.reduce((s, r) => s + roomClient(r), 0);
   const itemsCount = rooms.reduce((s, r) => s + r.items.length, 0);
   const over = grand > data.budget;
+  // паспорт свежести цен (роадмап «Стол комплектатора» шаг C1) — та же честная нижняя граница, что уходит в PDF/Excel
+  const fresh = window.AIVibeFFE && window.AIVibeFFE.priceFreshness ? window.AIVibeFFE.priceFreshness(rooms) : null;
   // разделы проекта — из фактических позиций, тяжёлые по себестоимости первыми
   const catCost = {}, catCli = {};   // catCli — суммой округлённых строк, чтобы панель сходилась с итогом и выгрузками
   rooms.forEach((r) => r.items.forEach((it) => { const k = catOf(it); catCost[k] = (catCost[k] || 0) + lineCost(it); catCli[k] = (catCli[k] || 0) + lineClient(it); }));
@@ -616,6 +647,27 @@ function RoomSpecOverlay({ data, onClose }) {
                     Пустое поле — раздел идёт по базовой наценке +{markup}%. Свои проценты действуют в смете и в выгрузках PDF и Excel.
                   </div>
                 </div>
+              </div>
+
+              {/* мои стандарты наценки: применить готовый профиль (базовая+разделы+скидка+доставка+монтаж)
+                 к текущему проекту одним кликом, или сохранить текущую настройку под именем */}
+              <div style={{ marginTop: 14, paddingTop: 14, borderTop: "1px solid var(--hairline-2)" }}>
+                <div style={{ fontWeight: 600, fontSize: "var(--fs-13)", marginBottom: profiles.length ? 6 : 0 }}>Мои стандарты</div>
+                {profiles.map((p) => (
+                  <div key={p.id} style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 0", borderBottom: "1px solid var(--hairline-2)", fontSize: "var(--fs-12)" }}>
+                    <button onClick={() => applyProfile(p)} style={{ flex: 1, minWidth: 0, textAlign: "left", fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
+                      title={"Применить: базовая +" + p.markupPct + "%" + (Object.keys(p.catMarkupPct || {}).length ? " · " + Object.keys(p.catMarkupPct).length + " по разделам" : "")}>
+                      {p.name}
+                    </button>
+                    <span className="mono" style={{ color: "var(--muted)", flex: "none" }}>+{p.markupPct}%</span>
+                    <button onClick={() => removeProfile(p)} className="icon-btn xs" title={"Удалить стандарт «" + p.name + "»"} aria-label={"Удалить стандарт «" + p.name + "»"} style={{ flex: "none" }}><I.close size={12} /></button>
+                  </div>
+                ))}
+                <form onSubmit={saveProfile} style={{ display: "flex", gap: 8, marginTop: 8, flexWrap: "wrap" }}>
+                  <input className="fld" style={{ flex: "1 1 200px" }} value={profName} onChange={(e) => setProfName(e.target.value)}
+                    placeholder="Название стандарта — например «Премиум»" aria-label="Название стандарта наценки" />
+                  <button type="submit" className="btn btn-ghost" disabled={profSaving} style={{ padding: "7px 12px", fontSize: "var(--fs-12)", whiteSpace: "nowrap", flex: "none" }}><I.plus size={14} />Сохранить как стандарт</button>
+                </form>
               </div>
             </div>}
 
@@ -897,6 +949,13 @@ function RoomSpecOverlay({ data, onClose }) {
                 <span style={{ fontWeight: 800, fontFamily: "var(--font-display)", fontSize: "var(--fs-15)" }}>{mode === "work" ? "Итого для клиента" : "Итого"}</span>
                 <span id="rs-total-val" className="mono rs-val" style={{ fontWeight: 600, fontSize: "var(--fs-24)", letterSpacing: "-0.01em" }} aria-live="off">{fmtMoney(totalClient)}</span>
               </div>
+              {/* паспорт свежести цен: та же честная нижняя граница, что уходит в PDF/Excel */}
+              {fresh && (
+                <div className="mono" style={{ marginTop: 10, paddingTop: 10, borderTop: "1px solid var(--hairline-2)", fontSize: "var(--fs-11)", color: fresh.stale ? "var(--accent-ink)" : "var(--spec-meta)" }}>
+                  {fresh.checked === fresh.total ? "Цены проверены не позднее " : "Цены проверены у " + fresh.checked + " из " + fresh.total + " позиций — не позднее "}
+                  {fmtDateRu(fresh.oldest)}{fresh.stale ? " · рекомендуем перепроверить" : ""}
+                </div>
+              )}
             </div>}
           </section>
 
