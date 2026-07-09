@@ -57,6 +57,72 @@
   const APPROVE_BY_ID = Object.fromEntries(APPROVE_STATUSES.map((s) => [s.id, s]));
   const approveMeta = (id) => APPROVE_BY_ID[id] || APPROVE_BY_ID.pending;
 
+  /* Платёжные даты закупки (волна C1, бенчмарк Programa) — 4 даты на позицию,
+     независимое от стадии закупки измерение: деньги двигаются не синхронно
+     с товаром (аванс платят до заказа, остаток — после доставки/монтажа).
+     В расчёты сметы не участвует — это НЕ строки итога, а трекер дат. */
+  const PAYMENT_KINDS = [
+    { id: "clientAdvance",   label: "Аванс клиента" },
+    { id: "supplierAdvance", label: "Аванс поставщику" },
+    { id: "clientBalance",   label: "Остаток клиента" },
+    { id: "supplierBalance", label: "Остаток поставщику" },
+  ];
+  const PAYKIND_BY_ID = Object.fromEntries(PAYMENT_KINDS.map((k) => [k.id, k]));
+  function blankPayment(over) {
+    const o = over || {};
+    return { date: str(o.date), paid: !!o.paid };
+  }
+  function blankPayments(over) {
+    const o = over || {};
+    const out = {};
+    PAYMENT_KINDS.forEach((k) => { out[k.id] = blankPayment(o[k.id]); });
+    return out;
+  }
+
+  /* Трек-номер отправления (волна C3) — один на позицию: чаще всего одна
+     накладная/ТТН покрывает всю партию позиции, а не каждую стадию отдельно. */
+  function blankTrack(over) {
+    const o = over || {};
+    return { number: str(o.number), url: str(o.url), note: str(o.note) };
+  }
+
+  /* Срочность закупки (волна C2, шаг «Сегодня в работе») — чистая функция
+     дата→корзина, без завязки на проект/позицию, поэтому переиспользуется
+     и в самой смете, и в сквозном виджете кабинета по всем проектам. */
+  const URGENCY_BUCKETS = [
+    { id: "overdue", label: "Просрочено", color: "var(--accent)" },
+    { id: "today",   label: "Сегодня",    color: "var(--chart)" },
+    { id: "week",    label: "На неделе",  color: "var(--info)" },
+    { id: "later",   label: "Позже",      color: "var(--faint)" },
+  ];
+  const URGENCY_BY_ID = Object.fromEntries(URGENCY_BUCKETS.map((b) => [b.id, b]));
+  function urgencyBucket(dateStr) {
+    const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(dateStr || ""));
+    if (!m) return null;
+    const d = new Date(+m[1], +m[2] - 1, +m[3]).getTime();
+    const now = new Date(); now.setHours(0, 0, 0, 0);
+    const days = Math.round((d - now.getTime()) / 86400000);
+    if (days < 0) return "overdue";
+    if (days === 0) return "today";
+    if (days <= 7) return "week";
+    return "later";
+  }
+  // все непогашенные дела позиции с датой: ожидаемая дата текущей стадии закупки
+  // (eta, пока позиция не принята) + непроставленные платежи. Готовое (принято/
+  // оплачено) в срочность не попадает — виджет показывает только то, что ждёт решения.
+  function itemDueItems(it) {
+    const out = [];
+    if (it.eta && it.status !== "accepted") {
+      out.push({ kind: "stage", id: it.status || DEFAULT_STATUS, label: "Стадия: " + statusMeta(it.status).label, date: it.eta });
+    }
+    const pay = it.payments || {};
+    PAYMENT_KINDS.forEach((k) => {
+      const p = pay[k.id];
+      if (p && p.date && !p.paid) out.push({ kind: "payment", id: k.id, label: k.label, date: p.date });
+    });
+    return out;
+  }
+
   /* Комментарии-треды на позиции (волна A3, бенчмарк Programa) — отдельные от approve:
      решение клиента фиксируется кнопками, а здесь — переписка вокруг позиции. Для v1
      тред живёт на снимке портал-шары (клиент пишет через портал, дизайнер отвечает
@@ -143,8 +209,10 @@
       approve:  APPROVE_BY_ID[o.approve] && o.approve !== "pending" ? o.approve : "", // Решение клиента ("" = ждёт)
       approveAt: str(o.approveAt),             // Дата решения (YYYY-MM-DD)
       comments: Array.isArray(o.comments) ? o.comments.map((c) => blankComment(c)).filter((c) => c.text) : [], // Тред комментариев (волна A3)
-      eta:      str(o.eta),                     // Ожидаемая дата готовности/доставки (YYYY-MM-DD)
+      eta:      str(o.eta),                     // Ожидаемая дата ТЕКУЩЕЙ стадии закупки (YYYY-MM-DD) — сбрасывается при смене стадии (setStatus), иначе дата старой стадии ложно висела бы просрочкой на новой
       note:     str(o.note),                   // Примечание
+      payments: blankPayments(o.payments),      // Платёжные даты закупки (волна C1) {id: {date, paid}}
+      track:    blankTrack(o.track),            // Трек-номер отправления (волна C3) {number, url, note}
       analogOf: o.analogOf || null,            // id исходной позиции (если это аналог)
       analogs:  depth ? [] : (Array.isArray(o.analogs) ? o.analogs.map((a) => blankPosition(a, 1)) : []), // Альтернативы (2.2)
       updatedAt: o.updatedAt || today(),       // Дата правки (YYYY-MM-DD)
@@ -507,6 +575,8 @@
   window.AIVibeFFE = {
     FFE_CATEGORIES, FFE_UNITS, FFE_STATUSES, STATUS_LABEL, STATUS_BY_ID, DEFAULT_STATUS,
     APPROVE_STATUSES, APPROVE_BY_ID, approveMeta,
+    PAYMENT_KINDS, PAYKIND_BY_ID, blankPayment, blankPayments, blankTrack,
+    URGENCY_BUCKETS, URGENCY_BY_ID, urgencyBucket, itemDueItems,
     EXTRA_PRESETS, statusMeta, statusProgress, stampStatus, today, priceFreshness,
     blankPosition, normalizePosition, dimsLabel, lineTotal,
     blankComment, addComment,
