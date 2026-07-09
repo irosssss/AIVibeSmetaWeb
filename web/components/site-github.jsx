@@ -12,7 +12,7 @@ function Footer({ go }) {
   const cols = [
     ["Продукт", [["Для кого", "#whofor"], ["Как работает", "#how"], ["Клиентский портал", "#portal"], ["Возможности", "#features"], ["Окупаемость", "#payoff"], ["Тарифы", "#pricing"], ["Новости", "#news"]]],
     ["Технологии", [["Движок эргономики", "#how"], ["Каталог фабрик", "#komplektacia"], ["YandexGPT 5", "#features"], ["Выгрузка сметы", "#komplektacia"]]],
-    ["Компания", [["О проекте", null], ["Контакты", null], ["Политика", null], ["Оферта", null]]],
+    ["Компания", [["Что нового", "#changelog"], ["О проекте", null], ["Контакты", null], ["Политика", null], ["Оферта", null]]],
   ];
   return (
     <footer style={{ marginTop: 40 }}>
@@ -114,5 +114,84 @@ function SitePage({ go }) {
   );
 }
 
+/* --------------------------------------------------------------
+   /CHANGELOG — публичная страница «Что нового» (волна F3 бенчмарка
+   Programa, PROGRAMA_BENCHMARK_2026-07-08.md §3: «дёшево, доверие»).
+   Не путать с NewsFeed («Новости дизайна» — редакционный журнал):
+   здесь только наши собственные релизы простым языком, без
+   внутреннего жаргона роадмапа/номеров PR/код-ревью.
+-------------------------------------------------------------- */
+const CHANGELOG = [
+  { date: "2026-07-09", tag: "Закупка", title: "Платёжные даты и трек-номера", text: "На каждой позиции — даты авансов и остатков клиенту и поставщику, трек-номер отправления с кликабельной ссылкой. Виджет «Сегодня в работе» собирает просроченные и ближайшие платежи по всем проектам сразу." },
+  { date: "2026-07-09", tag: "Наценка", title: "Свои профили наценки", text: "Сохраните наценку и скидки как «свой стандарт» и применяйте к любому проекту одним кликом." },
+  { date: "2026-07-09", tag: "Смета", title: "Паспорт свежести цен", text: "В смете и во всех выгрузках видно, на какую дату проверены цены — если давно, документ честно предупредит об этом." },
+  { date: "2026-07-09", tag: "Лендинг", title: "Бесплатный шаблон сметы в Excel", text: "Пустой шаблон в нашем формате — без регистрации. Заполните и сразу импортируйте обратно в кабинет." },
+  { date: "2026-07-08", tag: "Портал", title: "Клиентский портал: согласование по ссылке", text: "Клиент открывает смету по ссылке без входа, согласовывает позиции и пишет комментарии — без вотсапа и созвонов." },
+  { date: "2026-07-08", tag: "Портал", title: "Протокол согласования в PDF", text: "Все статусы и комментарии клиента с датами — одним документом прямо из версии сметы." },
+  { date: "2026-07-08", tag: "Библиотека", title: "Библиотека товаров студии", text: "Сохраняйте проверенные позиции с артикулом, поставщиком и ценой — добавляйте их в новые сметы одним кликом." },
+  { date: "2026-07-07", tag: "Закупка", title: "Закупочный лист по поставщикам", text: "Позиции сметы группируются по поставщикам — отдельный лист на каждого в Excel и PDF, готовый к отправке." },
+  { date: "2026-07-07", tag: "Смета", title: "Из прошлого проекта и готовые шаблоны", text: "Копируйте комнаты и позиции из своих прошлых смет или начните с готовой комплектации — санузел, спальня, прихожая, кухня." },
+  { date: "2026-07-06", tag: "Эргономика", title: "Проверка норм и стадии работы", text: "Смета проверяет проходы и расстановку по нормам NKBA/Neufert. Проект теперь идёт по стадиям: Сбор → Согласование → Закупка → Сдача." },
+  { date: "2026-07-01", tag: "Смета", title: "Две цены и живая наценка", text: "В каждой строке — себестоимость и цена клиенту, наценка пересчитывается на лету. Клиент видит только свою цену." },
+  { date: "2026-06-29", tag: "Экспорт", title: "Импорт из Excel и два режима выгрузки", text: "Загружайте готовую комплектацию из Excel-файла. Выгрузка бывает рабочей (с себестоимостью) и для клиента (только его цена)." },
+];
+
+function groupChangelogByDate(list) {
+  const groups = [];
+  list.forEach((item) => {
+    let g = groups.find((g) => g.date === item.date);
+    if (!g) { g = { date: item.date, items: [] }; groups.push(g); }
+    g.items.push(item);
+  });
+  return groups;
+}
+
+function ChangelogPage({ go }) {
+  useE3(() => { window.scrollTo({ top: 0 }); }, []);
+  const groups = groupChangelogByDate(CHANGELOG);
+  return (
+    <div className="minh-screen">
+      <div className="container" style={{ maxWidth: 760, paddingBlock: "clamp(28px,5vh,56px)" }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, marginBottom: 40, flexWrap: "wrap" }}>
+          <Logo size={25} onClick={() => go("site")} />
+          <div style={{ display: "flex", gap: 10 }}>
+            <button className="btn btn-ghost" style={{ padding: "9px 16px", fontSize: "var(--fs-13)" }} onClick={() => go("site")}>На главную</button>
+            <button className="btn btn-primary" style={{ padding: "9px 16px", fontSize: "var(--fs-13)" }} onClick={() => go("auth")}>Войти</button>
+          </div>
+        </div>
+
+        <div className="eyebrow jade" style={{ marginBottom: 16 }}>ЖУРНАЛ ИЗМЕНЕНИЙ</div>
+        <h1 className="display" style={{ fontSize: "clamp(32px,4.6vw,52px)" }}>Что нового в Design Ledger</h1>
+        <p style={{ color: "var(--muted)", fontSize: "var(--fs-15)", marginTop: 14, maxWidth: 560, lineHeight: 1.6 }}>
+          Что добавили и починили — по датам, без маркетинга. Ведём открыто с первого дня прототипа.
+        </p>
+
+        <div style={{ marginTop: 44, display: "flex", flexDirection: "column", gap: 32 }}>
+          {groups.map((g) => (
+            <div key={g.date} style={{ display: "grid", gridTemplateColumns: "clamp(72px,18vw,104px) 1fr", gap: 18 }}>
+              <div className="mono" style={{ fontSize: "var(--fs-12)", fontWeight: 700, color: "var(--spec-meta)", paddingTop: 4 }}>
+                {new Date(g.date + "T00:00:00").toLocaleDateString("ru-RU", { day: "numeric", month: "long" })}
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                {g.items.map((item, i) => (
+                  <div key={i} className="glass" style={{ borderRadius: "var(--r-lg)", padding: "16px 20px" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 9, marginBottom: 6, flexWrap: "wrap" }}>
+                      <span className="mono" style={{ fontSize: "var(--fs-10)", fontWeight: 700, letterSpacing: ".06em", textTransform: "uppercase", color: "var(--accent-2-ink)", padding: "3px 9px", borderRadius: 99, background: "var(--accent-2-tint)" }}>{item.tag}</span>
+                      <h2 style={{ fontSize: "var(--fs-16)", fontWeight: 700, fontFamily: "var(--font-display)" }}>{item.title}</h2>
+                    </div>
+                    <p style={{ color: "var(--muted)", fontSize: "var(--fs-14)", lineHeight: 1.6 }}>{item.text}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+      <Footer go={go} />
+    </div>
+  );
+}
+
 window.Footer = Footer;
 window.SitePage = SitePage;
+window.ChangelogPage = ChangelogPage;

@@ -14,17 +14,21 @@ const staticHow = prefersReduced || narrowVP;
 /* --------------------------------------------------------------
    HOW IT WORKS — sticky-сцена, прогресс ведётся скроллом
 -------------------------------------------------------------- */
-/* нумерованный путь 01–05 (рецепт Programa: Client Dashboard/Procurement/Library
+/* нумерованный путь 01–07 (рецепт Programa: Client Dashboard/Procurement/Library
    на страницах фич — mono-номер + глагол + сцена); лендинг-версия «пути сметы»,
-   каркас для будущей полной F1 «6 шагов пути сметы» */
+   волна F1 бенчмарка (PROGRAMA_BENCHMARK_2026-07-08.md §3): нарратив доведён до
+   конца петли комплектатора «Сбор → Согласование → Закупка → Сдача» (шаги 06–07
+   отражают уже сделанные волны C и «Стол комплектатора», не забегают вперёд) */
 const STEPS = [
   { n: "01", icon: I.ruler,  lot: "stepMeasure", tag: "Источник",              title: "Вставьте ссылку на товар или фото комнаты", text: "Клиппер затянет товар с сайта фабрики — с ценой и артикулом, или начните с фото комнаты. Без обмеров и 3D-программ." },
   { n: "02", icon: I.spark,  lot: "stepAI",      tag: "Позиция в смете",       title: "Design Ledger добавляет позицию в смету", text: "Каждая ссылка или фото — сразу строка спецификации: артикул, фото, цена фабрики. Эргономика проверяется рядом, без отдельного шага." },
   { n: "03", icon: I.layers, lot: "stepSpec",    tag: "Наценка · две цены",    title: "Наценка — и в документе уже две цены", text: "Регулятор наценки пересчитывает цену клиенту и вашу прибыль на лету. Себестоимость видите только вы." },
   { n: "04", icon: I.send,   lot: null,          tag: "PDF клиенту",           title: "Смета уходит клиенту — без себестоимости", text: "Клиентская выгрузка PDF или Excel показывает только его цену. Рабочая версия с наценкой остаётся у вас." },
   { n: "05", icon: I.chat,   lot: null,          tag: "Согласование",          title: "Клиент согласовывает прямо в смете", text: "Комментарии по позициям и статус согласования — в общей ссылке, без созвонов и вотсапа." },
+  { n: "06", icon: I.truck,  lot: null,          tag: "Закупка · сроки",       title: "Закупка идёт по датам — ничего не теряется", text: "Стадии заказ → отгрузка → доставка → монтаж, платежи клиенту и поставщику по датам, трек-номера отправлений — видно на одном столе комплектатора." },
+  { n: "07", icon: I.download, lot: null,        tag: "Сдача проекта",         title: "Сдаёте проект — клиент получает документы", text: "Протокол согласования, спецификация, закупочный лист — единым пакетом. Проект уходит в архив, история остаётся в кабинете." },
 ];
-const STEP_VH = 108; /* высота скролл-сцены на шаг (было 340vh / 3 шага ≈ 113vh) */
+const STEP_VH = 94; /* высота скролл-сцены на шаг (было 108 при 5 шагах — при 7 шагах снижена, чтобы вся секция не растягивалась на 7.5 экрана) */
 
 /* глиф шага: активный — Lottie line-art на бумажном квадрате; иначе статичная иконка */
 function StepGlyph({ step, on }) {
@@ -76,8 +80,8 @@ function HowDesktop() {
           {/* левая колонка — шаги */}
           <div>
             <div className="eyebrow jade" style={{ marginBottom: 18 }}>КАК ЭТО РАБОТАЕТ</div>
-            <h2 className="display" style={{ fontSize: "clamp(34px,4.4vw,60px)" }}>От пустой комнаты<br />до готовой сметы</h2>
-            <p style={{ color: "var(--muted)", fontSize: "var(--fs-15)", marginTop: 14, marginBottom: 36 }}>Смета — собрана. Наценка — скрыта. Клиент — согласовал.</p>
+            <h2 className="display" style={{ fontSize: "clamp(34px,4.4vw,60px)" }}>От пустой комнаты<br />до сданного проекта</h2>
+            <p style={{ color: "var(--muted)", fontSize: "var(--fs-15)", marginTop: 14, marginBottom: 36 }}>Смета — собрана. Наценка — скрыта. Клиент — согласовал. Закупка — под контролем.</p>
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
               {STEPS.map((s, i) => {
                 const on = i === active;
@@ -228,6 +232,30 @@ function DemoStage({ active, sub }) {
           <span style={{ fontSize: "var(--fs-12)", fontWeight: 600 }}>Статус позиции</span>
           <span className="mono" style={{ fontSize: "var(--fs-11)", fontWeight: 600, color: "var(--accent-2-ink)" }}>Согласовано</span>
         </div>
+      </div>
+
+      {/* СТАДИЯ 5 — закупка: сроки и трек-номер (волна C, «Сегодня в работе») */}
+      <div style={{ ...bottomPanel(5), display: "flex", flexDirection: "column", gap: 10 }}>
+        <div className="glass" style={{ padding: "13px 16px", borderRadius: 14, display: "flex", alignItems: "center", gap: 12, boxShadow: "var(--shadow-card)" }}>
+          <span style={{ flex: "none", width: 34, height: 34, borderRadius: 9, background: "var(--surface-2)", display: "grid", placeItems: "center", color: "var(--accent-ink)" }}><I.truck size={17} /></span>
+          <div>
+            <div style={{ fontSize: "var(--fs-13)", fontWeight: 600 }}>Аванс поставщику — сегодня</div>
+            <div className="mono" style={{ fontSize: "var(--fs-11)", color: "var(--spec-meta)", marginTop: 2 }}>трек ЛП-4412 · в пути</div>
+          </div>
+        </div>
+        <div className="glass" style={{ alignSelf: "flex-start", padding: "8px 13px", borderRadius: 10, fontSize: "var(--fs-12)", fontWeight: 600, display: "flex", alignItems: "center", gap: 7, borderColor: "rgba(183,80,44,.5)" }}>
+          <I.wallet size={14} style={{ color: "var(--accent-ink)" }} /> «Сегодня в работе» <span className="mono" style={{ fontSize: "var(--fs-10)", color: "var(--accent-ink)" }}>2 платежа</span>
+        </div>
+      </div>
+
+      {/* СТАДИЯ 6 — сдача: пакет документов клиенту */}
+      <div className="glass" style={{ ...bottomPanel(6, { padding: "14px 16px", borderRadius: 14, display: "flex", flexDirection: "column", gap: 10, boxShadow: "var(--shadow-card)" }) }}>
+        {[["Смета-комплектация.pdf"], ["Протокол согласования.pdf"], ["Закупочный лист.xlsx"]].map(([name], i) => (
+          <div key={i} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
+            <span style={{ fontSize: "var(--fs-13)", fontWeight: 600 }}>{name}</span>
+            <span className="mono" style={{ fontSize: "var(--fs-11)", fontWeight: 600, color: "var(--accent-2-ink)", display: "flex", alignItems: "center", gap: 5, flex: "none" }}><I.check size={13} /> готово</span>
+          </div>
+        ))}
       </div>
 
       {/* верхний статус-бар сцены */}
