@@ -152,7 +152,7 @@ function ProjectDetail({ id, onClose, initialStyle }) {
     const el = secRefs[key] && secRefs[key].current, box = mainRef.current;
     if (!el || !box) return;
     const top = el.getBoundingClientRect().top - box.getBoundingClientRect().top + box.scrollTop - 8;
-    box.scrollTo({ top, behavior: "smooth" });
+    box.scrollTo({ top, behavior: motionOK() ? "smooth" : "auto" });
   };
   const applyTier = (t) => { setTier(t); if (data) setSel(pickByTier(data.catalog, t)); };
   const onAction = (a) => {
@@ -285,9 +285,12 @@ function RoomSpecOverlay({ data, onClose }) {
 
   /* --- живое редактирование сметы (фаза 2 слияния, шаг 1) --- */
   const [editPos, setEditPos] = usePD(null); // {ri, ii} — открытый редактор строки; ii === -1 — новая позиция в комнате ri
+  const [flashPos, setFlashPos] = usePD(null); // {ri, ii} — только что добавленная строка, короткая олива-подсветка
+  const [flashSup, setFlashSup] = usePD(null); // {ri, ii} — строка только что сменила поставщика и переехала в новую группу закупки
   const todayISO = () => new Date().toISOString().slice(0, 10);
   // d — нормализованный черновик из PosEditor: {title, qty, price, cat, sup} (строки trim, числа целые)
   const savePos = (ri, ii, d) => {
+    const newIndex = ii === -1 ? rooms[ri].items.length : ii;
     setRooms((prev) => prev.map((r, i) => {
       if (i !== ri) return r;
       const items = [...r.items];
@@ -306,6 +309,10 @@ function RoomSpecOverlay({ data, onClose }) {
       return { ...r, items };
     }));
     setEditPos(null);
+    if (ii === -1) {
+      setFlashPos({ ri, ii: newIndex });
+      setTimeout(() => setFlashPos((f) => (f && f.ri === ri && f.ii === newIndex ? null : f)), 1300);
+    }
   };
   const removePos = (ri, ii) => {
     const it = rooms[ri].items[ii];
@@ -368,8 +375,13 @@ function RoomSpecOverlay({ data, onClose }) {
       .sort((a, b) => (a === NO_SUP ? 1 : b === NO_SUP ? -1 : total(b) - total(a)))
       .map((name) => ({ name, rows: g[name], total: total(name) }));
   })();
-  const setSup = (ri, ii, v) => setRooms((prev) => prev.map((r, i) => i !== ri ? r
-    : { ...r, items: r.items.map((it, j) => j !== ii ? it : (() => { const { sup, ...rest } = it; const s = (v || "").trim(); return s ? { ...rest, sup: s } : rest; })()) }));
+  const setSup = (ri, ii, v) => {
+    setRooms((prev) => prev.map((r, i) => i !== ri ? r
+      : { ...r, items: r.items.map((it, j) => j !== ii ? it : (() => { const { sup, ...rest } = it; const s = (v || "").trim(); return s ? { ...rest, sup: s } : rest; })()) }));
+    // поставщик сменился — строка переехала в другую группу закупки, коротко подсветим её там
+    setFlashSup({ ri, ii });
+    setTimeout(() => setFlashSup((f) => (f && f.ri === ri && f.ii === ii ? null : f)), 1300);
+  };
 
   /* --- стадии закупки по позициям (фаза 2 слияния, шаг 2; словарь стадий — web/ffe.js).
      Позиция без status считается «Подбор»; смена стадии штампует дату (stampStatus
@@ -559,7 +571,7 @@ function RoomSpecOverlay({ data, onClose }) {
                 {ovrCount > 0 && <span className="mono" style={{ fontSize: "var(--fs-11)", color: "var(--accent-ink)" }}>· {ovrCount} {plural(ovrCount, ["своя", "свои", "своих"])}</span>}
                 <span aria-hidden="true" style={{ display: "inline-flex", transform: catOpen ? "rotate(180deg)" : "none", transition: "transform .2s var(--ease)" }}><Icon size={13} d="M4 9l8 7 8-7" /></span>
               </button>
-              {catOpen && (
+              <div className="acc-collapse" data-open={catOpen ? "1" : "0"}>
                 <div style={{ marginTop: 8, borderTop: "1px solid var(--hairline-2)" }}>
                   {cats.map((cat) => {
                     const ovr = catMarkup[cat] != null;
@@ -589,13 +601,13 @@ function RoomSpecOverlay({ data, onClose }) {
                     Пустое поле — раздел идёт по базовой наценке +{markup}%. Свои проценты действуют в смете и в выгрузках PDF и Excel.
                   </div>
                 </div>
-              )}
+              </div>
             </div>}
 
             {/* комнаты — читаются как документ: шапка колонок + две цены построчно.
                В «Рабочей» каждая строка редактируема (карандаш → PosEditor), комнату
                можно переименовать, позицию — добавить вручную. «Для клиента» — чистый просмотр. */}
-            {mode !== "procure" && <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+            {mode !== "procure" && <div key={"rooms-" + mode} className="view-enter" style={{ display: "flex", flexDirection: "column", gap: 14 }}>
               {rooms.map((r, ri) => (
                 <div key={r.name} className="glass" style={{ borderRadius: "var(--r-lg)", padding: "16px 18px" }}>
                   <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 12, marginBottom: 8, flexWrap: "wrap" }}>
@@ -643,7 +655,8 @@ function RoomSpecOverlay({ data, onClose }) {
                       if (mode === "work" && apFilter && !editing && apOf(it) === "ok") return null;
                       return (
                       <React.Fragment key={i}>
-                      <div style={{ display: "flex", alignItems: "baseline", gap: 10, padding: "7px 0", borderTop: i ? "1px solid var(--hairline-2)" : "none", fontSize: "var(--fs-13)" }}>
+                      <div className={flashPos && flashPos.ri === ri && flashPos.ii === i ? "row-flash" : undefined}
+                        style={{ display: "flex", alignItems: "baseline", gap: 10, padding: "7px 0", borderTop: i ? "1px solid var(--hairline-2)" : "none", fontSize: "var(--fs-13)" }}>
                         <span style={{ flex: 1, color: "var(--text)", lineHeight: 1.4 }}>{it.title}{mode === "work" && it.priceDate && <React.Fragment>{" "}<PriceAgeChip d={it.priceDate} note={pastCopyNote(it.priceDate)} /></React.Fragment>}</span>
                         <span className="rs-cat" style={{ color: "var(--spec-meta)", whiteSpace: "nowrap", fontSize: "var(--fs-12)", width: 78, textAlign: "right", overflow: "hidden", textOverflow: "ellipsis" }}>{catOf(it)}</span>
                         <span className="mono" style={{ color: "var(--spec-meta)", whiteSpace: "nowrap", width: 34, textAlign: "right", fontSize: "var(--fs-12)" }}>×{qty}</span>
@@ -699,7 +712,7 @@ function RoomSpecOverlay({ data, onClose }) {
             {/* закупочный лист (роадмап #10): группы по поставщикам, только себестоимость,
                 поставщик — редактируемое поле позиции (datalist подсказывает уже введённых) */}
             {mode === "procure" && (
-              <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+              <div key={"procure-" + mode} className="view-enter" style={{ display: "flex", flexDirection: "column", gap: 14 }}>
                 <div style={{ fontSize: "var(--fs-12)", color: "var(--muted)", maxWidth: 820, lineHeight: 1.55 }}>
                   Позиции сгруппированы по поставщикам, цены — себестоимость без наценки. Поле «поставщик» редактируется прямо в строке; позиции без поставщика собраны в конце. В Excel каждый поставщик получает отдельный лист.
                 </div>
@@ -727,7 +740,7 @@ function RoomSpecOverlay({ data, onClose }) {
                       {g.rows.map((x, i) => {
                         const qty = x.it.qty || 1;
                         return (
-                          <div key={x.ri + ":" + x.ii} className="rs-prow" style={{ display: "flex", alignItems: "baseline", gap: 10, padding: "7px 0", borderTop: i ? "1px solid var(--hairline-2)" : "none", fontSize: "var(--fs-13)" }}>
+                          <div key={x.ri + ":" + x.ii} className={"rs-prow" + (flashSup && flashSup.ri === x.ri && flashSup.ii === x.ii ? " row-flash" : "")} style={{ display: "flex", alignItems: "baseline", gap: 10, padding: "7px 0", borderTop: i ? "1px solid var(--hairline-2)" : "none", fontSize: "var(--fs-13)" }}>
                             <span style={{ flex: 1, minWidth: 0, color: "var(--text)", lineHeight: 1.4, overflowWrap: "anywhere" }}>{x.it.title}{x.it.priceDate && <React.Fragment>{" "}<PriceAgeChip d={x.it.priceDate} note={pastCopyNote(x.it.priceDate)} /></React.Fragment>}</span>
                             <span className="rs-cat" style={{ color: "var(--spec-meta)", whiteSpace: "nowrap", fontSize: "var(--fs-12)", width: 104, textAlign: "right", overflow: "hidden", textOverflow: "ellipsis" }}>{x.room}</span>
                             <span className="mono" style={{ color: "var(--spec-meta)", whiteSpace: "nowrap", width: 34, textAlign: "right", fontSize: "var(--fs-12)" }}>×{qty}</span>
@@ -764,7 +777,7 @@ function RoomSpecOverlay({ data, onClose }) {
 
             {/* итог закупки: суммы по поставщикам + ИТОГО (зеркалит Excel-«Свод закупки») */}
             {mode === "procure" && (
-              <div className="glass" style={{ borderRadius: "var(--r-lg)", padding: "16px 20px", marginTop: 18, maxWidth: 560, marginLeft: "auto" }}>
+              <div key={"totpr-" + mode} className="glass view-enter" style={{ borderRadius: "var(--r-lg)", padding: "16px 20px", marginTop: 18, maxWidth: 560, marginLeft: "auto" }}>
                 <div className="mono" style={{ fontSize: "var(--fs-10)", letterSpacing: ".08em", textTransform: "uppercase", color: "var(--spec-meta)", paddingBottom: 8, borderBottom: "1px solid var(--hairline)" }}>Итог закупки</div>
                 {supGroups.map((g) => (
                   <div key={g.name} style={{ ...RS_ROW, borderTop: "1px solid var(--hairline-2)" }}>
@@ -788,7 +801,7 @@ function RoomSpecOverlay({ data, onClose }) {
             )}
 
             {/* итог документа: подытог → скидка → наценка → доставка/монтаж → ИТОГО (роадмап #6) */}
-            {mode !== "procure" && <div className="glass" style={{ borderRadius: "var(--r-lg)", padding: "16px 20px", marginTop: 18, maxWidth: 560, marginLeft: "auto" }}>
+            {mode !== "procure" && <div key={"totwork-" + mode} className="glass view-enter" style={{ borderRadius: "var(--r-lg)", padding: "16px 20px", marginTop: 18, maxWidth: 560, marginLeft: "auto" }}>
               <div className="mono" style={{ fontSize: "var(--fs-10)", letterSpacing: ".08em", textTransform: "uppercase", color: "var(--spec-meta)", paddingBottom: 8, borderBottom: "1px solid var(--hairline)" }}>Итог сметы</div>
               {mode === "work" && (
                 <React.Fragment>
@@ -1202,7 +1215,7 @@ function PosEditor({ item, cats, sups, isNew, onSave, onDelete, onCancel, librar
   const fld = { width: "100%", padding: "8px 10px", borderRadius: 9, border: "1px solid var(--hairline)", background: "var(--surface)", fontSize: "var(--fs-13)", color: "var(--text)", marginTop: 3 };
   const lab = { fontSize: "var(--fs-11)", color: "var(--muted)", display: "block", minWidth: 0 };
   return (
-    <div style={{ margin: "6px 0 8px", padding: "12px 14px", borderRadius: 12, border: "1px solid rgba(94,107,91,.45)", background: "rgba(94,107,91,.06)", display: "flex", flexDirection: "column", gap: 10 }}
+    <div className="view-enter" style={{ margin: "6px 0 8px", padding: "12px 14px", borderRadius: 12, border: "1px solid rgba(94,107,91,.45)", background: "rgba(94,107,91,.06)", display: "flex", flexDirection: "column", gap: 10 }}
       onKeyDown={(e) => {
         if (e.key === "Enter" && e.target.tagName === "INPUT") { e.preventDefault(); submit(); }
         if (e.key === "Escape") { e.stopPropagation(); onCancel(); }
@@ -1943,7 +1956,7 @@ function BudgetPicker({ data, tier, onTier, total, onOptimize, sref }) {
           <span style={{ fontSize: "var(--fs-14)", color: "var(--muted)" }}>Подобрано на</span>
           <span className="mono" style={{ fontSize: "var(--fs-21)", fontWeight: 600 }}>{fmtMoney(total)} <span style={{ fontSize: "var(--fs-13)", color: "var(--spec-meta)", fontWeight: 400 }}>из {fmtMoney(budget)}</span></span>
         </div>
-        <div className="budget-bar"><i style={{ width: pct + "%", background: over ? "linear-gradient(90deg,#B7502C,#ff7849)" : "linear-gradient(90deg,var(--accent-2),#39b88c)" }} /></div>
+        <div className="budget-bar"><i style={{ transform: `scaleX(${pct / 100})`, background: over ? "linear-gradient(90deg,#B7502C,#ff7849)" : "linear-gradient(90deg,var(--accent-2),#39b88c)" }} /></div>
         <div style={{ display: "flex", justifyContent: "space-between", marginTop: 10, fontSize: "var(--fs-13)" }}>
           <span style={{ color: over ? "var(--accent)" : "var(--accent-2)", fontWeight: 700 }}>
             {over ? `Превышение на ${fmtMoney(total - budget)}` : `Остаток ${fmtMoney(budget - total)}`}

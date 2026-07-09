@@ -81,7 +81,7 @@ function AuthScreen({ onAuthed, go }) {
           <div style={{ display: "flex", gap: 4, padding: 4, background: "var(--glass-2)", border: "1px solid var(--hairline)", borderRadius: 99, marginBottom: 30 }}>
             {[["login", "Вход"], ["register", "Регистрация"]].map(([k, t]) => (
               <button key={k} onClick={() => setMode(k)} style={{ flex: 1, padding: "10px", borderRadius: 99, fontWeight: 700, fontSize: "var(--fs-14)",
-                background: mode === k ? "var(--accent)" : "transparent", color: mode === k ? "var(--on-accent)" : "var(--muted)", transition: ".2s" }}>{t}</button>
+                background: mode === k ? "var(--accent)" : "transparent", color: mode === k ? "var(--on-accent)" : "var(--muted)", transition: "var(--dur-fast)" }}>{t}</button>
             ))}
           </div>
 
@@ -142,10 +142,12 @@ function Cabinet({ user, onLogout, go }) {
     <div className="minh-screen">
       <AppTopBar user={user} onLogout={onLogout} go={go} tabs={CAB_TABS} tab={tab} setTab={changeTab} onNewProject={newProject} />
       <main id="main" className="container" style={{ paddingBlock: "clamp(28px,4vh,48px)", paddingTop: "calc(var(--nav-h) + 28px)" }}>
-        {tab === "profile" ? <Profile user={user} />
-          : tab === "favorites" ? <Favorites />
-          : tab === "workshop" ? <Workshop />
-          : <Projects />}
+        <div key={tab} className="view-enter">
+          {tab === "profile" ? <Profile user={user} />
+            : tab === "favorites" ? <Favorites />
+            : tab === "workshop" ? <Workshop />
+            : <Projects />}
+        </div>
       </main>
     </div>
   );
@@ -218,10 +220,10 @@ function AccountMenu({ user, onLogout, onTab }) {
           <div style={{ fontWeight: 700, fontSize: "var(--fs-14)" }}>{user.name}</div>
           <div style={{ fontSize: "var(--fs-12)", color: "var(--muted)" }}>{user.provider === "yandex" ? "Яндекс ID" : "VK ID"}</div>
         </div>
-        <I.arrow size={13} style={{ color: "var(--faint)", flex: "none", transform: open ? "rotate(-90deg)" : "rotate(90deg)", transition: ".2s" }} />
+        <I.arrow size={13} style={{ color: "var(--faint)", flex: "none", transform: open ? "rotate(-90deg)" : "rotate(90deg)", transition: "var(--dur-fast)" }} />
       </button>
       {open && (
-        <div className="glass" role="menu" style={{ position: "absolute", top: "calc(100% + 10px)", right: 0, minWidth: 214, borderRadius: 14, boxShadow: "var(--shadow-pop)", padding: 7, zIndex: 90 }}>
+        <div className="glass menu-pop" role="menu" style={{ position: "absolute", top: "calc(100% + 10px)", right: 0, minWidth: 214, borderRadius: 14, boxShadow: "var(--shadow-pop)", padding: 7, zIndex: 90 }}>
           <div style={{ padding: "6px 12px 10px", borderBottom: "1px solid var(--hairline)", marginBottom: 6 }}>
             <div style={{ fontWeight: 700, fontSize: "var(--fs-13)" }}>{user.name}</div>
             <div style={{ fontSize: "var(--fs-12)", color: "var(--muted)" }}>{user.email}</div>

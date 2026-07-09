@@ -106,6 +106,14 @@ function ClientPortal({ shareId }) {
         {itemsCount} {plural(itemsCount, ["позиция", "позиции", "позиций"])} · итог {fmtMoney(cp.totalClient)}
         {okCount > 0 ? " · согласовано " + okCount + " из " + itemsCount : ""}
       </p>
+      {itemsCount > 0 && (
+        <div style={{ marginTop: 10, maxWidth: 340 }}>
+          <div className="budget-bar" style={{ height: 6 }}>
+            <i style={{ transform: `scaleX(${answered / itemsCount})`, background: "linear-gradient(90deg,var(--accent-2),#39b88c)" }} />
+          </div>
+          <div className="mono" style={{ fontSize: "var(--fs-11)", color: "var(--spec-meta)", marginTop: 5 }}>отвечено {answered} из {itemsCount}</div>
+        </div>
+      )}
 
       {/* честная заметка про демо-ссылку (доступ с др. устройства — с доменом) */}
       <div className="glass" style={{ borderRadius: 12, padding: "11px 14px", margin: "16px 0 22px", fontSize: "var(--fs-12)", color: "var(--muted)", lineHeight: 1.5, display: "flex", gap: 10, alignItems: "flex-start" }}>
@@ -145,7 +153,8 @@ function ClientPortal({ shareId }) {
                             style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "6px 12px", borderRadius: 99, fontSize: "var(--fs-12)", fontWeight: 700,
                               border: "1px solid " + (on ? c.color : "var(--hairline)"),
                               background: on ? c.color : "transparent",
-                              color: on ? "var(--on-accent)" : "var(--muted)" }}>
+                              color: on ? "var(--on-accent)" : "var(--muted)",
+                              transition: "background var(--dur-fast), border-color var(--dur-fast), color var(--dur-fast)" }}>
                             {on && <I.check size={13} />}{c.label}
                           </button>
                         );

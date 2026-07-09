@@ -136,7 +136,8 @@ function StyleQuiz({ onClose, onDone }) {
             <button className="icon-btn sm" onClick={onClose} aria-label="Закрыть"><I.close size={16} /></button>
           </div>
           <div style={{ height: 5, borderRadius: 99, background: "var(--glass-2)", overflow: "hidden", marginTop: 14 }}>
-            <div style={{ height: "100%", width: progress + "%", background: "var(--accent)", borderRadius: 99, transition: "width var(--dur-base) var(--ease-pop)" }} />
+            <div style={{ height: "100%", width: "100%", background: "var(--accent)", borderRadius: 99, transformOrigin: "left",
+              transform: `scaleX(${progress / 100})`, transition: "transform var(--dur-base) var(--ease-pop)" }} />
           </div>
         </div>
 
@@ -180,7 +181,7 @@ function QuizStep({ q, ans, onPick }) {
             const on = selected(o.v);
             return (
               <button key={o.v} className={"quiz-opt" + (on ? " on" : "")} onClick={() => onPick(q, o)} aria-pressed={on}>
-                <span style={{ width: 46, height: 46, borderRadius: 13, background: on ? "var(--accent)" : "var(--surface-2)", color: on ? "var(--on-accent)" : "var(--accent)", display: "grid", placeItems: "center", flex: "none", transition: ".18s" }}><Ico size={23} /></span>
+                <span style={{ width: 46, height: 46, borderRadius: 13, background: on ? "var(--accent)" : "var(--surface-2)", color: on ? "var(--on-accent)" : "var(--accent)", display: "grid", placeItems: "center", flex: "none", transition: "var(--dur-fast)" }}><Ico size={23} /></span>
                 <span style={{ fontWeight: 700, fontSize: "var(--fs-16)" }}>{o.v}</span>
                 {on && <span style={{ marginLeft: "auto" }}><I.check size={18} style={{ color: "var(--accent-2)" }} /></span>}
               </button>
@@ -215,7 +216,7 @@ function QuizStep({ q, ans, onPick }) {
             return (
               <button key={o.v} onClick={() => onPick(q, o)} aria-pressed={on}
                 style={{ padding: "11px 17px", borderRadius: 99, fontSize: "var(--fs-14)", fontWeight: 700, border: "1.5px solid " + (on ? "var(--accent-2)" : "var(--hairline)"),
-                  background: on ? "rgba(94,107,91,.14)" : "var(--glass-2)", color: on ? "var(--text)" : "var(--muted)", transition: ".16s", display: "inline-flex", alignItems: "center", gap: 8 }}>
+                  background: on ? "rgba(94,107,91,.14)" : "var(--glass-2)", color: on ? "var(--text)" : "var(--muted)", transition: "var(--dur-fast)", display: "inline-flex", alignItems: "center", gap: 8 }}>
                 {on && <I.check size={15} style={{ color: "var(--accent-2)" }} />}{o.v}
               </button>
             );

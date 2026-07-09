@@ -24,7 +24,7 @@ function Footer({ go }) {
             <p style={{ color: "var(--muted)", maxWidth: 540, margin: "24px auto 36px", fontSize: "var(--fs-18)" }}>Design Ledger соберёт спецификацию с ценами, посчитает вашу наценку и проверит эргономику по нормам — документ готов к отправке клиенту.</p>
             <div style={{ display: "flex", gap: 14, justifyContent: "center", flexWrap: "wrap" }}>
               <button className="btn btn-primary" style={{ padding: "16px 30px", fontSize: "var(--fs-16)" }} onClick={() => go("auth")}><I.layers size={19} /> Начать бесплатно</button>
-              <button className="btn btn-ghost" style={{ padding: "16px 30px", fontSize: "var(--fs-16)" }} onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}>Посмотреть пример сметы</button>
+              <button className="btn btn-ghost" style={{ padding: "16px 30px", fontSize: "var(--fs-16)" }} onClick={() => window.scrollTo({ top: 0, behavior: motionOK() ? "smooth" : "auto" })}>Посмотреть пример сметы</button>
             </div>
             <div className="mono" style={{ marginTop: 16, fontSize: "var(--fs-12)", color: "var(--spec-meta)" }}>без карты · тарифы от 1 490 ₽/мес после беты</div>
           </div>
@@ -57,7 +57,7 @@ function Footer({ go }) {
               <div style={{ fontWeight: 700, marginBottom: 16, fontSize: "var(--fs-15)" }}>{h}</div>
               <div style={{ display: "flex", flexDirection: "column", gap: 11 }}>
                 {items.map(([t, href]) => href
-                  ? <a key={t} href={href} style={{ color: "var(--muted)", fontSize: "var(--fs-14)", transition: ".2s" }}
+                  ? <a key={t} href={href} style={{ color: "var(--muted)", fontSize: "var(--fs-14)", transition: "var(--dur-fast)" }}
                       onMouseEnter={(e) => (e.target.style.color = "var(--text)")} onMouseLeave={(e) => (e.target.style.color = "var(--muted)")}>{t}</a>
                   : <span key={t} title="Раздел скоро" style={{ color: "var(--faint)", fontSize: "var(--fs-14)", cursor: "default" }}>{t}</span>)}
               </div>

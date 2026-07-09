@@ -21,7 +21,7 @@ function Admin({ user, onLogout, go }) {
           const on = view === k;
           return (
             <button key={k} onClick={() => setView(k)} aria-current={on ? "page" : undefined} style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 14px", borderRadius: 12, fontSize: "var(--fs-14)", fontWeight: 600, textAlign: "left",
-              background: on ? "var(--surface)" : "transparent", color: on ? "var(--text)" : "var(--muted)", borderLeft: on ? "2px solid var(--accent)" : "2px solid transparent", transition: ".2s" }}>
+              background: on ? "var(--surface)" : "transparent", color: on ? "var(--text)" : "var(--muted)", borderLeft: on ? "2px solid var(--accent)" : "2px solid transparent", transition: "var(--dur-fast)" }}>
               <Ico size={19} style={{ color: on ? "var(--accent)" : "var(--muted)" }} />{t}
             </button>
           );

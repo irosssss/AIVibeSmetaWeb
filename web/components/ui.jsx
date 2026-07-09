@@ -147,6 +147,65 @@ function Lottie({ name, loop, intro, playOnView = true, staticFrame, style, clas
   );
 }
 
+/* explicit behavior:'smooth' в scrollTo/scrollIntoView игнорирует CSS scroll-behavior
+   под prefers-reduced-motion (CSSOM-спека: явный JS-параметр важнее свойства) —
+   вызывающий код сам решает behavior через этот хелпер */
+function motionOK() {
+  return !(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches);
+}
+
+/* count-up для денег: сглаживает скачок числа за 250-350ms (ease-out), а не мгновенный джамп.
+   Держит tabular-nums верстку неизменной — меняется только значение внутри. */
+function useCountUp(target, duration = 300) {
+  const [shown, setShown] = useState(target);
+  const fromRef = useRef(target);
+  const rafRef = useRef(null);
+  useEffect(() => {
+    if (!motionOK()) { fromRef.current = target; setShown(target); return; }
+    const from = fromRef.current;
+    if (from === target) return;
+    const t0 = performance.now();
+    const tick = (now) => {
+      const p = Math.min(1, (now - t0) / duration);
+      const eased = 1 - Math.pow(1 - p, 3);
+      setShown(from + (target - from) * eased);
+      if (p < 1) rafRef.current = requestAnimationFrame(tick);
+      else fromRef.current = target;
+    };
+    rafRef.current = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(rafRef.current);
+  }, [target, duration]);
+  return shown;
+}
+
+/* число, которое считает вверх от 0 при первом появлении в viewport (once) — метрики соцдоказательств.
+   "4 812" / "90 сек" — распознаёт числовую голову (с пробелом-разрядом), суффикс не трогает. */
+function CountUpOnView({ value, duration = 900 }) {
+  const m = String(value).match(/^(\d{1,3}(?:\s\d{3})*)(.*)$/);
+  const num = m ? parseInt(m[1].replace(/\s/g, ""), 10) : null;
+  const suffix = m ? m[2] : "";
+  const ref = useRef(null);
+  const [shown, setShown] = useState(num == null || !motionOK() ? num : 0);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el || num == null || !motionOK()) return;
+    const io = new IntersectionObserver((es) => es.forEach((e) => {
+      if (!e.isIntersecting) return;
+      io.disconnect();
+      const t0 = performance.now();
+      const tick = (now) => {
+        const p = Math.min(1, (now - t0) / duration);
+        setShown(Math.round(num * (1 - Math.pow(1 - p, 3))));
+        if (p < 1) requestAnimationFrame(tick);
+      };
+      requestAnimationFrame(tick);
+    }), { threshold: 0.4 });
+    io.observe(el);
+    return () => io.disconnect();
+  }, [num, duration]);
+  return <span ref={ref}>{num == null ? value : new Intl.NumberFormat("ru-RU").format(shown) + suffix}</span>;
+}
+
 /* ---------- Хук появления при скролле ---------- */
 function useReveal() {
   const ref = useRef(null);
@@ -291,7 +350,18 @@ function unlockBodyScroll() { if (--modalLockCount <= 0) { modalLockCount = 0; d
 function Modal({ onClose, label, maxWidth, className, children }) {
   const cardRef = useRef(null);
   const idRef = useRef(null);
+  const closingRef = useRef(false);
+  const [closing, setClosing] = useState(false);
   if (idRef.current == null) idRef.current = ++modalIdSeq;
+  // вход анимирован (pop/fadeIn), выход — нет, была асимметрия с toast; тут закрываем сами
+  // (Esc/клик по фону), затем зовём реальный onClose — кнопки внутри контента закрывают как раньше
+  const requestClose = () => {
+    if (closingRef.current) return;
+    closingRef.current = true;
+    if (!motionOK()) { onClose(); return; }
+    setClosing(true);
+    setTimeout(onClose, 170);
+  };
   useEffect(() => {
     const prev = document.activeElement;
     const card = cardRef.current;
@@ -303,7 +373,7 @@ function Modal({ onClose, label, maxWidth, className, children }) {
     const isTop = () => modalStack[modalStack.length - 1] === id;
     const onKey = (e) => {
       if (!isTop()) return;   // не самая верхняя модалка — не перехватываем клавиатуру
-      if (e.key === "Escape") { e.stopPropagation(); onClose(); }
+      if (e.key === "Escape") { e.stopPropagation(); requestClose(); }
       if (e.key === "Tab") {
         const f = [...card.querySelectorAll("button, input, select, textarea, a[href], [tabindex]:not([tabindex='-1'])")].filter((el) => !el.disabled && el.offsetParent !== null);
         if (!f.length) return;
@@ -324,9 +394,9 @@ function Modal({ onClose, label, maxWidth, className, children }) {
     };
   }, []);
   return (
-    <div className="modal-back" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
+    <div className={"modal-back" + (closing ? " closing" : "")} onMouseDown={(e) => e.target === e.currentTarget && requestClose()}>
       <div ref={cardRef} tabIndex={-1} role="dialog" aria-modal="true" aria-label={label}
-        className={"glass modal-card" + (className ? " " + className : "")} style={{ borderRadius: "var(--r-xl)", ...(maxWidth ? { maxWidth, width: `min(${maxWidth}px, 100%)` } : {}) }}>
+        className={"glass modal-card" + (closing ? " closing" : "") + (className ? " " + className : "")} style={{ borderRadius: "var(--r-xl)", ...(maxWidth ? { maxWidth, width: `min(${maxWidth}px, 100%)` } : {}) }}>
         {children}
       </div>
     </div>
@@ -409,11 +479,12 @@ function OverlayHead({ onBack, crumbs, title, sub, budget, right }) {
 /* итог сметы: плитка-иконка + крупная mono-цифра (tabular) + подпись */
 function SmetaTotal({ amount, caption, icon = "layers", size = 22 }) {
   const Ico = icon ? (I[icon] || I.layers) : null;
+  const shown = useCountUp(amount);
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 11 }}>
       {Ico && <span style={{ width: 40, height: 40, borderRadius: 12, background: "var(--accent)", color: "var(--on-accent)", display: "grid", placeItems: "center", flex: "none" }}><Ico size={20} /></span>}
       <div>
-        <div className="mono" style={{ fontWeight: 600, fontSize: size, lineHeight: 1 }}>{fmtMoney(amount)}</div>
+        <div className="mono" style={{ fontWeight: 600, fontSize: size, lineHeight: 1 }}>{fmtMoney(shown)}</div>
         {caption && <div style={{ fontSize: "var(--fs-12)", color: "var(--muted)", marginTop: 3 }}>{caption}</div>}
       </div>
     </div>
@@ -458,7 +529,7 @@ const fmtCommentAt = (iso) => {
    --glass — там карточка треда сама уже --glass-2, и пузырь иначе сливается с ней */
 function CommentBubble({ comment, isMine, authorLabel, theirBg = "var(--glass-2)" }) {
   return (
-    <div style={{
+    <div className="msg-in" style={{
       alignSelf: isMine ? "flex-end" : "flex-start", maxWidth: "88%",
       padding: "6px 10px", borderRadius: 10, fontSize: "var(--fs-12)", lineHeight: 1.5,
       background: isMine ? "var(--accent-2)" : theirBg,
@@ -696,8 +767,9 @@ function BarList({ data, color = "var(--chart)", money }) {
             <span style={{ fontWeight: 700, whiteSpace: "nowrap" }}>{money ? fmtMoney(d.value) : d.value + "%"}</span>
           </div>
           <div style={{ height: 8, borderRadius: 99, background: "var(--glass-2)", overflow: "hidden" }}>
-            <div style={{ height: "100%", width: (d.value / max) * 100 + "%", borderRadius: 99,
-              background: `linear-gradient(90deg, ${color}, ${color}aa)`, transition: "width var(--dur-slow) var(--ease-pop)" }} />
+            <div style={{ height: "100%", width: "100%", borderRadius: 99, transformOrigin: "left",
+              transform: `scaleX(${d.value / max})`,
+              background: `linear-gradient(90deg, ${color}, ${color}aa)`, transition: "transform var(--dur-slow) var(--ease-pop)" }} />
           </div>
         </div>
       ))}
@@ -736,6 +808,6 @@ function Donut({ data, size = 168 }) {
 }
 
 Object.assign(window, {
-  Logo, Icon, I, Img, Lottie, useReveal, fmt, fmtMoney, AreaChart, BarList, Donut, Switch, SegTabs, OverlayHead, SmetaTotal,
+  Logo, Icon, I, Img, Lottie, useReveal, motionOK, useCountUp, CountUpOnView, fmt, fmtMoney, AreaChart, BarList, Donut, Switch, SegTabs, OverlayHead, SmetaTotal,
   RS_ROW, PriceAgeChip, fmtCommentAt, CommentBubble, StatusPill, SearchField, PageHead, EmptyState, KpiCard, ChartCard, ChartSkel,
 });

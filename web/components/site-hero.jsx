@@ -38,19 +38,21 @@ function SiteNav({ go }) {
     return () => { document.body.style.overflow = ""; };
   }, [open]);
   const links = [["Возможности", "#features"], ["Как работает", "#how"], ["Тарифы", "#pricing"], ["Журнал", "#news"]];
-  const jump = (h) => { setOpen(false); document.querySelector(h)?.scrollIntoView({ behavior: "smooth" }); };
+  const jump = (h) => { setOpen(false); document.querySelector(h)?.scrollIntoView({ behavior: motionOK() ? "smooth" : "auto" }); };
   const lit = solid || open;
   return (
-    <nav style={{ position: "fixed", top: 0, left: 0, right: 0, zIndex: 90,
-      height: "var(--nav-h)", transition: "background .3s, border-color .3s, backdrop-filter .3s",
-      background: lit ? "rgba(251,248,242,0.88)" : "transparent",
-      backdropFilter: lit ? "blur(10px)" : "none", WebkitBackdropFilter: lit ? "blur(10px)" : "none",
-      borderBottom: `1px solid ${lit ? "var(--hairline)" : "transparent"}` }}>
+    <nav style={{ position: "fixed", top: lit ? 10 : 0, left: lit ? 12 : 0, right: lit ? 12 : 0, zIndex: 90,
+      height: "var(--nav-h)", borderRadius: lit ? 999 : 0,
+      transition: "background .3s, border-color .3s, backdrop-filter .3s, top .3s var(--ease), left .3s var(--ease), right .3s var(--ease), border-radius .3s var(--ease), box-shadow .3s",
+      background: lit ? "rgba(251,248,242,0.92)" : "transparent",
+      backdropFilter: lit ? "blur(8px)" : "none", WebkitBackdropFilter: lit ? "blur(8px)" : "none",
+      boxShadow: lit ? "var(--shadow-card)" : "none",
+      border: `1px solid ${lit ? "var(--hairline)" : "transparent"}` }}>
       <div className="container" style={{ height: "100%", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <Logo size={25} onClick={() => window.scrollTo({ top: 0 })} />
         <div className="site-navlinks" style={{ display: "flex", gap: 34 }}>
           {links.map(([t, h]) => (
-            <a key={h} href={h} style={{ color: "var(--muted)", fontSize: "var(--fs-15)", fontWeight: 500, transition: ".2s" }}
+            <a key={h} href={h} style={{ color: "var(--muted)", fontSize: "var(--fs-15)", fontWeight: 500, transition: "var(--dur-fast)" }}
                onMouseEnter={(e) => (e.target.style.color = "var(--text)")}
                onMouseLeave={(e) => (e.target.style.color = "var(--muted)")}>{t}</a>
           ))}
@@ -92,7 +94,7 @@ function Hero({ go }) {
   return (
     <header className="minh-screen" style={{ position: "relative", display: "flex", alignItems: "center", paddingTop: "var(--nav-h)", overflow: "hidden" }}>
       <div className="container hero-grid" style={{ display: "grid", gridTemplateColumns: "0.82fr 1.18fr", gap: 56, alignItems: "center", position: "relative", zIndex: 2, paddingBlock: "clamp(40px,7vh,84px)" }}>
-        <div>
+        <div className="hero-text-col">
           <span className="eyebrow">смета-комплектация · для дизайнера</span>
           <h1 className="display hero-h1" style={{ fontSize: "clamp(38px, 4.8vw, 66px)", lineHeight: 1.02, letterSpacing: "-0.025em", marginTop: 20 }}>
             <span style={{ display: "block" }}>Смета клиенту —</span>
@@ -140,6 +142,8 @@ function SmetaPlate() {
   const k = 1 + markup / 100;
   const clientTotal = costTotal * k;
   const profit = clientTotal - costTotal;
+  const clientTotalShown = useCountUp(clientTotal);
+  const profitShown = useCountUp(profit);
   return (
     <div className="plate" style={{ marginInline: "auto" }}>
       <div className="plate-banner">
@@ -151,8 +155,8 @@ function SmetaPlate() {
         <div className="plate-toggle"><span className="on">Для клиента</span><span>Рабочая</span></div>
       </div>
       <div className="spec2 head"><span>№</span><span>Позиция</span><span className="r">Кол-во</span><span className="r">Себест.</span><span className="r">Клиенту</span></div>
-      {ROWS.map(([i, name, art, qty, cost]) => (
-        <div className="spec2" key={i}>
+      {ROWS.map(([i, name, art, qty, cost], idx) => (
+        <div className="spec2 plate-row-in" key={i} style={{ animationDelay: (0.15 + idx * 0.08) + "s" }}>
           <span className="idx">{i}</span>
           <span className="pos">{name} <b className="art">· {art}</b></span>
           <span className="r q">{qty}</span>
@@ -160,18 +164,18 @@ function SmetaPlate() {
           <span className="r cli">{fmt(cost * k)}</span>
         </div>
       ))}
-      <div className="spec2 more">
+      <div className="spec2 more plate-row-in" style={{ animationDelay: (0.15 + ROWS.length * 0.08) + "s" }}>
         <span className="idx">—</span><span className="pos">ещё {restCount} позиций комплектации</span>
         <span className="r q">—</span><span className="r cost">{fmt(restCost)}</span><span className="r cli">{fmt(restCost * k)}</span>
       </div>
       <div className="plate-markup">
         <span className="k">Наценка дизайнера <b>+{markup}%</b></span>
         <input type="range" min="0" max="60" value={markup} onChange={(e) => setMarkup(+e.target.value)} aria-label="Наценка дизайнера, %" />
-        <span className="profit">прибыль +{fmt(profit)}</span>
+        <span className="profit">прибыль +{fmt(profitShown)}</span>
       </div>
       <div className="plate-tot">
         <div className="pt-card a"><div className="lab">Себестоимость</div><div className="val">{fmt(costTotal)}</div></div>
-        <div className="pt-card b"><div className="lab">Цена клиенту</div><div className="val">{fmt(clientTotal)}</div></div>
+        <div className="pt-card b"><div className="lab">Цена клиенту</div><div className="val">{fmt(clientTotalShown)}</div></div>
       </div>
       <div className="plate-foot">
         <span className="ergo"><I.check size={13} /> проверка эргономики по нормам NKBA / Neufert</span>

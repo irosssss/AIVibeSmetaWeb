@@ -116,7 +116,7 @@ function HowMobile() {
   };
   const goto = (i) => {
     const el = scRef.current; if (!el) return;
-    el.scrollTo({ left: i * el.clientWidth, behavior: "smooth" });
+    el.scrollTo({ left: i * el.clientWidth, behavior: motionOK() ? "smooth" : "auto" });
   };
   return (
     <section id="how" style={{ paddingBlock: "clamp(56px,9vh,90px)" }}>
@@ -401,7 +401,7 @@ function SocialProof() {
         <div className="sp-metrics">
           {METRICS.map(([v, k]) => (
             <div key={k}>
-              <div className="mono" style={{ fontSize: "clamp(26px,3vw,38px)", fontWeight: 600, color: "var(--text)", lineHeight: 1 }}>{v}</div>
+              <div className="mono" style={{ fontSize: "clamp(26px,3vw,38px)", fontWeight: 600, color: "var(--text)", lineHeight: 1 }}><CountUpOnView value={v} /></div>
               <div style={{ fontSize: "var(--fs-13)", color: "var(--muted)", marginTop: 8 }}>{k}</div>
             </div>
           ))}

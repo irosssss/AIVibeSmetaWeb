@@ -68,7 +68,14 @@ function App() {
 
   // ждём проверку сессии, если целимся в кабинет — чтобы не мигнуть промо/логином
   if (!ready && (initView === "cabinet" || initView === "auth")) {
-    return <div className="minh-screen" style={{ display: "grid", placeItems: "center" }}><span className="spin" style={{ width: 30, height: 30 }} /></div>;
+    return (
+      <div className="minh-screen" style={{ display: "grid", placeItems: "center" }} role="status" aria-label="Загрузка">
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 12 }}>
+          <span className="spin" style={{ width: 30, height: 30 }} aria-hidden="true" />
+          <span className="mono" style={{ fontSize: "var(--fs-12)", color: "var(--muted)" }}>Загрузка…</span>
+        </div>
+      </div>
+    );
   }
 
   let screen;

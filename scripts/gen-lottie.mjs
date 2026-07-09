@@ -103,140 +103,6 @@ function fillGroup(shapes, { color = C.terra, o = 100, tr = {} } = {}) {
 }
 
 /* =====================================================================
-   1) HERO — тёплая line-art комната, AIVibe «обмеряет» помещение.
-   Сегмент 0..DRAW: рисуется штрихом (фирменный draw-on, стаггер).
-   Сегмент DRAW..OP: бесшовный ambient (скан-замер, пульс лампы, блики).
-   Плеер: playSegments([[0,DRAW],[DRAW,OP]]) → интро 1 раз, ambient в петле.
-   ===================================================================== */
-function hero() {
-  const W = 520, H = 440, DRAW = 120, OP = 420;
-  // ambient окно: AMB..OP, бесшовно (значения на AMB == на OP)
-  const AMB = DRAW, END = OP;
-
-  return comp("hero", W, H, OP, (L) => {
-    const layers = [];
-
-    /* — статичная база (рисуется штрихом в интро, держится в ambient) — */
-    // окно + рама картины (читаются первыми, верхний ряд)
-    const windowShapes = [
-      rect(120, 150, 120, 96, 3),
-      shPath([[120, 102], [120, 198]]),         // вертикальный шпрос
-      shPath([[60, 150], [180, 150]]),          // горизонтальный шпрос
-    ];
-    const sunShape = [ellipse(150, 128, 22, 22)];
-    const frameShapes = [
-      rect(335, 150, 78, 60, 3),
-      shPath([[306, 168], [322, 146], [338, 162], [352, 138], [364, 168]]), // «горы» внутри
-    ];
-    // диван
-    const sofaShapes = [
-      rect(220, 302, 172, 44, 11),              // сиденье
-      rect(220, 268, 172, 30, 9),               // спинка
-      rect(143, 290, 20, 52, 7),                // левый подлокотник
-      rect(297, 290, 20, 52, 7),                // правый подлокотник
-      shPath([[160, 324], [160, 340]]),         // ножки
-      shPath([[280, 324], [280, 340]]),
-      shPath([[220, 280], [220, 322]]),         // шов подушек
-    ];
-    // торшер
-    const lampShapes = [
-      shPath([[430, 352], [430, 238]]),                                  // стойка
-      shPath([[412, 238], [448, 238], [440, 214], [420, 214]], true),    // абажур (трапеция)
-    ];
-    // растение
-    const plantPot = [shPath([[83, 320], [107, 320], [103, 348], [87, 348]], true)];
-    const plantFronds = [
-      shPath([[95, 322], [80, 290]], false, [[[0, 0], [-6, -12]], [[8, 10], [0, 0]]]),
-      shPath([[95, 322], [95, 276]], false, [[[0, 0], [0, -14]], [[0, 12], [0, 0]]]),
-      shPath([[95, 322], [112, 292]], false, [[[0, 0], [8, -12]], [[-8, 10], [0, 0]]]),
-    ];
-    // пол + ковёр
-    const floorShapes = [shPath([[40, 360], [480, 360]])];
-    const rugShapes = [ellipse(255, 374, 350, 38)];
-
-    // стаггер draw-on по порядку чтения; держим e=100 в ambient
-    const drawn = (shapes, { color, w = 2.4, start, dur = 34 }) =>
-      L([strokeGroup(shapes, {
-        color, w,
-        trimE: anim([{ t: start, s: [0], e: "settle" }, { t: start + dur, s: [100] }]),
-      })], { nm: "base" });
-
-    layers.push(drawn(floorShapes,  { color: C.terra, w: 2.4, start: 0,  dur: 24 }));
-    layers.push(drawn(rugShapes,    { color: C.olive, w: 2.0, start: 8,  dur: 30 }));
-    layers.push(drawn(windowShapes, { color: C.terra, w: 2.4, start: 14, dur: 30 }));
-    layers.push(drawn(sunShape,     { color: C.ochre, w: 2.2, start: 30, dur: 18 }));
-    layers.push(drawn(frameShapes,  { color: C.terra, w: 2.2, start: 24, dur: 28 }));
-    layers.push(drawn(sofaShapes,   { color: C.terra, w: 2.6, start: 34, dur: 44 }));
-    layers.push(drawn(lampShapes,   { color: C.terra, w: 2.4, start: 62, dur: 30 }));
-    layers.push(drawn(plantPot,     { color: C.terra, w: 2.2, start: 74, dur: 18 }));
-
-    // фронды растения — лёгкое покачивание (ambient, бесшовно: 0→4→0→-4→0)
-    layers.push(L([strokeGroup(plantFronds, {
-      color: C.olive, w: 2.0,
-      trimE: anim([{ t: 78, s: [0], e: "settle" }, { t: 110, s: [100] }]),
-      tr: { a: [95, 322], p: [95, 322], r: anim([
-        { t: AMB, s: [0], e: "travel" }, { t: AMB + 90, s: [3.5], e: "travel" },
-        { t: AMB + 180, s: [0], e: "travel" }, { t: AMB + 240, s: [-3.5], e: "travel" },
-        { t: END, s: [0] },
-      ]) },
-    })], { nm: "fronds" }));
-
-    /* — световой конус лампы: пульс (ambient, бесшовно) — */
-    const cone = [
-      shPath([[418, 252], [410, 274]]),
-      shPath([[430, 254], [430, 280]]),
-      shPath([[442, 252], [450, 274]]),
-    ];
-    layers.push(L([strokeGroup(cone, { color: C.ochre, w: 2.0 })], {
-      nm: "cone",
-      ks: { o: anim([
-        { t: AMB, s: [34], e: "travel" }, { t: AMB + 150, s: [78], e: "travel" }, { t: END, s: [34] },
-      ]) },
-    }));
-
-    /* — олива-галочка «норма ок» у дивана: один импульс — */
-    const okMark = [shPath([[300, 332], [307, 339], [320, 324]])];
-    layers.push(L([strokeGroup(okMark, { color: C.olive, w: 3.0 })], {
-      nm: "ok",
-      ks: { o: anim([
-        { t: AMB, s: [0], e: "settle" }, { t: AMB + 70, s: [0], e: "pop" },
-        { t: AMB + 110, s: [100], e: "settle" }, { t: AMB + 210, s: [100], e: "settle" },
-        { t: AMB + 260, s: [0], e: "settle" }, { t: END, s: [0] },
-      ]) },
-    }));
-
-    /* — скан-замер: вертикальная терракотовая линия + glow, пинг-понг — */
-    const scanX = anim([
-      { t: AMB, s: [70, 0], e: "travel" },
-      { t: AMB + 150, s: [470, 0], e: "travel" },
-      { t: END, s: [70, 0] },
-    ]);
-    const scanLine = [shPath([[0, 96], [0, 366]])];
-    layers.push(L([strokeGroup(scanLine, { color: C.terra, w: 8, o: 14 })], { nm: "scan-glow", ks: { p: scanX, o: 70 } }));
-    layers.push(L([strokeGroup(scanLine, { color: C.terra, w: 2.4 })], { nm: "scan", ks: { p: scanX, o: 85 } }));
-    // бегунок на скане
-    layers.push(L([fillGroup([ellipse(0, 96, 9, 9)], { color: C.terra })], { nm: "scan-dot", ks: { p: scanX } }));
-
-    /* — размерная линия (диван), мигает синхронно со сканом — */
-    const dim = [
-      shPath([[135, 392], [305, 392]]),
-      shPath([[135, 386], [135, 398]]),
-      shPath([[305, 386], [305, 398]]),
-    ];
-    layers.push(L([strokeGroup(dim, { color: C.navy, w: 1.8 })], {
-      nm: "dim",
-      ks: { o: anim([
-        { t: AMB, s: [0], e: "settle" }, { t: AMB + 80, s: [0], e: "settle" },
-        { t: AMB + 130, s: [90], e: "settle" }, { t: AMB + 210, s: [90], e: "settle" },
-        { t: AMB + 270, s: [0], e: "settle" }, { t: END, s: [0] },
-      ]) },
-    }));
-
-    return layers;
-  });
-}
-
-/* =====================================================================
    STEP-иконки (how-it-works). Маленькие, жирные, читаются ~28px.
    Бесшовные петли с draw-on + fade-reset (трюк: кадр0==кадрOP «пусто»).
    ===================================================================== */
@@ -364,7 +230,6 @@ function loader() {
 
 /* ---- сборка ---- */
 const anims = {
-  hero: hero(),
   stepMeasure: stepMeasure(),
   stepAI: stepAI(),
   stepSpec: stepSpec(),
@@ -373,7 +238,6 @@ const anims = {
 
 // мета для плеера: интро-сегмент (draw-on один раз, потом петля ambient)
 const meta = {
-  hero: { introOut: 120, loop: true },     // [0..120] интро, [120..420] ambient-петля
   stepMeasure: { loop: true },
   stepAI: { loop: true },
   stepSpec: { loop: true },

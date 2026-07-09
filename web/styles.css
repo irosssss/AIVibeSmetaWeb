@@ -219,7 +219,8 @@ a { color: inherit; text-decoration: none; }
 .skip-link:focus { transform: none; }
 
 /* generic fade-in on scroll */
-.reveal { opacity: 0; transform: translateY(26px); transition: opacity .7s ease, transform .7s var(--ease); }
+/* рецепт Programa: 8px подъём вместо 30px — «издательнее», reveal 450ms ease-out */
+.reveal { opacity: 0; transform: translateY(8px); transition: opacity .45s ease-out, transform .45s ease-out; }
 .reveal.in { opacity: 1; transform: none; }
 
 /* viewport-height утилита: vh-фолбэк + dvh (без скачков из-за адресной строки на iOS) */
@@ -235,10 +236,39 @@ a { color: inherit; text-decoration: none; }
 }
 @keyframes shimmer { 100% { transform: translateX(100%); } }
 
+/* короткая олива-подсветка новой строки сметы (savePos) — не мигает, тухнет один раз */
+.row-flash { animation: rowFlash 1.3s var(--ease) both; }
+@keyframes rowFlash { 0%, 15% { background: var(--accent-2-tint); } 100% { background: transparent; } }
+
+/* появление контента при смене вкладки/режима (key={tab} даёт свежий DOM-узел — анимация играет сама) */
+.view-enter { animation: viewEnter .2s var(--ease) both; }
+@keyframes viewEnter { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+
+/* выпадающее меню (AccountMenu, ⋯ карточки) — pop от верхнего правого угла, откуда открывается */
+.menu-pop { transform-origin: top right; animation: menuPop .16s var(--ease-pop) both; }
+@keyframes menuPop { from { opacity: 0; transform: scale(.96) translateY(-4px); } to { opacity: 1; transform: none; } }
+
+/* инлайн-раскрытие (аккордеон наценки по разделам, PosEditor) — та же grid-rows техника, что и nav-sheet */
+.acc-collapse { display: grid; grid-template-rows: 0fr; transition: grid-template-rows var(--dur-base) var(--ease); }
+.acc-collapse > div { overflow: hidden; min-height: 0; }
+.acc-collapse[data-open="1"] { grid-template-rows: 1fr; }
+
+/* вход нового сообщения в треде (CommentBubble) — новый key === свежий DOM-узел, играет сама */
+.msg-in { animation: msgIn .22s var(--ease) both; }
+@keyframes msgIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+
 @media (prefers-reduced-motion: reduce) {
-  * { animation: none !important; scroll-behavior: auto !important; }
-  .reveal { opacity: 1; transform: none; transition: none; }
+  /* критик: гасили только animation — transition играл под reduce на прогресс-барах/раскрытиях */
+  *, *::before, *::after {
+    animation: none !important;
+    transition-duration: 0.01ms !important;
+    transition-delay: 0s !important;
+    scroll-behavior: auto !important;
+  }
+  .reveal { opacity: 1; transform: none; }
   .skel::after { display: none; }
+  /* функциональный индикатор «идёт процесс» — WCAG 2.3.3 допускает такое движение; не гасим совсем, замедляем */
+  .spin { animation: rot 1.8s linear infinite !important; }
 }
 
 /* высокий контраст: усиливаем тонкие линии и приглушённый текст */
@@ -282,29 +312,6 @@ a { color: inherit; text-decoration: none; }
 /* ============================================================
    ПРОМО-САЙТ — раскладки и анимации
    ============================================================ */
-@keyframes floatA { 0%,100% { transform: translateY(0) } 50% { transform: translateY(-12px) } }
-@keyframes floatB { 0%,100% { transform: translateY(0) } 50% { transform: translateY(14px) } }
-@keyframes draw { to { stroke-dashoffset: 0; } }
-.float-a { animation: floatA 7s ease-in-out infinite; }
-.float-b { animation: floatB 8s ease-in-out infinite; }
-
-/* line-art с эффектом «дорисовывается» */
-.line-art path, .line-art ellipse, .line-art line, .line-art rect, .line-art circle {
-  stroke-dasharray: 1700; stroke-dashoffset: 0;
-}
-@media (prefers-reduced-motion: no-preference) {
-  .line-art.go path, .line-art.go ellipse, .line-art.go line, .line-art.go rect, .line-art.go circle {
-    stroke-dashoffset: 1700; animation: draw 2.6s var(--ease) forwards;
-  }
-  .line-art.go *:nth-child(2) { animation-delay: .12s }
-  .line-art.go *:nth-child(3) { animation-delay: .24s }
-  .line-art.go *:nth-child(4) { animation-delay: .36s }
-  .line-art.go *:nth-child(5) { animation-delay: .48s }
-  .line-art.go *:nth-child(6) { animation-delay: .60s }
-  .line-art.go *:nth-child(7) { animation-delay: .72s }
-  .line-art.go *:nth-child(8) { animation-delay: .84s }
-  .line-art.go *:nth-child(9) { animation-delay: .96s }
-}
 
 /* Bento → асимметричная издательская сетка */
 .bento {
@@ -352,8 +359,8 @@ a { color: inherit; text-decoration: none; }
 .how-slide { scroll-snap-align: center; display: flex; flex-direction: column; gap: 16px; }
 .how-dots { display: flex; gap: 4px; justify-content: center; margin-top: 22px; }
 .how-dots button { height: 26px; display: flex; align-items: center; padding: 0 5px; background: none; }
-.how-dots button i { display: block; width: 8px; height: 8px; border-radius: 99px; background: var(--surface-2); transition: width .35s var(--ease), background .35s; }
-.how-dots button.on i { width: 28px; background: var(--accent); }
+.how-dots button i { display: block; width: 28px; height: 8px; border-radius: 99px; background: var(--surface-2); transform: scaleX(0.286); transform-origin: left; transition: transform .35s var(--ease), background .35s; }
+.how-dots button.on i { transform: scaleX(1); background: var(--accent); }
 
 /* ---- Responsive ---- */
 /* грид-колонки hero не должны расти от min-content детей (моно-подпись/плита) */
@@ -384,16 +391,17 @@ a { color: inherit; text-decoration: none; }
 @media (max-width: 720px) {
   .icon-btn.nav-burger { display: grid; }
   .nav-sheet {
-    display: block;
+    display: grid;
     position: absolute; top: 100%; left: 0; right: 0;
     background: var(--surface-glass);
     backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
     border-bottom: 1px solid var(--hairline);
     padding-inline: var(--gutter);
-    max-height: 0; overflow: hidden;
-    transition: max-height .4s var(--ease);
+    grid-template-rows: 0fr;
+    transition: grid-template-rows var(--dur-base) var(--ease);
   }
-  .nav-sheet[data-open="1"] { max-height: 78vh; }
+  .nav-sheet > div { overflow: hidden; min-height: 0; }
+  .nav-sheet[data-open="1"] { grid-template-rows: 1fr; }
 }
 
 /* ============================================================
@@ -409,8 +417,24 @@ a { color: inherit; text-decoration: none; }
   background: var(--surface); border: 1px solid var(--hairline);
   border-radius: var(--r-md); box-shadow: var(--shadow-pop);
   padding: 16px; max-width: 620px; width: 100%;   /* сжимается в узкий грид-трек, не распирает его */
+  animation: plateIn .5s var(--ease) both;
 }
-.plate-banner { position: relative; border-radius: var(--r-sm); overflow: hidden; aspect-ratio: 16 / 7; }
+@keyframes plateIn { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+/* стаггер-въезд строк плиты (Programa: бенто-хореография, inline-delay через style) */
+.plate-row-in { animation: rowIn .5s var(--ease) both; }
+@keyframes rowIn { from { opacity: 0; transform: translateX(-6px); } to { opacity: 1; transform: none; } }
+/* еле заметный бобинг фото — амплитуда мала нарочно, не задевает цифры рядом */
+.plate-banner { position: relative; border-radius: var(--r-sm); overflow: hidden; aspect-ratio: 16 / 7; animation: plateBob 8s ease-in-out infinite; }
+@keyframes plateBob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-2px); } }
+
+/* скролл-параллакс без JS (рецепт Programa) — только там, где браузер поддерживает
+   scroll-driven animations; иначе тихо остаётся статикой (0 JS-фолбэка, как у них) */
+@supports (animation-timeline: view()) {
+  @media (min-width: 900px) and (prefers-reduced-motion: no-preference) {
+    .hero-text-col { animation: heroParallax linear both; animation-timeline: view(); animation-range: entry 0% cover 60%; }
+  }
+}
+@keyframes heroParallax { to { transform: translateY(-4%); } }
 .plate-banner::after { content: ""; position: absolute; inset: 0; pointer-events: none;
   background: linear-gradient(180deg, rgba(46,42,38,.04), rgba(46,42,38,.24)); }
 .plate-lab { position: absolute; top: 12px; left: 12px; z-index: 2; background: rgba(251,248,242,.94);

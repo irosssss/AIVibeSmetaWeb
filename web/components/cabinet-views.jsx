@@ -308,7 +308,7 @@ function ProjectCard({ p, menuOpen, onOpen, onMenu, onRename, onDuplicate, onSta
           <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="12" cy="5" r="1.8" /><circle cx="12" cy="12" r="1.8" /><circle cx="12" cy="19" r="1.8" /></svg>
         </button>
         {menuOpen && (
-          <div className="glass" role="menu" onClick={(e) => e.stopPropagation()} style={{ position: "absolute", top: "calc(100% + 6px)", right: 0, minWidth: 194, borderRadius: 12, boxShadow: "var(--shadow-pop)", padding: 6, zIndex: 40 }}>
+          <div className="glass menu-pop" role="menu" onClick={(e) => e.stopPropagation()} style={{ position: "absolute", top: "calc(100% + 6px)", right: 0, minWidth: 194, borderRadius: 12, boxShadow: "var(--shadow-pop)", padding: 6, zIndex: 40 }}>
             {mItem("Переименовать", I.edit, onRename)}
             {mItem("Дублировать", I.layers, onDuplicate)}
             <div style={{ height: 1, background: "var(--hairline)", margin: "5px 4px" }} />
@@ -431,7 +431,7 @@ function Favorites() {
       <div className="fav-chips" style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 20 }}>
         {rooms.map((r) => (
           <button key={r} onClick={() => setRoom(r)} aria-pressed={room === r} style={{ padding: "8px 15px", borderRadius: 99, fontSize: "var(--fs-13)", fontWeight: 700, border: "1px solid var(--hairline)",
-            background: room === r ? "var(--accent)" : "var(--glass-2)", color: room === r ? "var(--on-accent)" : "var(--muted)", transition: ".18s" }}>{r}</button>
+            background: room === r ? "var(--accent)" : "var(--glass-2)", color: room === r ? "var(--on-accent)" : "var(--muted)", transition: "var(--dur-fast)" }}>{r}</button>
         ))}
       </div>
 
