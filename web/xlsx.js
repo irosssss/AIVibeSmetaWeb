@@ -407,24 +407,42 @@
           const total = rooms.reduce((s, r) => s + r.items.reduce((a, it) => a + it.price * (it.qty || 1), 0), 0);
           const baseName = String(file.name || "Импорт").replace(/\.[^.]+$/, "");
 
-          // «Свод»/«Свод закупки» — наценка/скидка/доставка/монтаж живут только там (позиции
-          // их не несут), поэтому без этого прохода round-trip тихо сбрасывал их в дефолт при
-          // каждом переимпорте своей же выгрузки. Значения читаем текстом строки, не по номеру
-          // колонки — порядок строк в «Своде» может меняться (клиентский/рабочий режим).
-          let markupPct, discountPct, deliveryCost, installCost;
+          // «Свод» — наценка/скидка/доставка/монтаж/наценки по разделам живут только там
+          // (позиции их не несут), поэтому без этого прохода round-trip тихо сбрасывал их
+          // в дефолт при каждом переимпорте своей же выгрузки. Значения читаем текстом
+          // строки, не по номеру колонки — порядок строк в «Своде» может меняться
+          // (клиентский/рабочий режим). Секции различаем маркерами «По разделам»/«Итог» —
+          // без этого текст раздела/комнаты/поставщика «Доставка» (свободный ввод!) читался
+          // бы как строка доставки, а «Свод закупки» (другая книга, row[1] там — количество
+          // позиций, не деньги) — как рабочий «Свод».
+          let markupPct, discountPct, deliveryCost, installCost, catMarkupPct;
           const svodSn = wb.SheetNames.find((sn) => /^свод/i.test(sn));
           if (svodSn) {
+            let inCat = false, inItog = false;
+            const catOv = {};
             XLSX.utils.sheet_to_json(wb.Sheets[svodSn], { header: 1, blankrows: false }).forEach((row) => {
               if (!Array.isArray(row) || !row[0]) return;
-              const label = String(row[0]);
-              const pctM = /скидка клиенту[^\d]*(\d+(?:[.,]\d+)?)\s*%/i.exec(label);
+              const label = String(row[0]).trim();
+              // «Итог» и «Свод закупки» никогда не пересекаются — у закупки нет строки «Итог»,
+              // поэтому скидка/доставка/монтаж на ней в принципе не включаются
+              if (label === "Итог") { inItog = true; inCat = false; return; }
+              if (label === "По разделам") { inCat = true; return; }
               // якорь «, %» на конце — иначе матчится и строка «Итога» с наценкой В РУБЛЯХ
               // («Наценка дизайнера (+35%)»), а не только строка-заголовок с процентом
-              if (/наценка дизайнера.*,\s*%\s*$/i.test(label)) markupPct = num(row[1]);
-              else if (pctM) discountPct = parseFloat(pctM[1].replace(",", "."));
-              else if (/^доставка$/i.test(label.trim())) deliveryCost = num(row[1]);
+              if (/наценка дизайнера.*,\s*%\s*$/i.test(label)) { markupPct = num(row[1]); return; }
+              // раздел с наценкой (4 колонки в рабочем режиме; в клиентском — только сумма,
+              // колонки наценки нет вовсе, что и держит клиентские файлы без catMarkupPct)
+              if (inCat && row.length >= 4) { catOv[label] = num(row[3]); return; }
+              if (!inItog) return;   // скидка/доставка/монтаж живут только внутри «Итога»
+              const pctM = /скидка клиенту[^\d]*(\d+(?:[.,]\d+)?)\s*%/i.exec(label);
+              if (pctM) discountPct = parseFloat(pctM[1].replace(",", "."));
+              else if (/^доставка$/i.test(label)) deliveryCost = num(row[1]);
               else if (/монтаж и сборка/i.test(label)) installCost = num(row[1]);
             });
+            // хранить только реальные отличия от базовой ставки — так же, как их пишет UI
+            const base = markupPct != null ? markupPct : 25;
+            const ov = Object.fromEntries(Object.entries(catOv).filter(([, p]) => p !== base));
+            if (Object.keys(ov).length) catMarkupPct = ov;
           }
 
           resolve({
@@ -438,6 +456,7 @@
             ...(discountPct != null ? { discountPct } : {}),
             ...(deliveryCost != null ? { deliveryCost } : {}),
             ...(installCost != null ? { installCost } : {}),
+            ...(catMarkupPct ? { catMarkupPct } : {}),
           });
         } catch (err) { reject(err); }
       };

@@ -288,7 +288,7 @@ function NormRow({ def, value, modified, enabled, locked, onChange, onReset, onT
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           {modified && <button onClick={onReset} style={{ display: "inline-flex", alignItems: "center", gap: 5, fontFamily: "var(--font-mono)", fontSize: "var(--fs-11)", color: "var(--muted)", border: "1px solid var(--hairline)", borderRadius: 99, padding: "5px 10px" }}>↺ сброс</button>}
-          <Switch on={enabled} disabled={locked} onChange={onToggle}
+          <Switch on={active} disabled={locked} onChange={onToggle}
             title={locked ? "Заблокировано — включите «Минимальный проход»" : (enabled ? "Выключить правило" : "Включить правило")}
             ariaLabel={"Правило «" + def.label + "»"} />
         </div>
