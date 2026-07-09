@@ -5,6 +5,9 @@
    ============================================================ */
 const { useState: useS2, useEffect: useE2, useRef: useR2 } = React;
 
+// единая точка канона наценки (web/ffe.js) — не дублировать литерал 25 по файлам
+const S2_DEFAULT_MARKUP = (window.AIVibeFFE && window.AIVibeFFE.DEFAULT_MARKUP_PCT) || 25;
+
 const prefersReduced = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 /* На телефоне/планшете «приколотый» скролл-сторителлинг рвётся и тяжёл —
    там показываем секцию статично (как при reduce-motion). */
@@ -275,7 +278,7 @@ function DemoStage({ active, sub }) {
 // листами/заголовками, что и боевой экспорт AIVibeXLSX.exportRoomSpec, поэтому
 // designer может тут же скачать обратно через «Импорт из Excel» без переделок.
 function downloadSpecTemplate() {
-  const markupPct = 25;
+  const markupPct = S2_DEFAULT_MARKUP;
   const rooms = [
     { name: "Гостиная", items: [
       { title: "Диван 3-местный, велюр", cat: "Мебель", price: 120000, qty: 1 },
@@ -400,7 +403,7 @@ function WhoFor() {
 function PayoffCalc() {
   const ref = useReveal();
   const [budget, setBudget] = useS2(2700000);
-  const [markup, setMarkup] = useS2(25);
+  const [markup, setMarkup] = useS2(S2_DEFAULT_MARKUP);
   const f = (n) => new Intl.NumberFormat("ru-RU").format(Math.round(n));
   const SUB = 2900;
   const profit = (budget * markup) / 100;

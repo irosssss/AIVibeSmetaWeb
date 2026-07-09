@@ -423,10 +423,13 @@
             XLSX.utils.sheet_to_json(wb.Sheets[svodSn], { header: 1, blankrows: false }).forEach((row) => {
               if (!Array.isArray(row) || !row[0]) return;
               const label = String(row[0]).trim();
-              // «Итог» и «Свод закупки» никогда не пересекаются — у закупки нет строки «Итог»,
-              // поэтому скидка/доставка/монтаж на ней в принципе не включаются
-              if (label === "Итог") { inItog = true; inCat = false; return; }
-              if (label === "По разделам") { inCat = true; return; }
+              // маркеры узнаём не только по тексту, но и по форме строки — иначе раздел,
+              // названный ровно «Итог»/«По разделам» (свободный текст!), сам сошёл бы за
+              // маркер и подмял бы своей меткой все строки после себя. У «Итога» ровно
+              // одна ячейка (push(["Итог"])); у заголовка «По разделам» вторая ячейка —
+              // текст («Себестоимость»/«Сумма»), у строки раздела — всегда число (сумма).
+              if (label === "Итог" && row.length === 1) { inItog = true; inCat = false; return; }
+              if (label === "По разделам" && typeof row[1] === "string") { inCat = true; return; }
               // якорь «, %» на конце — иначе матчится и строка «Итога» с наценкой В РУБЛЯХ
               // («Наценка дизайнера (+35%)»), а не только строка-заголовок с процентом
               if (/наценка дизайнера.*,\s*%\s*$/i.test(label)) { markupPct = num(row[1]); return; }
@@ -439,8 +442,10 @@
               else if (/^доставка$/i.test(label)) deliveryCost = num(row[1]);
               else if (/монтаж и сборка/i.test(label)) installCost = num(row[1]);
             });
-            // хранить только реальные отличия от базовой ставки — так же, как их пишет UI
-            const base = markupPct != null ? markupPct : 25;
+            // хранить только реальные отличия от базовой ставки — так же, как их пишет UI.
+            // Дефолт — из web/ffe.js (единая точка канона), а не свой литерал
+            const defMarkup = (window.AIVibeFFE && window.AIVibeFFE.DEFAULT_MARKUP_PCT) || 25;
+            const base = markupPct != null ? markupPct : defMarkup;
             const ov = Object.fromEntries(Object.entries(catOv).filter(([, p]) => p !== base));
             if (Object.keys(ov).length) catMarkupPct = ov;
           }
