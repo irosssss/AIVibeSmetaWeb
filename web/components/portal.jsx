@@ -224,3 +224,4 @@ function ShareLinkModal({ share, onClose }) {
 
 window.ClientPortal = ClientPortal;
 window.ShareLinkModal = ShareLinkModal;
+window.PortalWrap = PortalWrap;

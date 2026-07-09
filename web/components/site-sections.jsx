@@ -134,8 +134,8 @@ function HowMobile() {
     <section id="how" style={{ paddingBlock: "clamp(56px,9vh,90px)" }}>
       <div className="container">
         <div className="eyebrow jade" style={{ marginBottom: 16 }}>КАК ЭТО РАБОТАЕТ</div>
-        <h2 className="display" style={{ fontSize: "clamp(30px,8vw,44px)" }}>От пустой комнаты<br />до готовой сметы</h2>
-        <p style={{ color: "var(--muted)", fontSize: "var(--fs-14)", marginTop: 12 }}>Смета — собрана. Наценка — скрыта. Клиент — согласовал.</p>
+        <h2 className="display" style={{ fontSize: "clamp(30px,8vw,44px)" }}>От пустой комнаты<br />до сданного проекта</h2>
+        <p style={{ color: "var(--muted)", fontSize: "var(--fs-14)", marginTop: 12 }}>Смета — собрана. Наценка — скрыта. Клиент — согласовал. Закупка — под контролем.</p>
 
         <div ref={scRef} onScroll={onScroll} className="how-scroller" style={{ marginTop: 16 }}>
           {STEPS.map((s, i) => (
@@ -166,8 +166,8 @@ function HowMobile() {
   );
 }
 
-/* центральная сцена: скан → позиция+нормы → наценка/две цены → PDF клиенту → согласование
-   (нумерованный путь 01–05, синхронизирован с STEPS) */
+/* центральная сцена: скан → позиция+нормы → наценка/две цены → PDF клиенту → согласование → закупка → сдача
+   (нумерованный путь 01–07, синхронизирован с STEPS) */
 function DemoStage({ active, sub }) {
   const scanFill = active === 0 ? sub : 1;
   const bottomPanel = (i, extra) => ({ position: "absolute", left: 18, right: 18, bottom: 18,
@@ -677,7 +677,7 @@ function ClientPortalPromo() {
     "Ссылка без пароля и установки — открывается в браузере с телефона",
   ];
   return (
-    <section id="portal" style={{ paddingBlock: "clamp(60px,9vh,110px)" }} ref={ref}>
+    <section id="clientportal" style={{ paddingBlock: "clamp(60px,9vh,110px)" }} ref={ref}>
       <div className="container reveal calc-grid">
         <div>
           <div className="eyebrow info" style={{ marginBottom: 18 }}>КЛИЕНТСКИЙ ПОРТАЛ</div>

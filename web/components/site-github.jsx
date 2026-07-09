@@ -10,7 +10,7 @@ function Footer({ go }) {
   /* [название, якорь|null] — null = раздел ещё не написан, честная заглушка без мёртвого клика.
      Порядок «Продукт» — по факту скролла SitePage (ниже), не по важности. */
   const cols = [
-    ["Продукт", [["Для кого", "#whofor"], ["Как работает", "#how"], ["Клиентский портал", "#portal"], ["Возможности", "#features"], ["Окупаемость", "#payoff"], ["Тарифы", "#pricing"], ["Новости", "#news"]]],
+    ["Продукт", [["Для кого", "#whofor"], ["Как работает", "#how"], ["Клиентский портал", "#clientportal"], ["Возможности", "#features"], ["Окупаемость", "#payoff"], ["Тарифы", "#pricing"], ["Новости", "#news"]]],
     ["Технологии", [["Движок эргономики", "#how"], ["Каталог фабрик", "#komplektacia"], ["YandexGPT 5", "#features"], ["Выгрузка сметы", "#komplektacia"]]],
     ["Компания", [["Что нового", "#changelog"], ["О проекте", null], ["Контакты", null], ["Политика", null], ["Оферта", null]]],
   ];
@@ -137,21 +137,20 @@ const CHANGELOG = [
 ];
 
 function groupChangelogByDate(list) {
-  const groups = [];
+  const byDate = new Map();
   list.forEach((item) => {
-    let g = groups.find((g) => g.date === item.date);
-    if (!g) { g = { date: item.date, items: [] }; groups.push(g); }
-    g.items.push(item);
+    if (!byDate.has(item.date)) byDate.set(item.date, { date: item.date, items: [] });
+    byDate.get(item.date).items.push(item);
   });
-  return groups;
+  return Array.from(byDate.values());
 }
+const CHANGELOG_GROUPS = groupChangelogByDate(CHANGELOG); // CHANGELOG не меняется — считаем один раз, как CAB_TAB_IDS в cabinet.jsx
 
 function ChangelogPage({ go }) {
   useE3(() => { window.scrollTo({ top: 0 }); }, []);
-  const groups = groupChangelogByDate(CHANGELOG);
   return (
-    <div className="minh-screen">
-      <div className="container" style={{ maxWidth: 760, paddingBlock: "clamp(28px,5vh,56px)" }}>
+    <React.Fragment>
+      <PortalWrap>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, marginBottom: 40, flexWrap: "wrap" }}>
           <Logo size={25} onClick={() => go("site")} />
           <div style={{ display: "flex", gap: 10 }}>
@@ -167,7 +166,7 @@ function ChangelogPage({ go }) {
         </p>
 
         <div style={{ marginTop: 44, display: "flex", flexDirection: "column", gap: 32 }}>
-          {groups.map((g) => (
+          {CHANGELOG_GROUPS.map((g) => (
             <div key={g.date} style={{ display: "grid", gridTemplateColumns: "clamp(72px,18vw,104px) 1fr", gap: 18 }}>
               <div className="mono" style={{ fontSize: "var(--fs-12)", fontWeight: 700, color: "var(--spec-meta)", paddingTop: 4 }}>
                 {new Date(g.date + "T00:00:00").toLocaleDateString("ru-RU", { day: "numeric", month: "long" })}
@@ -186,9 +185,9 @@ function ChangelogPage({ go }) {
             </div>
           ))}
         </div>
-      </div>
+      </PortalWrap>
       <Footer go={go} />
-    </div>
+    </React.Fragment>
   );
 }
 

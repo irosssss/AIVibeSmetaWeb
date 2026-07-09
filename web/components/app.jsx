@@ -90,7 +90,7 @@ function App() {
   return (
     <React.Fragment>
       {screen}
-      {DEV_MODE && view !== "portal" && <ProtoSwitch view={view} go={go} user={user} />}
+      {DEV_MODE && view !== "portal" && view !== "changelog" && <ProtoSwitch view={view} go={go} user={user} />}
     </React.Fragment>
   );
 }
