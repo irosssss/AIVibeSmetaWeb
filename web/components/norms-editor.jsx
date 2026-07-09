@@ -97,7 +97,7 @@ function NormsSettings() {
   useNE(() => { if (!linkNote) return; const t = setTimeout(() => setLinkNote(""), 4200); return () => clearTimeout(t); }, [linkNote]);
   const resetKey = (key) => { setOverride((o) => { const n = { ...o }; delete n[key]; return n; }); setSaved(false); };
   const toggleKey = (key) => { setEnabled((e) => ({ ...e, [key]: e[key] === false ? true : false })); setSaved(false); };
-  const resetAll = () => { setOverride({}); setBaseKey("canon"); setSaved(false); };
+  const resetAll = () => { setOverride({}); setEnabled({}); setBaseKey("canon"); setSaved(false); };
   const applyPreset = async (key) => {
     // не затираем ручные правки молча — подтверждение (ошибка объясняет последствие)
     if (modCount > 0 && key !== baseKey) {
@@ -121,7 +121,9 @@ function NormsSettings() {
     });
   };
 
-  const modCount = Object.keys(override).length;
+  const modCount = Object.keys(override).length;    // только правки значений — этим предупреждает применение пресета (пресеты тумблеры не трогают)
+  const offCount = Object.keys(enabled).filter((k) => enabled[k] === false).length;
+  const changedCount = modCount + offCount;          // «изменено относительно канона» для бейджа/пустого состояния/«Сбросить всё» — учитывает и выключенные правила
   const effNorms = { ...override, enabled };
   const check = (window.AIVibeEngine && loaded) ? AIVibeEngine.checkErgonomics({ plan: N_PLAN }, N_ROOM, effNorms) : { findings: [], warns: 0, ok: true };
   const okN = check.findings.filter((f) => f.kind === "plus").length;
@@ -159,7 +161,7 @@ function NormsSettings() {
         <div className="glass" style={{ borderRadius: "var(--r-lg)", overflow: "hidden" }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 22px", borderBottom: "1px solid var(--hairline)" }}>
             <h3 style={{ fontSize: "var(--fs-15)", fontWeight: 700 }}>Пороги эргономики</h3>
-            <span style={{ fontFamily: "var(--font-mono)", fontSize: "var(--fs-12)", color: "var(--faint)" }}>{modCount ? modCount + " изменено" : "всё по канону"}</span>
+            <span style={{ fontFamily: "var(--font-mono)", fontSize: "var(--fs-12)", color: "var(--faint)" }}>{changedCount ? changedCount + " изменено" : "всё по канону"}</span>
           </div>
 
           {linkNote && (
@@ -181,7 +183,7 @@ function NormsSettings() {
                 onChange={(v) => setKey(d.key, v)} onReset={() => resetKey(d.key)} onToggle={() => toggleKey(d.key)} />
             );
           })}
-          {onlyMod && modCount === 0 && (
+          {onlyMod && changedCount === 0 && (
             <div style={{ padding: "34px 22px", textAlign: "center", color: "var(--muted)", fontSize: "var(--fs-14)" }}>Пока ничего не изменено — все нормы по канону Design Ledger.</div>
           )}
 
@@ -190,10 +192,10 @@ function NormsSettings() {
               {justSaved
                 ? <I.check size={15} />
                 : <span style={{ width: 8, height: 8, borderRadius: "50%", background: saved ? "var(--faint)" : "var(--accent)" }} />}
-              {saved ? (modCount ? "Сохранено · мой канон" : "Всё по канону") : "Есть несохранённые правки"}
+              {saved ? (changedCount ? "Сохранено · мой канон" : "Всё по канону") : "Есть несохранённые правки"}
             </div>
             <div style={{ display: "flex", gap: 10 }}>
-              <button className="btn btn-ghost" style={{ padding: "10px 16px" }} onClick={resetAll} disabled={modCount === 0}>Сбросить всё</button>
+              <button className="btn btn-ghost" style={{ padding: "10px 16px" }} onClick={resetAll} disabled={changedCount === 0}>Сбросить всё</button>
               <button className="btn btn-primary" style={{ padding: "10px 18px" }} onClick={save} disabled={saved}>{saved ? "Сохранено" : "Сохранить"}</button>
             </div>
           </div>

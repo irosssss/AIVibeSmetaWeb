@@ -391,7 +391,8 @@
       list: async () => { await delay(120); return clone(db.markupProfiles); },  // → GET /api/markup-profiles
       create: async (patch = {}) => {                                            // → POST /api/markup-profiles
         await delay(150);
-        const row = { id: "mp_" + Date.now(), name: "Мой стандарт", markupPct: 25, catMarkupPct: {}, discountPct: 0, deliveryCost: 0, installCost: 0, ...patch, createdAt: today() };
+        const defMarkup = (window.AIVibeFFE && window.AIVibeFFE.DEFAULT_MARKUP_PCT) || 25;
+        const row = { id: "mp_" + Date.now(), name: "Мой стандарт", markupPct: defMarkup, catMarkupPct: {}, discountPct: 0, deliveryCost: 0, installCost: 0, ...patch, createdAt: today() };
         db.markupProfiles.push(row);
         LS.set("markupProfiles", db.markupProfiles);
         return clone(row);
