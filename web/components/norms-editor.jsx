@@ -122,8 +122,10 @@ function NormsSettings() {
   };
 
   const modCount = Object.keys(override).length;    // только правки значений — этим предупреждает применение пресета (пресеты тумблеры не трогают)
-  const offCount = Object.keys(enabled).filter((k) => enabled[k] === false).length;
-  const changedCount = modCount + offCount;          // «изменено относительно канона» для бейджа/пустого состояния/«Сбросить всё» — учитывает и выключенные правила
+  // «изменено относительно канона» для бейджа/пустого состояния/«Сбросить всё» — те же строки,
+  // что показывает фильтр «Только изменённые» (isMod || выключено), а не сумма двух счётчиков:
+  // норма, у которой И правлено значение, И выключен тумблер — это одна строка, не две
+  const changedCount = NORM_DEFS.filter((d) => isMod(d.key) || !on(d.key)).length;
   const effNorms = { ...override, enabled };
   const check = (window.AIVibeEngine && loaded) ? AIVibeEngine.checkErgonomics({ plan: N_PLAN }, N_ROOM, effNorms) : { findings: [], warns: 0, ok: true };
   const okN = check.findings.filter((f) => f.kind === "plus").length;
