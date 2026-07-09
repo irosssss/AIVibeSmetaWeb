@@ -203,6 +203,7 @@ function Projects() {
   const [sum, setSum] = useCV(null);          // сводная аналитика
   const [urgent, setUrgent] = useCV([]);      // «Сегодня в работе» (волна C2) — полные карточки, не list()
   const [openId, setOpenId] = useCV(() => parseRoute().sub || null);   // открытая деталь проекта (из hash — deep-link/F5)
+  const [openNav, setOpenNav] = useCV(() => parseRoute().s2 || "");    // раздел проекта из сайдбара W1: '' | client | procure | versions
   const [openStyle, setOpenStyle] = useCV(null); // стиль, с которым открыть проект (из квиза)
   const [newOpen, setNewOpen] = useCV(false); // модалка «Новый проект»
   const [quizOpen, setQuizOpen] = useCV(false);
@@ -242,6 +243,7 @@ function Projects() {
       if (r.view !== "cabinet" || r.tab !== "projects") return;
       const sub = r.sub || null;
       setOpenId(sub);
+      setOpenNav(r.s2 || "");
       if (!sub) { setOpenStyle(null); refresh(); }
     };
     window.addEventListener("hashchange", onHash);
@@ -356,7 +358,7 @@ function Projects() {
         </div>
       )}
 
-      {openId && <ProjectDetail id={openId} initialStyle={openStyle} onClose={closeProject} />}
+      {openId && <ProjectDetail id={openId} nav={openNav} initialStyle={openStyle} onClose={closeProject} />}
       {importData && <RoomSpecOverlay data={importData} onClose={() => { setImportData(null); refresh(); }} />}
       {newOpen && <NewProjectModal onClose={() => setNewOpen(false)} onCreate={onCreated} onExample={() => { setNewOpen(false); openProject("p_1"); }} />}
       {quizOpen && <StyleQuiz onClose={() => { setQuizOpen(false); try { localStorage.setItem("aivibe_quiz_done", "1"); } catch (e) {} }} onDone={finishQuiz} />}

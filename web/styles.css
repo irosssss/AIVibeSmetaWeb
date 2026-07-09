@@ -278,6 +278,10 @@ a { color: inherit; text-decoration: none; }
 /* появление контента при смене вкладки/режима (key={tab} даёт свежий DOM-узел — анимация играет сама) */
 .view-enter { animation: viewEnter .2s var(--ease) both; }
 @keyframes viewEnter { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+/* transform анимации входа делает вкладку containing block'ом для fixed-потомков:
+   оверлей проекта, открытый deep-link'ом внутрь анимирующейся вкладки, позиционировался бы
+   от вкладки, а не от вьюпорта (W1) — с оверлеем внутри анимацию честно выключаем */
+.view-enter:has(.pd-overlay) { animation: none; }
 
 /* выпадающее меню (AccountMenu, ⋯ карточки) — pop от верхнего правого угла, откуда открывается */
 .menu-pop { transform-origin: top right; animation: menuPop .16s var(--ease-pop) both; }

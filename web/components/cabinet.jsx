@@ -4,8 +4,9 @@
    ============================================================ */
 const { useState: useC, useEffect: useCE } = React;
 
-/* ---------- Хеш-роутинг: #view/tab/sub (переживает F5, работает «назад»,
-   sub — открытый проект: #cabinet/projects/p_1 → deep-link на смету) ---------- */
+/* ---------- Хеш-роутинг: #view/tab/sub/s2 (переживает F5, работает «назад»,
+   sub — открытый проект: #cabinet/projects/p_1 → deep-link на смету,
+   s2 — раздел открытого проекта: /client · /procure · /versions — волна W1) ---------- */
 const CAB_TABS = [["projects", "Проекты"], ["workshop", "Мастерская"], ["favorites", "Избранное"], ["profile", "Профиль"]];
 const CAB_TAB_IDS = CAB_TABS.map((t) => t[0]);
 /* старые адреса вкладок-редакторов живут как deep-links внутрь Мастерской:
@@ -13,11 +14,11 @@ const CAB_TAB_IDS = CAB_TABS.map((t) => t[0]);
 const LEGACY_WORKSHOP = { styles: "styles", norms: "norms" };
 function parseRoute() {
   const h = (location.hash || "").replace(/^#\/?/, "");
-  const [view, tab, sub] = h.split("/");
-  return { view: view || "site", tab: tab || "", sub: sub || "" };
+  const [view, tab, sub, s2] = h.split("/");
+  return { view: view || "site", tab: tab || "", sub: sub || "", s2: s2 || "" };
 }
-function setRoute(view, tab, sub) {
-  const next = "#" + view + (tab ? "/" + tab : "") + (sub ? "/" + sub : "");
+function setRoute(view, tab, sub, s2) {
+  const next = "#" + view + (tab ? "/" + tab : "") + (sub ? "/" + sub : "") + (s2 ? "/" + s2 : "");
   if (location.hash !== next) location.hash = next;
 }
 /* прототип-свитчер и синтетический вход в админку — только в dev-окружении */
@@ -109,11 +110,31 @@ function AuthScreen({ onAuthed, go }) {
   );
 }
 
-/* ---------------- КАБИНЕТ (рабочее пространство) ---------------- */
+/* ---------------- КАБИНЕТ (рабочее пространство, волна W1) ----------------
+   Двухуровневая оболочка по эталону Programa: постоянный сайдбар студии
+   (Проекты / Мастерская / Избранное / Профиль), при открытом проекте сайдбар
+   подменяется контекстом проекта (← назад · Смета · Для клиента · Закупка · Версии).
+   Роутинг прежний: #cabinet/{tab}/{sub}/{s2}. */
+
+/* конфиг сайдбара студии; Мастерская — группа с под-пунктами (те же адреса, что были) */
+const WS_ICONS = { projects: "layers", workshop: "sliders", favorites: "heart", profile: "user" };
+const WS_SUB_ICONS = { styles: "spark", products: "sofa", norms: "ruler" };
+/* разделы открытого проекта (s2 адреса); только для смет-комплектаций (data.rooms) */
+const WS_PROJ_ITEMS = [
+  ["", "Смета", "grid"],
+  ["client", "Для клиента", "user"],
+  ["procure", "Закупка", "truck"],
+  ["versions", "Версии и согласование", "news"],
+];
+
 function Cabinet({ user, onLogout, go }) {
   // старые адреса #cabinet/styles|norms сразу переписываем на Мастерскую
   const normTab = (t) => (LEGACY_WORKSHOP[t] ? "workshop" : t);
   const [tab, setTab] = useC(() => { const t = normTab(parseRoute().tab); return CAB_TAB_IDS.includes(t) ? t : "projects"; });
+  const [projId, setProjId] = useC(() => (parseRoute().tab === "projects" && parseRoute().sub) || null);
+  const [projS2, setProjS2] = useC(() => parseRoute().s2 || "");
+  const [proj, setProj] = useC(null);            // мета открытого проекта для сайдбара (имя, rooms?)
+  const [drawer, setDrawer] = useC(false);       // мобильный сайдбар-drawer
   const changeTab = (t) => {
     if (LEGACY_WORKSHOP[t]) { setTab("workshop"); setRoute("cabinet", "workshop", LEGACY_WORKSHOP[t]); return; }
     setTab(t); setRoute("cabinet", t);
@@ -125,6 +146,9 @@ function Cabinet({ user, onLogout, go }) {
       const r = parseRoute();
       if (LEGACY_WORKSHOP[r.tab]) { setRoute("cabinet", "workshop", LEGACY_WORKSHOP[r.tab]); return; }
       if (CAB_TAB_IDS.includes(r.tab)) setTab(r.tab);
+      setProjId((r.view === "cabinet" && r.tab === "projects" && r.sub) || null);
+      setProjS2(r.s2 || "");
+      setDrawer(false);
     };
     window.addEventListener("hashchange", on);
     return () => window.removeEventListener("hashchange", on);
@@ -136,20 +160,100 @@ function Cabinet({ user, onLogout, go }) {
     else if (!CAB_TAB_IDS.includes(r.tab)) setRoute("cabinet", tab);
   }, []);
 
-  const newProject = () => { changeTab("projects"); setTimeout(() => window.dispatchEvent(new CustomEvent("aivibe:new-project")), 0); };
+  // мета открытого проекта — только для сайдбара (имя + есть ли смета-комплектация)
+  useCE(() => {
+    if (!projId) { setProj(null); return; }
+    let alive = true;
+    AIVibeAPI.projects.get(projId).then((d) => { if (alive) setProj(d && d.id ? { id: d.id, name: d.name, rooms: !!d.rooms } : null); });
+    return () => { alive = false; };
+  }, [projId]);
+
+  const newProject = () => { setDrawer(false); changeTab("projects"); setTimeout(() => window.dispatchEvent(new CustomEvent("aivibe:new-project")), 0); };
 
   return (
-    <div className="minh-screen">
-      <AppTopBar user={user} onLogout={onLogout} go={go} tabs={CAB_TABS} tab={tab} setTab={changeTab} onNewProject={newProject} />
-      <main id="main" className="container" style={{ paddingBlock: "clamp(28px,4vh,48px)", paddingTop: "calc(var(--nav-h) + 28px)" }}>
-        <div key={tab} className="view-enter">
-          {tab === "profile" ? <Profile user={user} />
-            : tab === "favorites" ? <Favorites />
-            : tab === "workshop" ? <Workshop />
-            : <Projects />}
+    <div className="ws minh-screen">
+      <WsSidebar user={user} onLogout={onLogout} go={go} tab={tab} onTab={changeTab}
+        proj={projId ? proj : null} projS2={projS2} onNewProject={newProject}
+        open={drawer} onClose={() => setDrawer(false)} />
+      {drawer && <div className="ws-scrim" onClick={() => setDrawer(false)} aria-hidden="true" />}
+      <div className="ws-content">
+        <div className="ws-topbar">
+          <button className="icon-btn" onClick={() => setDrawer(true)} aria-label="Открыть меню кабинета"><I.grid size={19} /></button>
+          <Logo size={21} onClick={() => go("site")} />
+          <button className="btn btn-primary" style={{ padding: "8px 13px", fontSize: "var(--fs-13)", marginLeft: "auto" }} onClick={newProject}><I.plus size={15} />Проект</button>
         </div>
-      </main>
+        <main id="main" className="container" style={{ paddingBlock: "clamp(28px,4vh,48px)" }}>
+          <div key={tab} className="view-enter">
+            {tab === "profile" ? <Profile user={user} />
+              : tab === "favorites" ? <Favorites />
+              : tab === "workshop" ? <Workshop />
+              : <Projects />}
+          </div>
+        </main>
+      </div>
     </div>
+  );
+}
+
+/* ---------------- Сайдбар воркспейса (W1) ----------------
+   Студийный уровень ↔ уровень проекта: при открытом проекте контент сайдбара
+   полностью подменяется (паттерн Programa), «←» возвращает к списку проектов. */
+function WsSidebar({ user, onLogout, go, tab, onTab, proj, projS2, onNewProject, open, onClose }) {
+  const r = parseRoute();
+  const wsSub = tab === "workshop" ? (WS_SUBS.some((x) => x.id === r.sub) ? r.sub : "styles") : null;
+  const goProjSection = (s2) => proj && setRoute("cabinet", "projects", proj.id, s2);
+
+  const item = (key, label, icon, { on, onClick, sub, badge } = {}) => {
+    const Ico = I[icon] || I.grid;
+    return (
+      <button key={key} className={"ws-item" + (on ? " on" : "") + (sub ? " sub" : "")} onClick={onClick} aria-current={on ? "page" : undefined}>
+        <Ico size={17} style={{ flex: "none" }} />
+        <span className="ws-item-t">{label}</span>
+        {badge != null && <span className="ws-badge">{badge}</span>}
+      </button>
+    );
+  };
+
+  return (
+    <aside className={"ws-side" + (open ? " open" : "")} aria-label={proj ? "Разделы проекта" : "Разделы кабинета"}>
+      <div className="ws-head">
+        <Logo size={22} onClick={() => go("site")} />
+        <button className="icon-btn ws-close" onClick={onClose} aria-label="Закрыть меню"><I.close size={17} /></button>
+      </div>
+
+      {!proj && (
+        <React.Fragment>
+          <button className="btn btn-primary ws-new" onClick={onNewProject}><I.plus size={16} />Новый проект</button>
+          <nav className="ws-nav" aria-label="Кабинет">
+            {CAB_TABS.map(([k, t]) => (
+              <React.Fragment key={k}>
+                {item(k, t, WS_ICONS[k], { on: tab === k && (k !== "workshop"), onClick: () => onTab(k) })}
+                {k === "workshop" && tab === "workshop" && WS_SUBS.map((s) =>
+                  item("ws_" + s.id, s.label, WS_SUB_ICONS[s.id], { sub: true, on: wsSub === s.id, onClick: () => setRoute("cabinet", "workshop", s.id) }))}
+              </React.Fragment>
+            ))}
+          </nav>
+        </React.Fragment>
+      )}
+
+      {proj && (
+        <React.Fragment>
+          <button className="ws-back" onClick={() => setRoute("cabinet", "projects")}><I.arrow size={15} style={{ transform: "rotate(180deg)" }} />Все проекты</button>
+          <div className="ws-proj-name display" title={proj.name}>{proj.name}</div>
+          <nav className="ws-nav" aria-label="Разделы проекта">
+            {proj.rooms
+              ? WS_PROJ_ITEMS.map(([s2, label, icon]) => item("p_" + s2, label, icon, { on: (projS2 || "") === s2, onClick: () => goProjSection(s2) }))
+              : item("p_", "Проект", "cube", { on: true, onClick: () => goProjSection("") })}
+          </nav>
+        </React.Fragment>
+      )}
+
+      <div className="ws-foot">
+        {item("changelog", "Что нового", "news", { onClick: () => go("changelog") })}
+        <div style={{ height: 8 }} />
+        <AccountMenu user={user} onLogout={onLogout} onTab={(t) => { onClose(); onTab(t); }} up />
+      </div>
+    </aside>
   );
 }
 
@@ -169,7 +273,8 @@ function Workshop() {
   useCE(() => { const r = parseRoute(); if (r.tab === "workshop" && !WS_SUBS.some((x) => x.id === r.sub)) setRoute("cabinet", "workshop", sub); }, []);
   return (
     <div>
-      <SegTabs className="pd-seg" items={WS_SUBS} value={sub} onChange={change} ariaLabel="Раздел мастерской" style={{ marginBottom: 22 }} />
+      {/* на десктопе разделы Мастерской ведёт сайдбар (W1); сег-табы остаются мобильной навигацией */}
+      <SegTabs className="pd-seg ws-dup-tabs" items={WS_SUBS} value={sub} onChange={change} ariaLabel="Раздел мастерской" style={{ marginBottom: 22 }} />
       {sub === "norms" ? <NormsSettings /> : sub === "products" ? <ProductsLibrary /> : <StylesLibrary />}
     </div>
   );
@@ -200,8 +305,9 @@ function AppTopBar({ user, onLogout, go, tabs, tab, setTab, onNewProject }) {
   );
 }
 
-/* аккаунт-меню: профиль · тариф/биллинг · настройки · выйти */
-function AccountMenu({ user, onLogout, onTab }) {
+/* аккаунт-меню: профиль · тариф/биллинг · настройки · выйти
+   up — раскрытие вверх (низ сайдбара воркспейса, волна W1) */
+function AccountMenu({ user, onLogout, onTab, up }) {
   const [open, setOpen] = useC(false);
   useMenu(open, () => setOpen(false), "acc-menu");   // Esc/стрелки/click-outside — единый паттерн меню
   const billing = () => { setOpen(false); AIVibeAPI.billing.createPayment({ plan: "pro_month" }).then((r) => toast(r.message || "Оплата подключится позже.", "info", 5000)); };
@@ -223,7 +329,7 @@ function AccountMenu({ user, onLogout, onTab }) {
         <I.arrow size={13} style={{ color: "var(--faint)", flex: "none", transform: open ? "rotate(-90deg)" : "rotate(90deg)", transition: "var(--dur-fast)" }} />
       </button>
       {open && (
-        <div className="glass menu-pop" role="menu" style={{ position: "absolute", top: "calc(100% + 10px)", right: 0, minWidth: 214, borderRadius: 14, boxShadow: "var(--shadow-pop)", padding: 7, zIndex: 90 }}>
+        <div className="glass menu-pop" role="menu" style={{ position: "absolute", ...(up ? { bottom: "calc(100% + 10px)", left: 0 } : { top: "calc(100% + 10px)", right: 0 }), minWidth: 214, borderRadius: 14, boxShadow: "var(--shadow-pop)", padding: 7, zIndex: 90 }}>
           <div style={{ padding: "6px 12px 10px", borderBottom: "1px solid var(--hairline)", marginBottom: 6 }}>
             <div style={{ fontWeight: 700, fontSize: "var(--fs-13)" }}>{user.name}</div>
             <div style={{ fontSize: "var(--fs-12)", color: "var(--muted)" }}>{user.email}</div>

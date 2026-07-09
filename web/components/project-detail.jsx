@@ -105,7 +105,7 @@ function pickByTier(catalog, tier) {
   return sel;
 }
 
-function ProjectDetail({ id, onClose, initialStyle }) {
+function ProjectDetail({ id, nav, onClose, initialStyle }) {
   const [data, setData] = usePD(null);
   const [styleId, setStyleId] = usePD(null);
   const [tier, setTier] = usePD("opt");
@@ -180,7 +180,7 @@ function ProjectDetail({ id, onClose, initialStyle }) {
 
   // key: при смене id через hash state оверлея (наценки/скидка/savedId) обязан переинициализироваться,
   // иначе «Сохранить» запишет значения предыдущего проекта в новый
-  if (data.rooms) return <RoomSpecOverlay key={data.id || "imported"} data={data} onClose={onClose} />;
+  if (data.rooms) return <RoomSpecOverlay key={data.id || "imported"} data={data} nav={nav} onClose={onClose} />;
 
   const activeStyle = [...data.styles, ...myStyles].find((s) => s.id === styleId) || data.styles[0];
   const activeLayout = LAYOUTS.find((l) => l.id === layoutId) || LAYOUTS[0];
@@ -233,8 +233,9 @@ function ProjectDetail({ id, onClose, initialStyle }) {
   );
 }
 
-/* ---------------- СМЕТА-КОМПЛЕКТАЦИЯ ПО КОМНАТАМ (реальный дизайн-проект) ---------------- */
-function RoomSpecOverlay({ data, onClose }) {
+/* ---------------- СМЕТА-КОМПЛЕКТАЦИЯ ПО КОМНАТАМ (реальный дизайн-проект) ----------------
+   nav — раздел из сайдбара проекта (волна W1): '' смета · client · procure · versions */
+function RoomSpecOverlay({ data, nav, onClose }) {
   const [markup, setMarkup] = usePD(data.markupPct != null ? data.markupPct : PD_DEFAULT_MARKUP);
   const [catMarkup, setCatMarkup] = usePD(data.catMarkupPct || {});  // {раздел: %} — своя наценка поверх базовой (пусто = наследует)
   const [catOpen, setCatOpen] = usePD(false);
@@ -537,6 +538,7 @@ function RoomSpecOverlay({ data, onClose }) {
   const openVersions = () => {
     if (!savedId) { toast("Сначала сохраните смету — версии привязаны к проекту.", "warn", 5000); return; }
     setVersionsOpen(true);
+    if (nav != null) wsSyncNav("versions");   // подсветка сайдбара проекта (W1) следует за модалкой
   };
   const saveVersion = (label) => {
     setVersions((prev) => [{
@@ -577,8 +579,25 @@ function RoomSpecOverlay({ data, onClose }) {
     setShareModal(rec);
   };
 
+  /* --- сайдбар проекта (волна W1): раздел из адреса (s2) управляет режимом выгрузки
+     и модалкой версий, а внутренние переключатели пишут адрес обратно — подсветка
+     сайдбара и «назад» браузера остаются честными. Синхронизируем только смету,
+     открытую роутингом (nav задан); Excel-импорт без адреса живёт как раньше. --- */
+  const wsRouted = () => { const r = parseRoute(); return r.view === "cabinet" && r.tab === "projects" && r.sub ? r : null; };
+  const wsSyncNav = (s2) => { const r = wsRouted(); if (r && (r.s2 || "") !== s2) setRoute("cabinet", "projects", r.sub, s2); };
+  usePDE(() => {
+    if (nav == null) return;
+    if (nav === "client" || nav === "procure") { setMode(nav); setVersionsOpen(false); }
+    else if (nav === "versions") {
+      if (savedId) setVersionsOpen(true);
+      else { toast("Сначала сохраните смету — версии привязаны к проекту.", "warn", 5000); wsSyncNav(""); }
+    } else { setMode("work"); setVersionsOpen(false); }
+  }, [nav]);
+  const changeMode = (m) => { setMode(m); if (nav != null) wsSyncNav(m === "work" ? "" : m); };
+  const closeVersions = () => { setVersionsOpen(false); if (nav === "versions") wsSyncNav(mode === "work" ? "" : mode); };
+
   return (
-    <div className="pd-overlay" role="dialog" aria-label={"Смета: " + data.name}>
+    <div className={"pd-overlay" + (nav == null ? " pd-fullscreen" : "")} role="dialog" aria-label={"Смета: " + data.name}>
       <OverlayHead onBack={onClose} budget={data.budget}
         crumbs={[{ label: "Проекты", onClick: onClose }, { label: data.name }, { label: "Смета" }]}
         title={data.name}
@@ -1066,7 +1085,7 @@ function RoomSpecOverlay({ data, onClose }) {
                 </span>
               )}
               <div style={{ marginLeft: "auto", display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
-                <SegTabs className="spec-mode" cap="Выгрузка" ariaLabel="Режим выгрузки" value={mode} onChange={setMode}
+                <SegTabs className="spec-mode" cap="Выгрузка" ariaLabel="Режим выгрузки" value={mode} onChange={changeMode}
                   items={[
                     { id: "work", label: "Рабочая", title: "Рабочая смета: себестоимость, наценка и цена клиента" },
                     { id: "client", label: "Для клиента", title: "Для клиента: только итоговая цена, без себестоимости и наценки" },
@@ -1084,7 +1103,7 @@ function RoomSpecOverlay({ data, onClose }) {
       {versionsOpen && (
         <VersionsModal versions={versions} current={{ project: data.name, studioName: (settings && settings.studioName) || (me && me.name) || "", rooms, grand, totalClient, itemsCount }}
           onSave={saveVersion} onRestore={restoreVersion} onSetStatus={setVersionStatus}
-          onPatch={patchVersion} onRemove={removeVersion} onShare={shareVersion} onClose={() => setVersionsOpen(false)} />
+          onPatch={patchVersion} onRemove={removeVersion} onShare={shareVersion} onClose={closeVersions} />
       )}
       {shareModal && <ShareLinkModal share={shareModal} onClose={() => setShareModal(null)} />}
       {pickerRoom != null && rooms[pickerRoom] && (
