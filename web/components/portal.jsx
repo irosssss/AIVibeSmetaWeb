@@ -18,12 +18,6 @@ const PORTAL_CHOICES = [
   { id: "rejected", label: "Отклонить", color: "var(--accent)" },
 ];
 
-/* Дата+время треда — короче ISO, читаемо в переписке («08.07 14:32»). */
-const fmtCommentAt = (iso) => {
-  try { return new Date(iso).toLocaleString("ru-RU", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }); }
-  catch { return ""; }
-};
-
 /* ---------------- КОММЕНТАРИИ-ТРЕД НА ПОЗИЦИИ (волна A3) ----------------
    Клиент пишет здесь; ответ студии появляется тем же треугольником (дизайнер
    отвечает из «Версий» в кабинете — читают/пишут один и тот же снимок портал-шары). */
@@ -41,16 +35,7 @@ function PortalCommentThread({ comments, onSend }) {
       {comments.length > 0 && (
         <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 8 }}>
           {comments.map((c) => (
-            <div key={c.id} style={{
-              alignSelf: c.author === "client" ? "flex-end" : "flex-start", maxWidth: "88%",
-              padding: "6px 10px", borderRadius: 10, fontSize: "var(--fs-12)", lineHeight: 1.5,
-              background: c.author === "client" ? "var(--accent-2)" : "var(--glass-2)",
-              color: c.author === "client" ? "var(--on-accent)" : "var(--text)",
-              border: c.author === "client" ? "none" : "1px solid var(--hairline)",
-            }}>
-              <div>{c.text}</div>
-              <div style={{ fontSize: "var(--fs-10)", opacity: .75, marginTop: 3 }}>{c.author === "client" ? "Вы" : "Студия"} · {fmtCommentAt(c.at)}</div>
-            </div>
+            <CommentBubble key={c.id} comment={c} isMine={c.author === "client"} authorLabel={c.author === "client" ? "Вы" : "Студия"} />
           ))}
         </div>
       )}
@@ -108,7 +93,6 @@ function ClientPortal({ shareId }) {
     if (updated) setRec({ ...updated });
   };
 
-  const RS_ROW = { display: "flex", justifyContent: "space-between", alignItems: "baseline", padding: "6px 0", fontSize: "var(--fs-14)" };
   return (
     <PortalWrap>
       {/* шапка студии — брендинг портала (волна A5): имя студии дизайнера над платформенным лого */}
@@ -134,7 +118,7 @@ function ClientPortal({ shareId }) {
         {rooms.map((r, ri) => (
           <div key={ri} className="glass" style={{ borderRadius: "var(--r-lg)", padding: "16px 18px" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 10, marginBottom: 6 }}>
-              <h2 style={{ fontSize: "var(--fs-16)", fontWeight: 700 }}>{r.name || "Помещение"}</h2>
+              <h2 style={{ fontSize: "var(--fs-16)", fontWeight: 800, fontFamily: "var(--font-display)" }}>{r.name || "Помещение"}</h2>
               <span className="mono" style={{ fontSize: "var(--fs-12)", color: "var(--spec-meta)" }}>{fmtMoney((r.items || []).reduce((s, it) => s + cp.lineClient(it), 0))}</span>
             </div>
             <div style={{ display: "flex", flexDirection: "column" }}>
@@ -183,7 +167,7 @@ function ClientPortal({ shareId }) {
         {cp.delivery > 0 && <div style={{ ...RS_ROW, borderTop: "1px solid var(--hairline-2)" }}><span style={{ color: "var(--muted)" }}>Доставка</span><span className="mono">{fmtMoney(cp.delivery)}</span></div>}
         {cp.install > 0 && <div style={{ ...RS_ROW, borderTop: "1px solid var(--hairline-2)" }}><span style={{ color: "var(--muted)" }}>Сборка и монтаж</span><span className="mono">{fmtMoney(cp.install)}</span></div>}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", paddingTop: 12, marginTop: 8, borderTop: "2px solid var(--text)" }}>
-          <span style={{ fontWeight: 700, fontSize: "var(--fs-15)" }}>Итого</span>
+          <span style={{ fontWeight: 800, fontFamily: "var(--font-display)", fontSize: "var(--fs-15)" }}>Итого</span>
           <span className="mono" style={{ fontWeight: 600, fontSize: "var(--fs-24)", letterSpacing: "-0.01em" }}>{fmtMoney(cp.totalClient)}</span>
         </div>
       </div>

@@ -401,6 +401,8 @@ a { color: inherit; text-decoration: none; }
    + Секция «Комплектация по категориям».
    Префикс plate-/spec2-/cat- — чтобы не задеть кабинет/админку.
    ============================================================ */
+/* канон (П3): деньги — всегда .mono+tabular (не «плывут» при пересчёте, не путаются с текстом);
+   Spectral (display) — только нецифровым заголовкам/лейблам. KpiCard/ChartCard (ui.jsx) уже разделяют это по k.unit. */
 .mono { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
 
 .plate {

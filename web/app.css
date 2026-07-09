@@ -241,7 +241,7 @@ body:has(.pd-overlay) .proto-switch { display: none; }
 .metric-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 1px; background: var(--hairline); border: 1px solid var(--hairline); border-radius: var(--r-lg); overflow: hidden; }
 .metric-grid .m { background: var(--surface); padding: 15px 16px; }
 .metric-grid .m .k { font-size: var(--fs-12); color: var(--muted); }
-.metric-grid .m .v { font-family: var(--font-display); font-weight: 700; font-size: var(--fs-18); margin-top: 3px; }
+.metric-grid .m .v { font-family: var(--font-mono); font-weight: 500; font-size: var(--fs-18); font-variant-numeric: tabular-nums; margin-top: 3px; }
 
 /* инсоляция = охра-солнце, один семантический цвет (радуга-градиент читалась как случайность,
    а терракота на конце — как «плохо», хотя высокая инсоляция — хорошо) */
@@ -256,7 +256,10 @@ body:has(.pd-overlay) .proto-switch { display: none; }
 .find.warn .fi { background: rgba(183,80,44,.18); color: var(--accent); }
 .find.idea .fi { background: rgba(62,74,89,.18); color: var(--info); }
 
-/* — стиль-карты — */
+/* — стиль-карты —
+   Канон «выбрано» (П3): single-choice (одно из N — стиль/раскладка/товар слота
+   каталога) = терракота (--accent); включено/в смете (чекбоксы импорта, пикер
+   библиотеки) = олива (--accent-2). Не путать местами. */
 .style-card { text-align: left; border: 1.5px solid var(--hairline); border-radius: var(--r-lg); padding: 16px; background: var(--glass-2); transition: .2s; cursor: pointer; }
 .style-card:hover { border-color: var(--surface-2); transform: translateY(-2px); }
 .style-card.sel { border-color: var(--accent); background: var(--accent-tint); }
@@ -300,13 +303,13 @@ body:has(.pd-overlay) .proto-switch { display: none; }
 .save-banner:hover { background: rgba(94,107,91,.14); border-color: rgba(94,107,91,.45); }
 .prod-card { text-align: left; border: 1.5px solid var(--hairline); border-radius: var(--r-lg); overflow: hidden; background: var(--surface); transition: .18s; cursor: pointer; display: flex; flex-direction: column; }
 .prod-card:hover { border-color: var(--surface-2); transform: translateY(-2px); }
-.prod-card.sel { border-color: var(--accent-2); box-shadow: 0 0 0 1px var(--accent-2); }
+.prod-card.sel { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }   /* single-choice слота каталога — терракота, см. канон выше */
 .prod-card .pim { position: relative; aspect-ratio: 4/3; overflow: hidden; }
 .prod-card .pbody { padding: 12px 13px; display: flex; flex-direction: column; gap: 7px; flex: 1; }
 .prod-card .pt { font-size: var(--fs-13); line-height: 1.35; font-weight: 600; }
 .prod-card .pprice { font-family: var(--font-mono); font-variant-numeric: tabular-nums; font-weight: 600; font-size: var(--fs-16); }
 .prod-card .pold { font-family: var(--font-mono); font-variant-numeric: tabular-nums; font-size: var(--fs-12); color: var(--spec-meta); text-decoration: line-through; }
-.prod-card .selflag { position: absolute; top: 8px; right: 8px; width: 24px; height: 24px; border-radius: 50%; background: var(--accent-2); color: var(--on-accent); display: grid; place-items: center; }
+.prod-card .selflag { position: absolute; top: 8px; right: 8px; width: 24px; height: 24px; border-radius: 50%; background: var(--accent); color: var(--on-accent); display: grid; place-items: center; }
 
 .mp { display: inline-flex; align-items: center; gap: 5px; font-size: var(--fs-10); font-weight: 700; padding: 4px 8px; border-radius: 6px; color: #fff; letter-spacing: .01em; }
 .mp.f1 { background: linear-gradient(135deg, #9C6B4A, #6E4A30); }

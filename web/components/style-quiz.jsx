@@ -114,17 +114,8 @@ function StyleQuiz({ onClose, onDone }) {
   const next = () => setStep((s) => Math.min(s + 1, total));   // двойной клик «Показать результат» не уводит за результат
   const back = () => setStep((s) => Math.max(0, s - 1));
 
-  // Esc закрывает квиз (управляемый поп-ап — закон Якоба).
-  // Capture + stopPropagation: не даём Esc долететь до bubble-слушателя оверлея проекта под квизом.
-  React.useEffect(() => {
-    const onKey = (e) => { if (e.key === "Escape") { e.stopPropagation(); onClose(); } };
-    document.addEventListener("keydown", onKey, true);
-    return () => document.removeEventListener("keydown", onKey, true);
-  }, []);
-
   return (
-    <div className="modal-back" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
-      <div className="glass quiz-card" style={{ borderRadius: "var(--r-xl)" }}>
+    <Modal onClose={onClose} label="Стиль-квиз" className="quiz-card">
         {/* шапка с прогрессом */}
         <div style={{ padding: "20px 26px 0" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
@@ -160,8 +151,7 @@ function StyleQuiz({ onClose, onDone }) {
             curQ && curQ.type === "chips" && <button className="btn btn-primary" onClick={next} disabled={!answered} style={{ opacity: answered ? 1 : 0.5, pointerEvents: answered ? "auto" : "none" }}>Далее<I.arrow size={16} /></button>
           )}
         </div>
-      </div>
-    </div>
+    </Modal>
   );
 }
 
@@ -234,7 +224,7 @@ function BudgetStep({ budget, setBudget }) {
       <h2 className="display" style={{ fontSize: "var(--fs-24)", letterSpacing: "-0.02em" }}>Какой бюджет на комнату?</h2>
       <p style={{ color: "var(--muted)", fontSize: "var(--fs-14)", marginTop: 6, marginBottom: 28 }}>Design Ledger соберёт смету с артикулами и ценами в этих рамках</p>
       <div style={{ textAlign: "center", marginBottom: 18 }}>
-        <span className="display" style={{ fontSize: "var(--fs-42)", letterSpacing: "-0.03em" }}>{fmtMoney(budget)}</span>
+        <span className="mono" style={{ fontSize: "var(--fs-42)", fontWeight: 500, letterSpacing: "-0.01em" }}>{fmtMoney(budget)}</span>
       </div>
       <input type="range" min="120000" max="1200000" step="20000" value={budget} onChange={(e) => setBudget(+e.target.value)} className="quiz-range" />
       <div style={{ display: "flex", justifyContent: "space-between", color: "var(--faint)", fontSize: "var(--fs-12)", marginTop: 10 }}>

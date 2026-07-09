@@ -3,41 +3,6 @@
    ============================================================ */
 const { useState: useCV, useEffect: useCVE, useRef: useCVR } = React;
 
-/* ---------- общие карточки аналитики (паттерн дашборда: Stripe / Linear / Metabase) ---------- */
-function AnalyCard({ title, source, accent, children, style }) {
-  return (
-    <div className="glass" style={{ borderRadius: "var(--r-lg)", padding: 24, ...style }}>
-      {(title || source) && (
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 12, marginBottom: 18 }}>
-          {title && <h3 style={{ fontSize: "var(--fs-16)", fontWeight: 700, minWidth: 0 }}>{title}</h3>}
-          {source && <span style={{ fontSize: "var(--fs-11)", fontWeight: 700, letterSpacing: ".06em", textTransform: "uppercase", color: accent || "var(--faint)", whiteSpace: "nowrap", flex: "none" }}>{source}</span>}
-        </div>
-      )}
-      {children}
-    </div>
-  );
-}
-
-/* KPI-плитка с дельтой (как в Stripe/Linear: число + изменение к прошлому периоду) */
-function KpiCard({ k }) {
-  const val = k.unit === "₽" ? fmtMoney(k.value) : (k.unit === "abs" ? fmt(k.value) : fmt(k.value) + (k.unit || ""));
-  const big = val.length > 9 ? 22 : (val.length > 7 ? 26 : 30);
-  return (
-    <div className="glass" style={{ borderRadius: "var(--r-lg)", padding: 22 }}>
-      <div style={{ color: "var(--muted)", fontSize: "var(--fs-13)", marginBottom: 12 }}>{k.label}</div>
-      <div style={{ display: "flex", alignItems: "baseline", gap: 10, flexWrap: "wrap" }}>
-        <span className="display" style={{ fontSize: big, letterSpacing: "-0.02em", whiteSpace: "nowrap" }}>{val}</span>
-        {k.delta != null && (
-          <span style={{ fontSize: "var(--fs-13)", fontWeight: 700, color: k.delta >= 0 ? "var(--accent-2)" : "var(--accent)", display: "inline-flex", alignItems: "center", gap: 2 }}>
-            <I.arrowUp size={13} style={{ transform: k.delta >= 0 ? "none" : "rotate(180deg)" }} />{Math.abs(k.delta)}{k.unit === "abs" ? "" : "%"}
-          </span>
-        )}
-      </div>
-    </div>
-  );
-}
-function ChartSkel({ h = 150 }) { return <div className="skel" style={{ height: h, borderRadius: 12 }} />; }
-
 function Profile({ user }) {
   const [an, setAn] = useCV(null);
   const [studioName, setStudioName] = useCV("");   // брендинг клиентского портала (волна A5)
@@ -52,11 +17,7 @@ function Profile({ user }) {
   };
   return (
     <div className="reveal in" style={{ display: "flex", flexDirection: "column", gap: 22 }} ref={useReveal()}>
-      {/* заголовок вкладки — та же модель шапки, что у Проектов/Избранного */}
-      <div>
-        <h1 className="display" style={{ fontSize: "var(--fs-30)" }}>Профиль</h1>
-        <p style={{ color: "var(--muted)", fontSize: "var(--fs-14)", marginTop: 4 }}>Аккаунт и сводка по вашей работе</p>
-      </div>
+      <PageHead title="Профиль" sub="Аккаунт и сводка по вашей работе" style={{ marginBottom: 0 }} />
       {/* ── верх: карточка профиля + KPI ── */}
       <div className="profile-grid" style={{ display: "grid", gridTemplateColumns: "0.8fr 1.2fr", gap: 22, alignItems: "start" }}>
         {/* карточка профиля */}
@@ -100,12 +61,12 @@ function Profile({ user }) {
         </div>
 
         <div className="chart-row" style={{ display: "grid", gridTemplateColumns: "1.5fr 1fr", gap: 16 }}>
-          <AnalyCard title="Бюджет по проектам" source="из ваших смет" accent="var(--accent-2)">
+          <ChartCard title="Бюджет по проектам" source="из ваших смет" accent="var(--accent-2)">
             {an ? <BarList data={an.spendByProject} color="var(--accent-2)" money /> : <ChartSkel h={120} />}
-          </AnalyCard>
-          <AnalyCard title="Стили в проектах" source="доля бюджета">
+          </ChartCard>
+          <ChartCard title="Стили в проектах" source="доля бюджета">
             {an ? <div style={{ paddingTop: 4 }}><Donut data={an.styleSplit} size={150} /></div> : <ChartSkel h={150} />}
-          </AnalyCard>
+          </ChartCard>
         </div>
       </div>
 
@@ -253,20 +214,15 @@ function Projects() {
 
   return (
     <div className="reveal in" ref={useReveal()}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20, flexWrap: "wrap", gap: 14 }}>
-        <div>
-          <h1 className="display" style={{ fontSize: "var(--fs-30)" }}>Мои проекты</h1>
-          <p style={{ color: "var(--muted)", fontSize: "var(--fs-14)", marginTop: 4 }}>Сохранённые комнаты и сметы для клиентов</p>
-        </div>
-        <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+      <PageHead title="Мои проекты" sub="Сохранённые комнаты и сметы для клиентов"
+        right={<div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
           <button className="btn btn-ghost" onClick={() => setQuizOpen(true)}><I.spark size={16} /> Стиль-квиз</button>
           <label className="btn btn-ghost" style={{ cursor: "pointer" }} title="Загрузить готовую комплектацию из Excel (колонки: Помещение, Раздел, Наименование, Кол-во, Цена)">
             <I.grid size={16} /> Импорт из Excel
             <input type="file" accept=".xlsx,.xls" hidden onChange={onImport} />
           </label>
           <button className="btn btn-primary" onClick={() => setNewOpen(true)}><I.plus size={17} /> Новый проект</button>
-        </div>
-      </div>
+        </div>} />
 
       {/* ── сводная аналитика по проектам ── */}
       <div className="kpi-grid" style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 14, marginBottom: 16 }}>
@@ -277,10 +233,7 @@ function Projects() {
       {/* ── тулбар: поиск · статус · сортировка ── */}
       {rows && rows.length > 0 && (
         <div className="proj-toolbar" style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", marginBottom: 20 }}>
-          <div style={{ position: "relative", flex: "1 1 240px", maxWidth: 340 }}>
-            <I.search size={16} style={{ position: "absolute", left: 13, top: "50%", transform: "translateY(-50%)", color: "var(--faint)" }} />
-            <input className="fld" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Поиск по названию, стилю, комнате" style={{ paddingLeft: 38 }} />
-          </div>
+          <SearchField value={q} onChange={setQ} placeholder="Поиск по названию, стилю, комнате" ariaLabel="Поиск по проектам" style={{ flex: "1 1 240px", maxWidth: 340 }} />
           <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
             {["Все", ...PROJ_STATUSES].map((s) => (
               <button key={s} onClick={() => setStatusF(s)} aria-pressed={statusF === s} style={{ padding: "8px 13px", borderRadius: 99, fontSize: "var(--fs-13)", fontWeight: 700, border: "1px solid " + (statusF === s ? "var(--accent)" : "var(--hairline)"),
@@ -299,22 +252,15 @@ function Projects() {
       {!rows && <div className="proj-grid" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(250px, 1fr))", gap: 18 }}>{Array.from({ length: 3 }).map((_, i) => <div key={i} className="glass skel" style={{ borderRadius: "var(--r-lg)", height: 280 }} />)}</div>}
 
       {rows && rows.length === 0 && (
-        <div className="glass" style={{ borderRadius: "var(--r-xl)", padding: "56px 32px", textAlign: "center" }}>
-          <span style={{ width: 60, height: 60, borderRadius: 18, background: "var(--surface-2)", color: "var(--accent)", display: "grid", placeItems: "center", margin: "0 auto 18px" }}><I.layers size={28} /></span>
-          <h3 className="display" style={{ fontSize: "var(--fs-21)" }}>Пока нет проектов</h3>
-          <p style={{ color: "var(--muted)", fontSize: "var(--fs-14)", marginTop: 8, maxWidth: 420, marginInline: "auto", lineHeight: 1.6 }}>Создайте первый проект — задайте комнату и бюджет, дальше Design Ledger соберёт смету и проверит эргономику.</p>
-          <button className="btn btn-primary" style={{ marginTop: 20 }} onClick={() => setNewOpen(true)}><I.plus size={17} />Создать первый проект</button>
-        </div>
+        <EmptyState icon="layers" title="Пока нет проектов"
+          text="Создайте первый проект — задайте комнату и бюджет, дальше Design Ledger соберёт смету и проверит эргономику."
+          action={<button className="btn btn-primary" style={{ marginTop: 20 }} onClick={() => setNewOpen(true)}><I.plus size={17} />Создать первый проект</button>} />
       )}
 
       {shown && shown.length === 0 && rows.length > 0 && (
-        <div className="glass" style={{ borderRadius: "var(--r-lg)", padding: 40, textAlign: "center", color: "var(--muted)" }}>
-          <I.search size={26} style={{ color: "var(--faint)" }} />
-          <div style={{ marginTop: 10, fontSize: "var(--fs-14)" }}>
-            {q.trim() ? <React.Fragment>По запросу <b style={{ color: "var(--text)" }}>«{q.trim()}»</b> ничего не нашлось{statusF !== "Все" ? " среди «" + statusF + "»" : ""}.</React.Fragment> : <React.Fragment>В статусе «{statusF}» пока нет проектов.</React.Fragment>}
-          </div>
-          <button className="btn btn-ghost" style={{ marginTop: 14 }} onClick={() => { setQ(""); setStatusF("Все"); }}>Показать все проекты</button>
-        </div>
+        <EmptyState compact icon="search"
+          text={q.trim() ? <React.Fragment>По запросу <b style={{ color: "var(--text)" }}>«{q.trim()}»</b> ничего не нашлось{statusF !== "Все" ? " среди «" + statusF + "»" : ""}.</React.Fragment> : <React.Fragment>В статусе «{statusF}» пока нет проектов.</React.Fragment>}
+          action={<button className="btn btn-ghost" style={{ marginTop: 14 }} onClick={() => { setQ(""); setStatusF("Все"); }}>Показать все проекты</button>} />
       )}
 
       {shown && shown.length > 0 && (
@@ -395,7 +341,7 @@ function ProjectCard({ p, menuOpen, onOpen, onMenu, onRename, onDuplicate, onSta
           <span style={{ display: "flex", alignItems: "center", gap: 6 }}><I.layers size={15} />{p.items} предм.</span>
         </div>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", paddingTop: 12, borderTop: "1px solid var(--hairline)" }}>
-          <span style={{ fontWeight: 800, fontFamily: "var(--font-display)", fontSize: "var(--fs-16)" }}>{fmtMoney(p.budget)}</span>
+          <span className="mono" style={{ fontWeight: 600, fontSize: "var(--fs-16)" }}>{fmtMoney(p.budget)}</span>
           <span className="btn btn-ghost" style={{ padding: "8px 14px", fontSize: "var(--fs-13)" }}>Открыть <I.arrow size={14} /></span>
         </div>
       </div>
@@ -440,7 +386,7 @@ function NewProjectModal({ onClose, onCreate, onExample }) {
             </label>
           </div>
           <label style={{ display: "block" }}>
-            <span style={{ display: "flex", justifyContent: "space-between", fontSize: "var(--fs-13)", color: "var(--muted)", marginBottom: 7, fontWeight: 600 }}>Бюджет<b style={{ color: "var(--accent)", fontFamily: "var(--font-display)", fontSize: "var(--fs-15)" }}>{fmtMoney(budget)}</b></span>
+            <span style={{ display: "flex", justifyContent: "space-between", fontSize: "var(--fs-13)", color: "var(--muted)", marginBottom: 7, fontWeight: 600 }}>Бюджет<b className="mono" style={{ color: "var(--accent)", fontWeight: 600, fontSize: "var(--fs-15)" }}>{fmtMoney(budget)}</b></span>
             <input type="range" min="120000" max="1500000" step="20000" value={budget} onChange={(e) => setBudget(+e.target.value)} style={{ width: "100%", accentColor: "var(--accent)", cursor: "pointer" }} />
           </label>
         </div>
@@ -476,15 +422,10 @@ function Favorites() {
 
   return (
     <div className="reveal in" ref={useReveal()}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: 22, flexWrap: "wrap", gap: 14 }}>
-        <div>
-          <h1 className="display" style={{ fontSize: "var(--fs-30)" }}>Избранное</h1>
-          <p style={{ color: "var(--muted)", fontSize: "var(--fs-14)", marginTop: 4 }}>Мудборд сохранённых вещей и готовый список покупок</p>
-        </div>
-        <div className="glass" style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "9px 15px", borderRadius: 99, fontSize: "var(--fs-13)", fontWeight: 700 }}>
+      <PageHead title="Избранное" sub="Мудборд сохранённых вещей и готовый список покупок"
+        right={<div className="glass" style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "9px 15px", borderRadius: 99, fontSize: "var(--fs-13)", fontWeight: 700 }}>
           <I.heart size={15} style={{ color: "var(--accent)" }} />{items ? items.length : "…"} в избранном
-        </div>
-      </div>
+        </div>} />
 
       {/* фильтр по комнатам */}
       <div className="fav-chips" style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 20 }}>
@@ -499,11 +440,9 @@ function Favorites() {
         <div>
           {!shown && <div className="glass skel" style={{ borderRadius: "var(--r-lg)", height: 460 }} />}
           {shown && shown.length === 0 && (
-            <div className="glass" style={{ borderRadius: "var(--r-lg)", padding: 48, textAlign: "center", color: "var(--muted)" }}>
-              <I.heart size={28} style={{ color: "var(--faint)" }} />
-              <div style={{ marginTop: 10, fontSize: "var(--fs-14)" }}>{room === "Все" ? "В избранном пока пусто. Сохранение предметов из каталога появится вместе с реальным каталогом фабрик." : "В комнате «" + room + "» пока нет избранного."}</div>
-              {room !== "Все" && <button className="btn btn-ghost" style={{ marginTop: 14 }} onClick={() => setRoom("Все")}>Показать все комнаты</button>}
-            </div>
+            <EmptyState compact icon="heart"
+              text={room === "Все" ? "В избранном пока пусто. Сохранение предметов из каталога появится вместе с реальным каталогом фабрик." : "В комнате «" + room + "» пока нет избранного."}
+              action={room !== "Все" && <button className="btn btn-ghost" style={{ marginTop: 14 }} onClick={() => setRoom("Все")}>Показать все комнаты</button>} />
           )}
           {shown && shown.length > 0 && (
             <div className="fav-board" style={{ columnCount: 2, columnGap: 14 }}>
@@ -529,14 +468,14 @@ function Favorites() {
                   <div style={{ fontSize: "var(--fs-13)", fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{f.title}</div>
                   <div style={{ fontSize: "var(--fs-12)", color: "var(--faint)", marginTop: 2 }}>{FAV_MP[f.mp]}</div>
                 </div>
-                <div style={{ fontWeight: 700, fontSize: "var(--fs-13)", whiteSpace: "nowrap" }}>{fmtMoney(f.price)}</div>
+                <div className="mono" style={{ fontWeight: 600, fontSize: "var(--fs-13)", whiteSpace: "nowrap" }}>{fmtMoney(f.price)}</div>
                 <button className="icon-btn sm" title="Убрать" onClick={() => remove(f.id)} style={{ flex: "none" }}><I.close size={15} /></button>
               </div>
             ))}
           </div>
 
           <div style={{ borderTop: "1px solid var(--hairline)", marginTop: 14, paddingTop: 16, display: "flex", flexDirection: "column", gap: 8 }}>
-            {saved > 0 && <div style={{ display: "flex", justifyContent: "space-between", fontSize: "var(--fs-13)", color: "var(--accent-2)", fontWeight: 700 }}><span>Скидка по каталогу</span><span>−{fmtMoney(saved)}</span></div>}
+            {saved > 0 && <div style={{ display: "flex", justifyContent: "space-between", fontSize: "var(--fs-13)", color: "var(--accent-2)", fontWeight: 700 }}><span>Скидка по каталогу</span><span className="mono">−{fmtMoney(saved)}</span></div>}
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
               <span style={{ color: "var(--muted)", fontSize: "var(--fs-14)" }}>Итого</span>
               {/* деньги — всегда mono+tabular, Spectral только нецифровым заголовкам */}
@@ -608,7 +547,7 @@ function FavCard({ item, onRemove, ar }) {
         <div style={{ position: "absolute", left: 13, right: 13, bottom: 12 }}>
           <div style={{ fontSize: "var(--fs-14)", fontWeight: 700, lineHeight: 1.3, color: "var(--on-dark)", textShadow: "0 1px 8px rgba(0,0,0,.5)" }}>{item.title}</div>
           <div style={{ display: "flex", alignItems: "baseline", gap: 8, marginTop: 6 }}>
-            <span style={{ fontFamily: "var(--font-display)", fontWeight: 800, fontSize: "var(--fs-16)", color: "var(--on-dark)" }}>{fmtMoney(item.price)}</span>
+            <span className="mono" style={{ fontWeight: 600, fontSize: "var(--fs-16)", color: "var(--on-dark)" }}>{fmtMoney(item.price)}</span>
             {disc > 0 && <span style={{ fontSize: "var(--fs-12)", color: "rgba(252,246,238,.6)", textDecoration: "line-through" }}>{fmtMoney(item.old)}</span>}
             {disc > 0 && <span style={{ marginLeft: "auto", fontSize: "var(--fs-11)", fontWeight: 700, color: "var(--accent-2)" }}>−{disc}%</span>}
           </div>

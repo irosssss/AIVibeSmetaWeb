@@ -131,16 +131,9 @@ function NormsSettings() {
 
   return (
     <div className="reveal in" ref={reveal}>
-      {/* заголовок */}
-      <div style={{ marginBottom: 8 }}>
-        <span style={{ fontFamily: "var(--font-mono)", fontSize: "var(--fs-12)", letterSpacing: ".12em", textTransform: "uppercase", color: "var(--accent)", display: "inline-flex", alignItems: "center", gap: 9 }}>
-          <I.sliders size={15} />Нормы дизайна
-        </span>
-        <h1 className="display" style={{ fontSize: "var(--fs-30)", marginTop: 10 }}>Правила эргономики</h1>
-        <p style={{ color: "var(--muted)", fontSize: "var(--fs-14)", marginTop: 8, maxWidth: 680, lineHeight: 1.6 }}>
-          Вшитый канон Design Ledger (NKBA / Нойферт) работает по умолчанию — здесь вы подстраиваете пороги под себя. Слой правок ложится поверх канона, хранится только отличие. Проверка проектов сразу считает по этим нормам.
-        </p>
-      </div>
+      <PageHead eyebrow="Нормы дизайна" eyebrowIcon="sliders" title="Правила эргономики"
+        sub="Вшитый канон Design Ledger (NKBA / Нойферт) работает по умолчанию — здесь вы подстраиваете пороги под себя. Слой правок ложится поверх канона, хранится только отличие. Проверка проектов сразу считает по этим нормам."
+        style={{ marginBottom: 8 }} />
 
       {/* тулбар */}
       <div style={{ display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap", margin: "22px 0 16px" }}>

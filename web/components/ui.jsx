@@ -278,7 +278,7 @@ window.promptDialog = promptDialog;
    Modal — обёртка для React-модалок: role=dialog, aria-modal,
    ловушка фокуса, Esc → onClose, возврат фокуса на триггер.
    ============================================================ */
-function Modal({ onClose, label, maxWidth, children }) {
+function Modal({ onClose, label, maxWidth, className, children }) {
   const cardRef = useRef(null);
   useEffect(() => {
     const prev = document.activeElement;
@@ -309,7 +309,7 @@ function Modal({ onClose, label, maxWidth, children }) {
   return (
     <div className="modal-back" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
       <div ref={cardRef} tabIndex={-1} role="dialog" aria-modal="true" aria-label={label}
-        className="glass modal-card" style={{ borderRadius: "var(--r-xl)", ...(maxWidth ? { maxWidth, width: `min(${maxWidth}px, 100%)` } : {}) }}>
+        className={"glass modal-card" + (className ? " " + className : "")} style={{ borderRadius: "var(--r-xl)", ...(maxWidth ? { maxWidth, width: `min(${maxWidth}px, 100%)` } : {}) }}>
         {children}
       </div>
     </div>
@@ -402,6 +402,162 @@ function SmetaTotal({ amount, caption, icon = "layers", size = 22 }) {
     </div>
   );
 }
+
+/* ============================================================
+   ДАШБОРД-ПРИМИТИВЫ (роадмап П3) — вместо дублей по admin.jsx /
+   cabinet-views.jsx / library-editor.jsx / norms-editor.jsx /
+   project-detail.jsx / portal.jsx. Деньги — всегда mono+tabular,
+   Spectral (display) — только нецифровым заголовкам.
+   ============================================================ */
+
+/* строка итогового блока сметы-документа (подытог → скидка → доставка/монтаж → ИТОГО) */
+const RS_ROW = { display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, padding: "8px 0", fontSize: "var(--fs-13)" };
+
+/* давность цены: чип «цене N дней» — терракота после 30 дней (RU-волатильность цен).
+   note(days, stale) — кастомный текст тултипа; по умолчанию «цена проверена…» */
+const priceAgeDays = (d) => { const t = new Date(d + "T00:00:00").getTime(); return isNaN(t) ? null : Math.max(0, Math.floor((Date.now() - t) / 86400000)); };
+function PriceAgeChip({ d, note }) {
+  const days = priceAgeDays(d);
+  if (days == null) return null;
+  const stale = days > 30;
+  const title = note ? note(days, stale) : "Цена проверена " + (days === 0 ? "сегодня" : days + " " + plural(days, ["день", "дня", "дней"]) + " назад") + (stale ? " — стоит перепроверить" : "");
+  return (
+    <span className="mono" title={title}
+      style={{ flex: "none", fontSize: "var(--fs-10)", whiteSpace: "nowrap", padding: "1px 7px", borderRadius: 99,
+        border: "1px solid " + (stale ? "rgba(183,80,44,.4)" : "var(--hairline)"), color: stale ? "var(--accent-ink)" : "var(--spec-meta)" }}>
+      {days === 0 ? "цена от сегодня" : "цене " + days + " " + plural(days, ["день", "дня", "дней"])}
+    </span>
+  );
+}
+
+/* дата+время треда («08.07 14:32») — короче ISO, читаемо в переписке клиент↔студия */
+const fmtCommentAt = (iso) => {
+  try { return new Date(iso).toLocaleString("ru-RU", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }); }
+  catch (e) { return ""; }
+};
+/* пузырь одного сообщения в треде. isMine — сообщение «твоей» стороны
+   (на портале это клиент, в кабинете — дизайнер): заливка олива, без рамки */
+function CommentBubble({ comment, isMine, authorLabel }) {
+  return (
+    <div style={{
+      alignSelf: isMine ? "flex-end" : "flex-start", maxWidth: "88%",
+      padding: "6px 10px", borderRadius: 10, fontSize: "var(--fs-12)", lineHeight: 1.5,
+      background: isMine ? "var(--accent-2)" : "var(--glass-2)",
+      color: isMine ? "var(--on-accent)" : "var(--text)",
+      border: isMine ? "none" : "1px solid var(--hairline)",
+    }}>
+      <div>{comment.text}</div>
+      <div style={{ fontSize: "var(--fs-10)", opacity: .75, marginTop: 3 }}>{authorLabel} · {fmtCommentAt(comment.at)}</div>
+    </div>
+  );
+}
+
+/* статус-пилюля: точка + подпись, тон = семантика правила канона —
+   accent2 (олива) = успех/включено, accent (терракота) = внимание, muted = нейтрально */
+const PILL_TONES = {
+  accent2: { bg: "rgba(94,107,91,.16)", fg: "var(--accent-2-ink)", bd: "rgba(94,107,91,.34)", dot: "var(--accent-2)" },
+  accent: { bg: "rgba(183,80,44,.16)", fg: "var(--accent-ink)", bd: "rgba(183,80,44,.32)", dot: "var(--accent)" },
+  muted: { bg: "var(--glass-2)", fg: "var(--muted)", bd: "var(--hairline)", dot: "var(--faint)" },
+};
+function StatusPill({ tone = "muted", dot = true, children, onClick, title }) {
+  const t = PILL_TONES[tone] || PILL_TONES.muted;
+  const Comp = onClick ? "button" : "span";
+  return (
+    <Comp className="status-pill" onClick={onClick} title={title} style={{ background: t.bg, color: t.fg, borderColor: t.bd }}>
+      {dot && <span style={{ width: 7, height: 7, borderRadius: "50%", background: t.dot, flex: "none" }} />}
+      {children}
+    </Comp>
+  );
+}
+
+/* поле поиска: иконка + .fld — канон вместо самописных реализаций (админка/кабинет/библиотека) */
+function SearchField({ value, onChange, placeholder, ariaLabel, style }) {
+  return (
+    <div style={{ position: "relative", ...style }}>
+      <I.search size={16} style={{ position: "absolute", left: 13, top: "50%", transform: "translateY(-50%)", color: "var(--faint)" }} />
+      <input className="fld" value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder}
+        aria-label={ariaLabel || placeholder} style={{ paddingLeft: 38, width: "100%" }} />
+    </div>
+  );
+}
+
+/* шапка раздела: eyebrow (опц.) + display-заголовок (responsive clamp) + подзаголовок + правый слот */
+function PageHead({ eyebrow, eyebrowIcon, title, sub, right, style }) {
+  const EyeIco = eyebrowIcon ? I[eyebrowIcon] : null;
+  return (
+    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", gap: 16, flexWrap: "wrap", marginBottom: 26, ...style }}>
+      <div>
+        {eyebrow && (
+          <span style={{ fontFamily: "var(--font-mono)", fontSize: "var(--fs-12)", letterSpacing: ".12em", textTransform: "uppercase", color: "var(--accent)", display: "inline-flex", alignItems: "center", gap: 9 }}>
+            {EyeIco && <EyeIco size={15} />}{eyebrow}
+          </span>
+        )}
+        <h1 className="display" style={{ fontSize: "clamp(26px,3vw,36px)", marginTop: eyebrow ? 10 : 0 }}>{title}</h1>
+        {sub && <p style={{ color: "var(--muted)", fontSize: "var(--fs-14)", marginTop: eyebrow ? 8 : 6, maxWidth: eyebrow ? 640 : undefined, lineHeight: eyebrow ? 1.6 : undefined }}>{sub}</p>}
+      </div>
+      {right}
+    </div>
+  );
+}
+
+/* пустое состояние: полное (первый запуск — крупная иконка + заголовок + CTA)
+   или компактное (после фильтра/поиска — маленькая иконка + строка текста) */
+function EmptyState({ icon, title, text, action, compact }) {
+  const Ico = icon ? I[icon] : null;
+  if (compact) {
+    return (
+      <div className="glass" style={{ borderRadius: "var(--r-lg)", padding: 40, textAlign: "center", color: "var(--muted)" }}>
+        {Ico && <Ico size={26} style={{ color: "var(--faint)" }} />}
+        {text && <div style={{ marginTop: 10, fontSize: "var(--fs-14)" }}>{text}</div>}
+        {action}
+      </div>
+    );
+  }
+  return (
+    <div className="glass" style={{ borderRadius: "var(--r-xl)", padding: "52px 32px", textAlign: "center" }}>
+      {Ico && <span style={{ width: 58, height: 58, borderRadius: 17, background: "var(--surface-2)", color: "var(--accent)", display: "grid", placeItems: "center", margin: "0 auto 18px" }}><Ico size={27} /></span>}
+      {title && <h3 className="display" style={{ fontSize: "var(--fs-21)" }}>{title}</h3>}
+      {text && <p style={{ color: "var(--muted)", fontSize: "var(--fs-14)", marginTop: 8, maxWidth: 440, marginInline: "auto", lineHeight: 1.6 }}>{text}</p>}
+      {action}
+    </div>
+  );
+}
+
+/* KPI-плитка с дельтой (Stripe/Linear: число + изменение к прошлому периоду). Деньги — mono, остальное — display */
+function KpiCard({ k }) {
+  const isMoney = k.unit === "₽";
+  const val = isMoney ? fmtMoney(k.value) : (k.unit === "abs" ? fmt(k.value) : fmt(k.value) + (k.unit || ""));
+  const big = val.length > 9 ? 22 : (val.length > 7 ? 26 : 30);
+  return (
+    <div className="glass" style={{ borderRadius: "var(--r-lg)", padding: 22 }}>
+      <div style={{ color: "var(--muted)", fontSize: "var(--fs-13)", marginBottom: 12 }}>{k.label}</div>
+      <div style={{ display: "flex", alignItems: "baseline", gap: 10, flexWrap: "wrap" }}>
+        <span className={isMoney ? "mono" : "display"} style={{ fontSize: big, fontWeight: isMoney ? 600 : undefined, letterSpacing: isMoney ? undefined : "-0.02em", whiteSpace: "nowrap" }}>{val}</span>
+        {k.delta != null && (
+          <span style={{ fontSize: "var(--fs-13)", fontWeight: 700, color: k.delta >= 0 ? "var(--accent-2)" : "var(--accent)", display: "inline-flex", alignItems: "center", gap: 2 }}>
+            <I.arrowUp size={13} style={{ transform: k.delta >= 0 ? "none" : "rotate(180deg)" }} />{Math.abs(k.delta)}{k.unit === "abs" ? "" : "%"}
+          </span>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/* карточка-контейнер графика: заголовок + источник справа (Stripe/Linear/Metabase паттерн) + скелетон-заглушка */
+function ChartCard({ title, source, accent, children, style }) {
+  return (
+    <div className="glass" style={{ borderRadius: "var(--r-lg)", padding: 24, ...style }}>
+      {(title || source) && (
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 12, marginBottom: 18 }}>
+          {title && <h3 style={{ fontSize: "var(--fs-16)", fontWeight: 700, minWidth: 0 }}>{title}</h3>}
+          {source && <span style={{ fontSize: "var(--fs-11)", fontWeight: 700, letterSpacing: ".06em", textTransform: "uppercase", color: accent || "var(--faint)", whiteSpace: "nowrap", flex: "none" }}>{source}</span>}
+        </div>
+      )}
+      {children}
+    </div>
+  );
+}
+function ChartSkel({ h = 150 }) { return <div className="skel" style={{ height: h, borderRadius: 12 }} />; }
 
 /* ============================================================
    AIVibeLibs — ленивые тяжёлые библиотеки (не грузим на промо):
@@ -556,4 +712,7 @@ function Donut({ data, size = 168 }) {
   );
 }
 
-Object.assign(window, { Logo, Icon, I, Img, Lottie, useReveal, fmt, fmtMoney, AreaChart, BarList, Donut, Switch, SegTabs, OverlayHead, SmetaTotal });
+Object.assign(window, {
+  Logo, Icon, I, Img, Lottie, useReveal, fmt, fmtMoney, AreaChart, BarList, Donut, Switch, SegTabs, OverlayHead, SmetaTotal,
+  RS_ROW, PriceAgeChip, fmtCommentAt, CommentBubble, StatusPill, SearchField, PageHead, EmptyState, KpiCard, ChartCard, ChartSkel,
+});

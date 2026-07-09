@@ -69,26 +69,10 @@ const LAYOUT_K = {
   rug:    { stroke: "rgba(46,42,38,.35)", fill: "transparent",         ink: "var(--spec-meta)", dashed: true },
 };
 
-/* строка итогового блока сметы-документа (подытог → скидка → доставка/монтаж → ИТОГО) */
-const RS_ROW = { display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, padding: "8px 0", fontSize: "var(--fs-13)" };
-
-/* давность цены: priceDate (ISO) ставится позиции при копировании из прошлого проекта.
-   Чип «цене N дней» — терракота после 30 дней (RU-волатильность цен). В клиентском
-   режиме не показывается — это внутренняя кухня дизайнера */
-const priceAgeDays = (d) => { const t = new Date(d + "T00:00:00").getTime(); return isNaN(t) ? null : Math.max(0, Math.floor((Date.now() - t) / 86400000)); };
+/* дата в приемлемом для дизайнера формате (документ сметы, история цен) */
 const fmtDateRu = (d) => { const t = new Date(d + "T00:00:00"); return isNaN(t.getTime()) ? String(d) : t.toLocaleDateString("ru-RU"); };
-function PriceAge({ d }) {
-  const days = priceAgeDays(d);
-  if (days == null) return null;
-  const stale = days > 30;
-  return (
-    <span className="mono" title={"Цена скопирована из прошлого проекта, от " + fmtDateRu(d) + (stale ? " — стоит перепроверить" : "")}
-      style={{ flex: "none", fontSize: "var(--fs-10)", whiteSpace: "nowrap", padding: "1px 7px", borderRadius: 99,
-        border: "1px solid " + (stale ? "rgba(183,80,44,.4)" : "var(--hairline)"), color: stale ? "var(--accent-ink)" : "var(--spec-meta)" }}>
-      {days === 0 ? "цена от сегодня" : "цене " + days + " " + plural(days, ["день", "дня", "дней"])}
-    </span>
-  );
-}
+/* давность цены позиции, скопированной из прошлого проекта — тултип свой, геометрия чипа общая (PriceAgeChip, ui.jsx) */
+const pastCopyNote = (d) => (days, stale) => "Цена скопирована из прошлого проекта, от " + fmtDateRu(d) + (stale ? " — стоит перепроверить" : "");
 
 /* цена предмета с поправкой на выбранный стиль (округляем до сотен) */
 const adjustPrice = (price, factor) => (price == null ? price : Math.round((price * factor) / 100) * 100);
@@ -138,12 +122,13 @@ function ProjectDetail({ id, onClose, initialStyle }) {
       if (!alive) return;
       if (!d || !d.id) { toast("Проект не найден — возможно, ссылка устарела.", "warn", 5000); onClose(); return; }
       setData(d);
+      setTitle("cabinet", d.name);
       if (d.rooms) return; // проект-квартира: смета-комплектация по комнатам (отдельный рендер)
       const match = initialStyle && d.styles.find((s) => s.id === initialStyle);
       setStyleId((match || d.styles.find((s) => s.active) || d.styles[0]).id);
       setSel(pickByTier(d.catalog, "opt"));
     });
-    return () => { alive = false; };
+    return () => { alive = false; setTitle("cabinet"); };
   }, [id]);
 
   usePDE(() => {
@@ -659,7 +644,7 @@ function RoomSpecOverlay({ data, onClose }) {
                       return (
                       <React.Fragment key={i}>
                       <div style={{ display: "flex", alignItems: "baseline", gap: 10, padding: "7px 0", borderTop: i ? "1px solid var(--hairline-2)" : "none", fontSize: "var(--fs-13)" }}>
-                        <span style={{ flex: 1, color: "var(--text)", lineHeight: 1.4 }}>{it.title}{mode === "work" && it.priceDate && <React.Fragment>{" "}<PriceAge d={it.priceDate} /></React.Fragment>}</span>
+                        <span style={{ flex: 1, color: "var(--text)", lineHeight: 1.4 }}>{it.title}{mode === "work" && it.priceDate && <React.Fragment>{" "}<PriceAgeChip d={it.priceDate} note={pastCopyNote(it.priceDate)} /></React.Fragment>}</span>
                         <span className="rs-cat" style={{ color: "var(--spec-meta)", whiteSpace: "nowrap", fontSize: "var(--fs-12)", width: 78, textAlign: "right", overflow: "hidden", textOverflow: "ellipsis" }}>{catOf(it)}</span>
                         <span className="mono" style={{ color: "var(--spec-meta)", whiteSpace: "nowrap", width: 34, textAlign: "right", fontSize: "var(--fs-12)" }}>×{qty}</span>
                         <span className="mono rs-unit" style={{ color: "var(--spec-meta)", whiteSpace: "nowrap", width: 88, textAlign: "right", fontSize: "var(--fs-12)" }}>{fmtMoney(mode === "client" ? unitClient(it) : it.price)}</span>
@@ -743,7 +728,7 @@ function RoomSpecOverlay({ data, onClose }) {
                         const qty = x.it.qty || 1;
                         return (
                           <div key={x.ri + ":" + x.ii} className="rs-prow" style={{ display: "flex", alignItems: "baseline", gap: 10, padding: "7px 0", borderTop: i ? "1px solid var(--hairline-2)" : "none", fontSize: "var(--fs-13)" }}>
-                            <span style={{ flex: 1, minWidth: 0, color: "var(--text)", lineHeight: 1.4, overflowWrap: "anywhere" }}>{x.it.title}{x.it.priceDate && <React.Fragment>{" "}<PriceAge d={x.it.priceDate} /></React.Fragment>}</span>
+                            <span style={{ flex: 1, minWidth: 0, color: "var(--text)", lineHeight: 1.4, overflowWrap: "anywhere" }}>{x.it.title}{x.it.priceDate && <React.Fragment>{" "}<PriceAgeChip d={x.it.priceDate} note={pastCopyNote(x.it.priceDate)} /></React.Fragment>}</span>
                             <span className="rs-cat" style={{ color: "var(--spec-meta)", whiteSpace: "nowrap", fontSize: "var(--fs-12)", width: 104, textAlign: "right", overflow: "hidden", textOverflow: "ellipsis" }}>{x.room}</span>
                             <span className="mono" style={{ color: "var(--spec-meta)", whiteSpace: "nowrap", width: 34, textAlign: "right", fontSize: "var(--fs-12)" }}>×{qty}</span>
                             <span className="mono rs-unit" style={{ color: "var(--spec-meta)", whiteSpace: "nowrap", width: 88, textAlign: "right", fontSize: "var(--fs-12)" }}>{fmtMoney(x.it.price)}</span>
@@ -1127,12 +1112,6 @@ function VersionsModal({ versions, current, onSave, onRestore, onSetStatus, onPa
   );
 }
 
-/* Дата+время треда («08.07 14:32») — короче ISO, читаемо в переписке. */
-const fmtCommentAt = (iso) => {
-  try { return new Date(iso).toLocaleString("ru-RU", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }); }
-  catch { return ""; }
-};
-
 /* ---------------- КОММЕНТАРИИ-ТРЕДЫ (волна A3) ----------------
    Клиент пишет через портал (`ClientPortal`); здесь дизайнер видит переписку по
    снимку версии и отвечает — читают/пишут ОДИН и тот же объект (портал-шара),
@@ -1175,16 +1154,7 @@ function CommentThreadCard({ group, onReply }) {
       <div style={{ fontSize: "var(--fs-12)", fontWeight: 700, marginBottom: 6, color: "var(--spec-meta)" }}>{group.room} · {group.title}</div>
       <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 8 }}>
         {group.comments.map((c) => (
-          <div key={c.id} style={{
-            alignSelf: c.author === "client" ? "flex-start" : "flex-end", maxWidth: "88%",
-            padding: "6px 10px", borderRadius: 10, fontSize: "var(--fs-12)", lineHeight: 1.5,
-            background: c.author === "client" ? "var(--glass)" : "var(--accent-2)",
-            color: c.author === "client" ? "var(--text)" : "var(--on-accent)",
-            border: c.author === "client" ? "1px solid var(--hairline)" : "none",
-          }}>
-            <div>{c.text}</div>
-            <div style={{ fontSize: "var(--fs-10)", opacity: .75, marginTop: 3 }}>{c.author === "client" ? "Клиент" : "Вы"} · {fmtCommentAt(c.at)}</div>
-          </div>
+          <CommentBubble key={c.id} comment={c} isMine={c.author !== "client"} authorLabel={c.author === "client" ? "Клиент" : "Вы"} />
         ))}
       </div>
       <form onSubmit={send} style={{ display: "flex", gap: 6 }}>
@@ -1511,14 +1481,14 @@ function AddPositionsModal({ excludeId, roomNames, onClose, onAdd }) {
             {src.rooms.map((r, ri) => (
               <div key={ri} style={{ border: "1px solid var(--hairline)", borderRadius: 12, padding: "10px 14px" }}>
                 <label style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer", padding: "2px 0 6px" }}>
-                  <input type="checkbox" checked={roomAll(ri)} onChange={() => toggleRoom(ri)} style={{ accentColor: "var(--accent)", width: 15, height: 15, flex: "none" }} />
+                  <input type="checkbox" checked={roomAll(ri)} onChange={() => toggleRoom(ri)} style={{ accentColor: "var(--accent-2)", width: 15, height: 15, flex: "none" }} />
                   <span style={{ fontWeight: 700, fontSize: "var(--fs-14)", flex: 1 }}>{r.name}{r.area ? <span style={{ color: "var(--faint)", fontWeight: 500, fontSize: "var(--fs-12)" }}> · {r.area} м²</span> : null}</span>
                   <span className="mono" style={{ fontSize: "var(--fs-12)", color: "var(--spec-meta)", whiteSpace: "nowrap" }}>{fmtMoney(cost(r.items))}</span>
                 </label>
                 <div style={{ display: "flex", flexDirection: "column", borderTop: "1px solid var(--hairline-2)" }}>
                   {r.items.map((it, ii) => (
                     <label key={ii} style={{ display: "flex", alignItems: "baseline", gap: 10, padding: "6px 0", borderTop: ii ? "1px solid var(--hairline-2)" : "none", fontSize: "var(--fs-13)", cursor: "pointer" }}>
-                      <input type="checkbox" checked={!!sel[k(ri, ii)]} onChange={() => setSel((s) => ({ ...s, [k(ri, ii)]: !s[k(ri, ii)] }))} style={{ accentColor: "var(--accent)", width: 14, height: 14, flex: "none", position: "relative", top: 2 }} />
+                      <input type="checkbox" checked={!!sel[k(ri, ii)]} onChange={() => setSel((s) => ({ ...s, [k(ri, ii)]: !s[k(ri, ii)] }))} style={{ accentColor: "var(--accent-2)", width: 14, height: 14, flex: "none", position: "relative", top: 2 }} />
                       <span style={{ flex: 1, lineHeight: 1.4 }}>{it.title}</span>
                       <span className="mono" style={{ color: "var(--spec-meta)", whiteSpace: "nowrap", fontSize: "var(--fs-12)" }}>×{it.qty || 1}</span>
                       <span className="mono" style={{ whiteSpace: "nowrap", fontSize: "var(--fs-12)" }}>{fmtMoney(it.price * (it.qty || 1))}</span>

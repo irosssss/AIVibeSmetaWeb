@@ -7,6 +7,19 @@ const { useState: useApp, useEffect: useAppE } = React;
 const VIEWS = ["site", "auth", "cabinet", "admin", "portal"];
 const routeView = () => { const v = parseRoute().view; return VIEWS.includes(v) ? v : "site"; };
 
+/* document.title раньше ставил только портал — кабинет/смета/админка жили с одним
+   90-символьным SEO-тайтлом промо (вкладки в браузере неразличимы). sub — читаемая
+   деталь (имя открытого проекта в смете); без неё — просто заголовок вкладки. */
+const VIEW_TITLE = { auth: "Вход", cabinet: "Кабинет", admin: "Админка" };
+const SITE_TITLE = document.title;   // SEO-тайтл промо из index.html — захвачен один раз при загрузке
+function setTitle(view, sub) {
+  if (view === "portal") return;               // портал ставит свой тайтл сам (ClientPortal)
+  if (view === "site") { document.title = SITE_TITLE; return; }
+  const label = VIEW_TITLE[view];
+  document.title = (sub ? sub + " — " : "") + (label ? label + " — " : "") + "Design Ledger";
+}
+window.setTitle = setTitle;
+
 function App() {
   const [view, setView] = useApp(routeView);   // site | auth | cabinet | admin
   const [user, setUser] = useApp(null);
@@ -27,6 +40,10 @@ function App() {
     window.addEventListener("hashchange", on);
     return () => window.removeEventListener("hashchange", on);
   }, []);
+
+  // вкладка браузера различима между промо/кабинетом/админкой (ProjectDetail сам
+  // уточняет тайтл именем проекта, когда открыт — см. project-detail.jsx)
+  useAppE(() => { setTitle(view); }, [view]);
 
   const go = (v) => {
     if (v === "cabinet") {

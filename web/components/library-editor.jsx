@@ -21,22 +21,6 @@ const libToDraft = (p) => {
   return { ...p, price: s(p.price), dims: { w: s(d.w), d: s(d.d), h: s(d.h) } };
 };
 
-/* свежесть цены (волна B3) — та же механика, что у позиций «взять из прошлого
-   проекта»: дата последней проверки, терракота после 30 дней (не «протухаем» молча). */
-const libPriceAgeDays = (d) => { const t = new Date(d + "T00:00:00").getTime(); return isNaN(t) ? null : Math.max(0, Math.floor((Date.now() - t) / 86400000)); };
-function LibPriceAge({ d }) {
-  const days = libPriceAgeDays(d);
-  if (days == null) return null;
-  const stale = days > 30;
-  return (
-    <span className="mono" title={"Цена проверена " + (days === 0 ? "сегодня" : days + " " + plural(days, ["день", "дня", "дней"]) + " назад") + (stale ? " — стоит перепроверить" : "")}
-      style={{ fontSize: "var(--fs-10)", whiteSpace: "nowrap", padding: "1px 7px", borderRadius: 99,
-        border: "1px solid " + (stale ? "rgba(183,80,44,.4)" : "var(--hairline)"), color: stale ? "var(--accent-ink)" : "var(--spec-meta)" }}>
-      {days === 0 ? "цена от сегодня" : "цене " + days + " " + plural(days, ["день", "дня", "дней"])}
-    </span>
-  );
-}
-
 function ProductsLibrary() {
   const [rows, setRows] = useL(null);
   const [edit, setEdit] = useL(null);   // редактируемый/создаваемый товар (draft) | null
@@ -59,39 +43,22 @@ function ProductsLibrary() {
 
   return (
     <div className="reveal in" ref={useReveal()}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: 22, flexWrap: "wrap", gap: 14 }}>
-        <div>
-          <span style={{ fontFamily: "var(--font-mono)", fontSize: "var(--fs-12)", letterSpacing: ".12em", textTransform: "uppercase", color: "var(--accent)", display: "inline-flex", alignItems: "center", gap: 9 }}>
-            <I.layers size={15} />Библиотека товаров
-          </span>
-          <h1 className="display" style={{ fontSize: "var(--fs-30)", marginTop: 10 }}>Мои товары{all.length ? " · " + all.length : ""}</h1>
-          <p style={{ color: "var(--muted)", fontSize: "var(--fs-14)", marginTop: 8, maxWidth: 640, lineHeight: 1.6 }}>
-            Мастер-записи того, что вы ставите в сметы снова и снова. В смете название подставляет цену, раздел и поставщика; в комнате — пикер-каталог. Собрать библиотеку можно прямо из готовой сметы кнопкой «В библиотеку» на позиции.
-          </p>
-        </div>
-        <button className="btn btn-primary" onClick={createNew}><I.plus size={17} />Создать товар</button>
-      </div>
+      <PageHead eyebrow="Библиотека товаров" eyebrowIcon="layers" title={"Мои товары" + (all.length ? " · " + all.length : "")}
+        sub="Мастер-записи того, что вы ставите в сметы снова и снова. В смете название подставляет цену, раздел и поставщика; в комнате — пикер-каталог. Собрать библиотеку можно прямо из готовой сметы кнопкой «В библиотеку» на позиции."
+        right={<button className="btn btn-primary" onClick={createNew}><I.plus size={17} />Создать товар</button>} />
 
       {!rows && <div className="proj-grid" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(250px, 1fr))", gap: 16 }}>{Array.from({ length: 4 }).map((_, i) => <div key={i} className="glass skel" style={{ borderRadius: "var(--r-lg)", height: 150 }} />)}</div>}
 
       {rows && all.length === 0 && (
-        <div className="glass" style={{ borderRadius: "var(--r-xl)", padding: "44px 30px", textAlign: "center", display: "flex", flexDirection: "column", alignItems: "center", gap: 12 }}>
-          <div style={{ width: 54, height: 54, borderRadius: 16, background: "var(--glass-2)", border: "1px solid var(--hairline)", display: "grid", placeItems: "center", color: "var(--accent)" }}><I.layers size={26} /></div>
-          <h3 style={{ fontSize: "var(--fs-18)", fontWeight: 700 }}>В библиотеке пока пусто</h3>
-          <p style={{ color: "var(--muted)", fontSize: "var(--fs-14)", maxWidth: 460, lineHeight: 1.6 }}>
-            Добавьте товары, которые подбираете из проекта в проект. Они начнут подставляться в сметы по названию и появятся в пикере комнаты. Можно собрать библиотеку и постепенно — кнопкой «В библиотеку» на позициях готовой сметы.
-          </p>
-          <button className="btn btn-primary" onClick={createNew} style={{ marginTop: 4 }}><I.plus size={17} />Создать первый товар</button>
-        </div>
+        <EmptyState icon="layers" title="В библиотеке пока пусто"
+          text="Добавьте товары, которые подбираете из проекта в проект. Они начнут подставляться в сметы по названию и появятся в пикере комнаты. Можно собрать библиотеку и постепенно — кнопкой «В библиотеку» на позициях готовой сметы."
+          action={<button className="btn btn-primary" onClick={createNew} style={{ marginTop: 4 }}><I.plus size={17} />Создать первый товар</button>} />
       )}
 
       {rows && all.length > 0 && (
         <React.Fragment>
-          <div style={{ position: "relative", maxWidth: 360, marginBottom: 18 }}>
-            <I.search size={16} style={{ position: "absolute", left: 13, top: "50%", transform: "translateY(-50%)", color: "var(--faint)" }} />
-            <input className="fld" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Поиск: название, раздел, поставщик, артикул"
-              aria-label="Поиск по библиотеке товаров" style={{ paddingLeft: 38 }} />
-          </div>
+          <SearchField value={q} onChange={setQ} placeholder="Поиск: название, раздел, поставщик, артикул"
+            ariaLabel="Поиск по библиотеке товаров" style={{ maxWidth: 360, marginBottom: 18 }} />
           {shown.length === 0
             ? <p style={{ color: "var(--muted)", fontSize: "var(--fs-14)", padding: "8px 2px" }}>По запросу «{q.trim()}» ничего не нашлось.</p>
             : (
@@ -133,7 +100,7 @@ function ProductCard({ p, onEdit, onRemove }) {
 
       {(p.priceDate || p.feedSku) && (
         <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-          {p.priceDate && <LibPriceAge d={p.priceDate} />}
+          {p.priceDate && <PriceAgeChip d={p.priceDate} />}
           {p.feedSku && (
             <span className="mono" title={"Артикул фида: " + p.feedSku + " — автообновление цены подключится вместе с фидом фабрик"}
               style={{ fontSize: "var(--fs-10)", whiteSpace: "nowrap", padding: "1px 7px", borderRadius: 99, border: "1px solid var(--hairline)", color: "var(--info)" }}>
@@ -212,7 +179,7 @@ function ProductEditor({ draft, onClose, onSaved }) {
           </LibFld>
         </div>
         {!d.__new && d.priceDate && (
-          <div style={{ marginTop: -10 }}><LibPriceAge d={d.priceDate} /></div>
+          <div style={{ marginTop: -10 }}><PriceAgeChip d={d.priceDate} /></div>
         )}
 
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
@@ -291,10 +258,7 @@ function LibraryPickerModal({ roomName, onClose, onAdd }) {
       </div>
 
       <div style={{ padding: "16px 24px 8px" }}>
-        <div style={{ position: "relative" }}>
-          <I.search size={16} style={{ position: "absolute", left: 13, top: "50%", transform: "translateY(-50%)", color: "var(--faint)" }} />
-          <input className="fld" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Поиск по библиотеке" aria-label="Поиск по библиотеке" style={{ paddingLeft: 38 }} />
-        </div>
+        <SearchField value={q} onChange={setQ} placeholder="Поиск по библиотеке" ariaLabel="Поиск по библиотеке" />
       </div>
 
       <div style={{ padding: "4px 24px", maxHeight: "52vh", overflow: "auto" }}>

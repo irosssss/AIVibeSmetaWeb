@@ -38,7 +38,7 @@ function NewsAdmin() {
         <div className="tbl-head news-cols">
           <span>Материал</span><span>Категория</span><span>Статус</span><span>Просмотры</span><span>Дата</span><span></span>
         </div>
-        {!rows && <div style={{ padding: 40, textAlign: "center", color: "var(--muted)" }}>Загрузка…</div>}
+        {!rows && Array.from({ length: 4 }).map((_, i) => <div key={i} className="tbl-row news-cols">{Array.from({ length: 6 }).map((__, j) => <div key={j} className="skel" style={{ height: j === 0 ? 46 : 16, borderRadius: j === 0 ? 10 : 6 }} />)}</div>)}
         {rows && rows.map((n) => (
           <div key={n.id} className="tbl-row news-cols">
             <div style={{ display: "flex", alignItems: "center", gap: 13, minWidth: 0 }}>
@@ -49,11 +49,10 @@ function NewsAdmin() {
               </div>
             </div>
             <span style={{ color: "var(--muted)", fontSize: "var(--fs-13)" }}>{n.category}</span>
-            <button onClick={() => toggleStatus(n)} className="status-pill" style={{ background: n.status === "published" ? "rgba(94,107,91,.16)" : "var(--glass-2)", color: n.status === "published" ? "var(--accent-2-ink)" : "var(--muted)", borderColor: n.status === "published" ? "rgba(94,107,91,.34)" : "var(--hairline)" }}>
-              <span style={{ width: 7, height: 7, borderRadius: "50%", background: n.status === "published" ? "var(--accent-2)" : "var(--faint)" }} />
+            <StatusPill tone={n.status === "published" ? "accent2" : "muted"} onClick={() => toggleStatus(n)}>
               {n.status === "published" ? "Опубликовано" : "Черновик"}
-            </button>
-            <span style={{ fontSize: "var(--fs-13)", color: "var(--muted)" }}>{fmt(n.views)}</span>
+            </StatusPill>
+            <span className="mono" style={{ fontSize: "var(--fs-13)", color: "var(--muted)", textAlign: "right" }}>{fmt(n.views)}</span>
             <span style={{ fontSize: "var(--fs-13)", color: "var(--muted)" }}>{new Date(n.date).toLocaleDateString("ru-RU", { day: "2-digit", month: "2-digit", year: "2-digit" })}</span>
             <div style={{ display: "flex", gap: 6, justifyContent: "flex-end" }}>
               <button className="icon-btn sm" title="Редактировать" onClick={() => setEditing(n)}><I.edit size={16} /></button>
@@ -74,44 +73,42 @@ function NewsModal({ initial, onClose, onSave, busy }) {
   const cats = ["Тренды 2026", "Технологии", "Стили", "Гайды", "Идеи", "Кейсы"];
   const covers = ["warm", "ar", "deco", "market", "light", "studio", "living"];
   return (
-    <div className="modal-back" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
-      <div className="glass modal-card" style={{ borderRadius: "var(--r-xl)" }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "22px 26px", borderBottom: "1px solid var(--hairline)" }}>
-          <h3 className="display" style={{ fontSize: "var(--fs-21)" }}>{form.id ? "Редактировать новость" : "Новая новость"}</h3>
-          <button className="icon-btn" onClick={onClose}><I.close size={18} /></button>
-        </div>
-        <div style={{ padding: 26, display: "flex", flexDirection: "column", gap: 16, maxHeight: "60vh", overflow: "auto" }}>
-          <label><span className="lbl">Заголовок</span><input className="fld" value={form.title} onChange={(e) => set("title", e.target.value)} placeholder="Заголовок материала" /></label>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
-            <label><span className="lbl">Категория</span>
-              <select className="fld" value={form.category} onChange={(e) => set("category", e.target.value)}>{cats.map((c) => <option key={c}>{c}</option>)}</select>
-            </label>
-            <label><span className="lbl">Дата</span><input type="date" className="fld" value={form.date} onChange={(e) => set("date", e.target.value)} /></label>
-          </div>
-          <label><span className="lbl">Краткое описание</span><textarea className="fld" rows={3} value={form.excerpt} onChange={(e) => set("excerpt", e.target.value)} placeholder="Анонс в ленте" style={{ resize: "vertical" }} /></label>
-          <div>
-            <span className="lbl">Обложка</span>
-            <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-              {covers.map((c) => (
-                <button key={c} onClick={() => set("cover", c)} style={{ width: 70, height: 50, borderRadius: 10, overflow: "hidden", outline: form.cover === c ? "2px solid var(--accent)" : "1px solid var(--hairline)", outlineOffset: form.cover === c ? 1 : 0 }}>
-                  <Img src={PHOTOS[c]} label="" />
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, padding: "18px 26px", borderTop: "1px solid var(--hairline)" }}>
-          <label style={{ display: "flex", alignItems: "center", gap: 9, fontSize: "var(--fs-14)", cursor: "pointer" }}>
-            <input type="checkbox" checked={form.status === "published"} onChange={(e) => set("status", e.target.checked ? "published" : "draft")} style={{ width: 17, height: 17, accentColor: "var(--accent-2)" }} />
-            Опубликовать сразу
+    <Modal onClose={onClose} label={form.id ? "Редактировать новость" : "Новая новость"}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "22px 26px", borderBottom: "1px solid var(--hairline)" }}>
+        <h3 className="display" style={{ fontSize: "var(--fs-21)" }}>{form.id ? "Редактировать новость" : "Новая новость"}</h3>
+        <button className="icon-btn" onClick={onClose} aria-label="Закрыть"><I.close size={18} /></button>
+      </div>
+      <div style={{ padding: 26, display: "flex", flexDirection: "column", gap: 16, maxHeight: "60vh", overflow: "auto" }}>
+        <label><span className="lbl">Заголовок</span><input className="fld" value={form.title} onChange={(e) => set("title", e.target.value)} placeholder="Заголовок материала" /></label>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+          <label><span className="lbl">Категория</span>
+            <select className="fld" value={form.category} onChange={(e) => set("category", e.target.value)}>{cats.map((c) => <option key={c}>{c}</option>)}</select>
           </label>
-          <div style={{ display: "flex", gap: 10 }}>
-            <button className="btn btn-ghost" onClick={onClose}>Отмена</button>
-            <button className="btn btn-primary" disabled={busy || !form.title} onClick={() => onSave(form)}>{busy ? "Сохранение…" : "Сохранить"}</button>
+          <label><span className="lbl">Дата</span><input type="date" className="fld" value={form.date} onChange={(e) => set("date", e.target.value)} /></label>
+        </div>
+        <label><span className="lbl">Краткое описание</span><textarea className="fld" rows={3} value={form.excerpt} onChange={(e) => set("excerpt", e.target.value)} placeholder="Анонс в ленте" style={{ resize: "vertical" }} /></label>
+        <div>
+          <span className="lbl">Обложка</span>
+          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+            {covers.map((c) => (
+              <button key={c} onClick={() => set("cover", c)} style={{ width: 70, height: 50, borderRadius: 10, overflow: "hidden", outline: form.cover === c ? "2px solid var(--accent)" : "1px solid var(--hairline)", outlineOffset: form.cover === c ? 1 : 0 }}>
+                <Img src={PHOTOS[c]} label="" />
+              </button>
+            ))}
           </div>
         </div>
       </div>
-    </div>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, padding: "18px 26px", borderTop: "1px solid var(--hairline)" }}>
+        <label style={{ display: "flex", alignItems: "center", gap: 9, fontSize: "var(--fs-14)", cursor: "pointer" }}>
+          <input type="checkbox" checked={form.status === "published"} onChange={(e) => set("status", e.target.checked ? "published" : "draft")} style={{ width: 17, height: 17, accentColor: "var(--accent-2)" }} />
+          Опубликовать сразу
+        </label>
+        <div style={{ display: "flex", gap: 10 }}>
+          <button className="btn btn-ghost" onClick={onClose}>Отмена</button>
+          <button className="btn btn-primary" disabled={busy || !form.title} onClick={() => onSave(form)}>{busy ? "Сохранение…" : "Сохранить"}</button>
+        </div>
+      </div>
+    </Modal>
   );
 }
 
@@ -128,16 +125,13 @@ function UsersAdmin() {
   return (
     <div>
       <PageHead title="Пользователи" sub="Аккаунты, роли и доступ"
-        right={<div className="glass" style={{ display: "flex", alignItems: "center", gap: 9, padding: "10px 15px", borderRadius: 99, minWidth: 230 }}>
-          <I.search size={16} style={{ color: "var(--muted)" }} />
-          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Поиск по имени или e-mail" style={{ background: "none", border: "none", outline: "none", color: "var(--text)", fontSize: "var(--fs-14)", width: "100%" }} />
-        </div>} />
+        right={<SearchField value={q} onChange={setQ} placeholder="Поиск по имени или e-mail" ariaLabel="Поиск пользователей" style={{ minWidth: 230 }} />} />
 
       <div className="glass" style={{ borderRadius: "var(--r-lg)", overflow: "hidden" }}>
         <div className="tbl-head user-cols">
           <span>Пользователь</span><span>Вход</span><span>Роль</span><span>Проекты</span><span>Статус</span><span></span>
         </div>
-        {!filtered && <div style={{ padding: 40, textAlign: "center", color: "var(--muted)" }}>Загрузка…</div>}
+        {!filtered && Array.from({ length: 4 }).map((_, i) => <div key={i} className="tbl-row user-cols">{Array.from({ length: 6 }).map((__, j) => <div key={j} className="skel" style={{ height: j === 0 ? 38 : 16, borderRadius: j === 0 ? "50%" : 6, width: j === 0 ? 38 : undefined }} />)}</div>)}
         {filtered && filtered.map((u) => (
           <div key={u.id} className="tbl-row user-cols">
             <div style={{ display: "flex", alignItems: "center", gap: 12, minWidth: 0 }}>
@@ -152,12 +146,10 @@ function UsersAdmin() {
               {u.provider === "yandex" ? "Яндекс ID" : "VK ID"}
             </span>
             <span>{u.role === "admin"
-              ? <span className="status-pill" style={{ background: "rgba(183,80,44,.16)", color: "var(--accent-ink)", borderColor: "rgba(183,80,44,.32)" }}>Админ</span>
+              ? <StatusPill tone="accent" dot={false}>Админ</StatusPill>
               : <span style={{ fontSize: "var(--fs-13)", color: "var(--muted)" }}>Пользователь</span>}</span>
-            <span style={{ fontSize: "var(--fs-13)", color: "var(--muted)" }}>{u.projects}</span>
-            <span><span className="status-pill" style={{ background: u.status === "active" ? "rgba(94,107,91,.16)" : "rgba(183,80,44,.14)", color: u.status === "active" ? "var(--accent-2-ink)" : "var(--accent-ink)", borderColor: u.status === "active" ? "rgba(94,107,91,.34)" : "rgba(183,80,44,.3)" }}>
-              <span style={{ width: 7, height: 7, borderRadius: "50%", background: u.status === "active" ? "var(--accent-2)" : "var(--accent)" }} />
-              {u.status === "active" ? "Активен" : "Заблокирован"}</span></span>
+            <span className="mono" style={{ fontSize: "var(--fs-13)", color: "var(--muted)", textAlign: "right" }}>{u.projects}</span>
+            <span><StatusPill tone={u.status === "active" ? "accent2" : "accent"}>{u.status === "active" ? "Активен" : "Заблокирован"}</StatusPill></span>
             <div style={{ display: "flex", justifyContent: "flex-end" }}>
               <button className="btn btn-ghost" style={{ padding: "7px 13px", fontSize: "var(--fs-12)" }} onClick={() => toggle(u)} disabled={u.role === "admin"}>
                 {u.status === "active" ? "Заблокировать" : "Разблокировать"}
