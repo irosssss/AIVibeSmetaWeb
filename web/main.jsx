@@ -6,6 +6,22 @@
    ============================================================ */
 import "./vendor-globals.js";
 
+/* Self-host шрифтов (П6, 09.07): Google Fonts CDN убран из index.html — там
+   зависимость от gstatic.com (риск для RU + FOUT на цифрах денег в момент
+   доезда шрифта). Вместо CDN подключаем @fontsource напрямую: Vite тянет
+   .woff2 из node_modules, хэширует ассеты в бандл, инжектит @font-face.
+   Inter/JBMono — variable-woff2 (один файл покрывает все веса), Spectral
+   variable не выпущен → статические веса, реально используемые в стеке
+   (400/500/600/700/800 + italic 400 для .spec2.more .pos и цитат-blockquote). */
+import "@fontsource-variable/inter";
+import "@fontsource-variable/jetbrains-mono";
+import "@fontsource/spectral/400.css";
+import "@fontsource/spectral/500.css";
+import "@fontsource/spectral/600.css";
+import "@fontsource/spectral/700.css";
+import "@fontsource/spectral/800.css";
+import "@fontsource/spectral/400-italic.css";
+
 // data + движок + выгрузки (пишут в window.Design Ledger*)
 import "./mock.js";
 import "./project-data.js";

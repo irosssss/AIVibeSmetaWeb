@@ -4,6 +4,38 @@
    Все цвета/радиусы/тени — токены. Меняешь здесь — меняется везде.
    ============================================================ */
 
+/* ============================================================
+   Метрик-фолбэки шрифтов (П6): рендерим системным шрифтом до
+   загрузки .woff2 из @fontsource, но с ascent/descent/size-adjust
+   основного — layout не скачет (CLS≈0), FOUT на цифрах денег
+   больше не двигает суммы в смете и итогах.
+   Метрики — с @capsize/metrics и next/font (Inter/Arial — Vercel-канон).
+   ============================================================ */
+@font-face {
+  font-family: "Inter Fallback";
+  src: local("Arial");
+  ascent-override: 90.44%;
+  descent-override: 22.52%;
+  line-gap-override: 0%;
+  size-adjust: 107.12%;
+}
+@font-face {
+  font-family: "Spectral Fallback";
+  src: local("Georgia");
+  ascent-override: 90%;
+  descent-override: 22%;
+  line-gap-override: 0%;
+  size-adjust: 105%;
+}
+@font-face {
+  font-family: "JetBrains Mono Fallback";
+  src: local("Menlo"), local("Consolas");
+  ascent-override: 75%;
+  descent-override: 22%;
+  line-gap-override: 0%;
+  size-adjust: 108%;
+}
+
 :root {
   /* ---- Surfaces (тёплая бумага) ---- */
   --bg-base: #F5F1EB;          /* фон страницы — лён/бумага */
@@ -54,10 +86,13 @@
   --glow-accent: 0 10px 26px rgba(183, 80, 44, 0.22);
   --glow-jade: 0 8px 22px rgba(94, 107, 91, 0.20);
 
-  /* ---- Type ---- */
-  --font-display: "Spectral", Georgia, "Times New Roman", serif;
-  --font-body: "Inter", system-ui, -apple-system, sans-serif;
-  --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  /* ---- Type (П6: self-host через @fontsource — Inter/JBMono variable-woff2,
+     Spectral static-веса; в стеке после основного семейства стоит *-Fallback с
+     size-adjust, чтобы FOUT не двигал суммы в смете. Имена 'Inter Variable' и
+     'JetBrains Mono Variable' — как объявляет fontsource; Spectral без суффикса) ---- */
+  --font-display: "Spectral", "Spectral Fallback", Georgia, "Times New Roman", serif;
+  --font-body: "Inter Variable", "Inter Fallback", system-ui, -apple-system, sans-serif;
+  --font-mono: "JetBrains Mono Variable", "JetBrains Mono Fallback", ui-monospace, "SF Mono", Menlo, monospace;
 
   /* ---- Motion (3-ярусная шкала Programa; --ease — мягкий out, --ease-pop — «вторая кривая», была захардкожена ×7) ---- */
   --ease: cubic-bezier(.22, 1, .36, 1);
