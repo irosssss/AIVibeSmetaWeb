@@ -14,11 +14,17 @@ const staticHow = prefersReduced || narrowVP;
 /* --------------------------------------------------------------
    HOW IT WORKS — sticky-сцена, прогресс ведётся скроллом
 -------------------------------------------------------------- */
+/* нумерованный путь 01–05 (рецепт Programa: Client Dashboard/Procurement/Library
+   на страницах фич — mono-номер + глагол + сцена); лендинг-версия «пути сметы»,
+   каркас для будущей полной F1 «6 шагов пути сметы» */
 const STEPS = [
-  { n: "01", icon: I.ruler, lot: "stepMeasure", tag: "Источник",     title: "Вставьте ссылку на товар или фото комнаты", text: "Клиппер затянет товар с сайта фабрики — с ценой и артикулом, или начните с фото комнаты. Без обмеров и 3D-программ." },
-  { n: "02", icon: I.spark, lot: "stepAI",      tag: "Смета и нормы", title: "Design Ledger собирает смету и проверяет её по нормам", text: "Спецификация с артикулами и ценами под стиль и бюджет — а движок эргономики проверяет проходы и дистанции по NKBA и Нойферту." },
-  { n: "03", icon: I.layers, lot: "stepSpec",   tag: "3 варианта",  title: "Готовая смета в трёх бюджетах", text: "Эконом, база, премиум — выгружайте спецификацию клиенту. Меняете предмет — итог и проверка пересчитываются." },
+  { n: "01", icon: I.ruler,  lot: "stepMeasure", tag: "Источник",              title: "Вставьте ссылку на товар или фото комнаты", text: "Клиппер затянет товар с сайта фабрики — с ценой и артикулом, или начните с фото комнаты. Без обмеров и 3D-программ." },
+  { n: "02", icon: I.spark,  lot: "stepAI",      tag: "Позиция в смете",       title: "Design Ledger добавляет позицию в смету", text: "Каждая ссылка или фото — сразу строка спецификации: артикул, фото, цена фабрики. Эргономика проверяется рядом, без отдельного шага." },
+  { n: "03", icon: I.layers, lot: "stepSpec",    tag: "Наценка · две цены",    title: "Наценка — и в документе уже две цены", text: "Регулятор наценки пересчитывает цену клиенту и вашу прибыль на лету. Себестоимость видите только вы." },
+  { n: "04", icon: I.send,   lot: null,          tag: "PDF клиенту",           title: "Смета уходит клиенту — без себестоимости", text: "Клиентская выгрузка PDF или Excel показывает только его цену. Рабочая версия с наценкой остаётся у вас." },
+  { n: "05", icon: I.chat,   lot: null,          tag: "Согласование",          title: "Клиент согласовывает прямо в смете", text: "Комментарии по позициям и статус согласования — в общей ссылке, без созвонов и вотсапа." },
 ];
+const STEP_VH = 108; /* высота скролл-сцены на шаг (было 340vh / 3 шага ≈ 113vh) */
 
 /* глиф шага: активный — Lottie line-art на бумажном квадрате; иначе статичная иконка */
 function StepGlyph({ step, on }) {
@@ -59,17 +65,19 @@ function HowDesktop() {
     return () => { window.removeEventListener("scroll", onScroll); window.removeEventListener("resize", onScroll); cancelAnimationFrame(raf); };
   }, []);
 
-  const active = Math.min(2, Math.floor(p * 3 + (prefersReduced ? 0 : 0.0001)));
-  const sub = Math.min(1, (p * 3) - active); // прогресс внутри активного шага
+  const N = STEPS.length;
+  const active = Math.min(N - 1, Math.floor(p * N + (prefersReduced ? 0 : 0.0001)));
+  const sub = Math.min(1, (p * N) - active); // прогресс внутри активного шага
 
   return (
-    <section id="how" ref={wrapRef} style={{ position: "relative", height: prefersReduced ? "auto" : "340vh" }}>
+    <section id="how" ref={wrapRef} style={{ position: "relative", height: prefersReduced ? "auto" : (N * STEP_VH) + "vh" }}>
       <div className="minh-screen" style={{ position: prefersReduced ? "static" : "sticky", top: 0, minHeight: prefersReduced ? "auto" : undefined, display: "flex", alignItems: "center", paddingBlock: "clamp(60px,10vh,110px)" }}>
         <div className="container how-grid" style={{ display: "grid", gridTemplateColumns: "0.92fr 1.08fr", gap: "clamp(32px,5vw,72px)", width: "min(var(--maxw),100% - var(--gutter)*2)", alignItems: "center" }}>
           {/* левая колонка — шаги */}
           <div>
             <div className="eyebrow jade" style={{ marginBottom: 18 }}>КАК ЭТО РАБОТАЕТ</div>
-            <h2 className="display" style={{ fontSize: "clamp(34px,4.4vw,60px)", marginBottom: 36 }}>От пустой комнаты<br />до готовой сметы</h2>
+            <h2 className="display" style={{ fontSize: "clamp(34px,4.4vw,60px)" }}>От пустой комнаты<br />до готовой сметы</h2>
+            <p style={{ color: "var(--muted)", fontSize: "var(--fs-15)", marginTop: 14, marginBottom: 36 }}>Смета — собрана. Наценка — скрыта. Клиент — согласовал.</p>
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
               {STEPS.map((s, i) => {
                 const on = i === active;
@@ -105,7 +113,7 @@ function HowDesktop() {
   );
 }
 
-/* мобильный свайп-степпер: 3 слайда, демо-сцена заморожена на своём шаге */
+/* мобильный свайп-степпер: слайд на каждый шаг STEPS, демо-сцена заморожена на своём шаге */
 function HowMobile() {
   const scRef = useR2(null);
   const [idx, setIdx] = useS2(0);
@@ -123,8 +131,9 @@ function HowMobile() {
       <div className="container">
         <div className="eyebrow jade" style={{ marginBottom: 16 }}>КАК ЭТО РАБОТАЕТ</div>
         <h2 className="display" style={{ fontSize: "clamp(30px,8vw,44px)" }}>От пустой комнаты<br />до готовой сметы</h2>
+        <p style={{ color: "var(--muted)", fontSize: "var(--fs-14)", marginTop: 12 }}>Смета — собрана. Наценка — скрыта. Клиент — согласовал.</p>
 
-        <div ref={scRef} onScroll={onScroll} className="how-scroller">
+        <div ref={scRef} onScroll={onScroll} className="how-scroller" style={{ marginTop: 16 }}>
           {STEPS.map((s, i) => (
             <div key={s.n} className="how-slide">
               <DemoStage active={i} sub={1} />
@@ -153,9 +162,12 @@ function HowMobile() {
   );
 }
 
-/* центральная сцена: скан → AI-чат → расстановка (тёплая, спец-лист) */
+/* центральная сцена: скан → позиция+нормы → наценка/две цены → PDF клиенту → согласование
+   (нумерованный путь 01–05, синхронизирован с STEPS) */
 function DemoStage({ active, sub }) {
   const scanFill = active === 0 ? sub : 1;
+  const bottomPanel = (i, extra) => ({ position: "absolute", left: 18, right: 18, bottom: 18,
+    opacity: active === i ? 1 : 0, transform: active === i ? "none" : "translateY(14px)", transition: "all .5s", pointerEvents: "none", ...extra });
   return (
     <div className="glass" style={{ position: "relative", borderRadius: "var(--r-xl)", overflow: "hidden", aspectRatio: "4/3.4", boxShadow: "var(--shadow-pop)" }}>
       <Img src={PHOTOS.living} label="фото интерьера" />
@@ -168,35 +180,60 @@ function DemoStage({ active, sub }) {
         <div style={{ position: "absolute", top: 0, bottom: 0, left: scanFill * 100 + "%", width: 2, background: "var(--accent)", boxShadow: "0 0 22px var(--accent)", opacity: active === 0 ? 1 : 0 }} />
       </div>
 
-      {/* СТАДИЯ 1 — AI-чат */}
-      <div style={{ position: "absolute", left: 18, right: 18, bottom: 18, display: "flex", flexDirection: "column", gap: 10,
-        opacity: active === 1 ? 1 : 0, transform: active === 1 ? "none" : "translateY(14px)", transition: "all .5s", pointerEvents: "none" }}>
-        <div className="glass" style={{ alignSelf: "flex-end", maxWidth: "70%", padding: "11px 15px", borderRadius: "16px 16px 4px 16px", fontSize: "var(--fs-14)", background: "rgba(183,80,44,.14)", borderColor: "rgba(183,80,44,.35)" }}>
-          Хочу уютную гостиную в тёплых тонах, бюджет 500к
+      {/* СТАДИЯ 1 — позиция добавлена в смету, эргономика проверена рядом */}
+      <div style={{ ...bottomPanel(1), display: "flex", flexDirection: "column", gap: 10 }}>
+        <div className="glass" style={{ padding: "13px 16px", borderRadius: 14, display: "flex", alignItems: "center", gap: 12, boxShadow: "var(--shadow-card)" }}>
+          <span style={{ flex: "none", width: 34, height: 34, borderRadius: 9, background: "var(--surface-2)", display: "grid", placeItems: "center", color: "var(--accent-2)" }}><I.check size={17} /></span>
+          <div>
+            <div style={{ fontSize: "var(--fs-13)", fontWeight: 600 }}>Кресло лаунж, дуб/букле</div>
+            <div className="mono" style={{ fontSize: "var(--fs-11)", color: "var(--spec-meta)", marginTop: 2 }}>KR-118 · добавлено в смету</div>
+          </div>
         </div>
-        <div className="glass" style={{ alignSelf: "flex-start", maxWidth: "82%", padding: "13px 16px", borderRadius: "16px 16px 16px 4px", fontSize: "var(--fs-14)", lineHeight: 1.5, boxShadow: "var(--shadow-card)" }}>
-          <span className="mono" style={{ display: "block", color: "var(--accent-2)", fontWeight: 500, fontSize: "var(--fs-11)", letterSpacing: ".06em", marginBottom: 5 }}>СМЕТА · DESIGN LEDGER</span>
-          Собрал смету: 38 позиций — диван-терракота, дубовый стеллаж, тёплый свет. Итог 480 000 ₽, эргономика проверена по нормам.
+        <div className="glass" style={{ alignSelf: "flex-start", padding: "8px 13px", borderRadius: 10, fontSize: "var(--fs-12)", fontWeight: 600, display: "flex", alignItems: "center", gap: 7, borderColor: "rgba(94,107,91,.55)" }}>
+          <I.ruler size={14} style={{ color: "var(--accent-2)" }} /> проход 92 см <span className="mono" style={{ fontSize: "var(--fs-10)", color: "var(--accent-2)" }}>в норме</span>
         </div>
       </div>
 
-      {/* СТАДИЯ 2 — проверка норм (олива = в норме): чипы с результатами, не «расстановка» */}
-      <div style={{ position: "absolute", inset: 0, opacity: active === 2 ? 1 : 0, transition: "opacity .5s", pointerEvents: "none" }}>
-        {[[34, 58, "Диван", "проход 92 см"], [66, 40, "Стеллаж", "дверь не задета"], [52, 72, "Лампа", "высота ок"]].map(([l, t, name, norm], i) => (
-          <div key={i} className="glass" style={{ position: "absolute", left: l + "%", top: t + "%", transform: "translate(-50%,-50%)",
-            padding: "7px 12px", borderRadius: 10, fontSize: "var(--fs-12)", fontWeight: 600, display: "flex", alignItems: "center", gap: 7,
-            borderColor: "rgba(94,107,91,.55)", background: "rgba(251,248,242,.92)",
-            opacity: sub > i * 0.28 ? 1 : 0, transition: `opacity .4s ${i * 0.05}s` }}>
-            <I.check size={14} style={{ color: "var(--accent-2)" }} /> {name}
-            <span className="mono" style={{ fontSize: "var(--fs-10)", fontWeight: 500, color: "var(--accent-2)" }}>{norm}</span>
+      {/* СТАДИЯ 2 — наценка и две цены */}
+      <div style={{ ...bottomPanel(2), display: "flex", flexDirection: "column", gap: 10 }}>
+        <div style={{ display: "flex", gap: 10 }}>
+          <div className="glass" style={{ flex: 1, padding: "12px 14px", borderRadius: 14, opacity: .6 }}>
+            <span className="mono" style={{ display: "block", fontSize: "var(--fs-10)", letterSpacing: ".06em", color: "var(--spec-meta)" }}>СЕБЕСТОИМОСТЬ</span>
+            <div style={{ fontSize: "var(--fs-14)", fontWeight: 600, marginTop: 4 }}>2 689 000 ₽</div>
           </div>
-        ))}
+          <div className="glass" style={{ flex: 1, padding: "12px 14px", borderRadius: 14, borderColor: "rgba(183,80,44,.4)", boxShadow: "var(--shadow-card)" }}>
+            <span className="mono" style={{ display: "block", fontSize: "var(--fs-10)", letterSpacing: ".06em", color: "var(--accent-ink)" }}>ЦЕНА КЛИЕНТУ</span>
+            <div style={{ fontSize: "var(--fs-16)", fontWeight: 700, marginTop: 4 }}>3 550 000 ₽</div>
+          </div>
+        </div>
+        <div className="mono" style={{ fontSize: "var(--fs-11)", color: "var(--accent-2)", textAlign: "center" }}>наценка +32% · прибыль 861 000 ₽</div>
+      </div>
+
+      {/* СТАДИЯ 3 — PDF клиенту (без себестоимости и наценки) */}
+      <div className="glass" style={{ ...bottomPanel(3, { padding: "14px 16px", borderRadius: 14, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, boxShadow: "var(--shadow-card)" }) }}>
+        <div>
+          <div style={{ fontSize: "var(--fs-13)", fontWeight: 600 }}>Смета-комплектация.pdf</div>
+          <div className="mono" style={{ fontSize: "var(--fs-11)", color: "var(--spec-meta)", marginTop: 2 }}>только цена клиенту · без наценки</div>
+        </div>
+        <span className="mono" style={{ fontSize: "var(--fs-11)", fontWeight: 600, color: "var(--accent-2-ink)", display: "flex", alignItems: "center", gap: 5, flex: "none" }}><I.check size={14} /> отправлено</span>
+      </div>
+
+      {/* СТАДИЯ 4 — согласование в клиентском портале */}
+      <div style={{ ...bottomPanel(4), display: "flex", flexDirection: "column", gap: 10 }}>
+        <div className="glass" style={{ alignSelf: "flex-start", maxWidth: "85%", padding: "11px 15px", borderRadius: "16px 16px 16px 4px", fontSize: "var(--fs-13)", boxShadow: "var(--shadow-card)" }}>
+          <span className="mono" style={{ display: "block", color: "var(--accent-2)", fontWeight: 500, fontSize: "var(--fs-11)", letterSpacing: ".06em", marginBottom: 5 }}>КЛИЕНТ · ПОРТАЛ</span>
+          Кресло лаунж — можно светлее обивку?
+        </div>
+        <div className="glass" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 15px", borderRadius: 12, borderColor: "rgba(94,107,91,.5)" }}>
+          <span style={{ fontSize: "var(--fs-12)", fontWeight: 600 }}>Статус позиции</span>
+          <span className="mono" style={{ fontSize: "var(--fs-11)", fontWeight: 600, color: "var(--accent-2-ink)" }}>Согласовано</span>
+        </div>
       </div>
 
       {/* верхний статус-бар сцены */}
       <div className="glass" style={{ position: "absolute", top: 16, left: 16, padding: "8px 14px", borderRadius: 99, fontSize: "var(--fs-12)", fontWeight: 700, display: "flex", alignItems: "center", gap: 9, boxShadow: "var(--shadow-card)" }}>
         <span style={{ width: 8, height: 8, borderRadius: "50%", background: "var(--accent)" }} />
-        {["Ссылка или фото", "Подбор и смета", "Проверка норм"][active]}
+        {STEPS[active].tag}
       </div>
     </div>
   );
@@ -430,6 +467,40 @@ function SocialProof() {
    и не были связаны с ценностью петли). Активный = не в стадии «Архив».
    Цены не прячем: доверие + честный вход «первая смета бесплатно».
 -------------------------------------------------------------- */
+const PRICING_FAQ = [
+  ["Нужна ли карта для первой сметы?", "Нет. Первая смета — бесплатно и без привязки карты. Тариф подключаете, когда решите продолжить."],
+  ["Что считается «активным проектом»?", "Любой проект не в архиве. Сданный клиенту проект переносите в архив — он освобождает место в лимите тарифа."],
+  ["Можно сменить тариф в любой момент?", "Да, без долгосрочных обязательств — переключаетесь в любой момент."],
+  ["Что будет с проектами при понижении тарифа?", "Ничего не удаляется. Если активных проектов больше нового лимита — заранее заархивируйте лишние."],
+  ["Тарифы отличаются функциями сметы?", "Нет — две цены, наценка и проверка эргономики одинаковы везде. Отличие — в лимите проектов, форматах выгрузки и команде."],
+];
+
+/* FAQ-аккордеон под тарифами (Programa: «Pricing: одна карточка + FAQ» —
+   снимает возражения до формы регистрации). Раскрытие — grid-rows 0fr→1fr,
+   тот же приём, что чинит .nav-sheet (styles.css). */
+function PricingFaq() {
+  const [open, setOpen] = useS2(null);
+  return (
+    <div style={{ maxWidth: 720, marginTop: "clamp(48px,7vh,84px)" }}>
+      <div className="eyebrow" style={{ marginBottom: 8 }}>ВОПРОСЫ О ЦЕНЕ</div>
+      <div>
+        {PRICING_FAQ.map(([q, a], i) => {
+          const isOpen = open === i;
+          return (
+            <div key={q} className="faq-item">
+              <button type="button" className="faq-q" aria-expanded={isOpen} aria-controls={`faq-a-${i}`} onClick={() => setOpen(isOpen ? null : i)}>
+                {q}
+                <I.arrow size={16} style={{ flex: "none", color: "var(--muted)", transition: "transform var(--dur-base) var(--ease)", transform: isOpen ? "rotate(-90deg)" : "rotate(90deg)" }} />
+              </button>
+              <div className="faq-a" id={`faq-a-${i}`} data-open={isOpen ? "1" : "0"}><div><p>{a}</p></div></div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 function Pricing({ go }) {
   const ref = useReveal();
   const PLANS = [
@@ -471,6 +542,7 @@ function Pricing({ go }) {
             </article>
           ))}
         </div>
+        <PricingFaq />
       </div>
     </section>
   );
@@ -531,6 +603,57 @@ function Bento() {
               </div>
             </div>
           </article>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/* --------------------------------------------------------------
+   КЛИЕНТСКИЙ ПОРТАЛ — жемчужина волны A бенчмарка Programa
+   (согласование по позициям, статусы, протокол PDF), на лендинге
+   раньше не была показана нигде — продавали вчерашний продукт.
+-------------------------------------------------------------- */
+function ClientPortalPromo() {
+  const ref = useReveal();
+  const FEATS = [
+    "Комментарии на каждой позиции — не в чате и не по телефону",
+    "Статус согласования по строке: Согласовано / Обсуждается / На рассмотрении",
+    "Протокол согласования — один PDF со всеми решениями клиента",
+    "Ссылка без пароля и установки — открывается в браузере с телефона",
+  ];
+  return (
+    <section id="portal" style={{ paddingBlock: "clamp(60px,9vh,110px)" }} ref={ref}>
+      <div className="container reveal calc-grid">
+        <div>
+          <div className="eyebrow info" style={{ marginBottom: 18 }}>КЛИЕНТСКИЙ ПОРТАЛ</div>
+          <h2 className="display" style={{ fontSize: "clamp(30px,4vw,50px)" }}>Клиент видит смету — без вашего Excel и созвонов</h2>
+          <p style={{ color: "var(--text)", fontWeight: 600, marginTop: 14, fontSize: "var(--fs-16)" }}>Меньше сообщений в вотсапе. Больше ясности клиенту.</p>
+          <p style={{ color: "var(--muted)", maxWidth: 460, fontSize: "var(--fs-14)", marginTop: 10, lineHeight: 1.6 }}>
+            Отправьте ссылку на портал вместо PDF в переписке. Клиент видит только свою цену, комментирует прямо на позиции и подтверждает выбор — а вы получаете протокол согласования одним PDF.
+          </p>
+          <ul role="list" style={{ listStyle: "none", margin: "22px 0 0", padding: 0, display: "flex", flexDirection: "column", gap: 12 }}>
+            {FEATS.map((t) => (
+              <li key={t} style={{ display: "flex", gap: 10, alignItems: "flex-start", fontSize: "var(--fs-14)", color: "var(--text)", lineHeight: 1.5 }}>
+                <I.check size={16} style={{ color: "var(--accent-2-ink)", flex: "none", marginTop: 2 }} />{t}
+              </li>
+            ))}
+          </ul>
+        </div>
+        <div className="glass" style={{ borderRadius: "var(--r-lg)", padding: 22, display: "flex", flexDirection: "column", gap: 14, boxShadow: "var(--shadow-card)" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <span style={{ fontWeight: 700, fontSize: "var(--fs-14)" }}>Кресло лаунж, дуб/букле</span>
+            <span className="mono" style={{ fontSize: "var(--fs-11)", fontWeight: 600, padding: "4px 10px", borderRadius: 99, background: "rgba(94,107,91,.14)", color: "var(--accent-2-ink)" }}>Согласовано</span>
+          </div>
+          <div className="glass" style={{ alignSelf: "flex-start", maxWidth: "88%", padding: "11px 14px", borderRadius: "14px 14px 14px 4px", fontSize: "var(--fs-13)", background: "rgba(183,80,44,.08)", borderColor: "rgba(183,80,44,.3)" }}>
+            Можно светлее обивку? Остальное нравится.
+          </div>
+          <div className="glass" style={{ alignSelf: "flex-end", maxWidth: "88%", padding: "11px 14px", borderRadius: "14px 14px 4px 14px", fontSize: "var(--fs-13)" }}>
+            Заменю на бежевый букле, пришлю фото сегодня
+          </div>
+          <span className="mono" style={{ marginTop: 4, alignSelf: "flex-start", padding: "8px 14px", fontSize: "var(--fs-12)", color: "var(--muted)", border: "1px solid var(--hairline)", borderRadius: 8, display: "inline-flex", alignItems: "center", gap: 7 }}>
+            <I.layers size={14} /> протокол согласования — один PDF
+          </span>
         </div>
       </div>
     </section>
@@ -661,6 +784,7 @@ window.SpecCategories = SpecCategories;   // используется сборк
 window.HowItWorks = HowItWorks;
 window.BudgetCalc = BudgetCalc;
 window.Bento = Bento;
+window.ClientPortalPromo = ClientPortalPromo;
 window.NewsFeed = NewsFeed;
 window.SocialProof = SocialProof;
 window.Pricing = Pricing;

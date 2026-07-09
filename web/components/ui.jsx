@@ -222,6 +222,28 @@ function useReveal() {
   return ref;
 }
 
+/* ---------- Инлайн-CTA — тонкая полоса между секциями лендинга
+   (по Programa: CTA-пара повторяется 5+ раз по всей длине страницы,
+   а не только в hero/footer). ---------- */
+function InlineCta({ text, sub, cta = "Начать бесплатно", go }) {
+  const ref = useReveal();
+  return (
+    <div className="container reveal" ref={ref} style={{ paddingBlock: "clamp(26px,4vh,48px)" }}>
+      <div className="glass" style={{ borderRadius: "var(--r-lg)", padding: "22px clamp(20px,4vw,34px)",
+        display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 16 }}>
+        <div>
+          <div style={{ fontFamily: "var(--font-display)", fontWeight: 600, fontSize: "var(--fs-18)" }}>{text}</div>
+          {sub && <div style={{ color: "var(--muted)", fontSize: "var(--fs-13)", marginTop: 4 }}>{sub}</div>}
+        </div>
+        <button className="btn btn-primary" style={{ padding: "12px 22px", flex: "none" }} onClick={() => go && go("auth")}>
+          {cta} <I.arrow size={15} />
+        </button>
+      </div>
+    </div>
+  );
+}
+window.InlineCta = InlineCta;
+
 /* ---------- Числовой форматтер ---------- */
 const fmt = (n) => new Intl.NumberFormat("ru-RU").format(Math.round(n));
 const fmtMoney = (n) => new Intl.NumberFormat("ru-RU").format(Math.round(n)) + " ₽";

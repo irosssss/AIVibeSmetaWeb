@@ -37,7 +37,8 @@ function SiteNav({ go }) {
     document.body.style.overflow = open ? "hidden" : "";
     return () => { document.body.style.overflow = ""; };
   }, [open]);
-  const links = [["Возможности", "#features"], ["Как работает", "#how"], ["Тарифы", "#pricing"], ["Журнал", "#news"]];
+  {/* порядок — по факту скролла страницы (SitePage, site-github.jsx), не по важности */}
+  const links = [["Как работает", "#how"], ["Возможности", "#features"], ["Тарифы", "#pricing"], ["Журнал", "#news"]];
   const jump = (h) => { setOpen(false); document.querySelector(h)?.scrollIntoView({ behavior: motionOK() ? "smooth" : "auto" }); };
   const lit = solid || open;
   return (
@@ -59,8 +60,8 @@ function SiteNav({ go }) {
         </div>
         <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
           <button className="btn btn-ghost site-cta" style={{ padding: "11px 20px" }} onClick={() => go("auth")}>Войти</button>
-          <button className="btn btn-primary site-cta" style={{ padding: "11px 20px" }} onClick={() => go("auth")}>
-            <I.layers size={17} /> Собрать смету
+          <button className="btn btn-primary nav-cta-primary" style={{ padding: "11px 20px" }} onClick={() => go("auth")}>
+            <I.layers size={17} /> <span className="nav-cta-label">Собрать смету</span>
           </button>
           <button className="icon-btn nav-burger" aria-label="Меню" aria-expanded={open} onClick={() => setOpen((o) => !o)}>
             {open ? <I.close size={20} /> : <Icon size={20} d="M4 7h16M4 12h16M4 17h16" />}
@@ -108,7 +109,7 @@ function Hero({ go }) {
             <a className="btn btn-ghost" style={{ padding: "16px 26px", fontSize: "var(--fs-16)" }} href="#how">Как это работает <I.arrow size={17} /></a>
           </div>
           <div className="mono" style={{ marginTop: 12, fontSize: "var(--fs-12)", color: "var(--spec-meta)", letterSpacing: ".02em" }}>
-            первая смета — бесплатно, без карты
+            первая смета — бесплатно · без карты · 2 проекта на тарифе «Старт»
           </div>
           <div className="hero-chips">
             <span className="hchip"><i style={{ background: "var(--accent)" }} />Две цены и ваша наценка</span>
@@ -131,6 +132,9 @@ function Hero({ go }) {
    клиентские суммы и прибыль пересчитываются на лету, — и экспорт клиенту. */
 function SmetaPlate() {
   const [markup, setMarkup] = useStateS(32);
+  /* демо-ход «две цены» (аудит Programa): «Рабочая» — как сейчас, себестоимость+наценка+прибыль;
+     «Для клиента» — реальная клиентская выгрузка, где себестоимость и наценка не показываются */
+  const [mode, setMode] = useStateS("work");
   const fmt = (n) => new Intl.NumberFormat("ru-RU").format(Math.round(n)) + " ₽";
   const ROWS = [
     ["01", "Диван 3-местный, велюр", "DV-2240", "1 шт", 112000],
@@ -145,14 +149,17 @@ function SmetaPlate() {
   const clientTotalShown = useCountUp(clientTotal);
   const profitShown = useCountUp(profit);
   return (
-    <div className="plate" style={{ marginInline: "auto" }}>
+    <div className={"plate" + (mode === "client" ? " mode-client" : "")} style={{ marginInline: "auto" }}>
       <div className="plate-banner">
         <Img src="img/hero-banner.jpg" label="рендер проекта" priority />
         <span className="plate-lab">Проект «Кирова, 17к1» <b>· гостиная · 42 м²</b></span>
       </div>
       <div className="plate-head">
         <div><div className="pt">Смета-комплектация</div><div className="ps">№ 024 · от 01.07.2026</div></div>
-        <div className="plate-toggle"><span className="on">Для клиента</span><span>Рабочая</span></div>
+        <div className="plate-toggle" role="tablist" aria-label="Вид сметы">
+          <button type="button" role="tab" aria-selected={mode === "client"} className={mode === "client" ? "on" : ""} onClick={() => setMode("client")}>Для клиента</button>
+          <button type="button" role="tab" aria-selected={mode === "work"} className={mode === "work" ? "on" : ""} onClick={() => setMode("work")}>Рабочая</button>
+        </div>
       </div>
       <div className="spec2 head"><span>№</span><span>Позиция</span><span className="r">Кол-во</span><span className="r">Себест.</span><span className="r">Клиенту</span></div>
       {ROWS.map(([i, name, art, qty, cost], idx) => (
