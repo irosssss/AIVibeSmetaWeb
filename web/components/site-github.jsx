@@ -7,9 +7,10 @@ const { useEffect: useE3 } = React;
    CTA + FOOTER
 -------------------------------------------------------------- */
 function Footer({ go }) {
-  /* [название, якорь|null] — null = раздел ещё не написан, честная заглушка без мёртвого клика */
+  /* [название, якорь|null] — null = раздел ещё не написан, честная заглушка без мёртвого клика.
+     Порядок «Продукт» — по факту скролла SitePage (ниже), не по важности. */
   const cols = [
-    ["Продукт", [["Возможности", "#features"], ["Как работает", "#how"], ["Для кого", "#whofor"], ["Окупаемость", "#payoff"], ["Тарифы", "#pricing"], ["Новости", "#news"]]],
+    ["Продукт", [["Для кого", "#whofor"], ["Как работает", "#how"], ["Клиентский портал", "#portal"], ["Возможности", "#features"], ["Окупаемость", "#payoff"], ["Тарифы", "#pricing"], ["Новости", "#news"]]],
     ["Технологии", [["Движок эргономики", "#how"], ["Каталог фабрик", "#komplektacia"], ["YandexGPT 5", "#features"], ["Выгрузка сметы", "#komplektacia"]]],
     ["Компания", [["О проекте", null], ["Контакты", null], ["Политика", null], ["Оферта", null]]],
   ];
@@ -24,9 +25,11 @@ function Footer({ go }) {
             <p style={{ color: "var(--muted)", maxWidth: 540, margin: "24px auto 36px", fontSize: "var(--fs-18)" }}>Design Ledger соберёт спецификацию с ценами, посчитает вашу наценку и проверит эргономику по нормам — документ готов к отправке клиенту.</p>
             <div style={{ display: "flex", gap: 14, justifyContent: "center", flexWrap: "wrap" }}>
               <button className="btn btn-primary" style={{ padding: "16px 30px", fontSize: "var(--fs-16)" }} onClick={() => go("auth")}><I.layers size={19} /> Начать бесплатно</button>
-              <button className="btn btn-ghost" style={{ padding: "16px 30px", fontSize: "var(--fs-16)" }} onClick={() => window.scrollTo({ top: 0, behavior: motionOK() ? "smooth" : "auto" })}>Посмотреть пример сметы</button>
+              <button className="btn btn-ghost" style={{ padding: "16px 30px", fontSize: "var(--fs-16)" }} onClick={() => document.querySelector("#komplektacia")?.scrollIntoView({ behavior: motionOK() ? "smooth" : "auto" })}>Посмотреть пример сметы</button>
             </div>
             <div className="mono" style={{ marginTop: 16, fontSize: "var(--fs-12)", color: "var(--spec-meta)" }}>без карты · тарифы от 1 490 ₽/мес после беты</div>
+            {/* второе закрытие — снятие последнего возражения «кто поможет», честно для соло-продукта */}
+            <div className="mono" style={{ marginTop: 8, fontSize: "var(--fs-12)", color: "var(--spec-meta)" }}>на вопросы до старта отвечает автор продукта — не бот и не саппорт-скрипт</div>
           </div>
         </div>
       </div>
@@ -77,7 +80,17 @@ function Footer({ go }) {
    СБОРКА промо-страницы
 -------------------------------------------------------------- */
 function SitePage({ go }) {
-  useE3(() => { window.scrollTo({ top: 0 }); }, []);
+  /* диплинк /#pricing и т.п. должен доскроллить до секции, а не обнулять
+     скролл — раньше useEffect всегда сбрасывал в 0 (аудит Programa) */
+  useE3(() => {
+    const h = window.location.hash;
+    // хэш может быть не CSS-ID-селектором (соц.сети/маркетинг-ссылки дописывают
+    // #!promo, #foo bar, #123start) — querySelector на таком бросает SyntaxError
+    let el = null;
+    if (/^#[A-Za-z][\w-]*$/.test(h)) { try { el = document.querySelector(h); } catch (e) {} }
+    if (el) { el.scrollIntoView({ behavior: motionOK() ? "smooth" : "auto" }); return; }
+    window.scrollTo({ top: 0 });
+  }, []);
   return (
     <div>
       <SiteNav go={go} />
@@ -85,13 +98,16 @@ function SitePage({ go }) {
         <Hero go={go} />
         <SpecCategories />
         <WhoFor />
+        <InlineCta go={go} text="Хотите смету по своему проекту?" sub="Первая — бесплатно, без карты" />
         <SocialProof />
         <HowItWorks />
+        <ClientPortalPromo />
+        <InlineCta go={go} text="Согласование — без вотсапа и созвонов" sub="Клиентский портал входит в любой тариф" />
         <Bento />
         <BudgetCalc go={go} />
-        <NewsFeed />
         <PayoffCalc />
         <Pricing go={go} />
+        <NewsFeed />
       </main>
       <Footer go={go} />
     </div>
