@@ -1154,7 +1154,7 @@ function CommentThreadCard({ group, onReply }) {
       <div style={{ fontSize: "var(--fs-12)", fontWeight: 700, marginBottom: 6, color: "var(--spec-meta)" }}>{group.room} · {group.title}</div>
       <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 8 }}>
         {group.comments.map((c) => (
-          <CommentBubble key={c.id} comment={c} isMine={c.author !== "client"} authorLabel={c.author === "client" ? "Клиент" : "Вы"} />
+          <CommentBubble key={c.id} comment={c} isMine={c.author !== "client"} authorLabel={c.author === "client" ? "Клиент" : "Вы"} theirBg="var(--glass)" />
         ))}
       </div>
       <form onSubmit={send} style={{ display: "flex", gap: 6 }}>

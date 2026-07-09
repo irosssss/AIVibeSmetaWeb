@@ -42,8 +42,12 @@ function App() {
   }, []);
 
   // вкладка браузера различима между промо/кабинетом/админкой (ProjectDetail сам
-  // уточняет тайтл именем проекта, когда открыт — см. project-detail.jsx)
-  useAppE(() => { setTitle(view); }, [view]);
+  // уточняет тайтл именем проекта, когда открыт — см. project-detail.jsx).
+  // Тайтл считаем по той же логике, что ниже решает screen — иначе для
+  // #cabinet без сессии или #admin вне DEV_MODE вкладка врёт: экран уже
+  // логин/промо, а title всё ещё «Кабинет»/«Админка».
+  const effectiveView = view === "cabinet" && !user ? "auth" : view === "admin" && !DEV_MODE ? "site" : view;
+  useAppE(() => { setTitle(effectiveView); }, [effectiveView]);
 
   const go = (v) => {
     if (v === "cabinet") {

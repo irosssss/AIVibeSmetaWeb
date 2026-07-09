@@ -274,19 +274,35 @@ function promptDialog({ title, label, value = "", confirmLabel = "Сохрани
 }
 window.promptDialog = promptDialog;
 
+/* стек открытых модалок + счётчик блокировки скролла — несколько Modal бывают
+   смонтированы одновременно (напр. онбординг-квиз всплывает по таймеру поверх
+   уже открытой NewProjectModal), поэтому Esc/Tab обрабатывает только верхняя,
+   а body.overflow снимается лишь когда закрылась последняя */
+let modalStack = [];
+let modalLockCount = 0;
+let modalIdSeq = 0;
+function lockBodyScroll() { if (modalLockCount++ === 0) document.body.style.overflow = "hidden"; }
+function unlockBodyScroll() { if (--modalLockCount <= 0) { modalLockCount = 0; document.body.style.overflow = ""; } }
+
 /* ============================================================
    Modal — обёртка для React-модалок: role=dialog, aria-modal,
    ловушка фокуса, Esc → onClose, возврат фокуса на триггер.
    ============================================================ */
 function Modal({ onClose, label, maxWidth, className, children }) {
   const cardRef = useRef(null);
+  const idRef = useRef(null);
+  if (idRef.current == null) idRef.current = ++modalIdSeq;
   useEffect(() => {
     const prev = document.activeElement;
     const card = cardRef.current;
     // фокус — сначала на поле ввода, иначе на первый интерактив (не на «Закрыть» в шапке)
     const first = card.querySelector("input, select, textarea") || card.querySelector("button:not([aria-label='Закрыть'])") || card.querySelector("button");
     (first || card).focus();
+    const id = idRef.current;
+    modalStack.push(id);
+    const isTop = () => modalStack[modalStack.length - 1] === id;
     const onKey = (e) => {
+      if (!isTop()) return;   // не самая верхняя модалка — не перехватываем клавиатуру
       if (e.key === "Escape") { e.stopPropagation(); onClose(); }
       if (e.key === "Tab") {
         const f = [...card.querySelectorAll("button, input, select, textarea, a[href], [tabindex]:not([tabindex='-1'])")].filter((el) => !el.disabled && el.offsetParent !== null);
@@ -299,10 +315,11 @@ function Modal({ onClose, label, maxWidth, className, children }) {
       }
     };
     document.addEventListener("keydown", onKey, true);
-    document.body.style.overflow = "hidden";
+    lockBodyScroll();
     return () => {
+      modalStack = modalStack.filter((x) => x !== id);
       document.removeEventListener("keydown", onKey, true);
-      document.body.style.overflow = "";
+      unlockBodyScroll();
       if (prev && prev.focus) prev.focus();
     };
   }, []);
@@ -436,13 +453,15 @@ const fmtCommentAt = (iso) => {
   catch (e) { return ""; }
 };
 /* пузырь одного сообщения в треде. isMine — сообщение «твоей» стороны
-   (на портале это клиент, в кабинете — дизайнер): заливка олива, без рамки */
-function CommentBubble({ comment, isMine, authorLabel }) {
+   (на портале это клиент, в кабинете — дизайнер): заливка олива, без рамки.
+   theirBg — фон «чужого» пузыря; по умолчанию --glass-2, но кабинет передаёт
+   --glass — там карточка треда сама уже --glass-2, и пузырь иначе сливается с ней */
+function CommentBubble({ comment, isMine, authorLabel, theirBg = "var(--glass-2)" }) {
   return (
     <div style={{
       alignSelf: isMine ? "flex-end" : "flex-start", maxWidth: "88%",
       padding: "6px 10px", borderRadius: 10, fontSize: "var(--fs-12)", lineHeight: 1.5,
-      background: isMine ? "var(--accent-2)" : "var(--glass-2)",
+      background: isMine ? "var(--accent-2)" : theirBg,
       color: isMine ? "var(--on-accent)" : "var(--text)",
       border: isMine ? "none" : "1px solid var(--hairline)",
     }}>
@@ -526,7 +545,11 @@ function EmptyState({ icon, title, text, action, compact }) {
 /* KPI-плитка с дельтой (Stripe/Linear: число + изменение к прошлому периоду). Деньги — mono, остальное — display */
 function KpiCard({ k }) {
   const isMoney = k.unit === "₽";
-  const val = isMoney ? fmtMoney(k.value) : (k.unit === "abs" ? fmt(k.value) : fmt(k.value) + (k.unit || ""));
+  // % не через fmt() — округление съедало десятичные (34.6% превращалось в «35%»)
+  const val = isMoney ? fmtMoney(k.value)
+    : k.unit === "abs" ? fmt(k.value)
+    : k.unit === "%" ? k.value.toLocaleString("ru-RU") + "%"
+    : fmt(k.value) + (k.unit || "");
   const big = val.length > 9 ? 22 : (val.length > 7 ? 26 : 30);
   return (
     <div className="glass" style={{ borderRadius: "var(--r-lg)", padding: 22 }}>

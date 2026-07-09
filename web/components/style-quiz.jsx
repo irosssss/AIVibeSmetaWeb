@@ -114,6 +114,16 @@ function StyleQuiz({ onClose, onDone }) {
   const next = () => setStep((s) => Math.min(s + 1, total));   // двойной клик «Показать результат» не уводит за результат
   const back = () => setStep((s) => Math.max(0, s - 1));
 
+  // Modal ловит фокус только на монтировании — а квиз меняет содержимое шагов
+  // внутри одной живущей модалки (авто-переход через 220мс уносит вместе с собой
+  // сфокусированную кнопку варианта). Перефокусируем первый интерактив шага сами.
+  const bodyRef = React.useRef(null);
+  React.useEffect(() => {
+    const body = bodyRef.current;
+    const first = body && body.querySelector("button, input, [tabindex]:not([tabindex='-1'])");
+    if (first) first.focus();
+  }, [step]);
+
   return (
     <Modal onClose={onClose} label="Стиль-квиз" className="quiz-card">
         {/* шапка с прогрессом */}
@@ -130,7 +140,7 @@ function StyleQuiz({ onClose, onDone }) {
           </div>
         </div>
 
-        <div className="quiz-body">
+        <div className="quiz-body" ref={bodyRef}>
           {curQ && <QuizStep q={curQ} ans={ans[curQ.key]} onPick={pick} />}
           {isBudget && <BudgetStep budget={budget} setBudget={setBudget} />}
           {isResult && <QuizResult result={result} budget={budget} room={ans.room} />}
