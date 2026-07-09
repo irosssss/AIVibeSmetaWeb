@@ -211,10 +211,15 @@
       content.push({ text: nm + "   ·   " + money(total(nm)) + (pr != null ? "   ·   готовность " + pr + "%" : ""), style: "h2", margin: [0, 12, 0, 4] });
       content.push({
         table: { headerRows: 0, widths: FFE ? ["*", 76, 44, 26, "auto"] : ["*", 84, 26, "auto"], body: groups[nm].map((x) => {
+          // подстроки под названием: давность цены + трек-номер (волна C3, кликабельно —
+          // pdfMake печатает ссылку как аннотацию поверх текста, курсор-палец в вьюере)
+          const subLines = [];
+          if (x.it.priceDate) subLines.push({ text: "цена от " + fmtD(x.it.priceDate), fontSize: 8, color: stale(x.it.priceDate) ? PDF.warn : PDF.muted, margin: [0, 1, 0, 0] });
+          if (x.it.track && x.it.track.number) subLines.push(x.it.track.url
+            ? { text: "трек №" + x.it.track.number, fontSize: 8, color: PDF.info || PDF.muted, link: x.it.track.url, decoration: "underline", margin: [0, 1, 0, 0] }
+            : { text: "трек №" + x.it.track.number, fontSize: 8, color: PDF.muted, margin: [0, 1, 0, 0] });
           const cells = [
-            x.it.priceDate
-              ? { stack: [ { text: x.it.title }, { text: "цена от " + fmtD(x.it.priceDate), fontSize: 8, color: stale(x.it.priceDate) ? PDF.warn : PDF.muted, margin: [0, 1, 0, 0] } ] }
-              : x.it.title,
+            subLines.length ? { stack: [{ text: x.it.title }, ...subLines] } : x.it.title,
             { text: x.room, color: PDF.muted, fontSize: 9 },
             { text: "×" + (x.it.qty || 1), alignment: "right", fontSize: 9, color: PDF.muted },
             { text: money(lineCost(x.it)), alignment: "right" },

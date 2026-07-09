@@ -120,11 +120,88 @@ const STAGE_NEXT = {
   "Закупка": "вести заказы и поставки по позициям",
   "Сдача": "выгрузить клиентский пакет документов",
 };
+const fmtDCV = (d) => { const t = new Date(d + "T00:00:00"); return isNaN(t.getTime()) ? String(d) : t.toLocaleDateString("ru-RU", { day: "2-digit", month: "2-digit" }); };
+
+/* «Сегодня в работе» (волна C2, шаг «Стол комплектатора», бенчмарк Programa) —
+   сквозной список по ВСЕМ сохранённым проектам: непогашенные даты стадий
+   закупки (eta) и платежей (FFE.itemDueItems), разложенные по срочности
+   (FFE.urgencyBucket). Чистая функция от полных карточек проектов (с rooms) —
+   без побочных эффектов. Ранг — порядок FFE.URGENCY_BUCKETS, не дублируем список id. */
+function buildUrgentQueue(projects) {
+  const FFE = window.AIVibeFFE;
+  if (!FFE) return [];
+  const rank = Object.fromEntries(FFE.URGENCY_BUCKETS.map((b, i) => [b.id, i]));
+  const rows = [];
+  (projects || []).forEach((p) => (p.rooms || []).forEach((r) => (r.items || []).forEach((it) => {
+    FFE.itemDueItems(it).forEach((d) => {
+      const bucket = FFE.urgencyBucket(d.date);
+      if (!bucket) return;
+      rows.push({ bucket, projectId: p.id, projectName: p.name, room: r.name, title: it.title, kind: d.kind, label: d.label, date: d.date });
+    });
+  })));
+  return rows.sort((a, b) => rank[a.bucket] - rank[b.bucket] || a.date.localeCompare(b.date));
+}
+
+// AIVibeAPI.projects.list() отдаёт rooms только у проектов, хоть раз сохранённых
+// через RoomSpecOverlay (saveRoom патчит rooms в запись списка) — свежие/каталожные
+// проекты молча выпадали бы из виджета. Тянем полную карточку каждого, как
+// AddPositionsModal уже делает для вкладки «из прошлого проекта».
+function loadUrgentQueue(projects) {
+  return Promise.all((projects || []).map((p) => AIVibeAPI.projects.get(p.id).catch(() => null)))
+    .then((full) => buildUrgentQueue(full.filter((d) => d && d.rooms)));
+}
+
+function TodayWidget({ rows, onOpen }) {
+  const FFE = window.AIVibeFFE;
+  if (!FFE) return null;
+  const counts = Object.fromEntries(FFE.URGENCY_BUCKETS.map((b) => [b.id, 0]));
+  rows.forEach((r) => counts[r.bucket]++);
+  const actionable = rows.filter((r) => r.bucket !== "later").slice(0, 8);
+  return (
+    <div className="glass" style={{ borderRadius: "var(--r-lg)", padding: "16px 18px", marginBottom: 16 }}>
+      <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 12, flexWrap: "wrap", marginBottom: actionable.length ? 10 : 0 }}>
+        <span style={{ display: "flex", alignItems: "baseline", gap: 9 }}>
+          <I.wallet size={16} style={{ color: "var(--accent)", position: "relative", top: 1 }} />
+          <span style={{ fontWeight: 800, fontFamily: "var(--font-display)", fontSize: "var(--fs-16)" }}>Сегодня в работе</span>
+        </span>
+        <span style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+          {FFE.URGENCY_BUCKETS.filter((b) => counts[b.id] > 0).map((b) => (
+            <span key={b.id} style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: "var(--fs-12)", color: "var(--muted)" }}>
+              <span aria-hidden="true" style={{ width: 7, height: 7, borderRadius: "50%", background: b.color, flex: "none" }} />
+              {b.label} · {counts[b.id]}
+            </span>
+          ))}
+        </span>
+      </div>
+      {!actionable.length
+        ? <div style={{ fontSize: "var(--fs-13)", color: "var(--muted)" }}>Ничего не горит — по датам стадий закупки и платежам всё под контролем.</div>
+        : (
+          <div style={{ display: "flex", flexDirection: "column" }}>
+            {actionable.map((r, i) => {
+              const b = FFE.URGENCY_BY_ID[r.bucket];
+              return (
+                <button key={i} onClick={() => onOpen(r.projectId)}
+                  style={{ display: "flex", alignItems: "baseline", gap: 10, padding: "7px 0", borderTop: i ? "1px solid var(--hairline-2)" : "none", fontSize: "var(--fs-13)", textAlign: "left", width: "100%" }}>
+                  <span aria-hidden="true" style={{ width: 7, height: 7, borderRadius: "50%", background: b.color, flex: "none", alignSelf: "center" }} />
+                  <span className="mono" style={{ fontSize: "var(--fs-11)", color: "var(--muted)", flex: "none", width: 40 }}>{fmtDCV(r.date)}</span>
+                  <span style={{ flex: 1, minWidth: 0, color: "var(--text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    {r.title} <span style={{ color: "var(--spec-meta)" }}>· {r.projectName} · {r.room}</span>
+                  </span>
+                  <span style={{ color: "var(--spec-meta)", fontSize: "var(--fs-12)", flex: "none", whiteSpace: "nowrap" }}>{r.label}</span>
+                </button>
+              );
+            })}
+          </div>
+        )}
+    </div>
+  );
+}
 
 /* ---------------- СОХРАНЁННЫЕ ПРОЕКТЫ (рабочий список) ---------------- */
 function Projects() {
   const [rows, setRows] = useCV(null);
   const [sum, setSum] = useCV(null);          // сводная аналитика
+  const [urgent, setUrgent] = useCV([]);      // «Сегодня в работе» (волна C2) — полные карточки, не list()
   const [openId, setOpenId] = useCV(() => parseRoute().sub || null);   // открытая деталь проекта (из hash — deep-link/F5)
   const [openStyle, setOpenStyle] = useCV(null); // стиль, с которым открыть проект (из квиза)
   const [newOpen, setNewOpen] = useCV(false); // модалка «Новый проект»
@@ -135,7 +212,10 @@ function Projects() {
   const [sort, setSort] = useCV("updated");   // updated | budget | name
   const [menuId, setMenuId] = useCV(null);    // открытое ⋯-меню карточки
 
-  const refresh = () => { AIVibeAPI.projects.list().then(setRows); AIVibeAPI.projects.summary().then(setSum); };
+  const refresh = () => {
+    AIVibeAPI.projects.list().then((list) => { setRows(list); loadUrgentQueue(list).then(setUrgent); });
+    AIVibeAPI.projects.summary().then(setSum);
+  };
 
   /* открытый проект живёт в адресе: #cabinet/projects/p_1 → F5 переоткрывает,
      «назад» закрывает оверлей, ссылкой можно поделиться (wayfinding UpRock) */
@@ -229,6 +309,9 @@ function Projects() {
         {!sum && Array.from({ length: 4 }).map((_, i) => <div key={i} className="glass skel" style={{ borderRadius: "var(--r-lg)", height: 104 }} />)}
         {sum && sum.kpis.map((k) => <KpiCard key={k.key} k={k} />)}
       </div>
+
+      {/* ── «Сегодня в работе» (волна C2): сквозная срочность закупки по всем проектам ── */}
+      {rows && rows.length > 0 && <TodayWidget rows={urgent} onOpen={openProject} />}
 
       {/* ── тулбар: поиск · статус · сортировка ── */}
       {rows && rows.length > 0 && (

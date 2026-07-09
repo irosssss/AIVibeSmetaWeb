@@ -434,11 +434,31 @@ function RoomSpecOverlay({ data, onClose }) {
      не затирает ранее пройденные). Живут только в «Закупке» — клиент их не видит. */
   const FFE = window.AIVibeFFE || null;
   const stOf = (it) => (FFE && FFE.STATUS_BY_ID[it.status] ? it.status : "specified");
+  // смена стадии сбрасывает eta — дата была ожиданием ПРЕЖНЕЙ стадии, на новой
+  // она бы ложно висела просрочкой (см. комментарий к eta в ffe.js)
   const setStatus = (ri, ii, id) => setRooms((prev) => prev.map((r, i) => i !== ri ? r
-    : { ...r, items: r.items.map((it, j) => j !== ii ? it : { ...it, status: id, statusDates: FFE.stampStatus(it.statusDates, id) }) }));
+    : { ...r, items: r.items.map((it, j) => j !== ii ? it : { ...it, status: id, eta: "", statusDates: FFE.stampStatus(it.statusDates, id) }) }));
   const rowsProgress = (rws) => (rws.length ? rws.reduce((s, x) => s + FFE.statusProgress(stOf(x.it)), 0) / rws.length : 0); // 0..1
   const allProcRows = supGroups.flatMap((g) => g.rows);
   const acceptedCount = FFE ? allProcRows.filter((x) => stOf(x.it) === "accepted").length : 0;
+
+  /* --- платёжные даты + трек-номер (волна C, бенчмарк Programa) — общий drawer
+     «Оплата и сроки» на строку закупки: ожидаемая дата стадии (eta) + 4 даты
+     оплаты + трек отправления. Отдельное измерение от статуса-стадии (setStatus) —
+     деньги и товар двигаются не синхронно. */
+  const [payEdit, setPayEdit] = usePD(null); // {ri, ii} — открытый drawer «Оплата и сроки»
+  const savePayTrack = (ri, ii, patch) => {
+    setRooms((prev) => prev.map((r, i) => i !== ri ? r
+      : { ...r, items: r.items.map((it, j) => j !== ii ? it : { ...it, ...patch }) }));
+    setPayEdit(null);
+  };
+  const dueOf = (it) => (FFE ? FFE.itemDueItems(it).map((d) => FFE.urgencyBucket(d.date)).filter(Boolean) : []);
+  // ранг — порядок URGENCY_BUCKETS в ffe.js (единственный источник правды: не дублировать список id)
+  const urgentColor = (buckets) => {
+    if (!FFE || !buckets.length) return null;
+    const top = FFE.URGENCY_BUCKETS.find((b) => buckets.includes(b.id));
+    return top ? top.color : null;
+  };
 
   /* --- согласование с клиентом ПО ПОЗИЦИЯМ (волна A1, бенчмарк Programa; словарь — web/ffe.js).
      Отдельное измерение от стадии закупки: пока портала нет, решения клиента отмечает
@@ -806,9 +826,22 @@ function RoomSpecOverlay({ data, onClose }) {
                     <div style={{ display: "flex", flexDirection: "column" }}>
                       {g.rows.map((x, i) => {
                         const qty = x.it.qty || 1;
+                        const editingPay = payEdit && payEdit.ri === x.ri && payEdit.ii === x.ii;
+                        const due = dueOf(x.it), dueColor = urgentColor(due);
                         return (
-                          <div key={x.ri + ":" + x.ii} className={"rs-prow" + (flashSup && flashSup.ri === x.ri && flashSup.ii === x.ii ? " row-flash" : "")} style={{ display: "flex", alignItems: "baseline", gap: 10, padding: "7px 0", borderTop: i ? "1px solid var(--hairline-2)" : "none", fontSize: "var(--fs-13)" }}>
-                            <span style={{ flex: 1, minWidth: 0, color: "var(--text)", lineHeight: 1.4, overflowWrap: "anywhere" }}>{x.it.title}{x.it.priceDate && <React.Fragment>{" "}<PriceAgeChip d={x.it.priceDate} note={pastCopyNote(x.it.priceDate)} /></React.Fragment>}</span>
+                          <React.Fragment key={x.ri + ":" + x.ii}>
+                          <div className={"rs-prow" + (flashSup && flashSup.ri === x.ri && flashSup.ii === x.ii ? " row-flash" : "")} style={{ display: "flex", alignItems: "baseline", gap: 10, padding: "7px 0", borderTop: i ? "1px solid var(--hairline-2)" : "none", fontSize: "var(--fs-13)" }}>
+                            <span style={{ flex: 1, minWidth: 0, color: "var(--text)", lineHeight: 1.4, overflowWrap: "anywhere" }}>
+                              {x.it.title}
+                              {x.it.priceDate && <React.Fragment>{" "}<PriceAgeChip d={x.it.priceDate} note={pastCopyNote(x.it.priceDate)} /></React.Fragment>}
+                              {x.it.track && x.it.track.number && (
+                                <React.Fragment>{" "}
+                                  {x.it.track.url
+                                    ? <a className="mono" href={x.it.track.url} target="_blank" rel="noopener noreferrer" title="Отследить отправление" style={{ fontSize: "var(--fs-10)", color: "var(--info)" }}>№{x.it.track.number}</a>
+                                    : <span className="mono" style={{ fontSize: "var(--fs-10)", color: "var(--spec-meta)" }} title="Трек-номер отправления">№{x.it.track.number}</span>}
+                                </React.Fragment>
+                              )}
+                            </span>
                             <span className="rs-cat" style={{ color: "var(--spec-meta)", whiteSpace: "nowrap", fontSize: "var(--fs-12)", width: 104, textAlign: "right", overflow: "hidden", textOverflow: "ellipsis" }}>{x.room}</span>
                             <span className="mono" style={{ color: "var(--spec-meta)", whiteSpace: "nowrap", width: 34, textAlign: "right", fontSize: "var(--fs-12)" }}>×{qty}</span>
                             <span className="mono rs-unit" style={{ color: "var(--spec-meta)", whiteSpace: "nowrap", width: 88, textAlign: "right", fontSize: "var(--fs-12)" }}>{fmtMoney(x.it.price)}</span>
@@ -832,7 +865,19 @@ function RoomSpecOverlay({ data, onClose }) {
                                 </span>
                               );
                             })()}
+                            {FFE && (
+                              <button className="icon-btn xs" aria-label={"Оплата и сроки позиции «" + x.it.title + "»"} aria-expanded={!!editingPay}
+                                title={dueColor ? "Есть непогашенные даты" : "Оплата и сроки"} onClick={() => setPayEdit(editingPay ? null : { ri: x.ri, ii: x.ii })}
+                                style={{ flex: "none", alignSelf: "center", position: "relative", color: editingPay ? "var(--accent-ink)" : "var(--spec-meta)" }}>
+                                <I.wallet size={14} />
+                                {dueColor && <span aria-hidden="true" style={{ position: "absolute", top: -1, right: -1, width: 7, height: 7, borderRadius: "50%", background: dueColor, border: "1.5px solid var(--surface)" }} />}
+                              </button>
+                            )}
                           </div>
+                          {editingPay && (
+                            <PayTrackEditor item={x.it} onCancel={() => setPayEdit(null)} onSave={(patch) => savePayTrack(x.ri, x.ii, patch)} />
+                          )}
+                          </React.Fragment>
                         );
                       })}
                     </div>
@@ -1332,6 +1377,58 @@ function PosEditor({ item, cats, sups, isNew, onSave, onDelete, onCancel, librar
       <datalist id="pe-cat-list">{cats.map((c) => <option key={c} value={c} />)}</datalist>
       <datalist id="pe-sup-list">{sups.map((s) => <option key={s} value={s} />)}</datalist>
       <datalist id="pe-lib-list">{lib.map((p) => <option key={p.id} value={p.title} />)}</datalist>
+    </div>
+  );
+}
+
+/* «Оплата и сроки» на позицию (волна C, бенчмарк Programa): ожидаемая дата
+   текущей стадии закупки (eta) + 4 платёжные даты с чекбоксом «оплачено» +
+   трек-номер отправления. Отдельный drawer, а не поля в PosEditor — правится
+   реже (по ходу закупки, не при вводе позиции) и живёт только в «Закупке». */
+function PayTrackEditor({ item, onCancel, onSave }) {
+  const FFE = window.AIVibeFFE;
+  const [d, setD] = usePD({ eta: item.eta || "", payments: FFE.blankPayments(item.payments), track: FFE.blankTrack(item.track) });
+  const setPayField = (id, field, v) => setD((x) => ({ ...x, payments: { ...x.payments, [id]: { ...x.payments[id], [field]: v } } }));
+  const setTrackField = (field, v) => setD((x) => ({ ...x, track: { ...x.track, [field]: v } }));
+  const submit = () => onSave({ eta: d.eta.trim(), payments: d.payments, track: { number: d.track.number.trim(), url: d.track.url.trim(), note: d.track.note.trim() } });
+  // те же fld/lab, что в PosEditor выше — общий вид всех инлайн-drawer'ов строки
+  const fld = { width: "100%", padding: "8px 10px", borderRadius: 9, border: "1px solid var(--hairline)", background: "var(--surface)", fontSize: "var(--fs-13)", color: "var(--text)", marginTop: 3 };
+  const lab = { fontSize: "var(--fs-11)", color: "var(--muted)", display: "block", minWidth: 0 };
+  return (
+    <div className="view-enter" style={{ margin: "6px 0 8px", padding: "12px 14px", borderRadius: 12, border: "1px solid rgba(94,107,91,.45)", background: "rgba(94,107,91,.06)", display: "flex", flexDirection: "column", gap: 12 }}
+      onKeyDown={(e) => { if (e.key === "Escape") { e.stopPropagation(); onCancel(); } }}>
+      <label style={lab}>Ожидаемая дата стадии («{FFE.statusMeta(item.status).label}»)
+        <input type="date" style={{ ...fld, width: 160 }} value={d.eta} onChange={(e) => setD((x) => ({ ...x, eta: e.target.value }))} />
+      </label>
+      <div>
+        <div style={{ ...lab, marginBottom: 6 }}>Платёжные даты</div>
+        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+          {FFE.PAYMENT_KINDS.map((k) => (
+            <div key={k.id} style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+              <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: "var(--fs-12)", color: "var(--text)", minWidth: 180 }}>
+                <input type="checkbox" checked={d.payments[k.id].paid} onChange={(e) => setPayField(k.id, "paid", e.target.checked)} />
+                {k.label}
+              </label>
+              <input type="date" style={{ ...fld, width: 160, marginTop: 0 }} value={d.payments[k.id].date} aria-label={k.label + " — дата"} onChange={(e) => setPayField(k.id, "date", e.target.value)} />
+            </div>
+          ))}
+        </div>
+      </div>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+        <label style={lab}>Трек-номер
+          <input style={fld} value={d.track.number} onChange={(e) => setTrackField("number", e.target.value)} />
+        </label>
+        <label style={lab}>Ссылка отслеживания
+          <input style={fld} value={d.track.url} placeholder="https://…" onChange={(e) => setTrackField("url", e.target.value)} />
+        </label>
+      </div>
+      <label style={lab}>Заметка по отправлению
+        <input style={fld} value={d.track.note} onChange={(e) => setTrackField("note", e.target.value)} />
+      </label>
+      <div style={{ display: "flex", gap: 8 }}>
+        <button className="btn btn-primary" style={{ padding: "8px 14px", fontSize: "var(--fs-13)" }} onClick={submit}><I.check size={14} />Готово</button>
+        <button className="btn btn-ghost" style={{ padding: "8px 14px", fontSize: "var(--fs-13)" }} onClick={onCancel}>Отмена</button>
+      </div>
     </div>
   );
 }

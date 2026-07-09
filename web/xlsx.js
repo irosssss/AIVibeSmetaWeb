@@ -216,6 +216,27 @@
     const allProgress = FFE && allRows.length
       ? Math.round(allRows.reduce((s, x) => s + FFE.statusProgress(stId(x.it)), 0) / allRows.length * 100) + "%" : "";
 
+    // платёжные даты (волна C1) + трек-номер (волна C3) — 6 колонок в конце
+    // мастер-таблицы и листа поставщика; при недоступном модуле FFE — пусто.
+    // id/порядок — из FFE.PAYMENT_KINDS (не дублировать список здесь).
+    const PAY_IDS = FFE ? FFE.PAYMENT_KINDS.map((k) => k.id) : ["clientAdvance", "supplierAdvance", "clientBalance", "supplierBalance"];
+    const payLabel = (id) => (FFE && FFE.PAYKIND_BY_ID[id] ? FFE.PAYKIND_BY_ID[id].label : id);
+    // «оплачено» без даты — тоже реальная запись, не пустая ячейка
+    const payCell = (it, id) => {
+      const p = it.payments && it.payments[id];
+      if (!p) return "";
+      if (p.date) return fmtDateCell(p.date) + (p.paid ? " ✓" : "");
+      return p.paid ? "оплачено" : "";
+    };
+    const payCells = (it) => PAY_IDS.map((id) => payCell(it, id));
+    const trackCells = (it) => [(it.track && it.track.number) || "", (it.track && it.track.url) || ""];
+    const PAY_HEAD = PAY_IDS.map(payLabel).concat(["Трек-номер", "Ссылка отслеживания"]);
+    const PAY_COLW = [16, 18, 16, 18, 16, 30];
+    const setLinks = (ws, links) => links.forEach(([r, c, url]) => {
+      const ref = XLSX.utils.encode_cell({ r, c });
+      if (ws[ref] && url) ws[ref].l = { Target: url };
+    });
+
     const wb = XLSX.utils.book_new();
     const used = new Set();
     const uniqueSheet = (s) => {
@@ -239,27 +260,40 @@
     XLSX.utils.book_append_sheet(wb, wsS, uniqueSheet("Свод закупки"));
 
     /* плоская мастер-таблица — полная картина + обратный импорт */
-    const all = [["№", "Поставщик", "Помещение", "Раздел", "Наименование", "Кол-во", "Цена, ₽", "Сумма, ₽", "Цена от", "Стадия", "С даты"]];
+    const all = [["№", "Поставщик", "Помещение", "Раздел", "Наименование", "Кол-во", "Цена, ₽", "Сумма, ₽", "Цена от", "Стадия", "С даты", ...PAY_HEAD]];
+    const urlCol = all[0].length - 1; // «Ссылка отслеживания» — последняя колонка шапки, не magic-число
+    const allLinks = [];
     let n = 0;
     names.forEach((nm) => groups[nm].forEach((x) => {
-      all.push([++n, x.it.sup || "", x.room, x.it.cat || "Прочее", x.it.title, x.it.qty || 1, x.it.price, lineCost(x.it), fmtDateCell(x.it.priceDate), stLabel(x.it), stDate(x.it)]);
+      all.push([++n, x.it.sup || "", x.room, x.it.cat || "Прочее", x.it.title, x.it.qty || 1, x.it.price, lineCost(x.it), fmtDateCell(x.it.priceDate), stLabel(x.it), stDate(x.it), ...payCells(x.it), ...trackCells(x.it)]);
+      const url = x.it.track && x.it.track.url;
+      if (url) allLinks.push([all.length - 1, urlCol, url]);
     }));
-    all.push(["", "", "", "", "ИТОГО ЗАКУПКА", "", "", grand, "", allProgress, ""]);
+    all.push(["", "", "", "", "ИТОГО ЗАКУПКА", "", "", grand, "", allProgress, "", "", "", "", "", "", ""]);
     const wsA = XLSX.utils.aoa_to_sheet(all);
-    setCols(wsA, [5, 20, 18, 16, 46, 7, 13, 14, 11, 14, 11]);
+    setCols(wsA, [5, 20, 18, 16, 46, 7, 13, 14, 11, 14, 11, ...PAY_COLW]);
     fmtMoneyCols(wsA, [6, 7], 1, all.length - 1);
-    wsA["!autofilter"] = { ref: "A1:K1" };
+    setLinks(wsA, allLinks);
+    wsA["!autofilter"] = { ref: "A1:Q1" };
     XLSX.utils.book_append_sheet(wb, wsA, uniqueSheet("Все позиции"));
 
     /* лист на поставщика — рабочий документ для салона/магазина */
     names.forEach((nm) => {
-      const rows = [[nm], [], ["№", "Помещение", "Раздел", "Наименование", "Кол-во", "Цена, ₽", "Сумма, ₽", "Цена от", "Стадия", "С даты"]];
+      const head = ["№", "Помещение", "Раздел", "Наименование", "Кол-во", "Цена, ₽", "Сумма, ₽", "Цена от", "Стадия", "С даты", ...PAY_HEAD];
+      const rows = [[nm], [], head];
+      const urlColSup = head.length - 1;
+      const links = [];
       let m = 0;
-      groups[nm].forEach((x) => rows.push([++m, x.room, x.it.cat || "Прочее", x.it.title, x.it.qty || 1, x.it.price, lineCost(x.it), fmtDateCell(x.it.priceDate), stLabel(x.it), stDate(x.it)]));
-      rows.push(["", "", "", "Итого по поставщику", "", "", supTotal(nm), "", supProgress(nm), ""]);
+      groups[nm].forEach((x) => {
+        rows.push([++m, x.room, x.it.cat || "Прочее", x.it.title, x.it.qty || 1, x.it.price, lineCost(x.it), fmtDateCell(x.it.priceDate), stLabel(x.it), stDate(x.it), ...payCells(x.it), ...trackCells(x.it)]);
+        const url = x.it.track && x.it.track.url;
+        if (url) links.push([rows.length - 1, urlColSup, url]);
+      });
+      rows.push(["", "", "", "Итого по поставщику", "", "", supTotal(nm), "", supProgress(nm), "", "", "", "", "", "", ""]);
       const ws = XLSX.utils.aoa_to_sheet(rows);
-      setCols(ws, [5, 18, 16, 46, 7, 13, 14, 11, 14, 11]);
+      setCols(ws, [5, 18, 16, 46, 7, 13, 14, 11, 14, 11, ...PAY_COLW]);
       fmtMoneyCols(ws, [5, 6], 2, rows.length - 1);
+      setLinks(ws, links);
       XLSX.utils.book_append_sheet(wb, ws, uniqueSheet(nm));
     });
 
@@ -309,8 +343,25 @@
           const cApD = colOf(head, /решение от/);
           const apByLabel = window.AIVibeFFE
             ? Object.fromEntries(window.AIVibeFFE.APPROVE_STATUSES.map((s) => [norm(s.label), s.id])) : {};
+          // платёжные даты (волна C1) — 4 колонки, различаем «клиента»/«поставщику» внутри «аванс»/«остаток»
+          const cPayCols = {
+            clientAdvance:   colOf(head, /аванс.*клиент/),
+            supplierAdvance: colOf(head, /аванс.*поставщ/),
+            clientBalance:   colOf(head, /остаток.*клиент/),
+            supplierBalance: colOf(head, /остаток.*поставщ/),
+          };
+          const cTrackNum = colOf(head, /трек.?номер/);            // трек-номер отправления (волна C3)
+          const cTrackUrl = colOf(head, /ссылка отслежив/);
           // «ДД.ММ.ГГГГ» → ISO (одна логика для «Цена от» и «Решение от»)
           const isoDate = (v) => { const m = /^(\d{1,2})\.(\d{1,2})\.(\d{4})$/.exec(String(v == null ? "" : v).trim()); return m ? m[3] + "-" + m[2].padStart(2, "0") + "-" + m[1].padStart(2, "0") : ""; };
+          // ячейка платежа: «ДД.ММ.ГГГГ [✓]» или «оплачено» без даты (см. payCell в exportProcure)
+          const parsePayCell = (v) => {
+            const s = String(v == null ? "" : v).trim();
+            if (!s) return null;
+            const paid = /✓|оплачен/i.test(s);
+            const date = isoDate(s.replace(/✓/g, "").trim());
+            return date || paid ? { date, paid } : null;
+          };
           // цена за единицу: «цена/стоимость» без «клиент»; если нет — выводим из суммы/кол-во
           const cPrice = head.findIndex((h) => /цена|стоим|price/.test(norm(h)) && !/клиент/.test(norm(h)));
           const cSum = head.findIndex((h) => /сумма|total/.test(norm(h)) && !/клиент/.test(norm(h)));
@@ -340,9 +391,15 @@
             const apId = cAp >= 0 ? apByLabel[norm(String(row[cAp] == null ? "" : row[cAp]).trim())] || "" : "";
             const approve = apId && apId !== "pending" ? apId : "";
             const approveAt = approve && cApD >= 0 ? isoDate(row[cApD]) : "";
+            const payments = {};
+            Object.keys(cPayCols).forEach((id) => { if (cPayCols[id] >= 0) { const p = parsePayCell(row[cPayCols[id]]); if (p) payments[id] = p; } });
+            const trackNumber = cTrackNum >= 0 ? String(row[cTrackNum] == null ? "" : row[cTrackNum]).trim() : "";
+            const trackUrl = cTrackUrl >= 0 ? String(row[cTrackUrl] == null ? "" : row[cTrackUrl]).trim() : "";
             if (!byRoom.has(roomName)) byRoom.set(roomName, []);
             byRoom.get(roomName).push({ title, cat, price, qty, ...(sup ? { sup } : {}), ...(priceDate ? { priceDate } : {}), ...(status ? { status } : {}),
-              ...(approve ? { approve, ...(approveAt ? { approveAt } : {}) } : {}) });
+              ...(approve ? { approve, ...(approveAt ? { approveAt } : {}) } : {}),
+              ...(Object.keys(payments).length ? { payments } : {}),
+              ...(trackNumber || trackUrl ? { track: { number: trackNumber, url: trackUrl } } : {}) });
           }
 
           const rooms = [...byRoom.entries()].map(([name, items]) => ({ name, items }));
