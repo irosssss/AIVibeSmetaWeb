@@ -5,6 +5,24 @@
 (function () {
   const money = (n) => new Intl.NumberFormat("ru-RU").format(Math.round(n)) + " ₽"; // ₽
 
+  /* Единая ТЁПЛАЯ палитра PDF (T5/T14). Было: 4 дубля холодной сливовой палитры старого
+     дарк-бренда (#241A26/#3A3338/#8A8088/#1A1417) + дрейф (total 13 vs 14). Один источник правды —
+     тёплые чернила/олива/терракота, как на бумаге интерфейса. PDF = лицо бренда у клиента. */
+  const PDF = {
+    ink: "#2E2A26", sub: "#4A443C", th: "#7A7266", muted: "#7A7266",
+    foot: "#A99F8F", accent: "#B7502C", warn: "#A6431F", ok: "#556150", info: "#3E4A59",
+  };
+  const PDF_STYLES = {
+    logo:  { fontSize: 18, bold: true, color: PDF.accent },
+    h1:    { fontSize: 20, bold: true, color: PDF.ink },
+    h2:    { fontSize: 12, bold: true, color: PDF.sub, margin: [0, 8, 0, 4] },
+    th:    { bold: true, fontSize: 9, color: PDF.th },
+    muted: { color: PDF.muted, fontSize: 10 },
+    total: { fontSize: 14, bold: true, color: PDF.ink },
+    foot:  { fontSize: 8, color: PDF.foot },
+  };
+  const PDF_DEFAULT = { fontSize: 10, color: PDF.ink };
+
   function exportSpec({ project, styleName, rows, total, budget, checks }) {
     if (!window.pdfMake) { (window.toast ? toast("PDF-модуль ещё загружается — попробуйте через секунду.", "info") : 0); return false; }
     const over = total > budget;
@@ -28,7 +46,7 @@
 
     const checkLines = (checks && checks.findings ? checks.findings : []).map((f) => ({
       text: (f.kind === "warn" ? "•  " : "•  ") + f.text,
-      color: f.kind === "warn" ? "#B45309" : "#2F7A52",
+      color: f.kind === "warn" ? PDF.warn : PDF.ok,
       fontSize: 9, margin: [0, 1.5, 0, 1.5],
     }));
     const checkSummary = checks
@@ -49,7 +67,7 @@
         { text: (styleName ? styleName + " · " : "") + "смета по каталогу фабрик-партнёров", style: "muted", margin: [0, 0, 0, 16] },
 
         { text: "Проверка эргономики — " + checkSummary, style: "h2" },
-        ...(checkLines.length ? checkLines : [{ text: "—", fontSize: 9, color: "#999" }]),
+        ...(checkLines.length ? checkLines : [{ text: "—", fontSize: 9, color: PDF.muted }]),
 
         { text: "Спецификация", style: "h2", margin: [0, 16, 0, 6] },
         {
@@ -63,25 +81,17 @@
         },
         {
           columns: [
-            { text: over ? "Превышение бюджета на " + money(total - budget) : "В рамках бюджета · остаток " + money(budget - total), color: over ? "#B45309" : "#2F7A52", fontSize: 10, margin: [0, 12, 0, 0] },
+            { text: over ? "Превышение бюджета на " + money(total - budget) : "В рамках бюджета · остаток " + money(budget - total), color: over ? PDF.warn : PDF.ok, fontSize: 10, margin: [0, 12, 0, 0] },
             { text: "Итого: " + money(total), alignment: "right", style: "total", margin: [0, 9, 0, 0] },
           ],
         },
         { text: "Цены, наличие и сроки — по каталогу фабрик-партнёров. Документ сформирован в Design Ledger.", style: "foot", margin: [0, 20, 0, 0] },
       ],
-      styles: {
-        logo: { fontSize: 18, bold: true, color: "#B7502C" },
-        h1: { fontSize: 20, bold: true, color: "#1A1417" },
-        h2: { fontSize: 12, bold: true, color: "#3A3338", margin: [0, 8, 0, 4] },
-        th: { bold: true, fontSize: 9, color: "#6B6168" },
-        muted: { color: "#8A8088", fontSize: 10 },
-        total: { fontSize: 14, bold: true, color: "#1A1417" },
-        foot: { fontSize: 8, color: "#B0A8AE" },
-      },
-      defaultStyle: { fontSize: 10, color: "#241A26" },
+      styles: PDF_STYLES,
+      defaultStyle: PDF_DEFAULT,
     };
 
-    const name = "smeta-" + String(project || "aivibe").replace(/\s+/g, "-").toLowerCase() + ".pdf";
+    const name = "smeta-" + String(project || "designledger").replace(/\s+/g, "-").toLowerCase() + ".pdf";
     window.pdfMake.createPdf(doc).download(name);
     return true;
   }
@@ -116,8 +126,8 @@
       content.push({
         table: { headerRows: 0, widths: ["*", 60, 32, "auto"], body: r.items.map((it) => [
           it.title,
-          { text: it.cat || "Прочее", color: "#8A8088", fontSize: 9 },
-          { text: "×" + (it.qty || 1), alignment: "right", fontSize: 9, color: "#8A8088" },
+          { text: it.cat || "Прочее", color: PDF.muted, fontSize: 9 },
+          { text: "×" + (it.qty || 1), alignment: "right", fontSize: 9, color: PDF.muted },
           { text: money(clientMode ? lineClient(it) : lineCost(it)), alignment: "right" },
         ]) },
         layout: { hLineWidth: () => 0.5, hLineColor: () => "#EFEAE4", vLineWidth: () => 0, paddingTop: () => 3.5, paddingBottom: () => 3.5 },
@@ -144,7 +154,7 @@
       if (installCost > 0) totalRows.push({ text: "Монтаж и сборка: +" + money(installCost), alignment: "right", fontSize: 10.5 });
       totalRows.push({ text: "Итого для клиента: " + money(totalClient), alignment: "right", style: "total", margin: [0, 3, 0, 0] });
       content.push({ columns: [
-        { text: over ? "Превышение бюджета на " + money(grand - budget) : "В рамках бюджета (" + money(budget) + ")", color: over ? "#B45309" : "#2F7A52", fontSize: 10, margin: [0, 6, 0, 0] },
+        { text: over ? "Превышение бюджета на " + money(grand - budget) : "В рамках бюджета (" + money(budget) + ")", color: over ? PDF.warn : PDF.ok, fontSize: 10, margin: [0, 6, 0, 0] },
         { stack: totalRows, margin: [0, 6, 0, 0] },
       ] });
     }
@@ -153,18 +163,11 @@
     const doc = {
       pageMargins: [40, 46, 40, 44],
       content,
-      styles: {
-        logo: { fontSize: 18, bold: true, color: "#B7502C" },
-        h1: { fontSize: 20, bold: true, color: "#1A1417" },
-        h2: { fontSize: 12, bold: true, color: "#3A3338" },
-        muted: { color: "#8A8088", fontSize: 10 },
-        total: { fontSize: 14, bold: true, color: "#1A1417" },
-        foot: { fontSize: 8, color: "#B0A8AE" },
-      },
-      defaultStyle: { fontSize: 10, color: "#241A26" },
+      styles: PDF_STYLES,
+      defaultStyle: PDF_DEFAULT,
     };
     const suffix = clientMode ? "-klientu" : "-rabochaya";
-    window.pdfMake.createPdf(doc).download("smeta-" + String(project || "aivibe").replace(/\s+/g, "-").toLowerCase() + suffix + ".pdf");
+    window.pdfMake.createPdf(doc).download("smeta-" + String(project || "designledger").replace(/\s+/g, "-").toLowerCase() + suffix + ".pdf");
     return true;
   }
 
@@ -200,14 +203,14 @@
         table: { headerRows: 0, widths: FFE ? ["*", 76, 44, 26, "auto"] : ["*", 84, 26, "auto"], body: groups[nm].map((x) => {
           const cells = [
             x.it.priceDate
-              ? { stack: [ { text: x.it.title }, { text: "цена от " + fmtD(x.it.priceDate), fontSize: 8, color: stale(x.it.priceDate) ? "#B45309" : "#8A8088", margin: [0, 1, 0, 0] } ] }
+              ? { stack: [ { text: x.it.title }, { text: "цена от " + fmtD(x.it.priceDate), fontSize: 8, color: stale(x.it.priceDate) ? PDF.warn : PDF.muted, margin: [0, 1, 0, 0] } ] }
               : x.it.title,
-            { text: x.room, color: "#8A8088", fontSize: 9 },
-            { text: "×" + (x.it.qty || 1), alignment: "right", fontSize: 9, color: "#8A8088" },
+            { text: x.room, color: PDF.muted, fontSize: 9 },
+            { text: "×" + (x.it.qty || 1), alignment: "right", fontSize: 9, color: PDF.muted },
             { text: money(lineCost(x.it)), alignment: "right" },
           ];
           // колонка стадии — между помещением и количеством
-          if (FFE) cells.splice(2, 0, { text: stShort(x.it), fontSize: 8, color: "#8A8088", alignment: "right", margin: [0, 1, 0, 0] });
+          if (FFE) cells.splice(2, 0, { text: stShort(x.it), fontSize: 8, color: PDF.muted, alignment: "right", margin: [0, 1, 0, 0] });
           return cells;
         }) },
         layout: { hLineWidth: () => 0.5, hLineColor: () => "#EFEAE4", vLineWidth: () => 0, paddingTop: () => 3.5, paddingBottom: () => 3.5 },
@@ -216,7 +219,7 @@
     content.push({ canvas: [{ type: "line", x1: 0, y1: 0, x2: 515, y2: 0, lineWidth: 0.5, lineColor: "#E5E0DA" }], margin: [0, 14, 0, 8] });
     const over = grand > budget;
     content.push({ columns: [
-      { text: over ? "Превышение бюджета на " + money(grand - budget) : "В рамках бюджета (" + money(budget) + ")", color: over ? "#B45309" : "#2F7A52", fontSize: 10, margin: [0, 6, 0, 0] },
+      { text: over ? "Превышение бюджета на " + money(grand - budget) : "В рамках бюджета (" + money(budget) + ")", color: over ? PDF.warn : PDF.ok, fontSize: 10, margin: [0, 6, 0, 0] },
       { text: "Итого закупка: " + money(grand), alignment: "right", style: "total", margin: [0, 3, 0, 0] },
     ] });
     content.push({ text: "Закупочный лист для работы с поставщиками: только себестоимость, без наценки и клиентских цен. Документ сформирован в Design Ledger.", style: "foot", margin: [0, 16, 0, 0] });
@@ -224,17 +227,10 @@
     const doc = {
       pageMargins: [40, 46, 40, 44],
       content,
-      styles: {
-        logo: { fontSize: 18, bold: true, color: "#B7502C" },
-        h1: { fontSize: 20, bold: true, color: "#1A1417" },
-        h2: { fontSize: 12, bold: true, color: "#3A3338" },
-        muted: { color: "#8A8088", fontSize: 10 },
-        total: { fontSize: 14, bold: true, color: "#1A1417" },
-        foot: { fontSize: 8, color: "#B0A8AE" },
-      },
-      defaultStyle: { fontSize: 10, color: "#241A26" },
+      styles: PDF_STYLES,
+      defaultStyle: PDF_DEFAULT,
     };
-    window.pdfMake.createPdf(doc).download("smeta-" + String(project || "aivibe").replace(/\s+/g, "-").toLowerCase() + "-zakupka.pdf");
+    window.pdfMake.createPdf(doc).download("smeta-" + String(project || "designledger").replace(/\s+/g, "-").toLowerCase() + "-zakupka.pdf");
     return true;
   }
 
@@ -252,7 +248,7 @@
     const cp = FFE ? FFE.clientPricing(snap) : null;
     const fmtD = (iso) => { const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(iso || "")); return m ? m[3] + "." + m[2] + "." + m[1] : ""; };
     const fmtDT = (iso) => { try { return new Date(iso).toLocaleString("ru-RU", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" }); } catch { return ""; } };
-    const AP_COLOR = { pending: "#8A8088", ok: "#2F7A52", revise: "#3E4A59", rejected: "#B7502C" };
+    const AP_COLOR = { pending: PDF.muted, ok: PDF.ok, revise: "#3E4A59", rejected: "#B7502C" };
     const apOf = (it) => (FFE && FFE.APPROVE_BY_ID[it.approve] ? it.approve : "pending");
     const apLabel = (it) => (FFE ? FFE.approveMeta(apOf(it)).label : "—");
 
@@ -270,7 +266,7 @@
     ];
 
     if (!rooms.length) {
-      content.push({ text: "В снимке этой версии нет помещений с позициями.", fontSize: 9.5, color: "#8A8088", margin: [0, 8, 0, 8] });
+      content.push({ text: "В снимке этой версии нет помещений с позициями.", fontSize: 9.5, color: PDF.muted, margin: [0, 8, 0, 8] });
     }
     rooms.forEach((r) => {
       content.push({ text: r.name || "Помещение", style: "h2", margin: [0, 12, 0, 4] });
@@ -286,7 +282,7 @@
         (it.comments || []).forEach((c) => {
           content.push({
             text: (c.author === "client" ? "Клиент" : "Студия") + " · " + fmtDT(c.at) + ":  " + c.text,
-            fontSize: 8.5, color: c.author === "client" ? "#3E4A59" : "#6B6168", margin: [12, 1, 0, 1],
+            fontSize: 8.5, color: c.author === "client" ? "#3E4A59" : PDF.th, margin: [12, 1, 0, 1],
           });
         });
       });
@@ -296,7 +292,7 @@
     content.push({ text: "Итог решений", style: "h2", margin: [0, 14, 0, 4] });
     content.push({
       columns: [
-        { text: "Согласовано " + counts.ok + " · на пересмотр " + counts.revise + " · отклонено " + counts.rejected + " · ждут решения " + counts.pending + "  (всего " + itemsCount + ")", fontSize: 9.5, color: "#6B6168" },
+        { text: "Согласовано " + counts.ok + " · на пересмотр " + counts.revise + " · отклонено " + counts.rejected + " · ждут решения " + counts.pending + "  (всего " + itemsCount + ")", fontSize: 9.5, color: PDF.th },
         cp ? { text: "Итого клиенту: " + money(cp.totalClient), alignment: "right", style: "total" } : { text: "" },
       ],
     });
@@ -305,17 +301,10 @@
     const doc = {
       pageMargins: [40, 46, 40, 44],
       content,
-      styles: {
-        logo: { fontSize: 18, bold: true, color: "#B7502C" },
-        h1: { fontSize: 20, bold: true, color: "#1A1417" },
-        h2: { fontSize: 12, bold: true, color: "#3A3338" },
-        muted: { color: "#8A8088", fontSize: 10 },
-        total: { fontSize: 13, bold: true, color: "#1A1417" },
-        foot: { fontSize: 8, color: "#B0A8AE" },
-      },
-      defaultStyle: { fontSize: 10, color: "#241A26" },
+      styles: PDF_STYLES,
+      defaultStyle: PDF_DEFAULT,
     };
-    window.pdfMake.createPdf(doc).download("protokol-" + String(project || "aivibe").replace(/\s+/g, "-").toLowerCase() + ".pdf");
+    window.pdfMake.createPdf(doc).download("protokol-" + String(project || "designledger").replace(/\s+/g, "-").toLowerCase() + ".pdf");
     return true;
   }
 

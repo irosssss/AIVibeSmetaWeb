@@ -9,8 +9,8 @@ function AnalyCard({ title, source, accent, children, style }) {
     <div className="glass" style={{ borderRadius: "var(--r-lg)", padding: 24, ...style }}>
       {(title || source) && (
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 12, marginBottom: 18 }}>
-          {title && <h3 style={{ fontSize: 16.5, fontWeight: 700, minWidth: 0 }}>{title}</h3>}
-          {source && <span style={{ fontSize: 11.5, fontWeight: 700, letterSpacing: ".06em", textTransform: "uppercase", color: accent || "var(--faint)", whiteSpace: "nowrap", flex: "none" }}>{source}</span>}
+          {title && <h3 style={{ fontSize: "var(--fs-16)", fontWeight: 700, minWidth: 0 }}>{title}</h3>}
+          {source && <span style={{ fontSize: "var(--fs-11)", fontWeight: 700, letterSpacing: ".06em", textTransform: "uppercase", color: accent || "var(--faint)", whiteSpace: "nowrap", flex: "none" }}>{source}</span>}
         </div>
       )}
       {children}
@@ -24,11 +24,11 @@ function KpiCard({ k }) {
   const big = val.length > 9 ? 22 : (val.length > 7 ? 26 : 30);
   return (
     <div className="glass" style={{ borderRadius: "var(--r-lg)", padding: 22 }}>
-      <div style={{ color: "var(--muted)", fontSize: 13.5, marginBottom: 12 }}>{k.label}</div>
+      <div style={{ color: "var(--muted)", fontSize: "var(--fs-13)", marginBottom: 12 }}>{k.label}</div>
       <div style={{ display: "flex", alignItems: "baseline", gap: 10, flexWrap: "wrap" }}>
         <span className="display" style={{ fontSize: big, letterSpacing: "-0.02em", whiteSpace: "nowrap" }}>{val}</span>
         {k.delta != null && (
-          <span style={{ fontSize: 13, fontWeight: 700, color: k.delta >= 0 ? "var(--accent-2)" : "var(--accent)", display: "inline-flex", alignItems: "center", gap: 2 }}>
+          <span style={{ fontSize: "var(--fs-13)", fontWeight: 700, color: k.delta >= 0 ? "var(--accent-2)" : "var(--accent)", display: "inline-flex", alignItems: "center", gap: 2 }}>
             <I.arrowUp size={13} style={{ transform: k.delta >= 0 ? "none" : "rotate(180deg)" }} />{Math.abs(k.delta)}{k.unit === "abs" ? "" : "%"}
           </span>
         )}
@@ -54,8 +54,8 @@ function Profile({ user }) {
     <div className="reveal in" style={{ display: "flex", flexDirection: "column", gap: 22 }} ref={useReveal()}>
       {/* заголовок вкладки — та же модель шапки, что у Проектов/Избранного */}
       <div>
-        <h1 className="display" style={{ fontSize: 30 }}>Профиль</h1>
-        <p style={{ color: "var(--muted)", fontSize: 14.5, marginTop: 4 }}>Аккаунт и сводка по вашей работе</p>
+        <h1 className="display" style={{ fontSize: "var(--fs-30)" }}>Профиль</h1>
+        <p style={{ color: "var(--muted)", fontSize: "var(--fs-14)", marginTop: 4 }}>Аккаунт и сводка по вашей работе</p>
       </div>
       {/* ── верх: карточка профиля + KPI ── */}
       <div className="profile-grid" style={{ display: "grid", gridTemplateColumns: "0.8fr 1.2fr", gap: 22, alignItems: "start" }}>
@@ -64,15 +64,15 @@ function Profile({ user }) {
           <div style={{ display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", gap: 14, paddingBottom: 24, borderBottom: "1px solid var(--hairline)" }}>
             <Avatar user={user} size={84} />
             <div>
-              <div className="display" style={{ fontSize: 23 }}>{user.name}</div>
-              <div style={{ color: "var(--muted)", fontSize: 14, marginTop: 4 }}>{user.email}</div>
+              <div className="display" style={{ fontSize: "var(--fs-24)" }}>{user.name}</div>
+              <div style={{ color: "var(--muted)", fontSize: "var(--fs-14)", marginTop: 4 }}>{user.email}</div>
             </div>
             <div style={{ display: "flex", gap: 8 }}>
-              <span className="glass" style={{ padding: "6px 13px", borderRadius: 99, fontSize: 12.5, fontWeight: 700, display: "flex", alignItems: "center", gap: 7 }}>
+              <span className="glass" style={{ padding: "6px 13px", borderRadius: 99, fontSize: "var(--fs-12)", fontWeight: 700, display: "flex", alignItems: "center", gap: 7 }}>
                 <span style={{ width: 8, height: 8, borderRadius: "50%", background: user.provider === "yandex" ? "#FC3F1D" : "#0077FF" }} />
                 {user.provider === "yandex" ? "Яндекс ID" : "VK ID"}
               </span>
-              {user.role === "admin" && <span style={{ padding: "6px 13px", borderRadius: 99, fontSize: 12.5, fontWeight: 700, background: "rgba(183,80,44,.16)", color: "var(--accent-ink)", border: "1px solid rgba(183,80,44,.32)" }}>Администратор</span>}
+              {user.role === "admin" && <span style={{ padding: "6px 13px", borderRadius: 99, fontSize: "var(--fs-12)", fontWeight: 700, background: "rgba(183,80,44,.16)", color: "var(--accent-ink)", border: "1px solid rgba(183,80,44,.32)" }}>Администратор</span>}
             </div>
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: 14, marginTop: 22 }}>
@@ -96,7 +96,7 @@ function Profile({ user }) {
       <div>
         <div style={{ display: "flex", alignItems: "center", gap: 9, margin: "4px 2px 14px", flexWrap: "wrap" }}>
           <I.chart size={18} style={{ color: "var(--accent)", flex: "none" }} />
-          <h2 style={{ fontSize: 18, fontWeight: 700, whiteSpace: "nowrap" }}>По вашим проектам</h2>
+          <h2 style={{ fontSize: "var(--fs-18)", fontWeight: 700, whiteSpace: "nowrap" }}>По вашим проектам</h2>
         </div>
 
         <div className="chart-row" style={{ display: "grid", gridTemplateColumns: "1.5fr 1fr", gap: 16 }}>
@@ -111,8 +111,8 @@ function Profile({ user }) {
 
       {/* ── рабочее место: мосты в Мастерскую вместо тумблеров-пустышек ── */}
       <div className="glass" style={{ borderRadius: "var(--r-xl)", padding: 30 }}>
-        <h3 style={{ fontSize: 18, fontWeight: 700, marginBottom: 6 }}>Рабочее место</h3>
-        <p style={{ color: "var(--muted)", fontSize: 13.5, lineHeight: 1.5, marginBottom: 18, maxWidth: 640 }}>
+        <h3 style={{ fontSize: "var(--fs-18)", fontWeight: 700, marginBottom: 6 }}>Рабочее место</h3>
+        <p style={{ color: "var(--muted)", fontSize: "var(--fs-13)", lineHeight: 1.5, marginBottom: 18, maxWidth: 640 }}>
           Ваши нормы эргономики, библиотека стилей и товары студии применяются к каждой смете. Уведомления и синхронизация между устройствами появятся вместе с реальными аккаунтами.
         </p>
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
@@ -126,8 +126,8 @@ function Profile({ user }) {
           подписью «Design Ledger» — её отключение (white-label) появится с платным
           тарифом и настоящим биллингом, см. роадмап п.9 */}
       <div className="glass" style={{ borderRadius: "var(--r-xl)", padding: 30 }}>
-        <h3 style={{ fontSize: 18, fontWeight: 700, marginBottom: 6 }}>Брендинг клиентского портала</h3>
-        <p style={{ color: "var(--muted)", fontSize: 13.5, lineHeight: 1.5, marginBottom: 16, maxWidth: 640 }}>
+        <h3 style={{ fontSize: "var(--fs-18)", fontWeight: 700, marginBottom: 6 }}>Брендинг клиентского портала</h3>
+        <p style={{ color: "var(--muted)", fontSize: "var(--fs-13)", lineHeight: 1.5, marginBottom: 16, maxWidth: 640 }}>
           Это имя клиент увидит на портале согласования и в протоколе — пусто, и мы покажем имя вашего аккаунта. Подпись «Design Ledger» внизу портала останется бесплатно; убрать её (white-label) можно будет на платном тарифе.
         </p>
         <div style={{ display: "flex", gap: 8, maxWidth: 420 }}>
@@ -141,7 +141,7 @@ function Profile({ user }) {
 }
 
 function Row({ k, v }) {
-  return <div style={{ display: "flex", justifyContent: "space-between", gap: 16, fontSize: 14.5 }}><span style={{ color: "var(--muted)", whiteSpace: "nowrap" }}>{k}</span><span style={{ fontWeight: 600, whiteSpace: "nowrap", textAlign: "right" }}>{v}</span></div>;
+  return <div style={{ display: "flex", justifyContent: "space-between", gap: 16, fontSize: "var(--fs-14)" }}><span style={{ color: "var(--muted)", whiteSpace: "nowrap" }}>{k}</span><span style={{ fontWeight: 600, whiteSpace: "nowrap", textAlign: "right" }}>{v}</span></div>;
 }
 
 /* стиль-квиз → читаемое имя стиля для нового проекта */
@@ -255,8 +255,8 @@ function Projects() {
     <div className="reveal in" ref={useReveal()}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20, flexWrap: "wrap", gap: 14 }}>
         <div>
-          <h1 className="display" style={{ fontSize: 30 }}>Мои проекты</h1>
-          <p style={{ color: "var(--muted)", fontSize: 14.5, marginTop: 4 }}>Сохранённые комнаты и сметы для клиентов</p>
+          <h1 className="display" style={{ fontSize: "var(--fs-30)" }}>Мои проекты</h1>
+          <p style={{ color: "var(--muted)", fontSize: "var(--fs-14)", marginTop: 4 }}>Сохранённые комнаты и сметы для клиентов</p>
         </div>
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
           <button className="btn btn-ghost" onClick={() => setQuizOpen(true)}><I.spark size={16} /> Стиль-квиз</button>
@@ -283,11 +283,11 @@ function Projects() {
           </div>
           <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
             {["Все", ...PROJ_STATUSES].map((s) => (
-              <button key={s} onClick={() => setStatusF(s)} aria-pressed={statusF === s} style={{ padding: "8px 13px", borderRadius: 99, fontSize: 13, fontWeight: 700, border: "1px solid " + (statusF === s ? "var(--accent)" : "var(--hairline)"),
+              <button key={s} onClick={() => setStatusF(s)} aria-pressed={statusF === s} style={{ padding: "8px 13px", borderRadius: 99, fontSize: "var(--fs-13)", fontWeight: 700, border: "1px solid " + (statusF === s ? "var(--accent)" : "var(--hairline)"),
                 background: statusF === s ? "var(--accent)" : "var(--surface)", color: statusF === s ? "var(--on-accent)" : "var(--muted)" }}>{s}</button>
             ))}
           </div>
-          <select value={sort} onChange={(e) => setSort(e.target.value)} className="fld" style={{ width: "auto", padding: "9px 12px", fontSize: 13, fontWeight: 700, cursor: "pointer", marginLeft: "auto" }}>
+          <select value={sort} onChange={(e) => setSort(e.target.value)} className="fld" style={{ width: "auto", padding: "9px 12px", fontSize: "var(--fs-13)", fontWeight: 700, cursor: "pointer", marginLeft: "auto" }}>
             <option value="updated">Сначала новые</option>
             <option value="budget">По бюджету</option>
             <option value="name">По названию</option>
@@ -301,8 +301,8 @@ function Projects() {
       {rows && rows.length === 0 && (
         <div className="glass" style={{ borderRadius: "var(--r-xl)", padding: "56px 32px", textAlign: "center" }}>
           <span style={{ width: 60, height: 60, borderRadius: 18, background: "var(--surface-2)", color: "var(--accent)", display: "grid", placeItems: "center", margin: "0 auto 18px" }}><I.layers size={28} /></span>
-          <h3 className="display" style={{ fontSize: 22 }}>Пока нет проектов</h3>
-          <p style={{ color: "var(--muted)", fontSize: 14.5, marginTop: 8, maxWidth: 420, marginInline: "auto", lineHeight: 1.6 }}>Создайте первый проект — задайте комнату и бюджет, дальше Design Ledger соберёт смету и проверит эргономику.</p>
+          <h3 className="display" style={{ fontSize: "var(--fs-21)" }}>Пока нет проектов</h3>
+          <p style={{ color: "var(--muted)", fontSize: "var(--fs-14)", marginTop: 8, maxWidth: 420, marginInline: "auto", lineHeight: 1.6 }}>Создайте первый проект — задайте комнату и бюджет, дальше Design Ledger соберёт смету и проверит эргономику.</p>
           <button className="btn btn-primary" style={{ marginTop: 20 }} onClick={() => setNewOpen(true)}><I.plus size={17} />Создать первый проект</button>
         </div>
       )}
@@ -310,7 +310,7 @@ function Projects() {
       {shown && shown.length === 0 && rows.length > 0 && (
         <div className="glass" style={{ borderRadius: "var(--r-lg)", padding: 40, textAlign: "center", color: "var(--muted)" }}>
           <I.search size={26} style={{ color: "var(--faint)" }} />
-          <div style={{ marginTop: 10, fontSize: 14.5 }}>
+          <div style={{ marginTop: 10, fontSize: "var(--fs-14)" }}>
             {q.trim() ? <React.Fragment>По запросу <b style={{ color: "var(--text)" }}>«{q.trim()}»</b> ничего не нашлось{statusF !== "Все" ? " среди «" + statusF + "»" : ""}.</React.Fragment> : <React.Fragment>В статусе «{statusF}» пока нет проектов.</React.Fragment>}
           </div>
           <button className="btn btn-ghost" style={{ marginTop: 14 }} onClick={() => { setQ(""); setStatusF("Все"); }}>Показать все проекты</button>
@@ -341,7 +341,7 @@ function ProjectCard({ p, menuOpen, onOpen, onMenu, onRename, onDuplicate, onSta
   const trigRef = useCVR(null);                 // «⋯»: сюда возвращаем фокус перед действием —
                                                 // иначе диалог запомнит размонтированный пункт меню
   const mItem = (label, Ico, onClick, danger) => (
-    <button role="menuitem" onClick={(e) => { e.stopPropagation(); if (trigRef.current) trigRef.current.focus(); onClick(); }} style={{ display: "flex", alignItems: "center", gap: 10, width: "100%", padding: "9px 12px", borderRadius: 9, fontSize: 13.5, fontWeight: 600, color: danger ? "var(--accent-ink)" : "var(--text)", textAlign: "left" }}
+    <button role="menuitem" onClick={(e) => { e.stopPropagation(); if (trigRef.current) trigRef.current.focus(); onClick(); }} style={{ display: "flex", alignItems: "center", gap: 10, width: "100%", padding: "9px 12px", borderRadius: 9, fontSize: "var(--fs-13)", fontWeight: 600, color: danger ? "var(--accent-ink)" : "var(--text)", textAlign: "left" }}
       onMouseEnter={(e) => (e.currentTarget.style.background = "var(--surface-2)")} onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}>
       <Ico size={16} style={{ color: danger ? "var(--accent-ink)" : "var(--muted)", flex: "none" }} />{label}
     </button>
@@ -350,7 +350,7 @@ function ProjectCard({ p, menuOpen, onOpen, onMenu, onRename, onDuplicate, onSta
     <article className="glass news-card" style={{ position: "relative", borderRadius: "var(--r-lg)", display: "flex", flexDirection: "column", cursor: "pointer" }}>
       <div onClick={onOpen} style={{ position: "relative", aspectRatio: "16/10", overflow: "hidden", borderRadius: "var(--r-lg) var(--r-lg) 0 0" }}>
         <Img src={PHOTOS[p.cover] || PHOTOS.living} label={p.room} />
-        <span style={{ position: "absolute", top: 12, left: 12, padding: "5px 11px", borderRadius: 99, fontSize: 11.5, fontWeight: 700, color: "#FCF6EE", background: "rgba(46,42,38,.62)", backdropFilter: "blur(6px)", border: "1px solid rgba(252,246,238,.22)", display: "flex", alignItems: "center", gap: 6 }}>
+        <span style={{ position: "absolute", top: 12, left: 12, padding: "5px 11px", borderRadius: 99, fontSize: "var(--fs-11)", fontWeight: 700, color: "#FCF6EE", background: "rgba(46,42,38,.62)", backdropFilter: "blur(6px)", border: "1px solid rgba(252,246,238,.22)", display: "flex", alignItems: "center", gap: 6 }}>
           <span style={{ width: 7, height: 7, borderRadius: "50%", background: statusColor[p.status] }} />{p.status}
         </span>
       </div>
@@ -366,9 +366,9 @@ function ProjectCard({ p, menuOpen, onOpen, onMenu, onRename, onDuplicate, onSta
             {mItem("Переименовать", I.edit, onRename)}
             {mItem("Дублировать", I.layers, onDuplicate)}
             <div style={{ height: 1, background: "var(--hairline)", margin: "5px 4px" }} />
-            <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".04em", textTransform: "uppercase", color: "var(--faint)", padding: "4px 12px 6px" }}>Статус</div>
+            <div style={{ fontSize: "var(--fs-11)", fontWeight: 700, letterSpacing: ".04em", textTransform: "uppercase", color: "var(--faint)", padding: "4px 12px 6px" }}>Статус</div>
             {PROJ_STATUSES.map((s) => (
-              <button key={s} role="menuitem" onClick={(e) => { e.stopPropagation(); if (trigRef.current) trigRef.current.focus(); onStatus(s); }} style={{ display: "flex", alignItems: "center", gap: 9, width: "100%", padding: "8px 12px", borderRadius: 9, fontSize: 13.5, fontWeight: p.status === s ? 700 : 600, color: "var(--text)", textAlign: "left" }}
+              <button key={s} role="menuitem" onClick={(e) => { e.stopPropagation(); if (trigRef.current) trigRef.current.focus(); onStatus(s); }} style={{ display: "flex", alignItems: "center", gap: 9, width: "100%", padding: "8px 12px", borderRadius: 9, fontSize: "var(--fs-13)", fontWeight: p.status === s ? 700 : 600, color: "var(--text)", textAlign: "left" }}
                 onMouseEnter={(e) => (e.currentTarget.style.background = "var(--surface-2)")} onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}>
                 <span style={{ width: 8, height: 8, borderRadius: "50%", background: statusColor[s], flex: "none" }} />{s}{p.status === s && <I.check size={14} style={{ marginLeft: "auto", color: "var(--accent-2)" }} />}
               </button>
@@ -381,22 +381,22 @@ function ProjectCard({ p, menuOpen, onOpen, onMenu, onRename, onDuplicate, onSta
 
       <div onClick={onOpen} style={{ padding: 20, display: "flex", flexDirection: "column", gap: 12, flex: 1 }}>
         <div>
-          <h3 style={{ fontSize: 18, fontWeight: 700, letterSpacing: "-0.01em" }}>{p.name}</h3>
-          <div style={{ color: "var(--muted)", fontSize: 13.5, marginTop: 3 }}>{[p.style, p.room].filter(Boolean).join(" · ")}</div>
+          <h3 style={{ fontSize: "var(--fs-18)", fontWeight: 700, letterSpacing: "-0.01em" }}>{p.name}</h3>
+          <div style={{ color: "var(--muted)", fontSize: "var(--fs-13)", marginTop: 3 }}>{[p.style, p.room].filter(Boolean).join(" · ")}</div>
           {STAGE_NEXT[p.status] && (
-            <div style={{ display: "flex", alignItems: "baseline", gap: 6, fontSize: 12.5, color: "var(--faint)", marginTop: 7 }}>
+            <div style={{ display: "flex", alignItems: "baseline", gap: 6, fontSize: "var(--fs-12)", color: "var(--faint)", marginTop: 7 }}>
               <span style={{ fontWeight: 700, color: "var(--muted)", whiteSpace: "nowrap" }}>Дальше:</span>
               <span style={{ lineHeight: 1.35 }}>{STAGE_NEXT[p.status]}</span>
             </div>
           )}
         </div>
-        <div style={{ display: "flex", gap: 16, fontSize: 13, color: "var(--muted)", marginTop: "auto" }}>
+        <div style={{ display: "flex", gap: 16, fontSize: "var(--fs-13)", color: "var(--muted)", marginTop: "auto" }}>
           <span style={{ display: "flex", alignItems: "center", gap: 6 }}><I.ruler size={15} />{p.area} м²</span>
           <span style={{ display: "flex", alignItems: "center", gap: 6 }}><I.layers size={15} />{p.items} предм.</span>
         </div>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", paddingTop: 12, borderTop: "1px solid var(--hairline)" }}>
-          <span style={{ fontWeight: 800, fontFamily: "var(--font-display)", fontSize: 16 }}>{fmtMoney(p.budget)}</span>
-          <span className="btn btn-ghost" style={{ padding: "8px 14px", fontSize: 13 }}>Открыть <I.arrow size={14} /></span>
+          <span style={{ fontWeight: 800, fontFamily: "var(--font-display)", fontSize: "var(--fs-16)" }}>{fmtMoney(p.budget)}</span>
+          <span className="btn btn-ghost" style={{ padding: "8px 14px", fontSize: "var(--fs-13)" }}>Открыть <I.arrow size={14} /></span>
         </div>
       </div>
     </article>
@@ -421,26 +421,26 @@ function NewProjectModal({ onClose, onCreate, onExample }) {
   return (
     <Modal onClose={onClose} label="Новый проект">
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "22px 26px", borderBottom: "1px solid var(--hairline)" }}>
-          <h3 className="display" style={{ fontSize: 21 }}>Новый проект</h3>
+          <h3 className="display" style={{ fontSize: "var(--fs-21)" }}>Новый проект</h3>
           <button className="icon-btn" onClick={onClose} aria-label="Закрыть"><I.close size={18} /></button>
         </div>
         <div style={{ padding: 26, display: "flex", flexDirection: "column", gap: 16 }}>
           <label style={{ display: "block" }}>
-            <span style={{ display: "block", fontSize: 13, color: "var(--muted)", marginBottom: 7, fontWeight: 600 }}>Название</span>
+            <span style={{ display: "block", fontSize: "var(--fs-13)", color: "var(--muted)", marginBottom: 7, fontWeight: 600 }}>Название</span>
             <input className="fld" value={name} onChange={(e) => setName(e.target.value)} placeholder="Напр. Гостиная на Патриках" />
           </label>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
             <label style={{ display: "block" }}>
-              <span style={{ display: "block", fontSize: 13, color: "var(--muted)", marginBottom: 7, fontWeight: 600 }}>Комната</span>
+              <span style={{ display: "block", fontSize: "var(--fs-13)", color: "var(--muted)", marginBottom: 7, fontWeight: 600 }}>Комната</span>
               <select className="fld" value={room} onChange={(e) => setRoom(e.target.value)} style={{ cursor: "pointer" }}>{rooms.map((r) => <option key={r} value={r}>{r}</option>)}</select>
             </label>
             <label style={{ display: "block" }}>
-              <span style={{ display: "block", fontSize: 13, color: "var(--muted)", marginBottom: 7, fontWeight: 600 }}>Площадь, м²</span>
+              <span style={{ display: "block", fontSize: "var(--fs-13)", color: "var(--muted)", marginBottom: 7, fontWeight: 600 }}>Площадь, м²</span>
               <input className="fld" type="number" min="1" value={area} onChange={(e) => setArea(e.target.value)} />
             </label>
           </div>
           <label style={{ display: "block" }}>
-            <span style={{ display: "flex", justifyContent: "space-between", fontSize: 13, color: "var(--muted)", marginBottom: 7, fontWeight: 600 }}>Бюджет<b style={{ color: "var(--accent)", fontFamily: "var(--font-display)", fontSize: 15 }}>{fmtMoney(budget)}</b></span>
+            <span style={{ display: "flex", justifyContent: "space-between", fontSize: "var(--fs-13)", color: "var(--muted)", marginBottom: 7, fontWeight: 600 }}>Бюджет<b style={{ color: "var(--accent)", fontFamily: "var(--font-display)", fontSize: "var(--fs-15)" }}>{fmtMoney(budget)}</b></span>
             <input type="range" min="120000" max="1500000" step="20000" value={budget} onChange={(e) => setBudget(+e.target.value)} style={{ width: "100%", accentColor: "var(--accent)", cursor: "pointer" }} />
           </label>
         </div>
@@ -478,10 +478,10 @@ function Favorites() {
     <div className="reveal in" ref={useReveal()}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: 22, flexWrap: "wrap", gap: 14 }}>
         <div>
-          <h1 className="display" style={{ fontSize: 30 }}>Избранное</h1>
-          <p style={{ color: "var(--muted)", fontSize: 14.5, marginTop: 4 }}>Мудборд сохранённых вещей и готовый список покупок</p>
+          <h1 className="display" style={{ fontSize: "var(--fs-30)" }}>Избранное</h1>
+          <p style={{ color: "var(--muted)", fontSize: "var(--fs-14)", marginTop: 4 }}>Мудборд сохранённых вещей и готовый список покупок</p>
         </div>
-        <div className="glass" style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "9px 15px", borderRadius: 99, fontSize: 13.5, fontWeight: 700 }}>
+        <div className="glass" style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "9px 15px", borderRadius: 99, fontSize: "var(--fs-13)", fontWeight: 700 }}>
           <I.heart size={15} style={{ color: "var(--accent)" }} />{items ? items.length : "…"} в избранном
         </div>
       </div>
@@ -489,7 +489,7 @@ function Favorites() {
       {/* фильтр по комнатам */}
       <div className="fav-chips" style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 20 }}>
         {rooms.map((r) => (
-          <button key={r} onClick={() => setRoom(r)} aria-pressed={room === r} style={{ padding: "8px 15px", borderRadius: 99, fontSize: 13.5, fontWeight: 700, border: "1px solid var(--hairline)",
+          <button key={r} onClick={() => setRoom(r)} aria-pressed={room === r} style={{ padding: "8px 15px", borderRadius: 99, fontSize: "var(--fs-13)", fontWeight: 700, border: "1px solid var(--hairline)",
             background: room === r ? "var(--accent)" : "var(--glass-2)", color: room === r ? "var(--on-accent)" : "var(--muted)", transition: ".18s" }}>{r}</button>
         ))}
       </div>
@@ -501,7 +501,7 @@ function Favorites() {
           {shown && shown.length === 0 && (
             <div className="glass" style={{ borderRadius: "var(--r-lg)", padding: 48, textAlign: "center", color: "var(--muted)" }}>
               <I.heart size={28} style={{ color: "var(--faint)" }} />
-              <div style={{ marginTop: 10, fontSize: 14.5 }}>{room === "Все" ? "В избранном пока пусто. Сохранение предметов из каталога появится вместе с реальным каталогом фабрик." : "В комнате «" + room + "» пока нет избранного."}</div>
+              <div style={{ marginTop: 10, fontSize: "var(--fs-14)" }}>{room === "Все" ? "В избранном пока пусто. Сохранение предметов из каталога появится вместе с реальным каталогом фабрик." : "В комнате «" + room + "» пока нет избранного."}</div>
               {room !== "Все" && <button className="btn btn-ghost" style={{ marginTop: 14 }} onClick={() => setRoom("Все")}>Показать все комнаты</button>}
             </div>
           )}
@@ -516,8 +516,8 @@ function Favorites() {
         <div className="glass fav-shop" style={{ borderRadius: "var(--r-xl)", padding: 24, position: "sticky", top: "calc(var(--nav-h) + 20px)" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 9, marginBottom: 16 }}>
             <I.cart size={18} style={{ color: "var(--accent)" }} />
-            <h3 style={{ fontSize: 17, fontWeight: 700 }}>Список покупок</h3>
-            <span style={{ marginLeft: "auto", fontSize: 13, color: "var(--faint)" }}>{shown ? shown.length : 0} шт.</span>
+            <h3 style={{ fontSize: "var(--fs-16)", fontWeight: 700 }}>Список покупок</h3>
+            <span style={{ marginLeft: "auto", fontSize: "var(--fs-13)", color: "var(--faint)" }}>{shown ? shown.length : 0} шт.</span>
           </div>
 
           <div style={{ display: "flex", flexDirection: "column", maxHeight: 320, overflow: "auto", marginInline: -4, paddingInline: 4 }}>
@@ -526,21 +526,21 @@ function Favorites() {
               <div key={f.id} style={{ display: "flex", alignItems: "center", gap: 12, padding: "11px 0", borderBottom: i === shown.length - 1 ? "none" : "1px solid var(--hairline)" }}>
                 <div style={{ width: 46, height: 46, borderRadius: 9, overflow: "hidden", flex: "none" }}><Img src={f.img} label="" /></div>
                 <div style={{ minWidth: 0, flex: 1 }}>
-                  <div style={{ fontSize: 13.5, fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{f.title}</div>
-                  <div style={{ fontSize: 12, color: "var(--faint)", marginTop: 2 }}>{FAV_MP[f.mp]}</div>
+                  <div style={{ fontSize: "var(--fs-13)", fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{f.title}</div>
+                  <div style={{ fontSize: "var(--fs-12)", color: "var(--faint)", marginTop: 2 }}>{FAV_MP[f.mp]}</div>
                 </div>
-                <div style={{ fontWeight: 700, fontSize: 13.5, whiteSpace: "nowrap" }}>{fmtMoney(f.price)}</div>
+                <div style={{ fontWeight: 700, fontSize: "var(--fs-13)", whiteSpace: "nowrap" }}>{fmtMoney(f.price)}</div>
                 <button className="icon-btn sm" title="Убрать" onClick={() => remove(f.id)} style={{ flex: "none" }}><I.close size={15} /></button>
               </div>
             ))}
           </div>
 
           <div style={{ borderTop: "1px solid var(--hairline)", marginTop: 14, paddingTop: 16, display: "flex", flexDirection: "column", gap: 8 }}>
-            {saved > 0 && <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, color: "var(--accent-2)", fontWeight: 700 }}><span>Скидка по каталогу</span><span>−{fmtMoney(saved)}</span></div>}
+            {saved > 0 && <div style={{ display: "flex", justifyContent: "space-between", fontSize: "var(--fs-13)", color: "var(--accent-2)", fontWeight: 700 }}><span>Скидка по каталогу</span><span>−{fmtMoney(saved)}</span></div>}
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
-              <span style={{ color: "var(--muted)", fontSize: 14 }}>Итого</span>
+              <span style={{ color: "var(--muted)", fontSize: "var(--fs-14)" }}>Итого</span>
               {/* деньги — всегда mono+tabular, Spectral только нецифровым заголовкам */}
-              <span className="mono" style={{ fontSize: 22, fontWeight: 600 }}>{fmtMoney(total)}</span>
+              <span className="mono" style={{ fontSize: "var(--fs-21)", fontWeight: 600 }}>{fmtMoney(total)}</span>
             </div>
           </div>
           <button className="btn btn-primary btn-block" style={{ marginTop: 16 }} disabled={!shown || shown.length === 0} onClick={() => setPickOpen(true)}><I.layers size={16} />Перенести в проект</button>
@@ -571,8 +571,8 @@ function FavTransferModal({ count, total, onClose, onDone }) {
     <Modal onClose={onClose} label="Перенести в проект" maxWidth={480}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "20px 24px", borderBottom: "1px solid var(--hairline)" }}>
           <div>
-            <h3 className="display" style={{ fontSize: 20 }}>Перенести в проект</h3>
-            <div style={{ fontSize: 13, color: "var(--muted)", marginTop: 3 }}>{count} {plural(count, ["позиция", "позиции", "позиций"])} · {fmtMoney(total)}</div>
+            <h3 className="display" style={{ fontSize: "var(--fs-21)" }}>Перенести в проект</h3>
+            <div style={{ fontSize: "var(--fs-13)", color: "var(--muted)", marginTop: 3 }}>{count} {plural(count, ["позиция", "позиции", "позиций"])} · {fmtMoney(total)}</div>
           </div>
           <button className="icon-btn" onClick={onClose} aria-label="Закрыть"><I.close size={18} /></button>
         </div>
@@ -583,8 +583,8 @@ function FavTransferModal({ count, total, onClose, onDone }) {
               onMouseEnter={(e) => (e.currentTarget.style.borderColor = "var(--accent)")} onMouseLeave={(e) => (e.currentTarget.style.borderColor = "var(--hairline)")}>
               <div style={{ width: 46, height: 46, borderRadius: 9, overflow: "hidden", flex: "none" }}><Img src={PHOTOS[p.cover] || PHOTOS.living} label="" /></div>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontWeight: 700, fontSize: 14.5, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{p.name}</div>
-                <div style={{ fontSize: 12.5, color: "var(--muted)" }}>{p.room} · {fmtMoney(p.budget)}</div>
+                <div style={{ fontWeight: 700, fontSize: "var(--fs-14)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{p.name}</div>
+                <div style={{ fontSize: "var(--fs-12)", color: "var(--muted)" }}>{p.room} · {fmtMoney(p.budget)}</div>
               </div>
               <I.arrow size={16} style={{ color: "var(--faint)", flex: "none" }} />
             </button>
@@ -606,11 +606,11 @@ function FavCard({ item, onRemove, ar }) {
         </button>
         <span className={"mp mp-badge " + item.mp} style={{ position: "absolute", top: 12, left: 12 }}>{FAV_MP[item.mp]}</span>
         <div style={{ position: "absolute", left: 13, right: 13, bottom: 12 }}>
-          <div style={{ fontSize: 14, fontWeight: 700, lineHeight: 1.3, textShadow: "0 1px 8px rgba(0,0,0,.5)" }}>{item.title}</div>
+          <div style={{ fontSize: "var(--fs-14)", fontWeight: 700, lineHeight: 1.3, color: "var(--on-dark)", textShadow: "0 1px 8px rgba(0,0,0,.5)" }}>{item.title}</div>
           <div style={{ display: "flex", alignItems: "baseline", gap: 8, marginTop: 6 }}>
-            <span style={{ fontFamily: "var(--font-display)", fontWeight: 800, fontSize: 16 }}>{fmtMoney(item.price)}</span>
-            {disc > 0 && <span style={{ fontSize: 12, color: "var(--faint)", textDecoration: "line-through" }}>{fmtMoney(item.old)}</span>}
-            {disc > 0 && <span style={{ marginLeft: "auto", fontSize: 11, fontWeight: 800, color: "var(--accent-2)" }}>−{disc}%</span>}
+            <span style={{ fontFamily: "var(--font-display)", fontWeight: 800, fontSize: "var(--fs-16)", color: "var(--on-dark)" }}>{fmtMoney(item.price)}</span>
+            {disc > 0 && <span style={{ fontSize: "var(--fs-12)", color: "rgba(252,246,238,.6)", textDecoration: "line-through" }}>{fmtMoney(item.old)}</span>}
+            {disc > 0 && <span style={{ marginLeft: "auto", fontSize: "var(--fs-11)", fontWeight: 700, color: "var(--accent-2)" }}>−{disc}%</span>}
           </div>
         </div>
       </div>

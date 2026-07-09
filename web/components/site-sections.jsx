@@ -68,7 +68,7 @@ function HowDesktop() {
         <div className="container how-grid" style={{ display: "grid", gridTemplateColumns: "0.92fr 1.08fr", gap: "clamp(32px,5vw,72px)", width: "min(var(--maxw),100% - var(--gutter)*2)", alignItems: "center" }}>
           {/* левая колонка — шаги */}
           <div>
-            <div className="eyebrow jade" style={{ marginBottom: 18 }}><span style={{ width: 22, height: 1, background: "var(--accent-2)" }} />КАК ЭТО РАБОТАЕТ</div>
+            <div className="eyebrow jade" style={{ marginBottom: 18 }}>КАК ЭТО РАБОТАЕТ</div>
             <h2 className="display" style={{ fontSize: "clamp(34px,4.4vw,60px)", marginBottom: 36 }}>От пустой комнаты<br />до готовой сметы</h2>
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
               {STEPS.map((s, i) => {
@@ -76,16 +76,16 @@ function HowDesktop() {
                 return (
                   <div key={s.n} className="glass" style={{ borderRadius: "var(--r-lg)", padding: "20px 22px", display: "flex", gap: 16,
                     borderColor: on ? "rgba(94,107,91,.5)" : "var(--hairline)",
-                    background: on ? "rgba(94,107,91,.08)" : "var(--surface)",
+                    background: on ? "var(--accent-2-tint)" : "var(--surface)",
                     boxShadow: on ? "var(--shadow-card)" : "none",
                     opacity: on ? 1 : 0.55, transition: "all .45s ease" }}>
                     <StepGlyph step={s} on={on} />
                     <div>
                       <div style={{ display: "flex", gap: 9, alignItems: "baseline", marginBottom: 4 }}>
-                        <span className="mono" style={{ fontSize: 13, fontWeight: 500, color: on ? "var(--accent-2)" : "var(--faint)" }}>{s.n}</span>
-                        <span style={{ fontWeight: 700, fontSize: 16.5 }}>{s.tag}</span>
+                        <span className="mono" style={{ fontSize: "var(--fs-13)", fontWeight: 500, color: on ? "var(--accent-2)" : "var(--faint)" }}>{s.n}</span>
+                        <span style={{ fontWeight: 700, fontSize: "var(--fs-16)" }}>{s.tag}</span>
                       </div>
-                      <p style={{ fontSize: 14.5, color: "var(--muted)", lineHeight: 1.55 }}>{on ? s.title : s.text}</p>
+                      <p style={{ fontSize: "var(--fs-14)", color: "var(--muted)", lineHeight: 1.55 }}>{on ? s.title : s.text}</p>
                       {on && !prefersReduced && (
                         <div style={{ height: 3, borderRadius: 9, background: "var(--surface-2)", marginTop: 12, overflow: "hidden" }}>
                           <div style={{ height: "100%", width: sub * 100 + "%", background: "var(--accent-2)" }} />
@@ -121,7 +121,7 @@ function HowMobile() {
   return (
     <section id="how" style={{ paddingBlock: "clamp(56px,9vh,90px)" }}>
       <div className="container">
-        <div className="eyebrow jade" style={{ marginBottom: 16 }}><span style={{ width: 22, height: 1, background: "var(--accent-2)" }} />КАК ЭТО РАБОТАЕТ</div>
+        <div className="eyebrow jade" style={{ marginBottom: 16 }}>КАК ЭТО РАБОТАЕТ</div>
         <h2 className="display" style={{ fontSize: "clamp(30px,8vw,44px)" }}>От пустой комнаты<br />до готовой сметы</h2>
 
         <div ref={scRef} onScroll={onScroll} className="how-scroller">
@@ -133,10 +133,10 @@ function HowMobile() {
                 <StepGlyph step={s} on={true} />
                 <div>
                   <div style={{ display: "flex", gap: 9, alignItems: "baseline", marginBottom: 4 }}>
-                    <span className="mono" style={{ fontSize: 13, fontWeight: 500, color: "var(--accent-2)" }}>{s.n}</span>
-                    <span style={{ fontWeight: 700, fontSize: 16.5 }}>{s.tag}</span>
+                    <span className="mono" style={{ fontSize: "var(--fs-13)", fontWeight: 500, color: "var(--accent-2)" }}>{s.n}</span>
+                    <span style={{ fontWeight: 700, fontSize: "var(--fs-16)" }}>{s.tag}</span>
                   </div>
-                  <p style={{ fontSize: 14.5, color: "var(--muted)", lineHeight: 1.55 }}>{s.title}</p>
+                  <p style={{ fontSize: "var(--fs-14)", color: "var(--muted)", lineHeight: 1.55 }}>{s.title}</p>
                 </div>
               </div>
             </div>
@@ -171,12 +171,12 @@ function DemoStage({ active, sub }) {
       {/* СТАДИЯ 1 — AI-чат */}
       <div style={{ position: "absolute", left: 18, right: 18, bottom: 18, display: "flex", flexDirection: "column", gap: 10,
         opacity: active === 1 ? 1 : 0, transform: active === 1 ? "none" : "translateY(14px)", transition: "all .5s", pointerEvents: "none" }}>
-        <div className="glass" style={{ alignSelf: "flex-end", maxWidth: "70%", padding: "11px 15px", borderRadius: "16px 16px 4px 16px", fontSize: 14, background: "rgba(183,80,44,.14)", borderColor: "rgba(183,80,44,.35)" }}>
+        <div className="glass" style={{ alignSelf: "flex-end", maxWidth: "70%", padding: "11px 15px", borderRadius: "16px 16px 4px 16px", fontSize: "var(--fs-14)", background: "rgba(183,80,44,.14)", borderColor: "rgba(183,80,44,.35)" }}>
           Хочу уютную гостиную в тёплых тонах, бюджет 500к
         </div>
-        <div className="glass" style={{ alignSelf: "flex-start", maxWidth: "82%", padding: "13px 16px", borderRadius: "16px 16px 16px 4px", fontSize: 14, lineHeight: 1.5, boxShadow: "var(--shadow-card)" }}>
-          <span className="mono" style={{ display: "block", color: "var(--accent-2)", fontWeight: 500, fontSize: 11, letterSpacing: ".06em", marginBottom: 5 }}>СМЕТА AIVIBE · YANDEXGPT 5</span>
-          Собрал смету: 38 позиций — диван-терракота, дубовый стеллаж, тёплый свет. Итог 480 000 ₽, расстановка по нормам.
+        <div className="glass" style={{ alignSelf: "flex-start", maxWidth: "82%", padding: "13px 16px", borderRadius: "16px 16px 16px 4px", fontSize: "var(--fs-14)", lineHeight: 1.5, boxShadow: "var(--shadow-card)" }}>
+          <span className="mono" style={{ display: "block", color: "var(--accent-2)", fontWeight: 500, fontSize: "var(--fs-11)", letterSpacing: ".06em", marginBottom: 5 }}>СМЕТА · DESIGN LEDGER</span>
+          Собрал смету: 38 позиций — диван-терракота, дубовый стеллаж, тёплый свет. Итог 480 000 ₽, эргономика проверена по нормам.
         </div>
       </div>
 
@@ -184,17 +184,17 @@ function DemoStage({ active, sub }) {
       <div style={{ position: "absolute", inset: 0, opacity: active === 2 ? 1 : 0, transition: "opacity .5s", pointerEvents: "none" }}>
         {[[34, 58, "Диван", "проход 92 см"], [66, 40, "Стеллаж", "дверь не задета"], [52, 72, "Лампа", "высота ок"]].map(([l, t, name, norm], i) => (
           <div key={i} className="glass" style={{ position: "absolute", left: l + "%", top: t + "%", transform: "translate(-50%,-50%)",
-            padding: "7px 12px", borderRadius: 10, fontSize: 12.5, fontWeight: 600, display: "flex", alignItems: "center", gap: 7,
+            padding: "7px 12px", borderRadius: 10, fontSize: "var(--fs-12)", fontWeight: 600, display: "flex", alignItems: "center", gap: 7,
             borderColor: "rgba(94,107,91,.55)", background: "rgba(251,248,242,.92)",
             opacity: sub > i * 0.28 ? 1 : 0, transition: `opacity .4s ${i * 0.05}s` }}>
             <I.check size={14} style={{ color: "var(--accent-2)" }} /> {name}
-            <span className="mono" style={{ fontSize: 10.5, fontWeight: 500, color: "var(--accent-2)" }}>{norm}</span>
+            <span className="mono" style={{ fontSize: "var(--fs-10)", fontWeight: 500, color: "var(--accent-2)" }}>{norm}</span>
           </div>
         ))}
       </div>
 
       {/* верхний статус-бар сцены */}
-      <div className="glass" style={{ position: "absolute", top: 16, left: 16, padding: "8px 14px", borderRadius: 99, fontSize: 12.5, fontWeight: 700, display: "flex", alignItems: "center", gap: 9, boxShadow: "var(--shadow-card)" }}>
+      <div className="glass" style={{ position: "absolute", top: 16, left: 16, padding: "8px 14px", borderRadius: 99, fontSize: "var(--fs-12)", fontWeight: 700, display: "flex", alignItems: "center", gap: 9, boxShadow: "var(--shadow-card)" }}>
         <span style={{ width: 8, height: 8, borderRadius: "50%", background: "var(--accent)" }} />
         {["Ссылка или фото", "Подбор и смета", "Проверка норм"][active]}
       </div>
@@ -219,10 +219,10 @@ function SpecCategories() {
       <div className="container reveal">
         <div className="catsec-head">
           <div>
-            <div className="eyebrow"><span style={{ width: 22, height: 1, background: "var(--accent)" }} />спецификация · 38 позиций</div>
+            <div className="eyebrow">спецификация · 38 позиций</div>
             <h2 className="display" style={{ fontSize: "clamp(30px,4vw,50px)", marginTop: 14 }}>Комплектация по категориям</h2>
           </div>
-          <p style={{ color: "var(--muted)", maxWidth: 340, fontSize: 14.5 }}>Мебель, свет, декор и текстиль — с артикулами, себестоимостью и ценой клиенту. Меняете позицию — итог и наценка пересчитываются.</p>
+          <p style={{ color: "var(--muted)", maxWidth: 340, fontSize: "var(--fs-14)" }}>Мебель, свет, декор и текстиль — с артикулами, себестоимостью и ценой клиенту. Меняете позицию — итог и наценка пересчитываются.</p>
         </div>
         <div className="catgrid">
           {CATS.map(([img, name, count, cost, client]) => (
@@ -264,33 +264,33 @@ function WhoFor() {
       <div className="container reveal">
         <div className="catsec-head">
           <div>
-            <div className="eyebrow"><span style={{ width: 22, height: 1, background: "var(--accent)" }} />ДЛЯ КОГО</div>
+            <div className="eyebrow">ДЛЯ КОГО</div>
             <h2 className="display" style={{ fontSize: "clamp(30px,4vw,50px)", marginTop: 14 }}>Смета комплектации —<br />не смета ремонта</h2>
           </div>
-          <p style={{ color: "var(--muted)", maxWidth: 340, fontSize: 14.5 }}>Design Ledger считает то, что дизайнер ставит в интерьер. И честно говорит, для кого он не подходит.</p>
+          <p style={{ color: "var(--muted)", maxWidth: 340, fontSize: "var(--fs-14)" }}>Design Ledger считает то, что дизайнер ставит в интерьер. И честно говорит, для кого он не подходит.</p>
         </div>
         <div className="who-grid">
           <div className="glass" style={{ borderRadius: "var(--r-lg)", padding: "26px 28px", borderColor: "rgba(94,107,91,.45)", background: "rgba(94,107,91,.07)", boxShadow: "var(--shadow-card)" }}>
-            <h3 style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 20, margin: "0 0 18px" }}>Мы — для дизайнеров и комплектаторов</h3>
+            <h3 style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: "var(--fs-21)", margin: "0 0 18px" }}>Мы — для дизайнеров и комплектаторов</h3>
             {/* role=list: listStyle:none снимает роль списка в Safari/VoiceOver */}
             <ul role="list" style={{ listStyle: "none", margin: 0, padding: 0, display: "flex", flexDirection: "column", gap: 12 }}>
               {YES.map((t) => (
-                <li key={t} style={{ display: "flex", gap: 10, alignItems: "flex-start", fontSize: 14.5, color: "var(--text)", lineHeight: 1.5 }}>
+                <li key={t} style={{ display: "flex", gap: 10, alignItems: "flex-start", fontSize: "var(--fs-14)", color: "var(--text)", lineHeight: 1.5 }}>
                   <I.check size={16} style={{ color: "var(--accent-2-ink)", flex: "none", marginTop: 2 }} />{t}
                 </li>
               ))}
             </ul>
           </div>
           <div className="glass" style={{ borderRadius: "var(--r-lg)", padding: "26px 28px", display: "flex", flexDirection: "column" }}>
-            <h3 style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 20, margin: "0 0 18px", color: "var(--muted)" }}>Мы — не про ремонт</h3>
+            <h3 style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: "var(--fs-21)", margin: "0 0 18px", color: "var(--muted)" }}>Мы — не про ремонт</h3>
             <ul role="list" style={{ listStyle: "none", margin: 0, padding: 0, display: "flex", flexDirection: "column", gap: 12 }}>
               {NO.map((t) => (
-                <li key={t} style={{ display: "flex", gap: 10, alignItems: "flex-start", fontSize: 14.5, color: "var(--muted)", lineHeight: 1.5 }}>
+                <li key={t} style={{ display: "flex", gap: 10, alignItems: "flex-start", fontSize: "var(--fs-14)", color: "var(--muted)", lineHeight: 1.5 }}>
                   <I.close size={16} style={{ color: "var(--spec-meta)", flex: "none", marginTop: 2 }} />{t}
                 </li>
               ))}
             </ul>
-            <p className="mono" style={{ marginTop: "auto", paddingTop: 18, fontSize: 12, color: "var(--spec-meta)", lineHeight: 1.6 }}>
+            <p className="mono" style={{ marginTop: "auto", paddingTop: 18, fontSize: "var(--fs-12)", color: "var(--spec-meta)", lineHeight: 1.6 }}>
               за сметой работ — к профильным сервисам для прорабов (ПростоСмета, Gectaro): это другой жанр
             </p>
           </div>
@@ -325,37 +325,37 @@ function PayoffCalc() {
   return (
     <section id="payoff" style={{ paddingBlock: "clamp(60px,9vh,110px)" }} ref={ref}>
       <div className="container reveal">
-        <div className="eyebrow jade" style={{ marginBottom: 18 }}><span style={{ width: 22, height: 1, background: "var(--accent-2)" }} />ОКУПАЕМОСТЬ</div>
+        <div className="eyebrow jade" style={{ marginBottom: 18 }}>ОКУПАЕМОСТЬ</div>
         <h2 className="display" style={{ fontSize: "clamp(30px,4vw,50px)", maxWidth: 720 }}>Подписка окупается одним проектом</h2>
-        <p style={{ color: "var(--muted)", maxWidth: 520, fontSize: 15.5, marginTop: 16 }}>
+        <p style={{ color: "var(--muted)", maxWidth: 520, fontSize: "var(--fs-15)", marginTop: 16 }}>
           Design Ledger — не расход на софт, а инструмент, которым вы зарабатываете наценку. Посчитайте на своём проекте.
         </p>
         <div className="glass calc-grid" style={{ borderRadius: "var(--r-xl)", padding: "clamp(24px,4vw,44px)", marginTop: 34, boxShadow: "var(--shadow-card)" }}>
           <div>
             <div className="calc-ctrl">
-              <div className="lab"><span>Бюджет комплектации проекта</span><b className="mono" style={{ color: "var(--text)", fontSize: 16, whiteSpace: "nowrap" }}>{f(budget)}{" "}₽</b></div>
+              <div className="lab"><span>Бюджет комплектации проекта</span><b className="mono" style={{ color: "var(--text)", fontSize: "var(--fs-16)", whiteSpace: "nowrap" }}>{f(budget)}{" "}₽</b></div>
               <input type="range" className="quiz-range" min="300000" max="10000000" step="100000" value={budget}
                 onChange={(e) => setBudget(+e.target.value)}
                 aria-label="Бюджет комплектации проекта" aria-valuetext={f(budget) + " рублей"} />
             </div>
             <div className="calc-ctrl">
-              <div className="lab"><span>Ваша наценка</span><b className="mono" style={{ color: "var(--text)", fontSize: 16, whiteSpace: "nowrap" }}>+{markup}%</b></div>
+              <div className="lab"><span>Ваша наценка</span><b className="mono" style={{ color: "var(--text)", fontSize: "var(--fs-16)", whiteSpace: "nowrap" }}>+{markup}%</b></div>
               <input type="range" className="quiz-range" min="10" max="40" step="1" value={markup}
                 onChange={(e) => setMarkup(+e.target.value)}
                 aria-label="Ваша наценка" aria-valuetext={"плюс " + markup + " " + plural(markup, ["процент", "процента", "процентов"])} />
             </div>
-            <p className="mono" style={{ fontSize: 11.5, color: "var(--spec-meta)", marginTop: 14, lineHeight: 1.6 }}>
+            <p className="mono" style={{ fontSize: "var(--fs-11)", color: "var(--spec-meta)", marginTop: 14, lineHeight: 1.6 }}>
               по умолчанию — реальный проект: комплектация 2,7 млн ₽, 50 позиций
             </p>
           </div>
           <div>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 14, paddingBlock: 12, borderBottom: "1px solid var(--hairline-2)" }}>
-              <span style={{ fontSize: 14.5, color: "var(--muted)" }}>Наценка с одного проекта</span>
+              <span style={{ fontSize: "var(--fs-14)", color: "var(--muted)" }}>Наценка с одного проекта</span>
               <b className="mono" style={{ fontSize: "clamp(22px,2.6vw,30px)", fontWeight: 600, color: "var(--accent-2-ink)", whiteSpace: "nowrap" }}>+{f(profit)} ₽</b>
             </div>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 14, paddingBlock: 12, borderBottom: "1px solid var(--hairline-2)" }}>
-              <span style={{ fontSize: 14.5, color: "var(--muted)" }}>Подписка «Практика»</span>
-              <b className="mono" style={{ fontSize: 16, fontWeight: 500, whiteSpace: "nowrap" }}>{f(SUB)} ₽ / мес</b>
+              <span style={{ fontSize: "var(--fs-14)", color: "var(--muted)" }}>Подписка «Практика»</span>
+              <b className="mono" style={{ fontSize: "var(--fs-16)", fontWeight: 500, whiteSpace: "nowrap" }}>{f(SUB)} ₽ / мес</b>
             </div>
             {/* live-регион только на итоге и atomic — иначе скринридер читает
                бессвязные куски изменившихся узлов на каждый шаг слайдера */}
@@ -363,7 +363,7 @@ function PayoffCalc() {
               <div style={{ fontFamily: "var(--font-display)", fontSize: "clamp(20px,2.4vw,26px)", fontWeight: 700, lineHeight: 1.3 }}>
                 = <span style={{ color: "var(--accent-ink)" }}>{shareTxt}%</span> от наценки одного проекта
               </div>
-              <p style={{ fontSize: 13.5, color: "var(--muted)", marginTop: 8, lineHeight: 1.55 }}>Наценка одного такого проекта покрывает {coverTxt} подписки.</p>
+              <p style={{ fontSize: "var(--fs-13)", color: "var(--muted)", marginTop: 8, lineHeight: 1.55 }}>Наценка одного такого проекта покрывает {coverTxt} подписки.</p>
             </div>
           </div>
         </div>
@@ -387,15 +387,22 @@ function SocialProof() {
   return (
     <section id="designers" style={{ paddingBlock: "clamp(60px,9vh,110px)" }} ref={ref}>
       <div className="container reveal">
-        <div className="eyebrow jade" style={{ marginBottom: 18 }}><span style={{ width: 22, height: 1, background: "var(--accent-2)" }} />ДИЗАЙНЕРЫ О СМЕТЕ</div>
+        <div className="eyebrow jade" style={{ marginBottom: 18 }}>ДИЗАЙНЕРЫ О СМЕТЕ</div>
         <h2 className="display" style={{ fontSize: "clamp(30px,4vw,50px)", maxWidth: 700 }}>Считают в Design Ledger — отправляют клиенту</h2>
+
+        {/* честная метка (реш. владельца 09.07): продукт — прототип, соц-доказательства
+           показаны как пример, а не как факт. Ставим до метрик и голосов, чтобы ничто
+           из блока не читалось как реальные данные. */}
+        <p className="mono" style={{ fontSize: "var(--fs-12)", color: "var(--spec-meta)", letterSpacing: ".04em", lineHeight: 1.55, marginTop: 14, maxWidth: 640 }}>
+          Демонстрация интерфейса: цифры и отзывы приведены как пример, а не как реальные данные.
+        </p>
 
         {/* моно-метрики */}
         <div className="sp-metrics">
           {METRICS.map(([v, k]) => (
             <div key={k}>
               <div className="mono" style={{ fontSize: "clamp(26px,3vw,38px)", fontWeight: 600, color: "var(--text)", lineHeight: 1 }}>{v}</div>
-              <div style={{ fontSize: 13.5, color: "var(--muted)", marginTop: 8 }}>{k}</div>
+              <div style={{ fontSize: "var(--fs-13)", color: "var(--muted)", marginTop: 8 }}>{k}</div>
             </div>
           ))}
         </div>
@@ -404,10 +411,10 @@ function SocialProof() {
         <div className="sp-grid">
           {QUOTES.map(([q, name, role]) => (
             <figure key={name} className="glass" style={{ borderRadius: "var(--r-lg)", padding: "24px 26px", margin: 0, display: "flex", flexDirection: "column", gap: 18 }}>
-              <blockquote style={{ margin: 0, fontFamily: "var(--font-display)", fontStyle: "italic", fontSize: 16.5, lineHeight: 1.5, color: "var(--text)" }}>«{q}»</blockquote>
+              <blockquote style={{ margin: 0, fontFamily: "var(--font-display)", fontStyle: "italic", fontSize: "var(--fs-16)", lineHeight: 1.5, color: "var(--text)" }}>«{q}»</blockquote>
               <figcaption style={{ marginTop: "auto", display: "flex", alignItems: "baseline", gap: 9, flexWrap: "wrap" }}>
-                <span style={{ fontWeight: 700, fontSize: 14 }}>{name}</span>
-                <span className="mono" style={{ fontSize: 11.5, color: "var(--spec-meta)" }}>{role}</span>
+                <span style={{ fontWeight: 700, fontSize: "var(--fs-14)" }}>{name}</span>
+                <span className="mono" style={{ fontSize: "var(--fs-11)", color: "var(--spec-meta)" }}>{role}</span>
               </figcaption>
             </figure>
           ))}
@@ -435,27 +442,27 @@ function Pricing({ go }) {
       <div className="container reveal">
         <div className="catsec-head">
           <div>
-            <div className="eyebrow"><span style={{ width: 22, height: 1, background: "var(--accent)" }} />ТАРИФЫ</div>
+            <div className="eyebrow">ТАРИФЫ</div>
             <h2 className="display" style={{ fontSize: "clamp(30px,4vw,50px)", marginTop: 14 }}>Честные цены, без звёздочек</h2>
           </div>
-          <p style={{ color: "var(--muted)", maxWidth: 340, fontSize: 14.5 }}>Первая смета — бесплатно и без карты. Считаем по активным проектам: сданные уходят в архив и лимита не занимают.</p>
+          <p style={{ color: "var(--muted)", maxWidth: 340, fontSize: "var(--fs-14)" }}>Первая смета — бесплатно и без карты. Считаем по активным проектам: сданные уходят в архив и лимита не занимают.</p>
         </div>
         <div className="price-grid">
           {PLANS.map((p) => (
             <article key={p.name} className="glass" style={{ borderRadius: "var(--r-lg)", padding: "26px 26px 24px", display: "flex", flexDirection: "column", gap: 18, position: "relative",
               borderColor: p.hot ? "var(--accent)" : "var(--hairline)", boxShadow: p.hot ? "var(--shadow-pop)" : "none" }}>
-              {p.hot && <span style={{ position: "absolute", top: -12, left: 24, padding: "4px 12px", borderRadius: 99, fontSize: 11.5, fontWeight: 700, background: "var(--accent)", color: "var(--on-accent)" }}>{p.note}</span>}
+              {p.hot && <span style={{ position: "absolute", top: -12, left: 24, padding: "4px 12px", borderRadius: 99, fontSize: "var(--fs-11)", fontWeight: 700, background: "var(--accent)", color: "var(--on-accent)" }}>{p.note}</span>}
               <div>
-                <div style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 21 }}>{p.name}</div>
-                {!p.hot && <div style={{ fontSize: 12.5, color: "var(--spec-meta)", marginTop: 2 }}>{p.note}</div>}
+                <div style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: "var(--fs-21)" }}>{p.name}</div>
+                {!p.hot && <div style={{ fontSize: "var(--fs-12)", color: "var(--spec-meta)", marginTop: 2 }}>{p.note}</div>}
               </div>
               <div style={{ display: "flex", alignItems: "baseline", gap: 7 }}>
-                <span className="mono" style={{ fontSize: 34, fontWeight: 600, lineHeight: 1 }}>{new Intl.NumberFormat("ru-RU").format(p.price)} ₽</span>
-                <span className="mono" style={{ fontSize: 12.5, color: "var(--spec-meta)" }}>/ мес</span>
+                <span className="mono" style={{ fontSize: "var(--fs-32)", fontWeight: 600, lineHeight: 1 }}>{new Intl.NumberFormat("ru-RU").format(p.price)} ₽</span>
+                <span className="mono" style={{ fontSize: "var(--fs-12)", color: "var(--spec-meta)" }}>/ мес</span>
               </div>
               <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "flex", flexDirection: "column", gap: 10, flex: 1 }}>
                 {p.feats.map((f) => (
-                  <li key={f} style={{ display: "flex", gap: 9, alignItems: "flex-start", fontSize: 14, color: "var(--muted)", lineHeight: 1.45 }}>
+                  <li key={f} style={{ display: "flex", gap: 9, alignItems: "flex-start", fontSize: "var(--fs-14)", color: "var(--muted)", lineHeight: 1.45 }}>
                     <I.check size={15} style={{ color: "var(--accent-2)", flex: "none", marginTop: 2 }} />{f}
                   </li>
                 ))}
@@ -478,7 +485,7 @@ function Bento() {
     <section id="features" style={{ paddingBlock: "clamp(80px,12vh,140px)" }} ref={ref}>
       <div className="container">
         <div className="reveal" style={{ maxWidth: 720 }}>
-          <div className="eyebrow" style={{ marginBottom: 18 }}><span style={{ width: 22, height: 1, background: "var(--accent)" }} />ВОЗМОЖНОСТИ</div>
+          <div className="eyebrow" style={{ marginBottom: 18 }}>ВОЗМОЖНОСТИ</div>
           <h2 className="display" style={{ fontSize: "clamp(34px,4.6vw,64px)" }}>Всё для дизайна<br />в одном приложении</h2>
         </div>
         <div className="bento reveal">
@@ -542,7 +549,7 @@ function NewsFeed() {
       <div className="container">
         <div className="reveal" style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", flexWrap: "wrap", gap: 20, marginBottom: 44 }}>
           <div>
-            <div className="eyebrow info" style={{ marginBottom: 18 }}><span style={{ width: 22, height: 1, background: "var(--info)" }} />ЖУРНАЛ</div>
+            <div className="eyebrow info" style={{ marginBottom: 18 }}>ЖУРНАЛ</div>
             <h2 className="display" style={{ fontSize: "clamp(32px,4.2vw,58px)" }}>Новости дизайна</h2>
           </div>
           <a className="btn btn-ghost" href="#" onClick={(e) => e.preventDefault()}>Все материалы <I.arrow size={16} /></a>
@@ -553,12 +560,12 @@ function NewsFeed() {
             <article key={n.id} className="glass news-card" style={{ borderRadius: "var(--r-lg)", overflow: "hidden", display: "flex", flexDirection: "column", boxShadow: "var(--shadow-card)", gridColumn: i === 0 ? "span 2" : "span 1" }}>
               <div style={{ position: "relative", aspectRatio: i === 0 ? "16/8" : "16/10", overflow: "hidden" }}>
                 <Img src={PHOTOS[n.cover] || PHOTOS.warm} label={n.category} />
-                <span style={{ position: "absolute", top: 13, left: 13, padding: "5px 11px", borderRadius: 99, fontSize: 11.5, fontWeight: 700, color: "#FCF6EE", background: "rgba(46,42,38,.6)", backdropFilter: "blur(6px)", border: "1px solid rgba(252,246,238,.25)" }}>{n.category}</span>
+                <span style={{ position: "absolute", top: 13, left: 13, padding: "5px 11px", borderRadius: 99, fontSize: "var(--fs-11)", fontWeight: 700, color: "#FCF6EE", background: "rgba(46,42,38,.6)", backdropFilter: "blur(6px)", border: "1px solid rgba(252,246,238,.25)" }}>{n.category}</span>
               </div>
               <div style={{ padding: 22, display: "flex", flexDirection: "column", gap: 10, flex: 1 }}>
                 <h3 style={{ fontFamily: "var(--font-display)", fontSize: i === 0 ? 25 : 20, fontWeight: 600, lineHeight: 1.22, letterSpacing: "-0.01em" }}>{n.title}</h3>
-                <p style={{ color: "var(--muted)", fontSize: 14.5, lineHeight: 1.55, flex: 1 }}>{n.excerpt}</p>
-                <div className="mono" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", color: "var(--faint)", fontSize: 12, marginTop: 4 }}>
+                <p style={{ color: "var(--muted)", fontSize: "var(--fs-14)", lineHeight: 1.55, flex: 1 }}>{n.excerpt}</p>
+                <div className="mono" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", color: "var(--spec-meta)", fontSize: "var(--fs-12)", marginTop: 4 }}>
                   <span>{new Date(n.date).toLocaleDateString("ru-RU", { day: "numeric", month: "long" })}</span>
                   <span>{fmt(n.views)} просмотров</span>
                 </div>
@@ -597,21 +604,21 @@ function BudgetCalc({ go }) {
   return (
     <section id="calc" style={{ paddingBlock: "clamp(60px,9vh,110px)" }} ref={ref}>
       <div className="container reveal">
-        <div className="eyebrow" style={{ marginBottom: 18 }}><span style={{ width: 22, height: 1, background: "var(--accent)" }} />КАЛЬКУЛЯТОР ПЛОЩАДИ</div>
+        <div className="eyebrow" style={{ marginBottom: 18 }}>КАЛЬКУЛЯТОР ПЛОЩАДИ</div>
         <h2 className="display" style={{ fontSize: "clamp(30px,4vw,50px)", maxWidth: 720 }}>Бюджет комплектации за 20 секунд</h2>
-        <p style={{ color: "var(--muted)", maxWidth: 560, fontSize: 15.5, marginTop: 16, lineHeight: 1.6 }}>
+        <p style={{ color: "var(--muted)", maxWidth: 560, fontSize: "var(--fs-15)", marginTop: 16, lineHeight: 1.6 }}>
           Площадь и сегмент — и сразу ориентир бюджета с раскладкой по категориям. Цифры — рыночный бенчмарк ₽/м², не оферта.
         </p>
         <div className="glass calc-grid" style={{ borderRadius: "var(--r-xl)", padding: "clamp(24px,4vw,44px)", marginTop: 34, boxShadow: "var(--shadow-card)" }}>
           <div>
             <div className="calc-ctrl">
-              <div className="lab"><span>Площадь квартиры</span><b className="mono" style={{ color: "var(--text)", fontSize: 16, whiteSpace: "nowrap" }}>{area} м²</b></div>
+              <div className="lab"><span>Площадь квартиры</span><b className="mono" style={{ color: "var(--text)", fontSize: "var(--fs-16)", whiteSpace: "nowrap" }}>{area} м²</b></div>
               <input type="range" className="quiz-range" min="15" max="300" step="1" value={area}
                 onChange={(e) => setArea(+e.target.value)}
                 aria-label="Площадь квартиры, м²" aria-valuetext={area + " квадратных метров — ориентир " + fmtMoney(res.total)} />
-              <div className="mono" style={{ display: "flex", justifyContent: "space-between", fontSize: 11, color: "var(--spec-meta)", marginTop: 6 }}><span>15 м²</span><span>300 м²</span></div>
+              <div className="mono" style={{ display: "flex", justifyContent: "space-between", fontSize: "var(--fs-11)", color: "var(--spec-meta)", marginTop: 6 }}><span>15 м²</span><span>300 м²</span></div>
             </div>
-            <div style={{ fontWeight: 700, fontSize: 14.5, margin: "18px 0 10px" }}>Сегмент</div>
+            <div style={{ fontWeight: 700, fontSize: "var(--fs-14)", margin: "18px 0 10px" }}>Сегмент</div>
             <div style={{ display: "flex", flexDirection: "column", gap: 9 }}>
               {F.BENCHMARK.segments.map((s) => {
                 const on = s.id === seg;
@@ -620,27 +627,27 @@ function BudgetCalc({ go }) {
                     style={{ textAlign: "left", padding: "12px 15px", borderRadius: 12, color: "inherit", font: "inherit", transition: "border-color .2s, background .2s",
                       border: "1px solid " + (on ? "var(--accent)" : "var(--hairline)"), background: on ? "rgba(183,80,44,.07)" : "var(--surface)" }}>
                     <span style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-                      <b style={{ fontSize: 14.5 }}>{s.label}</b>
-                      {s.recommended && <span style={{ fontSize: 10.5, fontWeight: 700, color: "var(--accent-2-ink)", padding: "2px 8px", borderRadius: 99, background: "rgba(94,107,91,.12)", border: "1px solid rgba(94,107,91,.3)" }}>частый выбор</span>}
-                      <span className="mono" style={{ marginLeft: "auto", fontWeight: 600, fontSize: 13 }}>{fmtMoney(s.rate)}/м²</span>
+                      <b style={{ fontSize: "var(--fs-14)" }}>{s.label}</b>
+                      {s.recommended && <span style={{ fontSize: "var(--fs-10)", fontWeight: 700, color: "var(--accent-2-ink)", padding: "2px 8px", borderRadius: 99, background: "rgba(94,107,91,.12)", border: "1px solid rgba(94,107,91,.3)" }}>частый выбор</span>}
+                      <span className="mono" style={{ marginLeft: "auto", fontWeight: 600, fontSize: "var(--fs-13)" }}>{fmtMoney(s.rate)}/м²</span>
                     </span>
-                    <span style={{ display: "block", fontSize: 12.5, color: "var(--muted)", marginTop: 3 }}>{s.note}</span>
+                    <span style={{ display: "block", fontSize: "var(--fs-12)", color: "var(--muted)", marginTop: 3 }}>{s.note}</span>
                   </button>
                 );
               })}
             </div>
           </div>
           <div>
-            <div className="mono" style={{ fontSize: 11.5, letterSpacing: ".08em", textTransform: "uppercase", color: "var(--accent-2-ink)", fontWeight: 700 }}>Ориентир бюджета</div>
+            <div className="mono" style={{ fontSize: "var(--fs-11)", letterSpacing: ".08em", textTransform: "uppercase", color: "var(--accent-2-ink)", fontWeight: 700 }}>Ориентир бюджета</div>
             <div className="mono" style={{ fontSize: "clamp(30px,3.6vw,42px)", fontWeight: 600, lineHeight: 1.1, margin: "8px 0 4px" }} aria-live="polite" aria-atomic="true">{fmtMoney(res.total)}</div>
-            <div style={{ color: "var(--muted)", fontSize: 13.5 }}>≈ {fmtMoney(res.rate)}/м² · {res.seg.label} · {area} м²</div>
+            <div style={{ color: "var(--muted)", fontSize: "var(--fs-13)" }}>≈ {fmtMoney(res.rate)}/м² · {res.seg.label} · {area} м²</div>
             <div style={{ height: 1, background: "var(--hairline-2)", margin: "18px 0" }} />
-            <div className="mono" style={{ fontSize: 11, fontWeight: 700, color: "var(--spec-meta)", textTransform: "uppercase", letterSpacing: ".08em", marginBottom: 12 }}>Раскладка по категориям</div>
+            <div className="mono" style={{ fontSize: "var(--fs-11)", fontWeight: 700, color: "var(--spec-meta)", textTransform: "uppercase", letterSpacing: ".08em", marginBottom: 12 }}>Раскладка по категориям</div>
             <BarList data={res.byCat.map((c) => ({ label: c.label, value: c.amount }))} money color="var(--accent-2)" />
             <button className="btn btn-primary" style={{ marginTop: 20, padding: "12px 20px" }} onClick={makeDraft}>
               Собрать смету-черновик <I.arrow size={16} />
             </button>
-            <p style={{ fontSize: 12.5, color: "var(--muted)", marginTop: 12, lineHeight: 1.55, maxWidth: 420 }}>
+            <p style={{ fontSize: "var(--fs-12)", color: "var(--muted)", marginTop: 12, lineHeight: 1.55, maxWidth: 420 }}>
               Создадим черновик: комнаты и позиции под этот бюджет, цены — ориентир из бенчмарка. В кабинете замените их реальными — по ссылке на товар, из каталога или прошлых проектов.
             </p>
           </div>

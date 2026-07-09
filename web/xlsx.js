@@ -182,7 +182,7 @@
     });
 
     const suffix = clientMode ? "-klientu" : "-rabochaya";
-    XLSX.writeFile(wb, "smeta-" + String(project || "aivibe").replace(/\s+/g, "-").toLowerCase() + suffix + ".xlsx");
+    XLSX.writeFile(wb, "smeta-" + String(project || "designledger").replace(/\s+/g, "-").toLowerCase() + suffix + ".xlsx");
     return true;
   }
 
@@ -257,7 +257,7 @@
       XLSX.utils.book_append_sheet(wb, ws, uniqueSheet(nm));
     });
 
-    XLSX.writeFile(wb, "smeta-" + String(project || "aivibe").replace(/\s+/g, "-").toLowerCase() + "-zakupka.xlsx");
+    XLSX.writeFile(wb, "smeta-" + String(project || "designledger").replace(/\s+/g, "-").toLowerCase() + "-zakupka.xlsx");
     return true;
   }
 

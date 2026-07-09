@@ -458,23 +458,5 @@
         });
       },
     },
-
-    /* — Профиль репозитория для блока GitHub (mock, → GitHub REST API) — */
-    repo: async () => {
-      await delay(200);
-      return clone({
-        full_name: "irosssss/AIVibe2026",
-        url: "https://github.com/irosssss/AIVibe2026",
-        description: "iOS-приложение для дизайна интерьеров с AR и российским AI",
-        language: "Swift",
-        stars: 248, forks: 31, issues: 7,
-        license: "© 2026 Design Ledger",
-        sessions: [
-          { tag: "SESSION_07", title: "Смета · движок эргономики + каталог фабрик" },
-          { tag: "SESSION_05", title: "AI Advisor · agent loop + skills" },
-          { tag: "SESSION_03", title: "AR RoomScan · RoomPlan 2 + LiDAR" },
-        ],
-      });
-    },
   };
 })();

@@ -34,11 +34,11 @@ function StylesLibrary() {
     <div className="reveal in" ref={useReveal()}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: 22, flexWrap: "wrap", gap: 14 }}>
         <div>
-          <span style={{ fontFamily: "var(--font-mono)", fontSize: 12, letterSpacing: ".12em", textTransform: "uppercase", color: "var(--accent)", display: "inline-flex", alignItems: "center", gap: 9 }}>
+          <span style={{ fontFamily: "var(--font-mono)", fontSize: "var(--fs-12)", letterSpacing: ".12em", textTransform: "uppercase", color: "var(--accent)", display: "inline-flex", alignItems: "center", gap: 9 }}>
             <I.spark size={15} />Библиотека стилей
           </span>
-          <h1 className="display" style={{ fontSize: 30, marginTop: 10 }}>Мои стили</h1>
-          <p style={{ color: "var(--muted)", fontSize: 14.5, marginTop: 8, maxWidth: 640, lineHeight: 1.6 }}>
+          <h1 className="display" style={{ fontSize: "var(--fs-30)", marginTop: 10 }}>Мои стили</h1>
+          <p style={{ color: "var(--muted)", fontSize: "var(--fs-14)", marginTop: 8, maxWidth: 640, lineHeight: 1.6 }}>
             Системные пресеты — основа (только чтение). Дублируйте любой в свой и правьте палитру, материалы, уровень декора и класс бюджета — или соберите стиль с нуля. Стиль применяется к смете и влияет на подбор.
           </p>
         </div>
@@ -70,8 +70,8 @@ function SectionLabel({ icon: Ico, text, sub }) {
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 9, margin: "6px 2px 14px", flexWrap: "wrap" }}>
       <Ico size={17} style={{ color: "var(--accent)", flex: "none" }} />
-      <h2 style={{ fontSize: 17, fontWeight: 700 }}>{text}</h2>
-      {sub && <span style={{ fontSize: 12, fontWeight: 700, letterSpacing: ".05em", textTransform: "uppercase", color: "var(--faint)" }}>· {sub}</span>}
+      <h2 style={{ fontSize: "var(--fs-16)", fontWeight: 700 }}>{text}</h2>
+      {sub && <span style={{ fontSize: "var(--fs-12)", fontWeight: 700, letterSpacing: ".05em", textTransform: "uppercase", color: "var(--faint)" }}>· {sub}</span>}
     </div>
   );
 }
@@ -82,12 +82,12 @@ function StyleLibCard({ s, system, onEdit, onDuplicate, onRemove }) {
     <div className="glass" style={{ borderRadius: "var(--r-lg)", padding: 20, display: "flex", flexDirection: "column", gap: 12 }}>
       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 10 }}>
         <div style={{ minWidth: 0 }}>
-          <div style={{ fontWeight: 800, fontFamily: "var(--font-display)", fontSize: 18, letterSpacing: "-0.01em" }}>{s.name}</div>
-          <div style={{ fontSize: 12.5, color: "var(--muted)", marginTop: 3 }}>{s.mood || DECOR_LABEL[s.decorLevel] || ""}</div>
+          <div style={{ fontWeight: 800, fontFamily: "var(--font-display)", fontSize: "var(--fs-18)", letterSpacing: "-0.01em" }}>{s.name}</div>
+          <div style={{ fontSize: "var(--fs-12)", color: "var(--muted)", marginTop: 3 }}>{s.mood || DECOR_LABEL[s.decorLevel] || ""}</div>
         </div>
         {system
-          ? <span style={{ fontSize: 11, fontWeight: 700, padding: "3px 9px", borderRadius: 99, background: "var(--surface-2)", color: "var(--faint)", flex: "none" }}>база</span>
-          : <span style={{ fontSize: 11, fontWeight: 700, padding: "3px 9px", borderRadius: 99, background: "rgba(94,107,91,.14)", color: "var(--accent-2)", flex: "none" }}>мой</span>}
+          ? <span style={{ fontSize: "var(--fs-11)", fontWeight: 700, padding: "3px 9px", borderRadius: 99, background: "var(--surface-2)", color: "var(--faint)", flex: "none" }}>база</span>
+          : <span style={{ fontSize: "var(--fs-11)", fontWeight: 700, padding: "3px 9px", borderRadius: 99, background: "rgba(94,107,91,.14)", color: "var(--accent-2)", flex: "none" }}>мой</span>}
       </div>
 
       <div style={{ display: "flex", height: 40, borderRadius: 9, overflow: "hidden", border: "1px solid var(--hairline)" }}>
@@ -96,14 +96,14 @@ function StyleLibCard({ s, system, onEdit, onDuplicate, onRemove }) {
 
       <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
         {(s.materials || []).slice(0, 5).map((m, i) => (
-          <span key={i} style={{ fontSize: 11.5, fontWeight: 600, color: "var(--muted)", padding: "3px 9px", borderRadius: 99, background: "var(--glass-2)", border: "1px solid var(--hairline)" }}>{m}</span>
+          <span key={i} style={{ fontSize: "var(--fs-11)", fontWeight: 600, color: "var(--muted)", padding: "3px 9px", borderRadius: 99, background: "var(--glass-2)", border: "1px solid var(--hairline)" }}>{m}</span>
         ))}
       </div>
 
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, paddingTop: 12, marginTop: "auto", borderTop: "1px solid var(--hairline)" }}>
-        <span style={{ fontSize: 12, fontWeight: 700, color: delta > 0 ? "var(--accent)" : delta < 0 ? "var(--accent-2)" : "var(--faint)" }}>{factorDelta(s.factor)}</span>
+        <span style={{ fontSize: "var(--fs-12)", fontWeight: 700, color: delta > 0 ? "var(--accent)" : delta < 0 ? "var(--accent-2)" : "var(--faint)" }}>{factorDelta(s.factor)}</span>
         <div style={{ display: "flex", gap: 6 }}>
-          <button className="btn btn-ghost" style={{ padding: "7px 12px", fontSize: 12.5 }} onClick={onDuplicate} title="Дублировать в свой"><I.layers size={14} />Дублировать</button>
+          <button className="btn btn-ghost" style={{ padding: "7px 12px", fontSize: "var(--fs-12)" }} onClick={onDuplicate} title="Дублировать в свой"><I.layers size={14} />Дублировать</button>
           {!system && <button className="icon-btn sm" title="Редактировать" onClick={onEdit}><I.edit size={15} /></button>}
           {!system && <button className="icon-btn sm" title="Удалить" onClick={onRemove}><I.trash size={15} /></button>}
         </div>
@@ -149,7 +149,7 @@ function StyleEditor({ draft, onClose, onSaved }) {
   return (
     <Modal onClose={onClose} label={d.__new ? "Новый стиль" : "Редактировать стиль"} maxWidth={560}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "20px 24px", borderBottom: "1px solid var(--hairline)" }}>
-          <h3 className="display" style={{ fontSize: 20 }}>{d.__new ? "Новый стиль" : "Редактировать стиль"}</h3>
+          <h3 className="display" style={{ fontSize: "var(--fs-21)" }}>{d.__new ? "Новый стиль" : "Редактировать стиль"}</h3>
           <button className="icon-btn" onClick={onClose} aria-label="Закрыть"><I.close size={18} /></button>
         </div>
 
@@ -184,7 +184,7 @@ function StyleEditor({ draft, onClose, onSaved }) {
             <FldLabel>Материалы и фактуры</FldLabel>
             <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 10 }}>
               {d.materials.map((m, i) => (
-                <span key={i} style={{ display: "inline-flex", alignItems: "center", gap: 7, fontSize: 13, fontWeight: 600, color: "var(--text)", padding: "6px 12px", borderRadius: 99, background: "var(--glass-2)", border: "1px solid var(--hairline)" }}>
+                <span key={i} style={{ display: "inline-flex", alignItems: "center", gap: 7, fontSize: "var(--fs-13)", fontWeight: 600, color: "var(--text)", padding: "6px 12px", borderRadius: 99, background: "var(--glass-2)", border: "1px solid var(--hairline)" }}>
                   {m}<button onClick={() => rmMat(i)} aria-label="Убрать" style={{ display: "grid", placeItems: "center", color: "var(--faint)" }}><I.close size={13} /></button>
                 </span>
               ))}
@@ -207,10 +207,10 @@ function StyleEditor({ draft, onClose, onSaved }) {
           <div>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 6 }}>
               <FldLabel>Класс бюджета</FldLabel>
-              <span style={{ fontSize: 12.5, fontWeight: 700, color: delta > 0 ? "var(--accent)" : delta < 0 ? "var(--accent-2)" : "var(--faint)" }}>{factorDelta(d.factor)}</span>
+              <span style={{ fontSize: "var(--fs-12)", fontWeight: 700, color: delta > 0 ? "var(--accent)" : delta < 0 ? "var(--accent-2)" : "var(--faint)" }}>{factorDelta(d.factor)}</span>
             </div>
             <input type="range" min="0.7" max="1.4" step="0.02" value={d.factor} onChange={(e) => set({ factor: +e.target.value })} style={{ width: "100%", accentColor: "var(--accent)", cursor: "pointer" }} />
-            <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11.5, color: "var(--faint)", marginTop: 6 }}><span>−30% (эконом)</span><span>база</span><span>+40% (премиум)</span></div>
+            <div style={{ display: "flex", justifyContent: "space-between", fontSize: "var(--fs-11)", color: "var(--faint)", marginTop: 6 }}><span>−30% (эконом)</span><span>база</span><span>+40% (премиум)</span></div>
           </div>
         </div>
 
@@ -233,12 +233,12 @@ function HexInput({ value, onSet }) {
   return (
     <input className="fld" value={v} aria-label="HEX цвета" aria-invalid={ok ? undefined : "true"} spellCheck={false}
       onChange={(e) => { const x = e.target.value.trim(); setV(x); if (/^#[0-9A-Fa-f]{6}$/.test(x)) onSet(x); }}
-      style={{ width: 78, padding: "5px 6px", fontFamily: "var(--font-mono)", fontSize: 11, textAlign: "center" }} />
+      style={{ width: 78, padding: "5px 6px", fontFamily: "var(--font-mono)", fontSize: "var(--fs-11)", textAlign: "center" }} />
   );
 }
 
 function FldLabel({ children }) {
-  return <span style={{ display: "block", fontSize: 13, color: "var(--muted)", marginBottom: 8, fontWeight: 600 }}>{children}</span>;
+  return <span style={{ display: "block", fontSize: "var(--fs-13)", color: "var(--muted)", marginBottom: 8, fontWeight: 600 }}>{children}</span>;
 }
 function Fld({ label, children }) {
   return <label style={{ display: "block" }}><FldLabel>{label}</FldLabel>{children}</label>;

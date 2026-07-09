@@ -21,12 +21,12 @@ function Footer({ go }) {
           <div style={{ position: "absolute", width: 600, height: 360, left: "50%", top: "50%", transform: "translate(-50%,-50%)", background: "radial-gradient(circle, rgba(183,80,44,.22), transparent 70%)", filter: "blur(40px)" }} />
           <div style={{ position: "relative" }}>
             <h2 className="display" style={{ fontSize: "clamp(34px,5vw,72px)", lineHeight: 0.95 }}>Первая смета —<br />сегодня и бесплатно</h2>
-            <p style={{ color: "var(--muted)", maxWidth: 540, margin: "24px auto 36px", fontSize: 18 }}>Design Ledger соберёт спецификацию с ценами, посчитает вашу наценку и проверит эргономику по нормам — документ готов к отправке клиенту.</p>
+            <p style={{ color: "var(--muted)", maxWidth: 540, margin: "24px auto 36px", fontSize: "var(--fs-18)" }}>Design Ledger соберёт спецификацию с ценами, посчитает вашу наценку и проверит эргономику по нормам — документ готов к отправке клиенту.</p>
             <div style={{ display: "flex", gap: 14, justifyContent: "center", flexWrap: "wrap" }}>
-              <button className="btn btn-primary" style={{ padding: "16px 30px", fontSize: 16 }} onClick={() => go("auth")}><I.layers size={19} /> Начать бесплатно</button>
-              <button className="btn btn-ghost" style={{ padding: "16px 30px", fontSize: 16 }} onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}>Посмотреть пример сметы</button>
+              <button className="btn btn-primary" style={{ padding: "16px 30px", fontSize: "var(--fs-16)" }} onClick={() => go("auth")}><I.layers size={19} /> Начать бесплатно</button>
+              <button className="btn btn-ghost" style={{ padding: "16px 30px", fontSize: "var(--fs-16)" }} onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}>Посмотреть пример сметы</button>
             </div>
-            <div className="mono" style={{ marginTop: 16, fontSize: 12, color: "var(--spec-meta)" }}>без карты · тарифы от 1 490 ₽/мес после беты</div>
+            <div className="mono" style={{ marginTop: 16, fontSize: "var(--fs-12)", color: "var(--spec-meta)" }}>без карты · тарифы от 1 490 ₽/мес после беты</div>
           </div>
         </div>
       </div>
@@ -36,12 +36,12 @@ function Footer({ go }) {
         <div className="footer-grid" style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr 1fr", gap: 36 }}>
           <div>
             <Logo size={26} />
-            <p style={{ color: "var(--muted)", maxWidth: 360, marginTop: 18, fontSize: 14.5, lineHeight: 1.6 }}>
+            <p style={{ color: "var(--muted)", maxWidth: 360, marginTop: 18, fontSize: "var(--fs-14)", lineHeight: 1.6 }}>
               Смета и проверка норм для дизайнеров интерьера. Каталог фабрик-партнёров и российский AI.
             </p>
             <div style={{ display: "flex", gap: 10, marginTop: 22 }}>
-              {window.DEV_MODE && <button className="btn btn-ghost" style={{ padding: "10px 16px", fontSize: 13.5 }} onClick={() => go("admin")}>Админка</button>}
-              <button className="btn btn-ghost" style={{ padding: "10px 16px", fontSize: 13.5 }} onClick={() => go("auth")}>Войти</button>
+              {window.DEV_MODE && <button className="btn btn-ghost" style={{ padding: "10px 16px", fontSize: "var(--fs-13)" }} onClick={() => go("admin")}>Админка</button>}
+              <button className="btn btn-ghost" style={{ padding: "10px 16px", fontSize: "var(--fs-13)" }} onClick={() => go("auth")}>Войти</button>
             </div>
             <div style={{ display: "flex", gap: 10, marginTop: 16 }}>
               <a className="social-chip vk" href="#" onClick={(e) => e.preventDefault()} aria-label="Design Ledger во ВКонтакте" title="ВКонтакте">
@@ -54,17 +54,17 @@ function Footer({ go }) {
           </div>
           {cols.map(([h, items]) => (
             <div key={h}>
-              <div style={{ fontWeight: 700, marginBottom: 16, fontSize: 15 }}>{h}</div>
+              <div style={{ fontWeight: 700, marginBottom: 16, fontSize: "var(--fs-15)" }}>{h}</div>
               <div style={{ display: "flex", flexDirection: "column", gap: 11 }}>
                 {items.map(([t, href]) => href
-                  ? <a key={t} href={href} style={{ color: "var(--muted)", fontSize: 14, transition: ".2s" }}
+                  ? <a key={t} href={href} style={{ color: "var(--muted)", fontSize: "var(--fs-14)", transition: ".2s" }}
                       onMouseEnter={(e) => (e.target.style.color = "var(--text)")} onMouseLeave={(e) => (e.target.style.color = "var(--muted)")}>{t}</a>
-                  : <span key={t} title="Раздел скоро" style={{ color: "var(--faint)", fontSize: 14, cursor: "default" }}>{t}</span>)}
+                  : <span key={t} title="Раздел скоро" style={{ color: "var(--faint)", fontSize: "var(--fs-14)", cursor: "default" }}>{t}</span>)}
               </div>
             </div>
           ))}
         </div>
-        <div style={{ borderTop: "1px solid var(--hairline)", marginTop: 44, paddingTop: 26, display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 12, color: "var(--faint)", fontSize: 13 }}>
+        <div style={{ borderTop: "1px solid var(--hairline)", marginTop: 44, paddingTop: 26, display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 12, color: "var(--faint)", fontSize: "var(--fs-13)" }}>
           <span>© 2026 Design Ledger. Прототип интерфейса.</span>
           <span>Сделано в России · Yandex Cloud</span>
         </div>

@@ -380,7 +380,7 @@ function OverlayHead({ onBack, crumbs, title, sub, budget, right }) {
         <div className="pd-sub">{sub}</div>
       </div>
       {budget != null && (
-        <span className="glass pd-bud" style={{ display: "flex", alignItems: "center", gap: 7, padding: "7px 13px", borderRadius: 99, fontSize: 12.5, fontWeight: 700, whiteSpace: "nowrap" }}>
+        <span className="glass pd-bud" style={{ display: "flex", alignItems: "center", gap: 7, padding: "7px 13px", borderRadius: 99, fontSize: "var(--fs-12)", fontWeight: 700, whiteSpace: "nowrap" }}>
           <I.wallet size={15} style={{ color: "var(--accent-2)" }} />Бюджет {fmtMoney(budget)}
         </span>
       )}
@@ -397,7 +397,7 @@ function SmetaTotal({ amount, caption, icon = "layers", size = 22 }) {
       {Ico && <span style={{ width: 40, height: 40, borderRadius: 12, background: "var(--accent)", color: "var(--on-accent)", display: "grid", placeItems: "center", flex: "none" }}><Ico size={20} /></span>}
       <div>
         <div className="mono" style={{ fontWeight: 600, fontSize: size, lineHeight: 1 }}>{fmtMoney(amount)}</div>
-        {caption && <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 3 }}>{caption}</div>}
+        {caption && <div style={{ fontSize: "var(--fs-12)", color: "var(--muted)", marginTop: 3 }}>{caption}</div>}
       </div>
     </div>
   );
@@ -512,13 +512,13 @@ function BarList({ data, color = "var(--chart)", money }) {
     <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
       {data.map((d, i) => (
         <div key={i}>
-          <div style={{ display: "flex", justifyContent: "space-between", gap: 12, fontSize: 13.5, marginBottom: 8, lineHeight: 1.3 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", gap: 12, fontSize: "var(--fs-13)", marginBottom: 8, lineHeight: 1.3 }}>
             <span style={{ color: "var(--muted)" }}>{d.label}</span>
             <span style={{ fontWeight: 700, whiteSpace: "nowrap" }}>{money ? fmtMoney(d.value) : d.value + "%"}</span>
           </div>
           <div style={{ height: 8, borderRadius: 99, background: "var(--glass-2)", overflow: "hidden" }}>
             <div style={{ height: "100%", width: (d.value / max) * 100 + "%", borderRadius: 99,
-              background: `linear-gradient(90deg, ${color}, ${color}aa)`, transition: "width .9s cubic-bezier(.2,.7,.2,1)" }} />
+              background: `linear-gradient(90deg, ${color}, ${color}aa)`, transition: "width var(--dur-slow) var(--ease-pop)" }} />
           </div>
         </div>
       ))}
@@ -545,7 +545,7 @@ function Donut({ data, size = 168 }) {
       </svg>
       <div style={{ display: "flex", flexDirection: "column", gap: 9, minWidth: 150 }}>
         {data.map((d, i) => (
-          <div key={i} style={{ display: "flex", alignItems: "center", gap: 9, fontSize: 13.5 }}>
+          <div key={i} style={{ display: "flex", alignItems: "center", gap: 9, fontSize: "var(--fs-13)" }}>
             <span style={{ width: 10, height: 10, borderRadius: 3, background: colors[i % colors.length], flex: "none" }} />
             <span style={{ color: "var(--muted)", flex: 1 }}>{d.label}</span>
             <span style={{ fontWeight: 700 }}>{d.value}%</span>

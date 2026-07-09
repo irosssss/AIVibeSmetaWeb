@@ -30,7 +30,7 @@ function LibPriceAge({ d }) {
   const stale = days > 30;
   return (
     <span className="mono" title={"Цена проверена " + (days === 0 ? "сегодня" : days + " " + plural(days, ["день", "дня", "дней"]) + " назад") + (stale ? " — стоит перепроверить" : "")}
-      style={{ fontSize: 10.5, whiteSpace: "nowrap", padding: "1px 7px", borderRadius: 99,
+      style={{ fontSize: "var(--fs-10)", whiteSpace: "nowrap", padding: "1px 7px", borderRadius: 99,
         border: "1px solid " + (stale ? "rgba(183,80,44,.4)" : "var(--hairline)"), color: stale ? "var(--accent-ink)" : "var(--spec-meta)" }}>
       {days === 0 ? "цена от сегодня" : "цене " + days + " " + plural(days, ["день", "дня", "дней"])}
     </span>
@@ -61,11 +61,11 @@ function ProductsLibrary() {
     <div className="reveal in" ref={useReveal()}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: 22, flexWrap: "wrap", gap: 14 }}>
         <div>
-          <span style={{ fontFamily: "var(--font-mono)", fontSize: 12, letterSpacing: ".12em", textTransform: "uppercase", color: "var(--accent)", display: "inline-flex", alignItems: "center", gap: 9 }}>
+          <span style={{ fontFamily: "var(--font-mono)", fontSize: "var(--fs-12)", letterSpacing: ".12em", textTransform: "uppercase", color: "var(--accent)", display: "inline-flex", alignItems: "center", gap: 9 }}>
             <I.layers size={15} />Библиотека товаров
           </span>
-          <h1 className="display" style={{ fontSize: 30, marginTop: 10 }}>Мои товары{all.length ? " · " + all.length : ""}</h1>
-          <p style={{ color: "var(--muted)", fontSize: 14.5, marginTop: 8, maxWidth: 640, lineHeight: 1.6 }}>
+          <h1 className="display" style={{ fontSize: "var(--fs-30)", marginTop: 10 }}>Мои товары{all.length ? " · " + all.length : ""}</h1>
+          <p style={{ color: "var(--muted)", fontSize: "var(--fs-14)", marginTop: 8, maxWidth: 640, lineHeight: 1.6 }}>
             Мастер-записи того, что вы ставите в сметы снова и снова. В смете название подставляет цену, раздел и поставщика; в комнате — пикер-каталог. Собрать библиотеку можно прямо из готовой сметы кнопкой «В библиотеку» на позиции.
           </p>
         </div>
@@ -77,8 +77,8 @@ function ProductsLibrary() {
       {rows && all.length === 0 && (
         <div className="glass" style={{ borderRadius: "var(--r-xl)", padding: "44px 30px", textAlign: "center", display: "flex", flexDirection: "column", alignItems: "center", gap: 12 }}>
           <div style={{ width: 54, height: 54, borderRadius: 16, background: "var(--glass-2)", border: "1px solid var(--hairline)", display: "grid", placeItems: "center", color: "var(--accent)" }}><I.layers size={26} /></div>
-          <h3 style={{ fontSize: 19, fontWeight: 700 }}>В библиотеке пока пусто</h3>
-          <p style={{ color: "var(--muted)", fontSize: 14, maxWidth: 460, lineHeight: 1.6 }}>
+          <h3 style={{ fontSize: "var(--fs-18)", fontWeight: 700 }}>В библиотеке пока пусто</h3>
+          <p style={{ color: "var(--muted)", fontSize: "var(--fs-14)", maxWidth: 460, lineHeight: 1.6 }}>
             Добавьте товары, которые подбираете из проекта в проект. Они начнут подставляться в сметы по названию и появятся в пикере комнаты. Можно собрать библиотеку и постепенно — кнопкой «В библиотеку» на позициях готовой сметы.
           </p>
           <button className="btn btn-primary" onClick={createNew} style={{ marginTop: 4 }}><I.plus size={17} />Создать первый товар</button>
@@ -93,7 +93,7 @@ function ProductsLibrary() {
               aria-label="Поиск по библиотеке товаров" style={{ paddingLeft: 38 }} />
           </div>
           {shown.length === 0
-            ? <p style={{ color: "var(--muted)", fontSize: 14, padding: "8px 2px" }}>По запросу «{q.trim()}» ничего не нашлось.</p>
+            ? <p style={{ color: "var(--muted)", fontSize: "var(--fs-14)", padding: "8px 2px" }}>По запросу «{q.trim()}» ничего не нашлось.</p>
             : (
               <div className="proj-grid" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(250px, 1fr))", gap: 16 }}>
                 {shown.map((p) => <ProductCard key={p.id} p={p} onEdit={() => setEdit(libToDraft(p))} onRemove={() => remove(p.id)} />)}
@@ -115,19 +115,19 @@ function ProductCard({ p, onEdit, onRemove }) {
     <div className="glass" style={{ borderRadius: "var(--r-lg)", padding: 18, display: "flex", flexDirection: "column", gap: 10 }}>
       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 10 }}>
         <div style={{ minWidth: 0 }}>
-          <div style={{ fontWeight: 800, fontFamily: "var(--font-display)", fontSize: 16.5, letterSpacing: "-0.01em", lineHeight: 1.25 }}>{p.title}</div>
-          {p.cat && <div style={{ marginTop: 6 }}><span style={{ fontSize: 11.5, fontWeight: 700, padding: "3px 9px", borderRadius: 99, background: "var(--glass-2)", color: "var(--muted)", border: "1px solid var(--hairline)" }}>{p.cat}</span></div>}
+          <div style={{ fontWeight: 800, fontFamily: "var(--font-display)", fontSize: "var(--fs-16)", letterSpacing: "-0.01em", lineHeight: 1.25 }}>{p.title}</div>
+          {p.cat && <div style={{ marginTop: 6 }}><span style={{ fontSize: "var(--fs-11)", fontWeight: 700, padding: "3px 9px", borderRadius: 99, background: "var(--glass-2)", color: "var(--muted)", border: "1px solid var(--hairline)" }}>{p.cat}</span></div>}
         </div>
         <div style={{ textAlign: "right", flex: "none" }}>
-          <div className="mono" style={{ fontWeight: 700, fontSize: 15, color: "var(--accent-2)", whiteSpace: "nowrap" }}>{fmtMoney(p.price || 0)}</div>
-          <div style={{ fontSize: 11, color: "var(--faint)" }}>за {p.unit || "шт"}</div>
+          <div className="mono" style={{ fontWeight: 700, fontSize: "var(--fs-15)", color: "var(--accent-2)", whiteSpace: "nowrap" }}>{fmtMoney(p.price || 0)}</div>
+          <div style={{ fontSize: "var(--fs-11)", color: "var(--faint)" }}>за {p.unit || "шт"}</div>
         </div>
       </div>
 
       {(meta || dims) && (
-        <div style={{ fontSize: 12.5, color: "var(--muted)", lineHeight: 1.5, display: "flex", flexDirection: "column", gap: 2 }}>
+        <div style={{ fontSize: "var(--fs-12)", color: "var(--muted)", lineHeight: 1.5, display: "flex", flexDirection: "column", gap: 2 }}>
           {meta && <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{meta}</span>}
-          {dims && <span className="mono" style={{ fontSize: 11.5, color: "var(--faint)" }}>{dims}</span>}
+          {dims && <span className="mono" style={{ fontSize: "var(--fs-11)", color: "var(--faint)" }}>{dims}</span>}
         </div>
       )}
 
@@ -136,7 +136,7 @@ function ProductCard({ p, onEdit, onRemove }) {
           {p.priceDate && <LibPriceAge d={p.priceDate} />}
           {p.feedSku && (
             <span className="mono" title={"Артикул фида: " + p.feedSku + " — автообновление цены подключится вместе с фидом фабрик"}
-              style={{ fontSize: 10.5, whiteSpace: "nowrap", padding: "1px 7px", borderRadius: 99, border: "1px solid var(--hairline)", color: "var(--info)" }}>
+              style={{ fontSize: "var(--fs-10)", whiteSpace: "nowrap", padding: "1px 7px", borderRadius: 99, border: "1px solid var(--hairline)", color: "var(--info)" }}>
               Фид · {p.feedSku}
             </span>
           )}
@@ -144,7 +144,7 @@ function ProductCard({ p, onEdit, onRemove }) {
       )}
 
       <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 6, paddingTop: 10, marginTop: "auto", borderTop: "1px solid var(--hairline)" }}>
-        {p.url && <a className="btn btn-ghost" href={p.url} target="_blank" rel="noopener noreferrer" style={{ padding: "6px 11px", fontSize: 12, marginRight: "auto" }} title="Открыть страницу товара"><I.arrow size={13} />Ссылка</a>}
+        {p.url && <a className="btn btn-ghost" href={p.url} target="_blank" rel="noopener noreferrer" style={{ padding: "6px 11px", fontSize: "var(--fs-12)", marginRight: "auto" }} title="Открыть страницу товара"><I.arrow size={13} />Ссылка</a>}
         <button className="icon-btn sm" title="Редактировать" aria-label={"Редактировать «" + p.title + "»"} onClick={onEdit}><I.edit size={15} /></button>
         <button className="icon-btn sm" title="Удалить" aria-label={"Удалить «" + p.title + "»"} onClick={onRemove}><I.trash size={15} /></button>
       </div>
@@ -181,11 +181,11 @@ function ProductEditor({ draft, onClose, onSaved }) {
     setTimeout(onSaved, 650);
   };
 
-  const dimF = { width: "100%", padding: "8px 10px", borderRadius: 9, border: "1px solid var(--hairline)", background: "var(--surface)", fontSize: 13, color: "var(--text)", fontFamily: "var(--font-mono)", textAlign: "center" };
+  const dimF = { width: "100%", padding: "8px 10px", borderRadius: 9, border: "1px solid var(--hairline)", background: "var(--surface)", fontSize: "var(--fs-13)", color: "var(--text)", fontFamily: "var(--font-mono)", textAlign: "center" };
   return (
     <Modal onClose={onClose} label={d.__new ? "Новый товар" : "Редактировать товар"} maxWidth={560}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "20px 24px", borderBottom: "1px solid var(--hairline)" }}>
-        <h3 className="display" style={{ fontSize: 20 }}>{d.__new ? "Новый товар" : "Редактировать товар"}</h3>
+        <h3 className="display" style={{ fontSize: "var(--fs-21)" }}>{d.__new ? "Новый товар" : "Редактировать товар"}</h3>
         <button className="icon-btn" onClick={onClose} aria-label="Закрыть"><I.close size={18} /></button>
       </div>
 
@@ -226,7 +226,7 @@ function ProductEditor({ draft, onClose, onSaved }) {
 
         <LibFld label="Артикул фида фабрик (SKU)">
           <input className="fld" value={d.feedSku || ""} onChange={(e) => set({ feedSku: e.target.value })} placeholder="пока вводится вручную" />
-          <span style={{ display: "block", fontSize: 12, color: "var(--faint)", marginTop: 5, lineHeight: 1.5 }}>
+          <span style={{ display: "block", fontSize: "var(--fs-12)", color: "var(--faint)", marginTop: 5, lineHeight: 1.5 }}>
             Задел под фид фабрик: когда он подключится, цены по этому артикулу начнут обновляться сами.
           </span>
         </LibFld>
@@ -284,8 +284,8 @@ function LibraryPickerModal({ roomName, onClose, onAdd }) {
     <Modal onClose={onClose} label="Добавить из библиотеки" maxWidth={560}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "20px 24px", borderBottom: "1px solid var(--hairline)" }}>
         <div>
-          <h3 className="display" style={{ fontSize: 20 }}>Из библиотеки</h3>
-          {roomName && <div style={{ fontSize: 12.5, color: "var(--muted)", marginTop: 2 }}>в комнату «{roomName}»</div>}
+          <h3 className="display" style={{ fontSize: "var(--fs-21)" }}>Из библиотеки</h3>
+          {roomName && <div style={{ fontSize: "var(--fs-12)", color: "var(--muted)", marginTop: 2 }}>в комнату «{roomName}»</div>}
         </div>
         <button className="icon-btn" onClick={onClose} aria-label="Закрыть"><I.close size={18} /></button>
       </div>
@@ -300,33 +300,33 @@ function LibraryPickerModal({ roomName, onClose, onAdd }) {
       <div style={{ padding: "4px 24px", maxHeight: "52vh", overflow: "auto" }}>
         {!rows && <div className="skel" style={{ height: 120, borderRadius: 12 }} />}
         {rows && all.length === 0 && (
-          <p style={{ color: "var(--muted)", fontSize: 14, lineHeight: 1.6, padding: "20px 0" }}>
+          <p style={{ color: "var(--muted)", fontSize: "var(--fs-14)", lineHeight: 1.6, padding: "20px 0" }}>
             Библиотека пуста. Наполните её в разделе «Мастерская → Товары» или кнопкой «В библиотеку» на позициях сметы — потом сможете добавлять товары в комнаты в один клик.
           </p>
         )}
-        {rows && all.length > 0 && shown.length === 0 && <p style={{ color: "var(--muted)", fontSize: 14, padding: "16px 0" }}>По запросу «{q.trim()}» ничего не нашлось.</p>}
+        {rows && all.length > 0 && shown.length === 0 && <p style={{ color: "var(--muted)", fontSize: "var(--fs-14)", padding: "16px 0" }}>По запросу «{q.trim()}» ничего не нашлось.</p>}
         {rows && shown.map((p) => {
           const on = !!sel[p.id];
           const meta = libMeta(p);
           return (
             <button key={p.id} onClick={() => toggle(p.id)} aria-pressed={on}
               style={{ display: "flex", alignItems: "center", gap: 12, width: "100%", textAlign: "left", padding: "10px 12px", borderRadius: 12, marginBottom: 6,
-                border: "1px solid " + (on ? "rgba(94,107,91,.5)" : "var(--hairline)"), background: on ? "rgba(94,107,91,.08)" : "var(--surface)" }}>
+                border: "1px solid " + (on ? "rgba(94,107,91,.5)" : "var(--hairline)"), background: on ? "var(--accent-2-tint)" : "var(--surface)" }}>
               <span aria-hidden="true" style={{ width: 20, height: 20, flex: "none", borderRadius: 6, border: "1.5px solid " + (on ? "var(--accent-2)" : "var(--hairline-2)"), background: on ? "var(--accent-2)" : "transparent", display: "grid", placeItems: "center", color: "var(--on-accent)" }}>
                 {on && <I.check size={13} />}
               </span>
               <span style={{ minWidth: 0, flex: 1 }}>
-                <span style={{ display: "block", fontWeight: 600, fontSize: 13.5, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.title}</span>
-                {(p.cat || meta) && <span style={{ display: "block", fontSize: 12, color: "var(--muted)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{[p.cat, meta].filter(Boolean).join(" · ")}</span>}
+                <span style={{ display: "block", fontWeight: 600, fontSize: "var(--fs-13)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.title}</span>
+                {(p.cat || meta) && <span style={{ display: "block", fontSize: "var(--fs-12)", color: "var(--muted)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{[p.cat, meta].filter(Boolean).join(" · ")}</span>}
               </span>
-              <span className="mono" style={{ fontSize: 13, fontWeight: 700, color: "var(--accent-2)", flex: "none" }}>{fmtMoney(p.price || 0)}</span>
+              <span className="mono" style={{ fontSize: "var(--fs-13)", fontWeight: 700, color: "var(--accent-2)", flex: "none" }}>{fmtMoney(p.price || 0)}</span>
             </button>
           );
         })}
       </div>
 
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, padding: "14px 24px", borderTop: "1px solid var(--hairline)" }}>
-        <span style={{ fontSize: 13, color: "var(--muted)" }}>{chosen.length ? "Выбрано " + chosen.length + " · " + fmtMoney(sum) : "Отметьте товары"}</span>
+        <span style={{ fontSize: "var(--fs-13)", color: "var(--muted)" }}>{chosen.length ? "Выбрано " + chosen.length + " · " + fmtMoney(sum) : "Отметьте товары"}</span>
         <div style={{ display: "flex", gap: 10 }}>
           <button className="btn btn-ghost" onClick={onClose}>Отмена</button>
           <button className="btn btn-primary" onClick={add} disabled={!chosen.length}><I.plus size={16} />Добавить{chosen.length ? " · " + chosen.length : ""}</button>
@@ -338,7 +338,7 @@ function LibraryPickerModal({ roomName, onClose, onAdd }) {
 
 /* поля формы (локальные — общая глобальная область, имена не должны пересекаться) */
 function LibFldLabel({ children }) {
-  return <span style={{ display: "block", fontSize: 13, color: "var(--muted)", marginBottom: 6, fontWeight: 600 }}>{children}</span>;
+  return <span style={{ display: "block", fontSize: "var(--fs-13)", color: "var(--muted)", marginBottom: 6, fontWeight: 600 }}>{children}</span>;
 }
 function LibFld({ label, children }) {
   return <label style={{ display: "block" }}><LibFldLabel>{label}</LibFldLabel>{children}</label>;

@@ -128,14 +128,14 @@ function StyleQuiz({ onClose, onDone }) {
         {/* шапка с прогрессом */}
         <div style={{ padding: "20px 26px 0" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-            <span style={{ display: "inline-flex", alignItems: "center", gap: 8, fontSize: 12.5, fontWeight: 800, letterSpacing: ".06em", textTransform: "uppercase", color: "var(--accent)" }}>
+            <span style={{ display: "inline-flex", alignItems: "center", gap: 8, fontSize: "var(--fs-12)", fontWeight: 700, letterSpacing: ".06em", textTransform: "uppercase", color: "var(--accent)" }}>
               <I.spark size={15} />Стиль-квиз
             </span>
-            <span style={{ marginLeft: "auto", fontSize: 12.5, color: "var(--faint)" }}>{isResult ? "Готово" : `Шаг ${step + 1} из ${total}`}</span>
+            <span style={{ marginLeft: "auto", fontSize: "var(--fs-12)", color: "var(--faint)" }}>{isResult ? "Готово" : `Шаг ${step + 1} из ${total}`}</span>
             <button className="icon-btn sm" onClick={onClose} aria-label="Закрыть"><I.close size={16} /></button>
           </div>
           <div style={{ height: 5, borderRadius: 99, background: "var(--glass-2)", overflow: "hidden", marginTop: 14 }}>
-            <div style={{ height: "100%", width: progress + "%", background: "var(--accent)", borderRadius: 99, transition: "width .35s cubic-bezier(.4,0,.2,1)" }} />
+            <div style={{ height: "100%", width: progress + "%", background: "var(--accent)", borderRadius: 99, transition: "width var(--dur-base) var(--ease-pop)" }} />
           </div>
         </div>
 
@@ -170,8 +170,8 @@ function QuizStep({ q, ans, onPick }) {
   const selected = (v) => (Array.isArray(ans) ? ans.includes(v) : ans === v);
   return (
     <div>
-      <h2 className="display" style={{ fontSize: 25, letterSpacing: "-0.02em" }}>{q.q}</h2>
-      <p style={{ color: "var(--muted)", fontSize: 14.5, marginTop: 6, marginBottom: 22 }}>{q.sub}{q.type === "chips" && " · можно выбрать несколько"}</p>
+      <h2 className="display" style={{ fontSize: "var(--fs-24)", letterSpacing: "-0.02em" }}>{q.q}</h2>
+      <p style={{ color: "var(--muted)", fontSize: "var(--fs-14)", marginTop: 6, marginBottom: 22 }}>{q.sub}{q.type === "chips" && " · можно выбрать несколько"}</p>
 
       {q.type === "room" && (
         <div className="quiz-grid" style={{ display: "grid", gridTemplateColumns: "repeat(2,1fr)", gap: 12 }}>
@@ -181,7 +181,7 @@ function QuizStep({ q, ans, onPick }) {
             return (
               <button key={o.v} className={"quiz-opt" + (on ? " on" : "")} onClick={() => onPick(q, o)} aria-pressed={on}>
                 <span style={{ width: 46, height: 46, borderRadius: 13, background: on ? "var(--accent)" : "var(--surface-2)", color: on ? "var(--on-accent)" : "var(--accent)", display: "grid", placeItems: "center", flex: "none", transition: ".18s" }}><Ico size={23} /></span>
-                <span style={{ fontWeight: 700, fontSize: 16 }}>{o.v}</span>
+                <span style={{ fontWeight: 700, fontSize: "var(--fs-16)" }}>{o.v}</span>
                 {on && <span style={{ marginLeft: "auto" }}><I.check size={18} style={{ color: "var(--accent-2)" }} /></span>}
               </button>
             );
@@ -199,8 +199,8 @@ function QuizStep({ q, ans, onPick }) {
                 <div style={{ display: "flex", height: 56, borderRadius: 10, overflow: "hidden" }}>
                   {st.palette.map((c, i) => <span key={i} style={{ flex: 1, background: c }} />)}
                 </div>
-                <div style={{ fontWeight: 700, fontSize: 14.5, marginTop: 11 }}>{o.v}</div>
-                <div style={{ color: "var(--faint)", fontSize: 12, marginTop: 3 }}>{st.mood}</div>
+                <div style={{ fontWeight: 700, fontSize: "var(--fs-14)", marginTop: 11 }}>{o.v}</div>
+                <div style={{ color: "var(--faint)", fontSize: "var(--fs-12)", marginTop: 3 }}>{st.mood}</div>
                 {on && <span className="quiz-pal-check"><I.check size={13} /></span>}
               </button>
             );
@@ -214,7 +214,7 @@ function QuizStep({ q, ans, onPick }) {
             const on = selected(o.v);
             return (
               <button key={o.v} onClick={() => onPick(q, o)} aria-pressed={on}
-                style={{ padding: "11px 17px", borderRadius: 99, fontSize: 14.5, fontWeight: 700, border: "1.5px solid " + (on ? "var(--accent-2)" : "var(--hairline)"),
+                style={{ padding: "11px 17px", borderRadius: 99, fontSize: "var(--fs-14)", fontWeight: 700, border: "1.5px solid " + (on ? "var(--accent-2)" : "var(--hairline)"),
                   background: on ? "rgba(94,107,91,.14)" : "var(--glass-2)", color: on ? "var(--text)" : "var(--muted)", transition: ".16s", display: "inline-flex", alignItems: "center", gap: 8 }}>
                 {on && <I.check size={15} style={{ color: "var(--accent-2)" }} />}{o.v}
               </button>
@@ -231,18 +231,18 @@ function BudgetStep({ budget, setBudget }) {
   const fmtRange = (n) => new Intl.NumberFormat("ru-RU").format(n) + " ₽";
   return (
     <div>
-      <h2 className="display" style={{ fontSize: 25, letterSpacing: "-0.02em" }}>Какой бюджет на комнату?</h2>
-      <p style={{ color: "var(--muted)", fontSize: 14.5, marginTop: 6, marginBottom: 28 }}>Design Ledger соберёт смету с артикулами и ценами в этих рамках</p>
+      <h2 className="display" style={{ fontSize: "var(--fs-24)", letterSpacing: "-0.02em" }}>Какой бюджет на комнату?</h2>
+      <p style={{ color: "var(--muted)", fontSize: "var(--fs-14)", marginTop: 6, marginBottom: 28 }}>Design Ledger соберёт смету с артикулами и ценами в этих рамках</p>
       <div style={{ textAlign: "center", marginBottom: 18 }}>
-        <span className="display" style={{ fontSize: 42, letterSpacing: "-0.03em" }}>{fmtMoney(budget)}</span>
+        <span className="display" style={{ fontSize: "var(--fs-42)", letterSpacing: "-0.03em" }}>{fmtMoney(budget)}</span>
       </div>
       <input type="range" min="120000" max="1200000" step="20000" value={budget} onChange={(e) => setBudget(+e.target.value)} className="quiz-range" />
-      <div style={{ display: "flex", justifyContent: "space-between", color: "var(--faint)", fontSize: 12.5, marginTop: 10 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", color: "var(--faint)", fontSize: "var(--fs-12)", marginTop: 10 }}>
         <span>{fmtRange(120000)}</span><span>{fmtRange(1200000)}</span>
       </div>
       <div style={{ display: "flex", gap: 8, marginTop: 22, flexWrap: "wrap", justifyContent: "center" }}>
         {[250000, 420000, 650000, 900000].map((b) => (
-          <button key={b} onClick={() => setBudget(b)} style={{ padding: "8px 15px", borderRadius: 99, fontSize: 13, fontWeight: 700, border: "1px solid " + (budget === b ? "var(--accent)" : "var(--hairline)"), background: budget === b ? "var(--accent)" : "var(--glass-2)", color: budget === b ? "var(--on-accent)" : "var(--muted)" }}>{fmtRange(b)}</button>
+          <button key={b} onClick={() => setBudget(b)} style={{ padding: "8px 15px", borderRadius: 99, fontSize: "var(--fs-13)", fontWeight: 700, border: "1px solid " + (budget === b ? "var(--accent)" : "var(--hairline)"), background: budget === b ? "var(--accent)" : "var(--glass-2)", color: budget === b ? "var(--on-accent)" : "var(--muted)" }}>{fmtRange(b)}</button>
         ))}
       </div>
     </div>
@@ -256,7 +256,7 @@ function QuizResult({ result, budget, room }) {
   return (
     <div className="reveal in" ref={useReveal()}>
       <div style={{ textAlign: "center", marginBottom: 18 }}>
-        <span style={{ display: "inline-flex", alignItems: "center", gap: 7, fontSize: 13, fontWeight: 700, color: "var(--accent-2)", padding: "6px 13px", borderRadius: 99, background: "rgba(94,107,91,.12)", border: "1px solid rgba(94,107,91,.28)" }}>
+        <span style={{ display: "inline-flex", alignItems: "center", gap: 7, fontSize: "var(--fs-13)", fontWeight: 700, color: "var(--accent-2)", padding: "6px 13px", borderRadius: 99, background: "rgba(94,107,91,.12)", border: "1px solid rgba(94,107,91,.28)" }}>
           <I.spark size={14} />Ваш стиль по версии AI
         </span>
       </div>
@@ -266,8 +266,8 @@ function QuizResult({ result, budget, room }) {
           {st.palette.map((c, i) => <span key={i} style={{ flex: 1, background: c }} />)}
         </div>
         <div style={{ padding: "20px 22px" }}>
-          <h2 className="display" style={{ fontSize: 30, letterSpacing: "-0.02em" }}>{st.name}</h2>
-          <p style={{ color: "var(--muted)", fontSize: 14.5, lineHeight: 1.55, marginTop: 8 }}>{st.desc}</p>
+          <h2 className="display" style={{ fontSize: "var(--fs-30)", letterSpacing: "-0.02em" }}>{st.name}</h2>
+          <p style={{ color: "var(--muted)", fontSize: "var(--fs-14)", lineHeight: 1.55, marginTop: 8 }}>{st.desc}</p>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 16, marginTop: 16, paddingTop: 16, borderTop: "1px solid var(--hairline)" }}>
             <Stat label="Комната" value={room || "—"} />
             <Stat label="Бюджет" value={fmtMoney(budget)} />
@@ -276,7 +276,7 @@ function QuizResult({ result, budget, room }) {
         </div>
       </div>
 
-      <p style={{ color: "var(--faint)", fontSize: 13, textAlign: "center", marginTop: 16, lineHeight: 1.5 }}>
+      <p style={{ color: "var(--faint)", fontSize: "var(--fs-13)", textAlign: "center", marginTop: 16, lineHeight: 1.5 }}>
         Откроем готовый проект в стиле «{st.name}» — с расстановкой по нормам и сметой под ваш бюджет.
       </p>
     </div>
@@ -286,8 +286,8 @@ function QuizResult({ result, budget, room }) {
 function Stat({ label, value }) {
   return (
     <div>
-      <div style={{ color: "var(--faint)", fontSize: 12, marginBottom: 3 }}>{label}</div>
-      <div style={{ fontWeight: 700, fontSize: 15 }}>{value}</div>
+      <div style={{ color: "var(--faint)", fontSize: "var(--fs-12)", marginBottom: 3 }}>{label}</div>
+      <div style={{ fontWeight: 700, fontSize: "var(--fs-15)" }}>{value}</div>
     </div>
   );
 }

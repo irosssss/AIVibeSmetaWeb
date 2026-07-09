@@ -44,17 +44,17 @@ function NewsAdmin() {
             <div style={{ display: "flex", alignItems: "center", gap: 13, minWidth: 0 }}>
               <div style={{ width: 46, height: 46, borderRadius: 10, overflow: "hidden", flex: "none" }}><Img src={PHOTOS[n.cover] || PHOTOS.warm} label="" /></div>
               <div style={{ minWidth: 0 }}>
-                <div style={{ fontWeight: 600, fontSize: 14.5, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{n.title}</div>
-                <div style={{ fontSize: 12.5, color: "var(--faint)" }}>{n.author}</div>
+                <div style={{ fontWeight: 600, fontSize: "var(--fs-14)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{n.title}</div>
+                <div style={{ fontSize: "var(--fs-12)", color: "var(--faint)" }}>{n.author}</div>
               </div>
             </div>
-            <span style={{ color: "var(--muted)", fontSize: 13.5 }}>{n.category}</span>
+            <span style={{ color: "var(--muted)", fontSize: "var(--fs-13)" }}>{n.category}</span>
             <button onClick={() => toggleStatus(n)} className="status-pill" style={{ background: n.status === "published" ? "rgba(94,107,91,.16)" : "var(--glass-2)", color: n.status === "published" ? "var(--accent-2-ink)" : "var(--muted)", borderColor: n.status === "published" ? "rgba(94,107,91,.34)" : "var(--hairline)" }}>
               <span style={{ width: 7, height: 7, borderRadius: "50%", background: n.status === "published" ? "var(--accent-2)" : "var(--faint)" }} />
               {n.status === "published" ? "Опубликовано" : "Черновик"}
             </button>
-            <span style={{ fontSize: 13.5, color: "var(--muted)" }}>{fmt(n.views)}</span>
-            <span style={{ fontSize: 13.5, color: "var(--muted)" }}>{new Date(n.date).toLocaleDateString("ru-RU", { day: "2-digit", month: "2-digit", year: "2-digit" })}</span>
+            <span style={{ fontSize: "var(--fs-13)", color: "var(--muted)" }}>{fmt(n.views)}</span>
+            <span style={{ fontSize: "var(--fs-13)", color: "var(--muted)" }}>{new Date(n.date).toLocaleDateString("ru-RU", { day: "2-digit", month: "2-digit", year: "2-digit" })}</span>
             <div style={{ display: "flex", gap: 6, justifyContent: "flex-end" }}>
               <button className="icon-btn sm" title="Редактировать" onClick={() => setEditing(n)}><I.edit size={16} /></button>
               <button className="icon-btn sm danger" title="Удалить" onClick={() => remove(n.id)}><I.trash size={16} /></button>
@@ -77,7 +77,7 @@ function NewsModal({ initial, onClose, onSave, busy }) {
     <div className="modal-back" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
       <div className="glass modal-card" style={{ borderRadius: "var(--r-xl)" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "22px 26px", borderBottom: "1px solid var(--hairline)" }}>
-          <h3 className="display" style={{ fontSize: 21 }}>{form.id ? "Редактировать новость" : "Новая новость"}</h3>
+          <h3 className="display" style={{ fontSize: "var(--fs-21)" }}>{form.id ? "Редактировать новость" : "Новая новость"}</h3>
           <button className="icon-btn" onClick={onClose}><I.close size={18} /></button>
         </div>
         <div style={{ padding: 26, display: "flex", flexDirection: "column", gap: 16, maxHeight: "60vh", overflow: "auto" }}>
@@ -101,7 +101,7 @@ function NewsModal({ initial, onClose, onSave, busy }) {
           </div>
         </div>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, padding: "18px 26px", borderTop: "1px solid var(--hairline)" }}>
-          <label style={{ display: "flex", alignItems: "center", gap: 9, fontSize: 14, cursor: "pointer" }}>
+          <label style={{ display: "flex", alignItems: "center", gap: 9, fontSize: "var(--fs-14)", cursor: "pointer" }}>
             <input type="checkbox" checked={form.status === "published"} onChange={(e) => set("status", e.target.checked ? "published" : "draft")} style={{ width: 17, height: 17, accentColor: "var(--accent-2)" }} />
             Опубликовать сразу
           </label>
@@ -130,7 +130,7 @@ function UsersAdmin() {
       <PageHead title="Пользователи" sub="Аккаунты, роли и доступ"
         right={<div className="glass" style={{ display: "flex", alignItems: "center", gap: 9, padding: "10px 15px", borderRadius: 99, minWidth: 230 }}>
           <I.search size={16} style={{ color: "var(--muted)" }} />
-          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Поиск по имени или e-mail" style={{ background: "none", border: "none", outline: "none", color: "var(--text)", fontSize: 14, width: "100%" }} />
+          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Поиск по имени или e-mail" style={{ background: "none", border: "none", outline: "none", color: "var(--text)", fontSize: "var(--fs-14)", width: "100%" }} />
         </div>} />
 
       <div className="glass" style={{ borderRadius: "var(--r-lg)", overflow: "hidden" }}>
@@ -143,23 +143,23 @@ function UsersAdmin() {
             <div style={{ display: "flex", alignItems: "center", gap: 12, minWidth: 0 }}>
               <Avatar user={u} size={38} />
               <div style={{ minWidth: 0 }}>
-                <div style={{ fontWeight: 600, fontSize: 14.5, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{u.name}</div>
-                <div style={{ fontSize: 12.5, color: "var(--faint)" }}>{u.email}</div>
+                <div style={{ fontWeight: 600, fontSize: "var(--fs-14)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{u.name}</div>
+                <div style={{ fontSize: "var(--fs-12)", color: "var(--faint)" }}>{u.email}</div>
               </div>
             </div>
-            <span style={{ display: "inline-flex", alignItems: "center", gap: 7, fontSize: 13.5, color: "var(--muted)" }}>
+            <span style={{ display: "inline-flex", alignItems: "center", gap: 7, fontSize: "var(--fs-13)", color: "var(--muted)" }}>
               <span style={{ width: 8, height: 8, borderRadius: "50%", background: u.provider === "yandex" ? "#FC3F1D" : "#0077FF" }} />
               {u.provider === "yandex" ? "Яндекс ID" : "VK ID"}
             </span>
             <span>{u.role === "admin"
               ? <span className="status-pill" style={{ background: "rgba(183,80,44,.16)", color: "var(--accent-ink)", borderColor: "rgba(183,80,44,.32)" }}>Админ</span>
-              : <span style={{ fontSize: 13.5, color: "var(--muted)" }}>Пользователь</span>}</span>
-            <span style={{ fontSize: 13.5, color: "var(--muted)" }}>{u.projects}</span>
+              : <span style={{ fontSize: "var(--fs-13)", color: "var(--muted)" }}>Пользователь</span>}</span>
+            <span style={{ fontSize: "var(--fs-13)", color: "var(--muted)" }}>{u.projects}</span>
             <span><span className="status-pill" style={{ background: u.status === "active" ? "rgba(94,107,91,.16)" : "rgba(183,80,44,.14)", color: u.status === "active" ? "var(--accent-2-ink)" : "var(--accent-ink)", borderColor: u.status === "active" ? "rgba(94,107,91,.34)" : "rgba(183,80,44,.3)" }}>
               <span style={{ width: 7, height: 7, borderRadius: "50%", background: u.status === "active" ? "var(--accent-2)" : "var(--accent)" }} />
               {u.status === "active" ? "Активен" : "Заблокирован"}</span></span>
             <div style={{ display: "flex", justifyContent: "flex-end" }}>
-              <button className="btn btn-ghost" style={{ padding: "7px 13px", fontSize: 12.5 }} onClick={() => toggle(u)} disabled={u.role === "admin"}>
+              <button className="btn btn-ghost" style={{ padding: "7px 13px", fontSize: "var(--fs-12)" }} onClick={() => toggle(u)} disabled={u.role === "admin"}>
                 {u.status === "active" ? "Заблокировать" : "Разблокировать"}
               </button>
             </div>

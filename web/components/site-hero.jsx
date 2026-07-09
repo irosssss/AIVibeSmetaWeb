@@ -50,7 +50,7 @@ function SiteNav({ go }) {
         <Logo size={25} onClick={() => window.scrollTo({ top: 0 })} />
         <div className="site-navlinks" style={{ display: "flex", gap: 34 }}>
           {links.map(([t, h]) => (
-            <a key={h} href={h} style={{ color: "var(--muted)", fontSize: 15, fontWeight: 500, transition: ".2s" }}
+            <a key={h} href={h} style={{ color: "var(--muted)", fontSize: "var(--fs-15)", fontWeight: 500, transition: ".2s" }}
                onMouseEnter={(e) => (e.target.style.color = "var(--text)")}
                onMouseLeave={(e) => (e.target.style.color = "var(--muted)")}>{t}</a>
           ))}
@@ -70,7 +70,7 @@ function SiteNav({ go }) {
       <div className="nav-sheet" data-open={open ? "1" : "0"}>
         <div style={{ display: "flex", flexDirection: "column", padding: "10px 0 18px" }}>
           {links.map(([t, h]) => (
-            <button key={h} onClick={() => jump(h)} style={{ textAlign: "left", padding: "15px 4px", fontSize: 19, fontWeight: 600,
+            <button key={h} onClick={() => jump(h)} style={{ textAlign: "left", padding: "15px 4px", fontSize: "var(--fs-18)", fontWeight: 600,
               fontFamily: "var(--font-display)", letterSpacing: "-0.01em", borderBottom: "1px solid var(--hairline-2)", color: "var(--text)" }}>{t}</button>
           ))}
           <div style={{ display: "flex", flexDirection: "column", gap: 12, marginTop: 22 }}>
@@ -93,19 +93,19 @@ function Hero({ go }) {
     <header className="minh-screen" style={{ position: "relative", display: "flex", alignItems: "center", paddingTop: "var(--nav-h)", overflow: "hidden" }}>
       <div className="container hero-grid" style={{ display: "grid", gridTemplateColumns: "0.82fr 1.18fr", gap: 56, alignItems: "center", position: "relative", zIndex: 2, paddingBlock: "clamp(40px,7vh,84px)" }}>
         <div>
-          <span className="mono-eyebrow">смета-комплектация · для дизайнера</span>
+          <span className="eyebrow">смета-комплектация · для дизайнера</span>
           <h1 className="display hero-h1" style={{ fontSize: "clamp(38px, 4.8vw, 66px)", lineHeight: 1.02, letterSpacing: "-0.025em", marginTop: 20 }}>
             <span style={{ display: "block" }}>Смета клиенту —</span>
             <span style={{ display: "block" }}>с вашей <span style={{ color: "var(--accent-ink)", fontStyle: "italic" }}>наценкой</span></span>
           </h1>
-          <p style={{ marginTop: 22, color: "var(--muted)", maxWidth: 430, fontSize: 17, lineHeight: 1.65 }}>
+          <p style={{ marginTop: 22, color: "var(--muted)", maxWidth: 430, fontSize: "var(--fs-16)", lineHeight: 1.65 }}>
             Две цены в одном документе: себестоимость фабрики и цена клиенту. Собрано за минуту, а не за вечер в таблицах — проверено по нормам и готово к отправке.
           </p>
           <div style={{ marginTop: 30, display: "flex", gap: 14, flexWrap: "wrap" }} id="download">
-            <button className="btn btn-primary" style={{ padding: "16px 26px", fontSize: 16 }} onClick={() => go("auth")}><I.layers size={19} /> Начать бесплатно</button>
-            <a className="btn btn-ghost" style={{ padding: "16px 26px", fontSize: 16 }} href="#how">Как это работает <I.arrow size={17} /></a>
+            <button className="btn btn-primary" style={{ padding: "16px 26px", fontSize: "var(--fs-16)" }} onClick={() => go("auth")}><I.layers size={19} /> Начать бесплатно</button>
+            <a className="btn btn-ghost" style={{ padding: "16px 26px", fontSize: "var(--fs-16)" }} href="#how">Как это работает <I.arrow size={17} /></a>
           </div>
-          <div className="mono" style={{ marginTop: 12, fontSize: 12, color: "var(--spec-meta)", letterSpacing: ".02em" }}>
+          <div className="mono" style={{ marginTop: 12, fontSize: "var(--fs-12)", color: "var(--spec-meta)", letterSpacing: ".02em" }}>
             первая смета — бесплатно, без карты
           </div>
           <div className="hero-chips">
@@ -116,7 +116,7 @@ function Hero({ go }) {
         </div>
         <SmetaPlate />
       </div>
-      <div style={{ position: "absolute", bottom: 26, left: "50%", transform: "translateX(-50%)", color: "var(--faint)", fontSize: 12, letterSpacing: ".2em", textTransform: "uppercase", display: "flex", flexDirection: "column", alignItems: "center", gap: 8 }}>
+      <div style={{ position: "absolute", bottom: 26, left: "50%", transform: "translateX(-50%)", color: "var(--faint)", fontSize: "var(--fs-12)", letterSpacing: ".2em", textTransform: "uppercase", display: "flex", flexDirection: "column", alignItems: "center", gap: 8 }}>
         прокрутите
         <span style={{ width: 1, height: 34, background: "linear-gradient(var(--accent), transparent)" }} />
       </div>

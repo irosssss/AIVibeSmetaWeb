@@ -90,8 +90,8 @@ class ErrorBoundary extends React.Component {
     return (
       <div className="minh-screen" style={{ display: "grid", placeItems: "center", padding: 24, textAlign: "center" }}>
         <div>
-          <div className="display" style={{ fontSize: 26, marginBottom: 10 }}>Что-то пошло не так…</div>
-          <p style={{ color: "var(--muted)", fontSize: 15, maxWidth: 420, margin: "0 auto 20px", lineHeight: 1.6 }}>
+          <div className="display" style={{ fontSize: "var(--fs-26)", marginBottom: 10 }}>Что-то пошло не так…</div>
+          <p style={{ color: "var(--muted)", fontSize: "var(--fs-15)", maxWidth: 420, margin: "0 auto 20px", lineHeight: 1.6 }}>
             Экран споткнулся на ошибке. Обновите страницу — проекты и настройки сохранены.
           </p>
           <button className="btn btn-primary" onClick={() => location.reload()}>Обновить страницу</button>

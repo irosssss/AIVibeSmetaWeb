@@ -70,7 +70,7 @@ const LAYOUT_K = {
 };
 
 /* строка итогового блока сметы-документа (подытог → скидка → доставка/монтаж → ИТОГО) */
-const RS_ROW = { display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, padding: "8px 0", fontSize: 13.5 };
+const RS_ROW = { display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, padding: "8px 0", fontSize: "var(--fs-13)" };
 
 /* давность цены: priceDate (ISO) ставится позиции при копировании из прошлого проекта.
    Чип «цене N дней» — терракота после 30 дней (RU-волатильность цен). В клиентском
@@ -83,7 +83,7 @@ function PriceAge({ d }) {
   const stale = days > 30;
   return (
     <span className="mono" title={"Цена скопирована из прошлого проекта, от " + fmtDateRu(d) + (stale ? " — стоит перепроверить" : "")}
-      style={{ flex: "none", fontSize: 10.5, whiteSpace: "nowrap", padding: "1px 7px", borderRadius: 99,
+      style={{ flex: "none", fontSize: "var(--fs-10)", whiteSpace: "nowrap", padding: "1px 7px", borderRadius: 99,
         border: "1px solid " + (stale ? "rgba(183,80,44,.4)" : "var(--hairline)"), color: stale ? "var(--accent-ink)" : "var(--spec-meta)" }}>
       {days === 0 ? "цена от сегодня" : "цене " + days + " " + plural(days, ["день", "дня", "дней"])}
     </span>
@@ -520,7 +520,7 @@ function RoomSpecOverlay({ data, onClose }) {
           + (FFE && apCnt.ok > 0 ? " · согласовано " + apCnt.ok + " из " + itemsCount : "")}
         right={approved ? (
           <span className="glass" title={"Согласована версия «" + approved.label + "»" + (approved.statusAt ? " — " + fmtDateRu(approved.statusAt) : "")}
-            style={{ display: "flex", alignItems: "center", gap: 7, padding: "7px 13px", borderRadius: 99, fontSize: 12.5, fontWeight: 700, whiteSpace: "nowrap", color: "var(--accent-2-ink)", borderColor: "rgba(94,107,91,.4)" }}>
+            style={{ display: "flex", alignItems: "center", gap: 7, padding: "7px 13px", borderRadius: 99, fontSize: "var(--fs-12)", fontWeight: 700, whiteSpace: "nowrap", color: "var(--accent-2-ink)", borderColor: "rgba(94,107,91,.4)" }}>
             <I.check size={15} />Согласовано{approved.statusAt ? " · " + fmtDateRu(approved.statusAt) : ""}
           </span>
         ) : null} />
@@ -529,9 +529,9 @@ function RoomSpecOverlay({ data, onClose }) {
       <div className="pd-body solo">
         <div className="pd-main">
           <section className="pd-section" style={ergo.length ? undefined : { borderBottom: "none" }}>
-            <div className="pd-eyebrow"><span className="dot" />Спецификация-комплектация</div>
+            <div className="eyebrow jade" style={{ marginBottom: 14 }}>Спецификация-комплектация</div>
             <h3 className="pd-h">Смета по комнатам</h3>
-            <p style={{ color: "var(--muted)", fontSize: 14.5, marginTop: 4, marginBottom: 14, maxWidth: 820, lineHeight: 1.6 }}>{data.summaryShort}</p>
+            <p style={{ color: "var(--muted)", fontSize: "var(--fs-14)", marginTop: 4, marginBottom: 14, maxWidth: 820, lineHeight: 1.6 }}>{data.summaryShort}</p>
 
             {/* переиспользование наработанного: копии позиций из прошлых смет + типовые комплектации */}
             <div style={{ marginBottom: 20 }}>
@@ -556,12 +556,12 @@ function RoomSpecOverlay({ data, onClose }) {
             {/* наценка дизайнера: базовая на всё + свои проценты по разделам (в закупке не участвует) */}
             {mode !== "procure" && <div className="glass" style={{ borderRadius: "var(--r-lg)", padding: "16px 20px", marginBottom: 22, maxWidth: 640 }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
-                <span style={{ fontWeight: 700, fontSize: 14.5 }}>Наценка дизайнера{ovrCount > 0 && <span style={{ fontWeight: 500, fontSize: 12.5, color: "var(--muted)" }}> · базовая</span>}</span>
-                <span className="mono" style={{ fontWeight: 600, fontSize: 17, color: "var(--accent-ink)" }}>+{markup}%</span>
+                <span style={{ fontWeight: 700, fontSize: "var(--fs-14)" }}>Наценка дизайнера{ovrCount > 0 && <span style={{ fontWeight: 500, fontSize: "var(--fs-12)", color: "var(--muted)" }}> · базовая</span>}</span>
+                <span className="mono" style={{ fontWeight: 600, fontSize: "var(--fs-16)", color: "var(--accent-ink)" }}>+{markup}%</span>
               </div>
               <input type="range" min="0" max="100" step="5" value={markup} onChange={(e) => setMarkup(+e.target.value)} className="quiz-range" style={{ marginTop: 10 }}
                 aria-label="Базовая наценка дизайнера, %" aria-valuetext={"+" + markup + "% — итого клиенту " + fmtMoney(totalClient)} />
-              <div style={{ display: "flex", justifyContent: "space-between", marginTop: 12, fontSize: 13.5, flexWrap: "wrap", gap: 8 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", marginTop: 12, fontSize: "var(--fs-13)", flexWrap: "wrap", gap: 8 }}>
                 <span style={{ color: "var(--muted)" }}>Себестоимость (фабрика): <b style={{ color: "var(--text)" }}>{fmtMoney(grand)}</b></span>
                 {/* это подытог ДО скидки/доставки — не путать с «Итого для клиента» в блоке итога */}
                 <span style={{ color: "var(--muted)" }}>Подытог для клиента: <b style={{ color: "var(--accent-2)" }}>{fmtMoney(client)}</b></span>
@@ -569,9 +569,9 @@ function RoomSpecOverlay({ data, onClose }) {
 
               {/* свои наценки по разделам: пустое поле = раздел наследует базовую */}
               <button onClick={() => setCatOpen((o) => !o)} aria-expanded={catOpen}
-                style={{ display: "inline-flex", alignItems: "center", gap: 7, marginTop: 14, fontSize: 13, fontWeight: 600, color: "var(--info)" }}>
+                style={{ display: "inline-flex", alignItems: "center", gap: 7, marginTop: 14, fontSize: "var(--fs-13)", fontWeight: 600, color: "var(--info)" }}>
                 <I.sliders size={14} />Наценка по разделам
-                {ovrCount > 0 && <span className="mono" style={{ fontSize: 11.5, color: "var(--accent-ink)" }}>· {ovrCount} {plural(ovrCount, ["своя", "свои", "своих"])}</span>}
+                {ovrCount > 0 && <span className="mono" style={{ fontSize: "var(--fs-11)", color: "var(--accent-ink)" }}>· {ovrCount} {plural(ovrCount, ["своя", "свои", "своих"])}</span>}
                 <span aria-hidden="true" style={{ display: "inline-flex", transform: catOpen ? "rotate(180deg)" : "none", transition: "transform .2s var(--ease)" }}><Icon size={13} d="M4 9l8 7 8-7" /></span>
               </button>
               {catOpen && (
@@ -579,28 +579,28 @@ function RoomSpecOverlay({ data, onClose }) {
                   {cats.map((cat) => {
                     const ovr = catMarkup[cat] != null;
                     return (
-                      <div key={cat} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 0", borderBottom: "1px solid var(--hairline-2)", fontSize: 13.5 }}>
+                      <div key={cat} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 0", borderBottom: "1px solid var(--hairline-2)", fontSize: "var(--fs-13)" }}>
                         <span style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{cat}</span>
-                        <span className="mono rs-unit" style={{ fontSize: 12, color: "var(--spec-meta)", whiteSpace: "nowrap" }}>{fmtMoney(catCost[cat])}</span>
+                        <span className="mono rs-unit" style={{ fontSize: "var(--fs-12)", color: "var(--spec-meta)", whiteSpace: "nowrap" }}>{fmtMoney(catCost[cat])}</span>
                         <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
                           <input className="fld" type="number" min="0" max="300" step="5" inputMode="numeric"
                             value={ovr ? catMarkup[cat] : ""} placeholder={"+" + markup}
                             aria-label={"Наценка на раздел «" + cat + "», % — пусто: базовая"}
                             onKeyDown={(e) => { if (!e.ctrlKey && !e.metaKey && ["e", "E", "+", "-", ".", ","].includes(e.key)) e.preventDefault(); }}
                             onChange={(e) => { const v = e.target.value; if (v === "") { setCatPct(cat, null); return; } const n = Math.max(0, Math.min(300, Math.round(+v))); if (!isNaN(n)) setCatPct(cat, n); }}
-                            style={{ width: 64, padding: "6px 8px", fontSize: 12.5, fontFamily: "var(--font-mono)", textAlign: "right" }} />
-                          <span className="mono" style={{ fontSize: 11.5, color: "var(--faint)" }}>%</span>
+                            style={{ width: 64, padding: "6px 8px", fontSize: "var(--fs-12)", fontFamily: "var(--font-mono)", textAlign: "right" }} />
+                          <span className="mono" style={{ fontSize: "var(--fs-11)", color: "var(--faint)" }}>%</span>
                         </span>
-                        <span className="mono" style={{ width: 96, textAlign: "right", fontSize: 12.5, fontWeight: ovr ? 600 : 400, color: ovr ? "var(--accent-ink)" : "var(--muted)", whiteSpace: "nowrap" }}>
+                        <span className="mono" style={{ width: 96, textAlign: "right", fontSize: "var(--fs-12)", fontWeight: ovr ? 600 : 400, color: ovr ? "var(--accent-ink)" : "var(--muted)", whiteSpace: "nowrap" }}>
                           {fmtMoney(catCli[cat])}
                         </span>
                         {ovr
-                          ? <button onClick={() => setCatPct(cat, null)} title="Вернуть базовую наценку" aria-label={"Вернуть разделу «" + cat + "» базовую наценку"} className="mono" style={{ flex: "none", fontSize: 11, color: "var(--muted)", border: "1px solid var(--hairline)", borderRadius: 99, padding: "4px 9px" }}>↺</button>
+                          ? <button onClick={() => setCatPct(cat, null)} title="Вернуть базовую наценку" aria-label={"Вернуть разделу «" + cat + "» базовую наценку"} className="mono" style={{ flex: "none", fontSize: "var(--fs-11)", color: "var(--muted)", border: "1px solid var(--hairline)", borderRadius: 99, padding: "4px 9px" }}>↺</button>
                           : <span style={{ flex: "none", width: 31 }} aria-hidden="true" />}
                       </div>
                     );
                   })}
-                  <div style={{ padding: "8px 0 2px", fontSize: 12, color: "var(--muted)", lineHeight: 1.5 }}>
+                  <div style={{ padding: "8px 0 2px", fontSize: "var(--fs-12)", color: "var(--muted)", lineHeight: 1.5 }}>
                     Пустое поле — раздел идёт по базовой наценке +{markup}%. Свои проценты действуют в смете и в выгрузках PDF и Excel.
                   </div>
                 </div>
@@ -615,10 +615,10 @@ function RoomSpecOverlay({ data, onClose }) {
                 <div key={r.name} className="glass" style={{ borderRadius: "var(--r-lg)", padding: "16px 18px" }}>
                   <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 12, marginBottom: 8, flexWrap: "wrap" }}>
                     <span style={{ display: "flex", alignItems: "baseline", gap: 6, minWidth: 0 }}>
-                      <span style={{ fontWeight: 800, fontFamily: "var(--font-display)", fontSize: 16.5 }}>{r.name}{r.area ? <span style={{ color: "var(--faint)", fontWeight: 500, fontSize: 13 }}> · {r.area} м²</span> : null}</span>
+                      <span style={{ fontWeight: 800, fontFamily: "var(--font-display)", fontSize: "var(--fs-16)" }}>{r.name}{r.area ? <span style={{ color: "var(--faint)", fontWeight: 500, fontSize: "var(--fs-13)" }}> · {r.area} м²</span> : null}</span>
                       {mode === "work" && (
-                        <button className="icon-btn" aria-label={"Переименовать комнату «" + r.name + "»"} title="Переименовать комнату"
-                          onClick={() => renameRoom(ri)} style={{ width: 24, height: 24, flex: "none", alignSelf: "center", color: "var(--spec-meta)" }}>
+                        <button className="icon-btn xs" aria-label={"Переименовать комнату «" + r.name + "»"} title="Переименовать комнату"
+                          onClick={() => renameRoom(ri)} style={{ flex: "none", alignSelf: "center", color: "var(--spec-meta)" }}>
                           <I.edit size={13} />
                         </button>
                       )}
@@ -626,21 +626,21 @@ function RoomSpecOverlay({ data, onClose }) {
                         const allOk = r.items.every((it) => apOf(it) === "ok");
                         const label = allOk ? "Снять отметку согласования со всей комнаты" : "Отметить всю комнату согласованной клиентом";
                         return (
-                          <button className="icon-btn" aria-label={label + " «" + r.name + "»"} title={label}
+                          <button className="icon-btn xs" aria-label={label + " «" + r.name + "»"} title={label}
                             onClick={() => approveRoom(ri)}
-                            style={{ width: 24, height: 24, flex: "none", alignSelf: "center", color: allOk ? "var(--accent-2-ink)" : "var(--spec-meta)" }}>
+                            style={{ flex: "none", alignSelf: "center", color: allOk ? "var(--accent-2-ink)" : "var(--spec-meta)" }}>
                             <I.check size={13} />
                           </button>
                         );
                       })()}
                     </span>
                     <span style={{ display: "flex", alignItems: "baseline", gap: 12 }}>
-                      {mode === "work" && <span className="mono" style={{ fontSize: 13, color: "var(--muted)" }}>{fmtMoney(roomTotal(r))}</span>}
-                      <span className="mono" style={{ fontWeight: 600, fontSize: 15, color: mode === "work" ? "var(--accent-2)" : "var(--text)" }}>{fmtMoney(roomClient(r))}</span>
+                      {mode === "work" && <span className="mono" style={{ fontSize: "var(--fs-13)", color: "var(--muted)" }}>{fmtMoney(roomTotal(r))}</span>}
+                      <span className="mono" style={{ fontWeight: 600, fontSize: "var(--fs-15)", color: mode === "work" ? "var(--accent-2)" : "var(--text)" }}>{fmtMoney(roomClient(r))}</span>
                     </span>
                   </div>
                   {/* шапка колонок */}
-                  <div className="mono" style={{ display: "flex", alignItems: "baseline", gap: 10, padding: "2px 0 6px", fontSize: 10.5, letterSpacing: ".06em", textTransform: "uppercase", color: "var(--spec-meta)", borderBottom: "1px solid var(--hairline)" }}>
+                  <div className="mono" style={{ display: "flex", alignItems: "baseline", gap: 10, padding: "2px 0 6px", fontSize: "var(--fs-10)", letterSpacing: ".06em", textTransform: "uppercase", color: "var(--spec-meta)", borderBottom: "1px solid var(--hairline)" }}>
                     <span style={{ flex: 1 }}>Позиция</span>
                     <span className="rs-cat" style={{ width: 78, textAlign: "right" }}>Раздел</span>
                     <span style={{ width: 34, textAlign: "right" }}>Кол</span>
@@ -658,11 +658,11 @@ function RoomSpecOverlay({ data, onClose }) {
                       if (mode === "work" && apFilter && !editing && apOf(it) === "ok") return null;
                       return (
                       <React.Fragment key={i}>
-                      <div style={{ display: "flex", alignItems: "baseline", gap: 10, padding: "7px 0", borderTop: i ? "1px solid var(--hairline-2)" : "none", fontSize: 13.5 }}>
+                      <div style={{ display: "flex", alignItems: "baseline", gap: 10, padding: "7px 0", borderTop: i ? "1px solid var(--hairline-2)" : "none", fontSize: "var(--fs-13)" }}>
                         <span style={{ flex: 1, color: "var(--text)", lineHeight: 1.4 }}>{it.title}{mode === "work" && it.priceDate && <React.Fragment>{" "}<PriceAge d={it.priceDate} /></React.Fragment>}</span>
-                        <span className="rs-cat" style={{ color: "var(--spec-meta)", whiteSpace: "nowrap", fontSize: 12, width: 78, textAlign: "right", overflow: "hidden", textOverflow: "ellipsis" }}>{catOf(it)}</span>
-                        <span className="mono" style={{ color: "var(--spec-meta)", whiteSpace: "nowrap", width: 34, textAlign: "right", fontSize: 12.5 }}>×{qty}</span>
-                        <span className="mono rs-unit" style={{ color: "var(--spec-meta)", whiteSpace: "nowrap", width: 88, textAlign: "right", fontSize: 12.5 }}>{fmtMoney(mode === "client" ? unitClient(it) : it.price)}</span>
+                        <span className="rs-cat" style={{ color: "var(--spec-meta)", whiteSpace: "nowrap", fontSize: "var(--fs-12)", width: 78, textAlign: "right", overflow: "hidden", textOverflow: "ellipsis" }}>{catOf(it)}</span>
+                        <span className="mono" style={{ color: "var(--spec-meta)", whiteSpace: "nowrap", width: 34, textAlign: "right", fontSize: "var(--fs-12)" }}>×{qty}</span>
+                        <span className="mono rs-unit" style={{ color: "var(--spec-meta)", whiteSpace: "nowrap", width: 88, textAlign: "right", fontSize: "var(--fs-12)" }}>{fmtMoney(mode === "client" ? unitClient(it) : it.price)}</span>
                         {mode === "work" && <span className="mono" style={{ color: "var(--muted)", whiteSpace: "nowrap", width: 100, textAlign: "right" }}>{fmtMoney(it.price * qty)}</span>}
                         <span className="mono" style={{ fontWeight: 600, whiteSpace: "nowrap", width: 104, textAlign: "right", color: mode === "work" ? "var(--accent-2)" : "var(--text)" }}>{fmtMoney(lineClient(it))}</span>
                         {mode === "work" && FFE && (() => {
@@ -673,16 +673,16 @@ function RoomSpecOverlay({ data, onClose }) {
                               <span aria-hidden="true" style={{ width: 8, height: 8, borderRadius: "50%", background: m.color, flex: "none" }} />
                               <select className="fld" value={aid} aria-label={"Решение клиента по позиции «" + it.title + "»"}
                                 onChange={(e) => setApprove(ri, i, e.target.value)}
-                                style={{ width: 108, flex: "none", padding: "5px 6px", fontSize: 12 }}>
+                                style={{ width: 108, flex: "none", padding: "5px 6px", fontSize: "var(--fs-12)" }}>
                                 {FFE.APPROVE_STATUSES.map((s) => <option key={s.id} value={s.id}>{s.label}</option>)}
                               </select>
                             </span>
                           );
                         })()}
                         {mode === "work" && (
-                          <button className="icon-btn" aria-label={"Редактировать позицию «" + it.title + "»"} aria-expanded={!!editing} title="Редактировать позицию"
+                          <button className="icon-btn xs" aria-label={"Редактировать позицию «" + it.title + "»"} aria-expanded={!!editing} title="Редактировать позицию"
                             onClick={() => setEditPos(editing ? null : { ri, ii: i })}
-                            style={{ width: 26, height: 26, flex: "none", alignSelf: "center", color: editing ? "var(--accent-ink)" : "var(--spec-meta)" }}>
+                            style={{ flex: "none", alignSelf: "center", color: editing ? "var(--accent-ink)" : "var(--spec-meta)" }}>
                             <I.edit size={14} />
                           </button>
                         )}
@@ -697,14 +697,14 @@ function RoomSpecOverlay({ data, onClose }) {
                   </div>
                   {mode === "work" && FFE && apFilter && r.items.length > 0 && !(editPos && editPos.ri === ri && editPos.ii >= 0)
                     && r.items.every((it) => apOf(it) === "ok") && (
-                    <div style={{ padding: "8px 0 2px", fontSize: 12.5, color: "var(--muted)" }}>Все позиции комнаты согласованы клиентом ✓</div>
+                    <div style={{ padding: "8px 0 2px", fontSize: "var(--fs-12)", color: "var(--muted)" }}>Все позиции комнаты согласованы клиентом ✓</div>
                   )}
                   {mode === "work" && (editPos && editPos.ri === ri && editPos.ii === -1
                     ? <PosEditor isNew cats={cats} sups={supList} library={library} onToLibrary={saveToLibrary} onCancel={() => setEditPos(null)} onSave={(d) => savePos(ri, -1, d)} />
                     : <div style={{ display: "flex", gap: 8, marginTop: 10, flexWrap: "wrap" }}>
-                        <button className="btn btn-ghost" style={{ padding: "7px 12px", fontSize: 12.5 }}
+                        <button className="btn btn-ghost" style={{ padding: "7px 12px", fontSize: "var(--fs-12)" }}
                           onClick={() => setEditPos({ ri, ii: -1 })}><I.plus size={14} />Позиция вручную</button>
-                        {FFE && <button className="btn btn-ghost" style={{ padding: "7px 12px", fontSize: 12.5 }}
+                        {FFE && <button className="btn btn-ghost" style={{ padding: "7px 12px", fontSize: "var(--fs-12)" }}
                           onClick={() => setPickerRoom(ri)}><I.layers size={14} />Из библиотеки</button>}
                       </div>)}
                 </div>
@@ -715,21 +715,21 @@ function RoomSpecOverlay({ data, onClose }) {
                 поставщик — редактируемое поле позиции (datalist подсказывает уже введённых) */}
             {mode === "procure" && (
               <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-                <div style={{ fontSize: 12.5, color: "var(--muted)", maxWidth: 820, lineHeight: 1.55 }}>
+                <div style={{ fontSize: "var(--fs-12)", color: "var(--muted)", maxWidth: 820, lineHeight: 1.55 }}>
                   Позиции сгруппированы по поставщикам, цены — себестоимость без наценки. Поле «поставщик» редактируется прямо в строке; позиции без поставщика собраны в конце. В Excel каждый поставщик получает отдельный лист.
                 </div>
                 {supGroups.map((g) => (
                   <div key={g.name} className="glass" style={{ borderRadius: "var(--r-lg)", padding: "16px 18px" }}>
                     <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 12, marginBottom: 8, flexWrap: "wrap" }}>
-                      <span style={{ fontWeight: 800, fontFamily: "var(--font-display)", fontSize: 16.5, color: g.name === NO_SUP ? "var(--muted)" : undefined }}>
-                        {g.name}<span style={{ color: "var(--faint)", fontWeight: 500, fontSize: 13 }}> · {g.rows.length} {plural(g.rows.length, ["позиция", "позиции", "позиций"])}</span>
+                      <span style={{ fontWeight: 800, fontFamily: "var(--font-display)", fontSize: "var(--fs-16)", color: g.name === NO_SUP ? "var(--muted)" : undefined }}>
+                        {g.name}<span style={{ color: "var(--faint)", fontWeight: 500, fontSize: "var(--fs-13)" }}> · {g.rows.length} {plural(g.rows.length, ["позиция", "позиции", "позиций"])}</span>
                       </span>
                       <span style={{ display: "flex", alignItems: "baseline", gap: 12 }}>
-                        {FFE && <span className="mono" title="Средний прогресс стадий закупки позиций поставщика" style={{ fontSize: 11.5, color: "var(--spec-meta)" }}>готовность {Math.round(rowsProgress(g.rows) * 100)}%</span>}
-                        <span className="mono" style={{ fontWeight: 600, fontSize: 15 }}>{fmtMoney(g.total)}</span>
+                        {FFE && <span className="mono" title="Средний прогресс стадий закупки позиций поставщика" style={{ fontSize: "var(--fs-11)", color: "var(--spec-meta)" }}>готовность {Math.round(rowsProgress(g.rows) * 100)}%</span>}
+                        <span className="mono" style={{ fontWeight: 600, fontSize: "var(--fs-15)" }}>{fmtMoney(g.total)}</span>
                       </span>
                     </div>
-                    <div className="mono" style={{ display: "flex", alignItems: "baseline", gap: 10, padding: "2px 0 6px", fontSize: 10.5, letterSpacing: ".06em", textTransform: "uppercase", color: "var(--spec-meta)", borderBottom: "1px solid var(--hairline)" }}>
+                    <div className="mono" style={{ display: "flex", alignItems: "baseline", gap: 10, padding: "2px 0 6px", fontSize: "var(--fs-10)", letterSpacing: ".06em", textTransform: "uppercase", color: "var(--spec-meta)", borderBottom: "1px solid var(--hairline)" }}>
                       <span style={{ flex: 1 }}>Позиция</span>
                       <span className="rs-cat" style={{ width: 104, textAlign: "right" }}>Помещение</span>
                       <span style={{ width: 34, textAlign: "right" }}>Кол</span>
@@ -742,17 +742,17 @@ function RoomSpecOverlay({ data, onClose }) {
                       {g.rows.map((x, i) => {
                         const qty = x.it.qty || 1;
                         return (
-                          <div key={x.ri + ":" + x.ii} className="rs-prow" style={{ display: "flex", alignItems: "baseline", gap: 10, padding: "7px 0", borderTop: i ? "1px solid var(--hairline-2)" : "none", fontSize: 13.5 }}>
+                          <div key={x.ri + ":" + x.ii} className="rs-prow" style={{ display: "flex", alignItems: "baseline", gap: 10, padding: "7px 0", borderTop: i ? "1px solid var(--hairline-2)" : "none", fontSize: "var(--fs-13)" }}>
                             <span style={{ flex: 1, minWidth: 0, color: "var(--text)", lineHeight: 1.4, overflowWrap: "anywhere" }}>{x.it.title}{x.it.priceDate && <React.Fragment>{" "}<PriceAge d={x.it.priceDate} /></React.Fragment>}</span>
-                            <span className="rs-cat" style={{ color: "var(--spec-meta)", whiteSpace: "nowrap", fontSize: 12, width: 104, textAlign: "right", overflow: "hidden", textOverflow: "ellipsis" }}>{x.room}</span>
-                            <span className="mono" style={{ color: "var(--spec-meta)", whiteSpace: "nowrap", width: 34, textAlign: "right", fontSize: 12.5 }}>×{qty}</span>
-                            <span className="mono rs-unit" style={{ color: "var(--spec-meta)", whiteSpace: "nowrap", width: 88, textAlign: "right", fontSize: 12.5 }}>{fmtMoney(x.it.price)}</span>
+                            <span className="rs-cat" style={{ color: "var(--spec-meta)", whiteSpace: "nowrap", fontSize: "var(--fs-12)", width: 104, textAlign: "right", overflow: "hidden", textOverflow: "ellipsis" }}>{x.room}</span>
+                            <span className="mono" style={{ color: "var(--spec-meta)", whiteSpace: "nowrap", width: 34, textAlign: "right", fontSize: "var(--fs-12)" }}>×{qty}</span>
+                            <span className="mono rs-unit" style={{ color: "var(--spec-meta)", whiteSpace: "nowrap", width: 88, textAlign: "right", fontSize: "var(--fs-12)" }}>{fmtMoney(x.it.price)}</span>
                             <span className="mono" style={{ fontWeight: 600, whiteSpace: "nowrap", width: 100, textAlign: "right" }}>{fmtMoney(lineCost(x.it))}</span>
                             <input className="fld rs-sup" list="rs-sup-list" defaultValue={supOf(x.it)} key={"sup-" + x.ri + "-" + x.ii + "-" + supOf(x.it)}
                               placeholder="поставщик" aria-label={"Поставщик позиции «" + x.it.title + "»"}
                               onBlur={(e) => { const v = e.target.value.trim(); if (v !== supOf(x.it)) setSup(x.ri, x.ii, v); }}
                               onKeyDown={(e) => { if (e.key === "Enter") e.target.blur(); }}
-                              style={{ width: 128, flex: "none", padding: "5px 8px", fontSize: 12 }} />
+                              style={{ width: 128, flex: "none", padding: "5px 8px", fontSize: "var(--fs-12)" }} />
                             {FFE && (() => {
                               const sid = stOf(x.it), m = FFE.statusMeta(sid);
                               const sd = x.it.statusDates && x.it.statusDates[sid];
@@ -761,7 +761,7 @@ function RoomSpecOverlay({ data, onClose }) {
                                   <span aria-hidden="true" style={{ width: 8, height: 8, borderRadius: "50%", background: m.color, flex: "none" }} />
                                   <select className="fld rs-st" value={sid} aria-label={"Стадия закупки позиции «" + x.it.title + "»"}
                                     onChange={(e) => setStatus(x.ri, x.ii, e.target.value)}
-                                    style={{ width: 116, flex: "none", padding: "5px 6px", fontSize: 12 }}>
+                                    style={{ width: 116, flex: "none", padding: "5px 6px", fontSize: "var(--fs-12)" }}>
                                     {FFE.FFE_STATUSES.map((s) => <option key={s.id} value={s.id}>{s.label}</option>)}
                                   </select>
                                 </span>
@@ -780,7 +780,7 @@ function RoomSpecOverlay({ data, onClose }) {
             {/* итог закупки: суммы по поставщикам + ИТОГО (зеркалит Excel-«Свод закупки») */}
             {mode === "procure" && (
               <div className="glass" style={{ borderRadius: "var(--r-lg)", padding: "16px 20px", marginTop: 18, maxWidth: 560, marginLeft: "auto" }}>
-                <div className="mono" style={{ fontSize: 10.5, letterSpacing: ".08em", textTransform: "uppercase", color: "var(--spec-meta)", paddingBottom: 8, borderBottom: "1px solid var(--hairline)" }}>Итог закупки</div>
+                <div className="mono" style={{ fontSize: "var(--fs-10)", letterSpacing: ".08em", textTransform: "uppercase", color: "var(--spec-meta)", paddingBottom: 8, borderBottom: "1px solid var(--hairline)" }}>Итог закупки</div>
                 {supGroups.map((g) => (
                   <div key={g.name} style={{ ...RS_ROW, borderTop: "1px solid var(--hairline-2)" }}>
                     <span style={{ color: g.name === NO_SUP ? "var(--faint)" : "var(--muted)" }}>{g.name}</span>
@@ -796,15 +796,15 @@ function RoomSpecOverlay({ data, onClose }) {
                   </div>
                 )}
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 12, paddingTop: 12, marginTop: 4, borderTop: "2px solid var(--text)" }}>
-                  <span style={{ fontWeight: 800, fontFamily: "var(--font-display)", fontSize: 15 }}>Итого закупка</span>
-                  <span className="mono rs-val" style={{ fontWeight: 600, fontSize: 24, letterSpacing: "-0.01em" }}>{fmtMoney(grand)}</span>
+                  <span style={{ fontWeight: 800, fontFamily: "var(--font-display)", fontSize: "var(--fs-15)" }}>Итого закупка</span>
+                  <span className="mono rs-val" style={{ fontWeight: 600, fontSize: "var(--fs-24)", letterSpacing: "-0.01em" }}>{fmtMoney(grand)}</span>
                 </div>
               </div>
             )}
 
             {/* итог документа: подытог → скидка → наценка → доставка/монтаж → ИТОГО (роадмап #6) */}
             {mode !== "procure" && <div className="glass" style={{ borderRadius: "var(--r-lg)", padding: "16px 20px", marginTop: 18, maxWidth: 560, marginLeft: "auto" }}>
-              <div className="mono" style={{ fontSize: 10.5, letterSpacing: ".08em", textTransform: "uppercase", color: "var(--spec-meta)", paddingBottom: 8, borderBottom: "1px solid var(--hairline)" }}>Итог сметы</div>
+              <div className="mono" style={{ fontSize: "var(--fs-10)", letterSpacing: ".08em", textTransform: "uppercase", color: "var(--spec-meta)", paddingBottom: 8, borderBottom: "1px solid var(--hairline)" }}>Итог сметы</div>
               {mode === "work" && (
                 <React.Fragment>
                   <div style={RS_ROW}>
@@ -834,8 +834,8 @@ function RoomSpecOverlay({ data, onClose }) {
                           aria-describedby="rs-disc-val rs-total-val"
                           onKeyDown={(e) => { if (!e.ctrlKey && !e.metaKey && ["e", "E", "+", "-", ".", ","].includes(e.key)) e.preventDefault(); }}
                           onChange={(e) => { const v = e.target.value; if (v === "") { setDiscount(0); return; } const n = Math.max(0, Math.min(50, Math.round(+v))); if (!isNaN(n)) setDiscount(n); }}
-                          style={{ width: 56, padding: "5px 8px", fontSize: 12.5, fontFamily: "var(--font-mono)", textAlign: "right" }} />
-                        <span className="mono" style={{ fontSize: 11.5, color: "var(--spec-meta)" }}>%</span>
+                          style={{ width: 56, padding: "5px 8px", fontSize: "var(--fs-12)", fontFamily: "var(--font-mono)", textAlign: "right" }} />
+                        <span className="mono" style={{ fontSize: "var(--fs-11)", color: "var(--spec-meta)" }}>%</span>
                       </span>
                     </span>
                     {/* ноль — прочерк (не-данные, faint допустим); сумма — терракота-текст */}
@@ -850,8 +850,8 @@ function RoomSpecOverlay({ data, onClose }) {
                           aria-describedby="rs-deliv-val rs-total-val"
                           onKeyDown={(e) => { if (!e.ctrlKey && !e.metaKey && ["e", "E", "+", "-", ".", ","].includes(e.key)) e.preventDefault(); }}
                           onChange={(e) => { const v = e.target.value; if (v === "") { setDelivery(0); return; } const n = Math.max(0, Math.min(1000000, Math.round(+v))); if (!isNaN(n)) setDelivery(n); }}
-                          style={{ width: 88, padding: "5px 8px", fontSize: 12.5, fontFamily: "var(--font-mono)", textAlign: "right" }} />
-                        <span className="mono" style={{ fontSize: 11.5, color: "var(--spec-meta)" }}>₽</span>
+                          style={{ width: 88, padding: "5px 8px", fontSize: "var(--fs-12)", fontFamily: "var(--font-mono)", textAlign: "right" }} />
+                        <span className="mono" style={{ fontSize: "var(--fs-11)", color: "var(--spec-meta)" }}>₽</span>
                       </span>
                     </span>
                     <span id="rs-deliv-val" className="mono rs-val" style={{ color: delivery > 0 ? undefined : "var(--faint)" }}>{delivery > 0 ? "+" + fmtMoney(delivery) : "—"}</span>
@@ -865,8 +865,8 @@ function RoomSpecOverlay({ data, onClose }) {
                           aria-describedby="rs-inst-val rs-total-val"
                           onKeyDown={(e) => { if (!e.ctrlKey && !e.metaKey && ["e", "E", "+", "-", ".", ","].includes(e.key)) e.preventDefault(); }}
                           onChange={(e) => { const v = e.target.value; if (v === "") { setInstall(0); return; } const n = Math.max(0, Math.min(1000000, Math.round(+v))); if (!isNaN(n)) setInstall(n); }}
-                          style={{ width: 88, padding: "5px 8px", fontSize: 12.5, fontFamily: "var(--font-mono)", textAlign: "right" }} />
-                        <span className="mono" style={{ fontSize: 11.5, color: "var(--spec-meta)" }}>₽</span>
+                          style={{ width: 88, padding: "5px 8px", fontSize: "var(--fs-12)", fontFamily: "var(--font-mono)", textAlign: "right" }} />
+                        <span className="mono" style={{ fontSize: "var(--fs-11)", color: "var(--spec-meta)" }}>₽</span>
                       </span>
                     </span>
                     <span id="rs-inst-val" className="mono rs-val" style={{ color: install > 0 ? undefined : "var(--faint)" }}>{install > 0 ? "+" + fmtMoney(install) : "—"}</span>
@@ -881,8 +881,8 @@ function RoomSpecOverlay({ data, onClose }) {
               )}
               {/* ИТОГО — жирная чертёжная линия + крупный mono */}
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 12, paddingTop: 12, marginTop: 4, borderTop: "2px solid var(--text)" }}>
-                <span style={{ fontWeight: 800, fontFamily: "var(--font-display)", fontSize: 15 }}>{mode === "work" ? "Итого для клиента" : "Итого"}</span>
-                <span id="rs-total-val" className="mono rs-val" style={{ fontWeight: 600, fontSize: 24, letterSpacing: "-0.01em" }} aria-live="off">{fmtMoney(totalClient)}</span>
+                <span style={{ fontWeight: 800, fontFamily: "var(--font-display)", fontSize: "var(--fs-15)" }}>{mode === "work" ? "Итого для клиента" : "Итого"}</span>
+                <span id="rs-total-val" className="mono rs-val" style={{ fontWeight: 600, fontSize: "var(--fs-24)", letterSpacing: "-0.01em" }} aria-live="off">{fmtMoney(totalClient)}</span>
               </div>
             </div>}
           </section>
@@ -890,23 +890,23 @@ function RoomSpecOverlay({ data, onClose }) {
           {/* проверка норм: эргономика по помещениям с планом расстановки из РД */}
           {ergo.length > 0 && (
             <section className="pd-section" style={{ borderBottom: "none" }}>
-              <div className="pd-eyebrow"><span className="dot" />Проверка норм · движок эргономики</div>
+              <div className="eyebrow jade" style={{ marginBottom: 14 }}>Проверка норм · движок эргономики</div>
               <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
                 <h3 className="pd-h" style={{ marginBottom: 0 }}>Эргономика по помещениям</h3>
-                <span className="glass" style={{ display: "inline-flex", alignItems: "center", gap: 7, padding: "6px 12px", borderRadius: 99, fontSize: 12.5, fontWeight: 700,
+                <span className="glass" style={{ display: "inline-flex", alignItems: "center", gap: 7, padding: "6px 12px", borderRadius: 99, fontSize: "var(--fs-12)", fontWeight: 700,
                   color: ergoWarns === 0 ? "var(--accent-2-ink)" : "var(--accent-ink)", borderColor: ergoWarns === 0 ? "rgba(94,107,91,.4)" : "rgba(183,80,44,.4)" }}>
                   <span style={{ width: 8, height: 8, borderRadius: "50%", background: ergoWarns === 0 ? "var(--accent-2)" : "var(--accent)", flex: "none" }} />
                   {ergoWarns === 0 ? "Все нормы соблюдены" : ergoWarns + " " + plural(ergoWarns, ["замечание", "замечания", "замечаний"])}
                 </span>
               </div>
-              <p style={{ color: "var(--muted)", fontSize: 14.5, marginTop: 8, marginBottom: 4, maxWidth: 820, lineHeight: 1.6 }}>
+              <p style={{ color: "var(--muted)", fontSize: "var(--fs-14)", marginTop: 8, marginBottom: 4, maxWidth: 820, lineHeight: 1.6 }}>
                 Движок проверил проходы, дистанции и плотность по плану расстановки из дизайн-проекта — детерминированно, по тем же нормам, что и подбор (правки из «Моих норм» учтены).
               </p>
               {ergo.map((e) => (
                 <div key={e.name} style={{ marginTop: 16 }}>
                   <div style={{ display: "flex", alignItems: "baseline", gap: 10, marginBottom: 9 }}>
-                    <span style={{ fontWeight: 800, fontFamily: "var(--font-display)", fontSize: 15.5 }}>{e.name}</span>
-                    <span className="mono" style={{ fontSize: 11.5, color: e.res.warns ? "var(--accent-ink)" : "var(--accent-2-ink)" }}>
+                    <span style={{ fontWeight: 800, fontFamily: "var(--font-display)", fontSize: "var(--fs-15)" }}>{e.name}</span>
+                    <span className="mono" style={{ fontSize: "var(--fs-11)", color: e.res.warns ? "var(--accent-ink)" : "var(--accent-2-ink)" }}>
                       {e.res.warns ? e.res.warns + " " + plural(e.res.warns, ["замечание", "замечания", "замечаний"]) : "в норме"}
                     </span>
                   </div>
@@ -917,7 +917,7 @@ function RoomSpecOverlay({ data, onClose }) {
                       return (
                         <div key={i} className={"find " + f.kind}>
                           <span className="fi"><Ico size={15} /></span>
-                          <span style={{ fontSize: 14, lineHeight: 1.5, color: "var(--text)" }}>{f.text}</span>
+                          <span style={{ fontSize: "var(--fs-14)", lineHeight: 1.5, color: "var(--text)" }}>{f.text}</span>
                         </div>
                       );
                     })}
@@ -925,7 +925,7 @@ function RoomSpecOverlay({ data, onClose }) {
                 </div>
               ))}
               {ergoSkipped > 0 && (
-                <div style={{ marginTop: 14, fontSize: 12.5, color: "var(--muted)", maxWidth: 820, lineHeight: 1.55 }}>
+                <div style={{ marginTop: 14, fontSize: "var(--fs-12)", color: "var(--muted)", maxWidth: 820, lineHeight: 1.55 }}>
                   Ещё {ergoSkipped} {plural(ergoSkipped, ["помещение", "помещения", "помещений"])} без плана расстановки (мокрые зоны, хранение) — движок проверяет комнаты, где в проекте есть геометрия. Проверяются крупные напольные предметы с плана; примыкающие вплотную и настенные позиции — вне геометрической проверки.
                 </div>
               )}
@@ -940,7 +940,7 @@ function RoomSpecOverlay({ data, onClose }) {
               <SmetaTotal amount={mode === "procure" ? grand : totalClient}
                 caption={<React.Fragment>{mode === "procure" ? "итого закупка" : "итого клиенту"} · {itemsCount} {plural(itemsCount, ["позиция", "позиции", "позиций"])} · <span role="status" aria-atomic="true">{over ? <span style={{ color: "var(--accent-ink)" }}>закупка сверх бюджета {fmtMoney(data.budget)}</span> : <span style={{ color: "var(--accent-2)" }}>закупка в бюджете {fmtMoney(data.budget)}</span>}</span></React.Fragment>} />
               {mode === "work" && (
-                <span className="glass mono" style={{ padding: "7px 12px", borderRadius: 99, fontSize: 12, fontWeight: 500, color: "var(--muted)" }}>
+                <span className="glass mono" style={{ padding: "7px 12px", borderRadius: 99, fontSize: "var(--fs-12)", fontWeight: 500, color: "var(--muted)" }}>
                   {/* маржа после скидки: убыток — терракотой, не оливой-успехом */}
                   себестоимость {fmtMoney(grand)} · наценка {ovrCount > 0 ? "≈ +" + effPct + "%" : "+" + markup + "%"}{discountAmt > 0 && " − скидка " + discount + "%"} = <b style={{ color: client - discountAmt - grand < 0 ? "var(--accent-ink)" : "var(--accent-2)", fontWeight: 600 }}>{fmtMoney(client - discountAmt - grand)}</b>
                 </span>
@@ -1017,8 +1017,8 @@ function VersionsModal({ versions, current, onSave, onRestore, onSetStatus, onPa
     <Modal onClose={onClose} label="Версии и согласование" maxWidth={680}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, padding: "20px 24px", borderBottom: "1px solid var(--hairline)" }}>
         <div>
-          <h3 className="display" style={{ fontSize: 20 }}>Версии и согласование</h3>
-          <div style={{ fontSize: 13, color: "var(--muted)", marginTop: 3 }}>Снимки сметы и статус согласования с клиентом</div>
+          <h3 className="display" style={{ fontSize: "var(--fs-21)" }}>Версии и согласование</h3>
+          <div style={{ fontSize: "var(--fs-13)", color: "var(--muted)", marginTop: 3 }}>Снимки сметы и статус согласования с клиентом</div>
         </div>
         <button className="icon-btn" onClick={onClose} aria-label="Закрыть"><I.close size={18} /></button>
       </div>
@@ -1030,12 +1030,12 @@ function VersionsModal({ versions, current, onSave, onRestore, onSetStatus, onPa
             placeholder="Название версии — например «Клиенту, вариант 1»" aria-label="Название версии" />
           <button type="submit" className="btn btn-primary" style={{ padding: "10px 16px", whiteSpace: "nowrap", flex: "none" }}><I.plus size={15} />Сохранить версию</button>
         </form>
-        <div style={{ fontSize: 12.5, color: "var(--muted)", marginTop: -4 }}>
+        <div style={{ fontSize: "var(--fs-12)", color: "var(--muted)", marginTop: -4 }}>
           Сейчас: себестоимость <b className="mono" style={{ color: "var(--text)", fontWeight: 600 }}>{fmtMoney(current.grand)}</b> · итог клиенту <b className="mono" style={{ color: "var(--accent-2-ink)", fontWeight: 600 }}>{fmtMoney(current.totalClient)}</b> · {current.itemsCount} {plural(current.itemsCount, ["позиция", "позиции", "позиций"])}. Снимок включает позиции, наценки, скидку и доставку/монтаж.
         </div>
 
         {!versions.length && (
-          <div style={{ padding: "22px 8px", textAlign: "center", color: "var(--muted)", fontSize: 14, lineHeight: 1.6 }}>
+          <div style={{ padding: "22px 8px", textAlign: "center", color: "var(--muted)", fontSize: "var(--fs-14)", lineHeight: 1.6 }}>
             Пока нет сохранённых версий.<br />Сохраните снимок перед отправкой клиенту — и отмечайте статус согласования по ответу.
           </div>
         )}
@@ -1050,36 +1050,36 @@ function VersionsModal({ versions, current, onSave, onRestore, onSetStatus, onPa
           return (
             <div key={v.id} className="glass" style={{ borderRadius: "var(--r-lg)", padding: "13px 15px" }}>
               <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-                <span style={{ fontWeight: 700, fontSize: 14.5, flex: 1, minWidth: 140 }}>{v.label}</span>
-                <span style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 11.5, fontWeight: 700, color: sm.color, padding: "3px 10px", borderRadius: 99, background: "var(--glass-2)", border: "1px solid var(--hairline)", whiteSpace: "nowrap" }}>
+                <span style={{ fontWeight: 700, fontSize: "var(--fs-14)", flex: 1, minWidth: 140 }}>{v.label}</span>
+                <span style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: "var(--fs-11)", fontWeight: 700, color: sm.ink || sm.color, padding: "3px 10px", borderRadius: 99, background: "var(--glass-2)", border: "1px solid var(--hairline)", whiteSpace: "nowrap" }}>
                   <span aria-hidden="true" style={{ width: 6, height: 6, borderRadius: "50%", background: sm.color, flex: "none" }} />{sm.label}{v.statusAt ? " · " + fmtDT(v.statusAt) : ""}
                 </span>
               </div>
-              <div className="mono" style={{ fontSize: 11.5, color: "var(--spec-meta)", margin: "7px 0 10px" }}>
+              <div className="mono" style={{ fontSize: "var(--fs-11)", color: "var(--spec-meta)", margin: "7px 0 10px" }}>
                 {fmtDT(v.createdAt)} · себест. {fmtMoney(v.total)} · клиенту {fmtMoney(v.clientTotal)} · {v.positions} поз.
                 {sh && sh.respondedAt ? <span style={{ color: "var(--accent-2-ink)", fontWeight: 700 }}>{" · клиент ответил" + (shOk ? " · " + shOk + " ✓" : "")}</span> : ""}
               </div>
               <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
                 <select className="fld" value={v.status} onChange={(e) => onSetStatus(v.id, e.target.value)} aria-label={"Статус согласования версии «" + v.label + "»"}
-                  style={{ width: "auto", padding: "7px 9px", fontSize: 12.5, fontWeight: 600 }}>
+                  style={{ width: "auto", padding: "7px 9px", fontSize: "var(--fs-12)", fontWeight: 600 }}>
                   {FFE.VERSION_STATUSES.map((s) => <option key={s.id} value={s.id}>{s.label}</option>)}
                 </select>
-                <button className="btn btn-ghost" style={{ padding: "7px 12px", fontSize: 12.5 }} onClick={() => onRestore(v)} title="Загрузить эту версию в рабочую смету">Восстановить</button>
-                <button className="btn btn-ghost" style={{ padding: "7px 12px", fontSize: 12.5 }} onClick={() => setCompareId(compareId === v.id ? null : v.id)} aria-expanded={compareId === v.id}>
+                <button className="btn btn-ghost" style={{ padding: "7px 12px", fontSize: "var(--fs-12)" }} onClick={() => onRestore(v)} title="Загрузить эту версию в рабочую смету">Восстановить</button>
+                <button className="btn btn-ghost" style={{ padding: "7px 12px", fontSize: "var(--fs-12)" }} onClick={() => setCompareId(compareId === v.id ? null : v.id)} aria-expanded={compareId === v.id}>
                   {compareId === v.id ? "Скрыть сравнение" : "Сравнить с текущей"}
                 </button>
-                <button className="btn btn-ghost" style={{ padding: "7px 12px", fontSize: 12.5, ...(v.shareId ? { color: "var(--accent-2-ink)" } : {}) }} onClick={() => onShare(v)}
+                <button className="btn btn-ghost" style={{ padding: "7px 12px", fontSize: "var(--fs-12)", ...(v.shareId ? { color: "var(--accent-2-ink)" } : {}) }} onClick={() => onShare(v)}
                   title={v.shareId ? "Показать ссылку для клиента" : "Создать ссылку для клиента"}>
                   <I.send size={14} />{v.shareId ? "Ссылка ✓" : "Ссылка клиенту"}
                 </button>
                 {v.shareId && (
-                  <button className="btn btn-ghost" style={{ padding: "7px 12px", fontSize: 12.5, ...(cmCount > 0 ? { color: "var(--info)" } : {}) }}
+                  <button className="btn btn-ghost" style={{ padding: "7px 12px", fontSize: "var(--fs-12)", ...(cmCount > 0 ? { color: "var(--info)" } : {}) }}
                     onClick={() => setCmtOpenId(cmtOpenId === v.id ? null : v.id)} aria-expanded={cmtOpenId === v.id}
                     title="Комментарии клиента к позициям и ответы студии">
                     <I.chat size={14} />{cmtOpenId === v.id ? "Скрыть комментарии" : "Комментарии" + (cmCount ? " · " + cmCount : "")}
                   </button>
                 )}
-                <button className="btn btn-ghost" style={{ padding: "7px 12px", fontSize: 12.5 }}
+                <button className="btn btn-ghost" style={{ padding: "7px 12px", fontSize: "var(--fs-12)" }}
                   onClick={() => withLib("pdf", () => AIVibePDF.exportApprovalProtocol({
                     project: current.project, versionLabel: v.label, createdAt: v.createdAt,
                     vStatusLabel: sm.label, statusAt: v.statusAt, respondedAt: sh && sh.respondedAt,
@@ -1089,14 +1089,14 @@ function VersionsModal({ versions, current, onSave, onRestore, onSetStatus, onPa
                   title="Скачать протокол согласования: решения клиента по позициям, переписка и таймстампы">
                   <I.news size={14} />Протокол PDF
                 </button>
-                <button className="icon-btn" onClick={() => onRemove(v)} title="Удалить версию" aria-label={"Удалить версию «" + v.label + "»"}
-                  style={{ width: 30, height: 30, marginLeft: "auto", color: "var(--spec-meta)" }}><I.trash size={15} /></button>
+                <button className="icon-btn xs" onClick={() => onRemove(v)} title="Удалить версию" aria-label={"Удалить версию «" + v.label + "»"}
+                  style={{ marginLeft: "auto", color: "var(--spec-meta)" }}><I.trash size={15} /></button>
               </div>
               {cmtOpenId === v.id && sh && (
                 <PortalCommentsThreads sh={sh} onReply={(ri, ii, text) => { FFE.addPortalComment(v.shareId, ri, ii, "studio", text); setCmtTick((t) => t + 1); }} />
               )}
               {d && (
-                <div style={{ marginTop: 10, padding: "10px 12px", borderRadius: 10, background: "var(--glass-2)", border: "1px solid var(--hairline)", fontSize: 12.5, lineHeight: 1.55 }}>
+                <div style={{ marginTop: 10, padding: "10px 12px", borderRadius: 10, background: "var(--glass-2)", border: "1px solid var(--hairline)", fontSize: "var(--fs-12)", lineHeight: 1.55 }}>
                   <div style={{ marginBottom: 6 }}>
                     Текущая смета против этой версии: итог клиенту{" "}
                     <b className="mono" style={{ fontWeight: 600, color: d.dTotal > 0 ? "var(--accent-ink)" : d.dTotal < 0 ? "var(--accent-2-ink)" : "var(--text)" }}>
@@ -1117,7 +1117,7 @@ function VersionsModal({ versions, current, onSave, onRestore, onSetStatus, onPa
                   )}
                 </div>
               )}
-              <input className="fld" style={{ marginTop: 10, fontSize: 12.5 }} value={v.note || ""} onChange={(e) => onPatch(v.id, { note: e.target.value })}
+              <input className="fld" style={{ marginTop: 10, fontSize: "var(--fs-12)" }} value={v.note || ""} onChange={(e) => onPatch(v.id, { note: e.target.value })}
                 placeholder="Комментарий клиента / замечания…" aria-label={"Комментарий к версии «" + v.label + "»"} />
             </div>
           );
@@ -1147,7 +1147,7 @@ function PortalCommentsThreads({ sh, onReply }) {
   }));
   if (!groups.length) {
     return (
-      <div style={{ marginTop: 10, padding: "10px 12px", borderRadius: 10, background: "var(--glass-2)", border: "1px solid var(--hairline)", fontSize: 12.5, color: "var(--muted)" }}>
+      <div style={{ marginTop: 10, padding: "10px 12px", borderRadius: 10, background: "var(--glass-2)", border: "1px solid var(--hairline)", fontSize: "var(--fs-12)", color: "var(--muted)" }}>
         Клиент пока не оставил комментариев к позициям.
       </div>
     );
@@ -1172,25 +1172,25 @@ function CommentThreadCard({ group, onReply }) {
   };
   return (
     <div style={{ padding: "10px 12px", borderRadius: 10, background: "var(--glass-2)", border: "1px solid var(--hairline)" }}>
-      <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 6, color: "var(--spec-meta)" }}>{group.room} · {group.title}</div>
+      <div style={{ fontSize: "var(--fs-12)", fontWeight: 700, marginBottom: 6, color: "var(--spec-meta)" }}>{group.room} · {group.title}</div>
       <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 8 }}>
         {group.comments.map((c) => (
           <div key={c.id} style={{
             alignSelf: c.author === "client" ? "flex-start" : "flex-end", maxWidth: "88%",
-            padding: "6px 10px", borderRadius: 10, fontSize: 12.5, lineHeight: 1.5,
+            padding: "6px 10px", borderRadius: 10, fontSize: "var(--fs-12)", lineHeight: 1.5,
             background: c.author === "client" ? "var(--glass)" : "var(--accent-2)",
             color: c.author === "client" ? "var(--text)" : "var(--on-accent)",
             border: c.author === "client" ? "1px solid var(--hairline)" : "none",
           }}>
             <div>{c.text}</div>
-            <div style={{ fontSize: 10.5, opacity: .75, marginTop: 3 }}>{c.author === "client" ? "Клиент" : "Вы"} · {fmtCommentAt(c.at)}</div>
+            <div style={{ fontSize: "var(--fs-10)", opacity: .75, marginTop: 3 }}>{c.author === "client" ? "Клиент" : "Вы"} · {fmtCommentAt(c.at)}</div>
           </div>
         ))}
       </div>
       <form onSubmit={send} style={{ display: "flex", gap: 6 }}>
         <input className="fld" value={draft} onChange={(e) => setDraft(e.target.value)} placeholder="Ответить клиенту…"
-          aria-label={"Ответить клиенту по позиции «" + group.title + "»"} style={{ fontSize: 12.5, padding: "6px 9px", flex: 1 }} />
-        <button type="submit" className="btn btn-ghost" style={{ padding: "6px 12px", fontSize: 12, flex: "none" }} disabled={!draft.trim()}>Ответить</button>
+          aria-label={"Ответить клиенту по позиции «" + group.title + "»"} style={{ fontSize: "var(--fs-12)", padding: "6px 9px", flex: 1 }} />
+        <button type="submit" className="btn btn-ghost" style={{ padding: "6px 12px", fontSize: "var(--fs-12)", flex: "none" }} disabled={!draft.trim()}>Ответить</button>
       </form>
     </div>
   );
@@ -1229,8 +1229,8 @@ function PosEditor({ item, cats, sups, isNew, onSave, onDelete, onCancel, librar
     setD((x) => ({ ...x, title: v }));
     if (isNew && !d.price) { const m = lib.find((p) => (p.title || "").trim().toLowerCase() === v.trim().toLowerCase()); if (m) applyLib(m, false); }
   };
-  const fld = { width: "100%", padding: "8px 10px", borderRadius: 9, border: "1px solid var(--hairline)", background: "var(--surface)", fontSize: 13, color: "var(--text)", marginTop: 3 };
-  const lab = { fontSize: 11.5, color: "var(--muted)", display: "block", minWidth: 0 };
+  const fld = { width: "100%", padding: "8px 10px", borderRadius: 9, border: "1px solid var(--hairline)", background: "var(--surface)", fontSize: "var(--fs-13)", color: "var(--text)", marginTop: 3 };
+  const lab = { fontSize: "var(--fs-11)", color: "var(--muted)", display: "block", minWidth: 0 };
   return (
     <div style={{ margin: "6px 0 8px", padding: "12px 14px", borderRadius: 12, border: "1px solid rgba(94,107,91,.45)", background: "rgba(94,107,91,.06)", display: "flex", flexDirection: "column", gap: 10 }}
       onKeyDown={(e) => {
@@ -1241,12 +1241,12 @@ function PosEditor({ item, cats, sups, isNew, onSave, onDelete, onCancel, librar
         <input style={fld} value={d.title} autoFocus list="pe-lib-list" onChange={(e) => onTitle(e.target.value)} />
       </label>
       {libMatch && (
-        <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, color: "var(--muted)", marginTop: -4 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: "var(--fs-12)", color: "var(--muted)", marginTop: -4 }}>
           <span aria-hidden="true" style={{ width: 7, height: 7, borderRadius: "50%", background: "var(--accent-2)", flex: "none" }} />
           <span style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
             В библиотеке: {fmtMoney(libMatch.price || 0)}{libMatch.cat ? " · " + libMatch.cat : ""}{libMatch.sup ? " · " + libMatch.sup : ""}
           </span>
-          <button type="button" className="btn btn-ghost" style={{ padding: "3px 9px", fontSize: 11.5, flex: "none" }} onClick={() => applyLib(libMatch, true)}>Подставить</button>
+          <button type="button" className="btn btn-ghost" style={{ padding: "3px 9px", fontSize: "var(--fs-11)", flex: "none" }} onClick={() => applyLib(libMatch, true)}>Подставить</button>
         </div>
       )}
       <div className="pe-grid" style={{ display: "grid", gridTemplateColumns: "1fr 76px 116px 1fr", gap: 10 }}>
@@ -1264,12 +1264,12 @@ function PosEditor({ item, cats, sups, isNew, onSave, onDelete, onCancel, librar
         </label>
       </div>
       <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-        <button className="btn btn-primary" style={{ padding: "8px 14px", fontSize: 13 }} disabled={!ok} onClick={submit}><I.check size={14} />{isNew ? "Добавить" : "Готово"}</button>
-        <button className="btn btn-ghost" style={{ padding: "8px 14px", fontSize: 13 }} onClick={onCancel}>Отмена</button>
+        <button className="btn btn-primary" style={{ padding: "8px 14px", fontSize: "var(--fs-13)" }} disabled={!ok} onClick={submit}><I.check size={14} />{isNew ? "Добавить" : "Готово"}</button>
+        <button className="btn btn-ghost" style={{ padding: "8px 14px", fontSize: "var(--fs-13)" }} onClick={onCancel}>Отмена</button>
         {onToLibrary && (libMatch
-          ? <button className="btn btn-ghost" style={{ padding: "8px 14px", fontSize: 13, color: "var(--accent-2-ink)" }} disabled title="Этот товар уже есть в библиотеке студии"><I.check size={14} />В библиотеке</button>
-          : <button className="btn btn-ghost" style={{ padding: "8px 14px", fontSize: 13 }} disabled={!ok} title="Сохранить как мастер-запись в библиотеку студии" onClick={() => onToLibrary(draft())}><I.layers size={14} />В библиотеку</button>)}
-        {!isNew && <button className="btn btn-ghost" style={{ padding: "8px 14px", fontSize: 13, color: "var(--accent-ink)", marginLeft: "auto" }} onClick={onDelete}>Удалить позицию</button>}
+          ? <button className="btn btn-ghost" style={{ padding: "8px 14px", fontSize: "var(--fs-13)", color: "var(--accent-2-ink)" }} disabled title="Этот товар уже есть в библиотеке студии"><I.check size={14} />В библиотеке</button>
+          : <button className="btn btn-ghost" style={{ padding: "8px 14px", fontSize: "var(--fs-13)" }} disabled={!ok} title="Сохранить как мастер-запись в библиотеку студии" onClick={() => onToLibrary(draft())}><I.layers size={14} />В библиотеку</button>)}
+        {!isNew && <button className="btn btn-ghost" style={{ padding: "8px 14px", fontSize: "var(--fs-13)", color: "var(--accent-ink)", marginLeft: "auto" }} onClick={onDelete}>Удалить позицию</button>}
       </div>
       {/* редактор открыт один за раз — id datalist'ов не коллидируют */}
       <datalist id="pe-cat-list">{cats.map((c) => <option key={c} value={c} />)}</datalist>
@@ -1384,14 +1384,14 @@ function AddPositionsModal({ excludeId, roomNames, onClose, onAdd }) {
     };
     onAdd([{ name: clipForm.room.trim(), items: [item] }], "по ссылке");
   };
-  const clipField = { width: "100%", padding: "10px 12px", borderRadius: 10, border: "1px solid var(--hairline)", background: "var(--surface)", fontSize: 14, color: "var(--text)" };
+  const clipField = { width: "100%", padding: "10px 12px", borderRadius: 10, border: "1px solid var(--hairline)", background: "var(--surface)", fontSize: "var(--fs-14)", color: "var(--text)" };
 
   return (
     <Modal onClose={onClose} label="Добавить позиции в смету" maxWidth={620}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, padding: "20px 24px", borderBottom: "1px solid var(--hairline)", flexWrap: "wrap" }}>
         <div>
-          <h3 className="display" style={{ fontSize: 20 }}>Добавить позиции</h3>
-          <div style={{ fontSize: 13, color: "var(--muted)", marginTop: 3 }}>Из прошлого проекта или типовой комплектации</div>
+          <h3 className="display" style={{ fontSize: "var(--fs-21)" }}>Добавить позиции</h3>
+          <div style={{ fontSize: "var(--fs-13)", color: "var(--muted)", marginTop: 3 }}>Из прошлого проекта или типовой комплектации</div>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <SegTabs className="spec-mode" ariaLabel="Источник позиций" value={tab} onChange={switchTab}
@@ -1405,7 +1405,7 @@ function AddPositionsModal({ excludeId, roomNames, onClose, onAdd }) {
         <div style={{ padding: 16, display: "flex", flexDirection: "column", gap: 8, maxHeight: "54vh", overflow: "auto" }}>
           {tab === "past" && !sources && Array.from({ length: 2 }).map((_, i) => <div key={i} className="skel" style={{ height: 62, borderRadius: 12 }} />)}
           {tab === "past" && sources && sources.length === 0 && (
-            <div style={{ padding: "28px 16px", textAlign: "center", color: "var(--muted)", fontSize: 14, lineHeight: 1.55 }}>
+            <div style={{ padding: "28px 16px", textAlign: "center", color: "var(--muted)", fontSize: "var(--fs-14)", lineHeight: 1.55 }}>
               Пока нет прошлых проектов со сметой по комнатам.<br />Сохраните смету — и её позиции можно будет переиспользовать здесь.
             </div>
           )}
@@ -1413,8 +1413,8 @@ function AddPositionsModal({ excludeId, roomNames, onClose, onAdd }) {
             <button key={s.id} onClick={() => pickSrc(s, false)} style={rowBtn}
               onMouseEnter={(e) => (e.currentTarget.style.borderColor = "var(--accent)")} onMouseLeave={(e) => (e.currentTarget.style.borderColor = "var(--hairline)")}>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontWeight: 700, fontSize: 14.5, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{s.label}</div>
-                <div style={{ fontSize: 12.5, color: "var(--muted)", marginTop: 2 }}>
+                <div style={{ fontWeight: 700, fontSize: "var(--fs-14)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{s.label}</div>
+                <div style={{ fontSize: "var(--fs-12)", color: "var(--muted)", marginTop: 2 }}>
                   {srcCount(s.rooms)} {plural(srcCount(s.rooms), ["позиция", "позиции", "позиций"])} · себестоимость {fmtMoney(s.rooms.reduce((a, r) => a + cost(r.items), 0))} · цены от {fmtDateRu(s.stamp)}
                 </div>
               </div>
@@ -1426,15 +1426,15 @@ function AddPositionsModal({ excludeId, roomNames, onClose, onAdd }) {
             <button key={t.id} onClick={() => pickSrc({ label: t.name, rooms: [{ name: t.room, items: t.items }] }, true)} style={rowBtn}
               onMouseEnter={(e) => (e.currentTarget.style.borderColor = "var(--accent)")} onMouseLeave={(e) => (e.currentTarget.style.borderColor = "var(--hairline)")}>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontWeight: 700, fontSize: 14.5 }}>{t.name}</div>
-                <div style={{ fontSize: 12.5, color: "var(--muted)", marginTop: 2, lineHeight: 1.4 }}>{t.note}</div>
-                <div className="mono" style={{ fontSize: 11.5, color: "var(--spec-meta)", marginTop: 4 }}>{t.items.length} {plural(t.items.length, ["позиция", "позиции", "позиций"])} · ≈ {fmtMoney(cost(t.items))}</div>
+                <div style={{ fontWeight: 700, fontSize: "var(--fs-14)" }}>{t.name}</div>
+                <div style={{ fontSize: "var(--fs-12)", color: "var(--muted)", marginTop: 2, lineHeight: 1.4 }}>{t.note}</div>
+                <div className="mono" style={{ fontSize: "var(--fs-11)", color: "var(--spec-meta)", marginTop: 4 }}>{t.items.length} {plural(t.items.length, ["позиция", "позиции", "позиций"])} · ≈ {fmtMoney(cost(t.items))}</div>
               </div>
               <I.arrow size={16} style={{ color: "var(--faint)", flex: "none" }} />
             </button>
           ))}
           {tab === "tpl" && (
-            <div style={{ padding: "6px 4px 0", fontSize: 12, color: "var(--muted)", lineHeight: 1.5 }}>
+            <div style={{ padding: "6px 4px 0", fontSize: "var(--fs-12)", color: "var(--muted)", lineHeight: 1.5 }}>
               Цены в шаблонах — рыночный ориентир (средний сегмент), поставщики — типовые точки закупки. Всё редактируется после вставки.
             </div>
           )}
@@ -1450,46 +1450,46 @@ function AddPositionsModal({ excludeId, roomNames, onClose, onAdd }) {
                   {clipBusy ? <span className="spin" style={{ width: 15, height: 15 }} /> : <I.spark size={15} />}Извлечь
                 </button>
               </div>
-              {clipErr && <div className="find warn" style={{ fontSize: 13, lineHeight: 1.5 }}><span className="fi"><I.info size={14} /></span><span>{clipErr}</span></div>}
+              {clipErr && <div className="find warn" style={{ fontSize: "var(--fs-13)", lineHeight: 1.5 }}><span className="fi"><I.info size={14} /></span><span>{clipErr}</span></div>}
               {clipHtmlMode && !clipForm && (
                 <React.Fragment>
-                  <textarea style={{ ...clipField, minHeight: 110, resize: "vertical", fontFamily: "var(--font-mono)", fontSize: 12 }}
+                  <textarea style={{ ...clipField, minHeight: 110, resize: "vertical", fontFamily: "var(--font-mono)", fontSize: "var(--fs-12)" }}
                     placeholder="Вставьте сюда HTML страницы товара…" value={clipHtml} onChange={(e) => setClipHtml(e.target.value)} aria-label="HTML страницы товара" />
                   <button className="btn btn-ghost" style={{ alignSelf: "flex-start", padding: "9px 14px" }} disabled={!clipHtml.trim()} onClick={doParseHtml}>Разобрать HTML</button>
                 </React.Fragment>
               )}
               {clipForm && (
                 <div style={{ border: "1px solid var(--hairline)", borderRadius: 12, padding: "14px 16px", display: "flex", flexDirection: "column", gap: 10 }}>
-                  <label style={{ fontSize: 12.5, color: "var(--muted)" }}>Название позиции
+                  <label style={{ fontSize: "var(--fs-12)", color: "var(--muted)" }}>Название позиции
                     <input style={{ ...clipField, marginTop: 4 }} value={clipForm.title} onChange={(e) => setClipForm((f) => ({ ...f, title: e.target.value }))} />
                   </label>
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 90px 1fr", gap: 10 }}>
-                    <label style={{ fontSize: 12.5, color: "var(--muted)" }}>Цена, ₽ (себестоимость)
+                    <label style={{ fontSize: "var(--fs-12)", color: "var(--muted)" }}>Цена, ₽ (себестоимость)
                       <input style={{ ...clipField, marginTop: 4, fontFamily: "var(--font-mono)" }} type="number" min="1" value={clipForm.price} onChange={(e) => setClipForm((f) => ({ ...f, price: e.target.value }))} />
                     </label>
-                    <label style={{ fontSize: 12.5, color: "var(--muted)" }}>Кол-во
+                    <label style={{ fontSize: "var(--fs-12)", color: "var(--muted)" }}>Кол-во
                       <input style={{ ...clipField, marginTop: 4, fontFamily: "var(--font-mono)" }} type="number" min="1" value={clipForm.qty} onChange={(e) => setClipForm((f) => ({ ...f, qty: e.target.value }))} />
                     </label>
-                    <label style={{ fontSize: 12.5, color: "var(--muted)" }}>Поставщик
+                    <label style={{ fontSize: "var(--fs-12)", color: "var(--muted)" }}>Поставщик
                       <input style={{ ...clipField, marginTop: 4 }} value={clipForm.sup} onChange={(e) => setClipForm((f) => ({ ...f, sup: e.target.value }))} />
                     </label>
                   </div>
-                  <label style={{ fontSize: 12.5, color: "var(--muted)" }}>Комната
+                  <label style={{ fontSize: "var(--fs-12)", color: "var(--muted)" }}>Комната
                     <input style={{ ...clipField, marginTop: 4 }} list="clip-rooms" value={clipForm.room} onChange={(e) => setClipForm((f) => ({ ...f, room: e.target.value }))} />
                     <datalist id="clip-rooms">{(roomNames || []).map((n) => <option key={n} value={n} />)}</datalist>
                   </label>
                   {clipForm.warnPrice && (
-                    <div style={{ fontSize: 12.5, color: "var(--accent-ink)", lineHeight: 1.45 }}>Цена не извлеклась или извлечена неуверенно — проверьте её по странице товара.</div>
+                    <div style={{ fontSize: "var(--fs-12)", color: "var(--accent-ink)", lineHeight: 1.45 }}>Цена не извлеклась или извлечена неуверенно — проверьте её по странице товара.</div>
                   )}
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-                    <span className="mono" style={{ fontSize: 12.5, color: clipOk ? "var(--text)" : "var(--faint)" }}>
+                    <span className="mono" style={{ fontSize: "var(--fs-12)", color: clipOk ? "var(--text)" : "var(--faint)" }}>
                       {clipOk ? "+" + fmtMoney(clipPrice * clipQty) + " · цена от " + fmtDateRu(new Date().toISOString().slice(0, 10)) : "заполните название и цену"}
                     </span>
                     <button className="btn btn-primary" disabled={!clipOk} onClick={clipAdd}><I.plus size={16} />Добавить в смету</button>
                   </div>
                 </div>
               )}
-              <div style={{ fontSize: 12, color: "var(--muted)", lineHeight: 1.5 }}>
+              <div style={{ fontSize: "var(--fs-12)", color: "var(--muted)", lineHeight: 1.5 }}>
                 Клиппер читает структурированные данные страницы (JSON-LD, микроразметку, OpenGraph) и подставляет название, цену и поставщика. Извлечение автоматическое — проверьте значения перед добавлением.
               </div>
             </div>
@@ -1501,40 +1501,40 @@ function AddPositionsModal({ excludeId, roomNames, onClose, onAdd }) {
       {src && (
         <React.Fragment>
           <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "12px 24px 0" }}>
-            <button className="btn btn-ghost" style={{ padding: "7px 12px", fontSize: 13 }} onClick={() => { setSrc(null); setSel({}); }}>
+            <button className="btn btn-ghost" style={{ padding: "7px 12px", fontSize: "var(--fs-13)" }} onClick={() => { setSrc(null); setSel({}); }}>
               <I.arrow size={14} style={{ transform: "rotate(180deg)" }} />Назад
             </button>
-            <span style={{ fontWeight: 700, fontSize: 14.5, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{src.label}</span>
-            {src.stamp && <span className="mono" style={{ fontSize: 11.5, color: "var(--spec-meta)", whiteSpace: "nowrap" }}>цены от {fmtDateRu(src.stamp)}</span>}
+            <span style={{ fontWeight: 700, fontSize: "var(--fs-14)", minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{src.label}</span>
+            {src.stamp && <span className="mono" style={{ fontSize: "var(--fs-11)", color: "var(--spec-meta)", whiteSpace: "nowrap" }}>цены от {fmtDateRu(src.stamp)}</span>}
           </div>
           <div style={{ padding: "12px 24px 4px", display: "flex", flexDirection: "column", gap: 12, maxHeight: "46vh", overflow: "auto" }}>
             {src.rooms.map((r, ri) => (
               <div key={ri} style={{ border: "1px solid var(--hairline)", borderRadius: 12, padding: "10px 14px" }}>
                 <label style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer", padding: "2px 0 6px" }}>
                   <input type="checkbox" checked={roomAll(ri)} onChange={() => toggleRoom(ri)} style={{ accentColor: "var(--accent)", width: 15, height: 15, flex: "none" }} />
-                  <span style={{ fontWeight: 700, fontSize: 14, flex: 1 }}>{r.name}{r.area ? <span style={{ color: "var(--faint)", fontWeight: 500, fontSize: 12.5 }}> · {r.area} м²</span> : null}</span>
-                  <span className="mono" style={{ fontSize: 12, color: "var(--spec-meta)", whiteSpace: "nowrap" }}>{fmtMoney(cost(r.items))}</span>
+                  <span style={{ fontWeight: 700, fontSize: "var(--fs-14)", flex: 1 }}>{r.name}{r.area ? <span style={{ color: "var(--faint)", fontWeight: 500, fontSize: "var(--fs-12)" }}> · {r.area} м²</span> : null}</span>
+                  <span className="mono" style={{ fontSize: "var(--fs-12)", color: "var(--spec-meta)", whiteSpace: "nowrap" }}>{fmtMoney(cost(r.items))}</span>
                 </label>
                 <div style={{ display: "flex", flexDirection: "column", borderTop: "1px solid var(--hairline-2)" }}>
                   {r.items.map((it, ii) => (
-                    <label key={ii} style={{ display: "flex", alignItems: "baseline", gap: 10, padding: "6px 0", borderTop: ii ? "1px solid var(--hairline-2)" : "none", fontSize: 13, cursor: "pointer" }}>
+                    <label key={ii} style={{ display: "flex", alignItems: "baseline", gap: 10, padding: "6px 0", borderTop: ii ? "1px solid var(--hairline-2)" : "none", fontSize: "var(--fs-13)", cursor: "pointer" }}>
                       <input type="checkbox" checked={!!sel[k(ri, ii)]} onChange={() => setSel((s) => ({ ...s, [k(ri, ii)]: !s[k(ri, ii)] }))} style={{ accentColor: "var(--accent)", width: 14, height: 14, flex: "none", position: "relative", top: 2 }} />
                       <span style={{ flex: 1, lineHeight: 1.4 }}>{it.title}</span>
-                      <span className="mono" style={{ color: "var(--spec-meta)", whiteSpace: "nowrap", fontSize: 12 }}>×{it.qty || 1}</span>
-                      <span className="mono" style={{ whiteSpace: "nowrap", fontSize: 12.5 }}>{fmtMoney(it.price * (it.qty || 1))}</span>
+                      <span className="mono" style={{ color: "var(--spec-meta)", whiteSpace: "nowrap", fontSize: "var(--fs-12)" }}>×{it.qty || 1}</span>
+                      <span className="mono" style={{ whiteSpace: "nowrap", fontSize: "var(--fs-12)" }}>{fmtMoney(it.price * (it.qty || 1))}</span>
                     </label>
                   ))}
                 </div>
               </div>
             ))}
             {src.stamp && (
-              <div style={{ fontSize: 12, color: "var(--muted)", lineHeight: 1.5 }}>
+              <div style={{ fontSize: "var(--fs-12)", color: "var(--muted)", lineHeight: 1.5 }}>
                 Скопированные позиции получат пометку давности цены — от {fmtDateRu(src.stamp)}; старше 30 дней она подсвечивается терракотой.
               </div>
             )}
           </div>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, padding: "14px 24px 18px", borderTop: "1px solid var(--hairline)", marginTop: 10, flexWrap: "wrap" }}>
-            <span className="mono" style={{ fontSize: 12.5, color: nSel ? "var(--text)" : "var(--faint)" }}>
+            <span className="mono" style={{ fontSize: "var(--fs-12)", color: nSel ? "var(--text)" : "var(--faint)" }}>
               {nSel ? nSel + " " + plural(nSel, ["позиция", "позиции", "позиций"]) + " · +" + fmtMoney(sumSel) : "позиции не выбраны"}
             </span>
             <button className="btn btn-primary" disabled={!nSel} onClick={() => onAdd(chosen, src.label)}>
@@ -1554,9 +1554,9 @@ function StyleHero({ data, style }) {
       <Img src={PHOTOS[data.cover] || PHOTOS.living} label={data.room} style={{ position: "absolute", inset: 0 }} />
       <div style={{ position: "absolute", inset: 0, background: "linear-gradient(90deg, rgba(46,42,38,.92) 0%, rgba(46,42,38,.55) 55%, rgba(46,42,38,.2) 100%)" }} />
       <div style={{ position: "relative", height: "100%", display: "flex", flexDirection: "column", justifyContent: "center", gap: 8, padding: "0 clamp(16px,3vw,40px)", maxWidth: 560, color: "#FCF6EE" }}>
-        <span style={{ fontSize: 12, fontWeight: 700, color: "rgba(252,246,238,.74)", letterSpacing: ".06em" }}>{data.analysis.scannedAt}</span>
+        <span style={{ fontSize: "var(--fs-12)", fontWeight: 700, color: "rgba(252,246,238,.74)", letterSpacing: ".06em" }}>{data.analysis.scannedAt}</span>
         <div className="display" style={{ fontSize: "clamp(22px,3vw,30px)", letterSpacing: "-0.02em" }}>Стиль: {style.name}</div>
-        <div style={{ color: "rgba(252,246,238,.8)", fontSize: 14 }}>{style.mood}</div>
+        <div style={{ color: "rgba(252,246,238,.8)", fontSize: "var(--fs-14)" }}>{style.mood}</div>
         <div style={{ display: "flex", gap: 7, marginTop: 4 }}>
           {style.palette.map((c, i) => <span key={i} title={c} style={{ width: 30, height: 30, borderRadius: 7, background: c, border: "1px solid rgba(255,255,255,.2)" }} />)}
         </div>
@@ -1569,7 +1569,7 @@ function StyleHero({ data, style }) {
 function RoomAnalysis({ a, sref }) {
   return (
     <section className="pd-section" ref={sref}>
-      <div className="pd-eyebrow"><span className="dot" />Анализ помещения · по плану и габаритам</div>
+      <div className="eyebrow jade" style={{ marginBottom: 14 }}>Анализ помещения · по плану и габаритам</div>
       <h3 className="pd-h">Что Design Ledger увидел в комнате</h3>
 
       <div style={{ display: "grid", gridTemplateColumns: "minmax(220px,300px) 1fr", gap: 22, alignItems: "start", marginTop: 18 }} className="pd-an-top">
@@ -1578,11 +1578,11 @@ function RoomAnalysis({ a, sref }) {
           <div style={{ marginTop: 16 }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 7 }}>
               {/* солнце = охра (терракота у нас — варнинг, высокая инсоляция — не «плохо») */}
-              <span style={{ display: "flex", alignItems: "center", gap: 7, fontSize: 13, fontWeight: 700 }}><I.sun size={15} style={{ color: "var(--chart-ink)" }} />{a.light.label}</span>
-              <span className="mono" style={{ fontWeight: 600, fontSize: 15 }}>{a.light.score}<span style={{ fontSize: 11, color: "var(--spec-meta)", fontWeight: 400 }}>/100</span></span>
+              <span style={{ display: "flex", alignItems: "center", gap: 7, fontSize: "var(--fs-13)", fontWeight: 700 }}><I.sun size={15} style={{ color: "var(--chart-ink)" }} />{a.light.label}</span>
+              <span className="mono" style={{ fontWeight: 600, fontSize: "var(--fs-15)" }}>{a.light.score}<span style={{ fontSize: "var(--fs-11)", color: "var(--spec-meta)", fontWeight: 400 }}>/100</span></span>
             </div>
             <div className="light-meter"><i style={{ width: a.light.score + "%" }} /></div>
-            <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 7 }}>{a.light.note}</div>
+            <div style={{ fontSize: "var(--fs-12)", color: "var(--muted)", marginTop: 7 }}>{a.light.note}</div>
           </div>
         </div>
 
@@ -1593,31 +1593,31 @@ function RoomAnalysis({ a, sref }) {
         </div>
       </div>
 
-      <p style={{ marginTop: 20, fontSize: 15.5, lineHeight: 1.7, color: "var(--muted)", maxWidth: 880, textWrap: "pretty" }}>{a.summary}</p>
+      <p style={{ marginTop: 20, fontSize: "var(--fs-15)", lineHeight: 1.7, color: "var(--muted)", maxWidth: 880, textWrap: "pretty" }}>{a.summary}</p>
 
       <div style={{ marginTop: 22 }}>
-        <div style={{ fontSize: 13, fontWeight: 700, color: "var(--faint)", textTransform: "uppercase", letterSpacing: ".1em", marginBottom: 12 }}>Зонирование</div>
+        <div style={{ fontSize: "var(--fs-13)", fontWeight: 700, color: "var(--faint)", textTransform: "uppercase", letterSpacing: ".1em", marginBottom: 12 }}>Зонирование</div>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(190px,1fr))", gap: 12 }}>
           {a.zones.map((z) => (
             <div key={z.name} className="glass" style={{ borderRadius: 12, padding: "14px 16px" }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 10 }}>
-                <span style={{ fontWeight: 700, fontSize: 14.5 }}>{z.name}</span>
-                <span style={{ fontSize: 12.5, color: "var(--accent-2)", fontWeight: 700, whiteSpace: "nowrap" }}>{z.area}</span>
+                <span style={{ fontWeight: 700, fontSize: "var(--fs-14)" }}>{z.name}</span>
+                <span style={{ fontSize: "var(--fs-12)", color: "var(--accent-2)", fontWeight: 700, whiteSpace: "nowrap" }}>{z.area}</span>
               </div>
-              <div style={{ fontSize: 13, color: "var(--muted)", marginTop: 5, lineHeight: 1.4 }}>{z.note}</div>
+              <div style={{ fontSize: "var(--fs-13)", color: "var(--muted)", marginTop: 5, lineHeight: 1.4 }}>{z.note}</div>
             </div>
           ))}
         </div>
       </div>
 
       <div style={{ marginTop: 22, display: "flex", flexDirection: "column", gap: 9 }}>
-        <div style={{ fontSize: 13, fontWeight: 700, color: "var(--spec-meta)", textTransform: "uppercase", letterSpacing: ".1em", marginBottom: 3 }}>Выводы по помещению</div>
+        <div style={{ fontSize: "var(--fs-13)", fontWeight: 700, color: "var(--spec-meta)", textTransform: "uppercase", letterSpacing: ".1em", marginBottom: 3 }}>Выводы по помещению</div>
         {a.findings.map((f, i) => {
           const Ico = FIND_ICON[f.kind] || FIND_ICON.idea;
           return (
             <div key={i} className={"find " + f.kind}>
               <span className="fi"><Ico size={15} /></span>
-              <span style={{ fontSize: 14, lineHeight: 1.5, color: "var(--text)" }}>{f.text}</span>
+              <span style={{ fontSize: "var(--fs-14)", lineHeight: 1.5, color: "var(--text)" }}>{f.text}</span>
             </div>
           );
         })}
@@ -1651,7 +1651,7 @@ function FloorPlan({ plan }) {
     : `M ${dx} ${y1} A ${dw} ${dw} 0 0 1 ${dx + dw} ${y1 - dw}`;
   const tick = (x, y, key) => <line key={key} x1={x - 3} y1={y + 3} x2={x + 3} y2={y - 3} stroke="var(--spec-meta)" strokeWidth="1.1" />;
   const dimY = y1 + 18, dimX = x1 + 18;
-  const mono = { fontFamily: "var(--font-mono)", fontSize: 10, fill: "var(--spec-meta)" };
+  const mono = { fontFamily: "var(--font-mono)", fontSize: "var(--fs-10)", fill: "var(--spec-meta)" };
   return (
     <div>
       <svg viewBox={`0 0 ${W} ${H}`} width="100%" style={{ display: "block", maxHeight: 240, margin: "0 auto" }} role="img"
@@ -1705,7 +1705,7 @@ function FloorPlan({ plan }) {
         <text x={dimX - 4} y={(y0 + y1) / 2} textAnchor="middle" transform={`rotate(-90 ${dimX - 4} ${(y0 + y1) / 2})`} style={mono}>{fmtM(plan.l)}</text>
       </svg>
       {/* легенда — те же условные обозначения, что на чертеже */}
-      <div style={{ display: "flex", gap: 18, justifyContent: "center", marginTop: 10, fontFamily: "var(--font-mono)", fontSize: 10, letterSpacing: ".07em", textTransform: "uppercase", color: "var(--spec-meta)" }}>
+      <div style={{ display: "flex", gap: 18, justifyContent: "center", marginTop: 10, fontFamily: "var(--font-mono)", fontSize: "var(--fs-10)", letterSpacing: ".07em", textTransform: "uppercase", color: "var(--spec-meta)" }}>
         <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
           <svg width="18" height="8" aria-hidden="true"><line x1="1" y1="2.5" x2="17" y2="2.5" stroke="var(--info)" strokeWidth="1.3" /><line x1="1" y1="5.5" x2="17" y2="5.5" stroke="var(--info)" strokeWidth="1.3" /></svg>Окно
         </span>
@@ -1724,13 +1724,13 @@ function StyleOptionCard({ s, on, onPick }) {
   return (
     <button className={"style-card" + (on ? " sel" : "")} onClick={() => onPick(s.id)} aria-pressed={on}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
-        <span style={{ fontWeight: 800, fontFamily: "var(--font-display)", fontSize: 17 }}>{s.name}</span>
+        <span style={{ fontWeight: 800, fontFamily: "var(--font-display)", fontSize: "var(--fs-16)" }}>{s.name}</span>
         {on && <span style={{ width: 22, height: 22, borderRadius: "50%", background: "var(--accent)", color: "var(--on-accent)", display: "grid", placeItems: "center", flex: "none" }}><I.check size={13} /></span>}
       </div>
-      <div style={{ fontSize: 12.5, color: "var(--muted)", marginTop: 4 }}>{s.mood}</div>
+      <div style={{ fontSize: "var(--fs-12)", color: "var(--muted)", marginTop: 4 }}>{s.mood}</div>
       <div className="sw">{(s.palette || []).map((c, i) => <span key={i} style={{ background: c }} />)}</div>
-      {s.desc && <div style={{ fontSize: 13, color: "var(--muted)", marginTop: 12, lineHeight: 1.45 }}>{s.desc}</div>}
-      <div style={{ marginTop: 12, fontSize: 12, fontWeight: 700, color: delta > 0 ? "var(--accent)" : (delta < 0 ? "var(--accent-2)" : "var(--faint)") }}>{deltaLabel}</div>
+      {s.desc && <div style={{ fontSize: "var(--fs-13)", color: "var(--muted)", marginTop: 12, lineHeight: 1.45 }}>{s.desc}</div>}
+      <div style={{ marginTop: 12, fontSize: "var(--fs-12)", fontWeight: 700, color: delta > 0 ? "var(--accent)" : (delta < 0 ? "var(--accent-2)" : "var(--faint)") }}>{deltaLabel}</div>
     </button>
   );
 }
@@ -1739,9 +1739,9 @@ function StylePicker({ data, styleId, onPick, sref, myStyles }) {
   const mine = myStyles || [];
   return (
     <section className="pd-section" ref={sref}>
-      <div className="pd-eyebrow"><span className="dot" />Стиль и варианты</div>
+      <div className="eyebrow jade" style={{ marginBottom: 14 }}>Стиль и варианты</div>
       <h3 className="pd-h">Направления под эту комнату</h3>
-      <p style={{ color: "var(--muted)", fontSize: 14.5, marginTop: 4, marginBottom: 18, maxWidth: 720 }}>
+      <p style={{ color: "var(--muted)", fontSize: "var(--fs-14)", marginTop: 4, marginBottom: 18, maxWidth: 720 }}>
         AI подобрал стили под пропорции, свет и назначение помещения. Выберите направление — палитра и акценты обновятся, а рядом видно ориентировочное влияние на бюджет.
       </p>
       <div className="pd-styles" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: 14 }}>
@@ -1752,8 +1752,8 @@ function StylePicker({ data, styleId, onPick, sref, myStyles }) {
         <React.Fragment>
           <div style={{ display: "flex", alignItems: "center", gap: 9, margin: "22px 2px 12px" }}>
             <I.user size={16} style={{ color: "var(--accent)", flex: "none" }} />
-            <span style={{ fontWeight: 700, fontSize: 14.5 }}>Мои стили</span>
-            <span style={{ fontSize: 12.5, color: "var(--faint)" }}>· из библиотеки «Мои стили»</span>
+            <span style={{ fontWeight: 700, fontSize: "var(--fs-14)" }}>Мои стили</span>
+            <span style={{ fontSize: "var(--fs-12)", color: "var(--faint)" }}>· из библиотеки «Мои стили»</span>
           </div>
           <div className="pd-styles" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: 14 }}>
             {mine.map((s) => <StyleOptionCard key={s.id} s={s} on={s.id === styleId} onPick={onPick} />)}
@@ -1768,9 +1768,9 @@ function StylePicker({ data, styleId, onPick, sref, myStyles }) {
 function LayoutPicker({ layout, onPick }) {
   return (
     <section className="pd-section">
-      <div className="pd-eyebrow"><span className="dot" />Расстановка</div>
+      <div className="eyebrow jade" style={{ marginBottom: 14 }}>Расстановка</div>
       <h3 className="pd-h">Варианты раскладки мебели</h3>
-      <p style={{ color: "var(--muted)", fontSize: 14.5, marginTop: 4, marginBottom: 18, maxWidth: 720 }}>
+      <p style={{ color: "var(--muted)", fontSize: "var(--fs-14)", marginTop: 4, marginBottom: 18, maxWidth: 720 }}>
         Готовые схемы расстановки под геометрию комнаты. Выберите раскладку — обновятся метки на визуализации «до/после» и акценты сцены.
       </p>
       <div className="pd-styles" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: 14 }}>
@@ -1779,14 +1779,14 @@ function LayoutPicker({ layout, onPick }) {
           return (
             <button key={l.id} className={"style-card" + (on ? " sel" : "")} onClick={() => onPick(l.id)} aria-pressed={on}>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, marginBottom: 12 }}>
-                <span style={{ fontWeight: 800, fontFamily: "var(--font-display)", fontSize: 17 }}>{l.name}</span>
+                <span style={{ fontWeight: 800, fontFamily: "var(--font-display)", fontSize: "var(--fs-16)" }}>{l.name}</span>
                 {on && <span style={{ width: 22, height: 22, borderRadius: "50%", background: "var(--accent)", color: "var(--on-accent)", display: "grid", placeItems: "center", flex: "none" }}><I.check size={13} /></span>}
               </div>
               <MiniLayout plan={l.plan} />
-              <div style={{ fontSize: 13, color: "var(--muted)", marginTop: 12, lineHeight: 1.45 }}>{l.note}</div>
+              <div style={{ fontSize: "var(--fs-13)", color: "var(--muted)", marginTop: 12, lineHeight: 1.45 }}>{l.note}</div>
               <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 12 }}>
                 {l.pros.map((p) => (
-                  <span key={p} style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 11.5, fontWeight: 700, color: "var(--accent-2)", padding: "3px 9px", borderRadius: 99, background: "rgba(94,107,91,.12)", border: "1px solid rgba(94,107,91,.28)" }}>
+                  <span key={p} style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: "var(--fs-11)", fontWeight: 700, color: "var(--accent-2)", padding: "3px 9px", borderRadius: 99, background: "rgba(94,107,91,.12)", border: "1px solid rgba(94,107,91,.28)" }}>
                     <I.check size={12} />{p}
                   </span>
                 ))}
@@ -1808,12 +1808,17 @@ function MiniLayout({ plan }) {
       {plan.map((b, i) => {
         const k = LAYOUT_K[b.k] || LAYOUT_K.table;
         const tall = b.h * 0.6875 > b.w;   // вытянутый по вертикали блок (аспект карты 16/11) — подпись вертикально
+        // подпись 10px (WCAG-порог читаемости, было 8.5px) только на крупных блоках;
+        // мелким хватает тултипа title (уже есть на span) — 10px в них не помещается
+        const showLabel = (tall ? b.h : b.w) >= 20;
         return (
           <span key={i} title={b.label} style={{ position: "absolute", left: b.x + "%", top: b.y + "%", width: b.w + "%", height: b.h + "%",
             borderRadius: 2, background: k.fill, border: (k.dashed ? "1.2px dashed " : "1.3px solid ") + k.stroke,
             display: "grid", placeItems: k.dashed ? "end center" : "center", overflow: "hidden" }}>
-            <span className="mono" style={{ fontSize: 8.5, letterSpacing: ".05em", textTransform: "uppercase", color: k.ink, whiteSpace: "nowrap",
-              padding: k.dashed ? "0 2px 2px" : "0 2px", writingMode: tall ? "vertical-rl" : undefined }}>{b.label}</span>
+            {showLabel && (
+              <span className="mono" style={{ fontSize: "var(--fs-10)", letterSpacing: ".05em", textTransform: "uppercase", color: k.ink, whiteSpace: "nowrap",
+                padding: k.dashed ? "0 2px 2px" : "0 2px", writingMode: tall ? "vertical-rl" : undefined }}>{b.label}</span>
+            )}
           </span>
         );
       })}
@@ -1845,18 +1850,18 @@ function BeforeAfter({ data, style, pins }) {
     return () => { window.removeEventListener("pointermove", mv); window.removeEventListener("pointerup", up); };
   }, [drag]);
 
-  const badge = (extra) => ({ position: "absolute", display: "inline-flex", alignItems: "center", gap: 6, padding: "6px 11px", borderRadius: 99, fontSize: 11.5, fontWeight: 800, letterSpacing: ".04em", backdropFilter: "blur(6px)", WebkitBackdropFilter: "blur(6px)", ...extra });
+  const badge = (extra) => ({ position: "absolute", display: "inline-flex", alignItems: "center", gap: 6, padding: "6px 11px", borderRadius: 99, fontSize: "var(--fs-11)", fontWeight: 700, letterSpacing: ".04em", backdropFilter: "blur(6px)", WebkitBackdropFilter: "blur(6px)", ...extra });
 
   return (
     <section className="pd-section">
-      <div className="pd-eyebrow"><span className="dot" />Визуализация</div>
+      <div className="eyebrow jade" style={{ marginBottom: 14 }}>Визуализация</div>
       <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
         <h3 className="pd-h" style={{ marginBottom: 0 }}>До и после</h3>
-        <span className="glass" style={{ display: "inline-flex", alignItems: "center", gap: 7, padding: "6px 12px", borderRadius: 99, fontSize: 12.5, fontWeight: 700 }}>
+        <span className="glass" style={{ display: "inline-flex", alignItems: "center", gap: 7, padding: "6px 12px", borderRadius: 99, fontSize: "var(--fs-12)", fontWeight: 700 }}>
           <span style={{ width: 9, height: 9, borderRadius: 3, background: pal[0], flex: "none" }} />{style.name}
         </span>
       </div>
-      <p style={{ color: "var(--muted)", fontSize: 14.5, marginTop: 8, marginBottom: 18, maxWidth: 760 }}>
+      <p style={{ color: "var(--muted)", fontSize: "var(--fs-14)", marginTop: 8, marginBottom: 18, maxWidth: 760 }}>
         Слева — исходное фото комнаты, справа — тональное превью в палитре стиля «{style.name}» с метками расстановки (это демо-визуализация, не рендер). Перетащите ползунок, чтобы сравнить.
       </p>
 
@@ -1870,7 +1875,7 @@ function BeforeAfter({ data, style, pins }) {
           <div style={{ position: "absolute", inset: 0, background: "linear-gradient(180deg, transparent 50%, rgba(46,42,38,.55))" }} />
           {/* AR-метки расставленной мебели */}
           {arPins.map(([l, t, name], i) => (
-            <span key={i} className="glass" style={{ position: "absolute", left: l + "%", top: t + "%", transform: "translate(-50%,-50%)", padding: "6px 11px", borderRadius: 9, fontSize: 12, fontWeight: 700, display: "flex", alignItems: "center", gap: 6, borderColor: "rgba(94,107,91,.6)", background: "rgba(46,42,38,.58)", color: "#FCF6EE", whiteSpace: "nowrap" }}>
+            <span key={i} className="glass" style={{ position: "absolute", left: l + "%", top: t + "%", transform: "translate(-50%,-50%)", padding: "6px 11px", borderRadius: 9, fontSize: "var(--fs-12)", fontWeight: 700, display: "flex", alignItems: "center", gap: 6, borderColor: "rgba(94,107,91,.6)", background: "rgba(46,42,38,.58)", color: "#FCF6EE", whiteSpace: "nowrap" }}>
               <I.check size={13} style={{ color: "var(--accent-2)" }} />{name}
             </span>
           ))}
@@ -1917,16 +1922,16 @@ function NormsCheck({ checks }) {
   const c = checks || { findings: [], ok: true, warns: 0 };
   return (
     <section className="pd-section">
-      <div className="pd-eyebrow"><span className="dot" />Проверка норм</div>
+      <div className="eyebrow jade" style={{ marginBottom: 14 }}>Проверка норм</div>
       <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
         <h3 className="pd-h" style={{ marginBottom: 0 }}>Эргономика расстановки</h3>
-        <span className="glass" style={{ display: "inline-flex", alignItems: "center", gap: 7, padding: "6px 12px", borderRadius: 99, fontSize: 12.5, fontWeight: 700,
+        <span className="glass" style={{ display: "inline-flex", alignItems: "center", gap: 7, padding: "6px 12px", borderRadius: 99, fontSize: "var(--fs-12)", fontWeight: 700,
           color: c.ok ? "var(--accent-2)" : "var(--accent)", borderColor: c.ok ? "rgba(94,107,91,.4)" : "rgba(183,80,44,.4)" }}>
           <span style={{ width: 8, height: 8, borderRadius: "50%", background: c.ok ? "var(--accent-2)" : "var(--accent)", flex: "none" }} />
           {c.ok ? "Все нормы соблюдены" : c.warns + " " + plural(c.warns, ["замечание", "замечания", "замечаний"])}
         </span>
       </div>
-      <p style={{ color: "var(--muted)", fontSize: 14.5, marginTop: 8, marginBottom: 18, maxWidth: 760 }}>
+      <p style={{ color: "var(--muted)", fontSize: "var(--fs-14)", marginTop: 8, marginBottom: 18, maxWidth: 760 }}>
         Движок проверил проходы, дистанции и плотность по нормам эргономики — детерминированно, из геометрии выбранной раскладки. Меняете раскладку выше — проверка пересчитывается.
       </p>
       <div style={{ display: "flex", flexDirection: "column", gap: 9 }}>
@@ -1936,7 +1941,7 @@ function NormsCheck({ checks }) {
           return (
             <div key={i} className={"find " + f.kind}>
               <span className="fi"><Ico size={15} /></span>
-              <span style={{ fontSize: 14, lineHeight: 1.5, color: "var(--text)" }}>{f.text}</span>
+              <span style={{ fontSize: "var(--fs-14)", lineHeight: 1.5, color: "var(--text)" }}>{f.text}</span>
             </div>
           );
         })}
@@ -1953,23 +1958,23 @@ function BudgetPicker({ data, tier, onTier, total, onOptimize, sref }) {
   const cur = data.budgets.find((b) => b.id === tier) || data.budgets[1];
   return (
     <section className="pd-section" ref={sref}>
-      <div className="pd-eyebrow"><span className="dot" />Бюджет</div>
+      <div className="eyebrow jade" style={{ marginBottom: 14 }}>Бюджет</div>
       <h3 className="pd-h">Под какой бюджет собираем</h3>
-      <p style={{ color: "var(--muted)", fontSize: 14.5, marginTop: 4, marginBottom: 18, maxWidth: 720 }}>
+      <p style={{ color: "var(--muted)", fontSize: "var(--fs-14)", marginTop: 4, marginBottom: 18, maxWidth: 720 }}>
         Тариф меняет наполнение сметы целиком — AI пересобирает подбор под выбранный уровень. Отдельные предметы потом можно заменить вручную ниже.
       </p>
 
       <SegTabs className="pd-seg" style={{ maxWidth: 520 }} ariaLabel="Уровень бюджета" value={tier} onChange={onTier}
         items={data.budgets.map((b) => ({ id: b.id, label: b.name, sub: b.recommended ? "рекомендация AI" : null }))} />
-      <div style={{ fontSize: 13.5, color: "var(--muted)", marginTop: 12 }}>{cur.note}</div>
+      <div style={{ fontSize: "var(--fs-13)", color: "var(--muted)", marginTop: 12 }}>{cur.note}</div>
 
       <div className="glass" style={{ borderRadius: "var(--r-lg)", padding: "18px 20px", marginTop: 18, maxWidth: 640 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 12, flexWrap: "wrap", gap: 8 }}>
-          <span style={{ fontSize: 14, color: "var(--muted)" }}>Подобрано на</span>
-          <span className="mono" style={{ fontSize: 22, fontWeight: 600 }}>{fmtMoney(total)} <span style={{ fontSize: 13, color: "var(--spec-meta)", fontWeight: 400 }}>из {fmtMoney(budget)}</span></span>
+          <span style={{ fontSize: "var(--fs-14)", color: "var(--muted)" }}>Подобрано на</span>
+          <span className="mono" style={{ fontSize: "var(--fs-21)", fontWeight: 600 }}>{fmtMoney(total)} <span style={{ fontSize: "var(--fs-13)", color: "var(--spec-meta)", fontWeight: 400 }}>из {fmtMoney(budget)}</span></span>
         </div>
         <div className="budget-bar"><i style={{ width: pct + "%", background: over ? "linear-gradient(90deg,#B7502C,#ff7849)" : "linear-gradient(90deg,var(--accent-2),#39b88c)" }} /></div>
-        <div style={{ display: "flex", justifyContent: "space-between", marginTop: 10, fontSize: 13 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", marginTop: 10, fontSize: "var(--fs-13)" }}>
           <span style={{ color: over ? "var(--accent)" : "var(--accent-2)", fontWeight: 700 }}>
             {over ? `Превышение на ${fmtMoney(total - budget)}` : `Остаток ${fmtMoney(budget - total)}`}
           </span>
@@ -1988,17 +1993,17 @@ function BudgetPicker({ data, tier, onTier, total, onOptimize, sref }) {
 function ProductCatalog({ data, sel, onPick, sref, adj, style, mats }) {
   return (
     <section className="pd-section" ref={sref} style={{ borderBottom: "none" }}>
-      <div className="pd-eyebrow"><span className="dot" />Спецификация</div>
+      <div className="eyebrow jade" style={{ marginBottom: 14 }}>Спецификация</div>
       <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
         <h3 className="pd-h" style={{ marginBottom: 0 }}>Подбор по каталогу фабрик</h3>
         <span className="mp f1">Дубрава</span><span className="mp f2">Линея</span>
         {/* честная метка: фабрики и цены каталога — демонстрационные, реальные позиции придут из клиппера/фида */}
-        <span style={{ padding: "4px 10px", borderRadius: 99, fontSize: 11.5, fontWeight: 700, letterSpacing: ".04em", color: "var(--muted)", background: "var(--glass-2)", border: "1px dashed var(--hairline)" }}>демо-каталог</span>
+        <span style={{ padding: "4px 10px", borderRadius: 99, fontSize: "var(--fs-11)", fontWeight: 700, letterSpacing: ".04em", color: "var(--muted)", background: "var(--glass-2)", border: "1px dashed var(--hairline)" }}>демо-каталог</span>
       </div>
-      <p style={{ color: "var(--muted)", fontSize: 14.5, marginTop: 8, marginBottom: 18, maxWidth: 760 }}>
+      <p style={{ color: "var(--muted)", fontSize: "var(--fs-14)", marginTop: 8, marginBottom: 18, maxWidth: 760 }}>
         В каждой категории — 3 варианта по цене и фабрике (демо-данные для примера работы). Нажмите на карточку, чтобы заменить предмет в смете: итог и полоса бюджета пересчитаются автоматически.
       </p>
-      <div className="glass" style={{ display: "inline-flex", alignItems: "center", gap: 9, padding: "8px 14px", borderRadius: 99, marginBottom: 22, fontSize: 13 }}>
+      <div className="glass" style={{ display: "inline-flex", alignItems: "center", gap: 9, padding: "8px 14px", borderRadius: 99, marginBottom: 22, fontSize: "var(--fs-13)" }}>
         <span style={{ width: 11, height: 11, borderRadius: 4, background: style.palette[0], border: "1px solid rgba(255,255,255,.25)", flex: "none" }} />
         Подбор и цены адаптированы под стиль <b style={{ color: "var(--text)" }}>{style.name}</b>
       </div>
@@ -2015,18 +2020,18 @@ function ProductCatalog({ data, sel, onPick, sref, adj, style, mats }) {
             <div key={c.cat}>
               <div style={{ display: "flex", alignItems: "center", gap: 11, marginBottom: 12 }}>
                 <span style={{ width: 34, height: 34, borderRadius: 10, background: "var(--surface-2)", color: "var(--accent)", display: "grid", placeItems: "center", flex: "none" }}><Ico size={18} /></span>
-                <span style={{ fontWeight: 700, fontSize: 16 }}>{c.cat}</span>
-                {selItem && <span className="mono" style={{ marginLeft: "auto", fontWeight: 600, fontSize: 15 }}>{fmtMoney(adj(selItem.price))}</span>}
+                <span style={{ fontWeight: 700, fontSize: "var(--fs-16)" }}>{c.cat}</span>
+                {selItem && <span className="mono" style={{ marginLeft: "auto", fontWeight: 600, fontSize: "var(--fs-15)" }}>{fmtMoney(adj(selItem.price))}</span>}
               </div>
 
               {canSave && (
                 <button onClick={() => onPick(ci, cheapest.id)} className="save-banner">
                   <span style={{ width: 30, height: 30, borderRadius: 9, background: "rgba(94,107,91,.18)", color: "var(--accent-2)", display: "grid", placeItems: "center", flex: "none" }}><I.spark size={16} /></span>
-                  <span style={{ flex: 1, textAlign: "left", fontSize: 13.5, lineHeight: 1.4 }}>
+                  <span style={{ flex: 1, textAlign: "left", fontSize: "var(--fs-13)", lineHeight: 1.4 }}>
                     <b style={{ color: "var(--text)" }}>Аналог дешевле на {fmtMoney(saving)}</b>
                     <span style={{ color: "var(--muted)" }}> — «{cheapest.title}», рейтинг {cheapest.rating}</span>
                   </span>
-                  <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 13, fontWeight: 800, color: "var(--accent-2)", whiteSpace: "nowrap" }}>Заменить<I.arrow size={15} /></span>
+                  <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: "var(--fs-13)", fontWeight: 700, color: "var(--accent-2)", whiteSpace: "nowrap" }}>Заменить<I.arrow size={15} /></span>
                 </button>
               )}
 
@@ -2062,18 +2067,18 @@ function ProductCard({ item, selected, onClick, priceAdj, oldAdj, material, dot 
         <div style={{ display: "flex", alignItems: "center", gap: 7, flexWrap: "wrap" }}>
           <span className={"tier-tag " + item.tier}>{TIER_NAME[item.tier]}</span>
           {material && (
-            <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 11.5, fontWeight: 700, color: "var(--muted)", padding: "3px 8px", borderRadius: 99, background: "var(--glass-2)", border: "1px solid var(--hairline)" }}>
+            <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: "var(--fs-11)", fontWeight: 700, color: "var(--muted)", padding: "3px 8px", borderRadius: 99, background: "var(--glass-2)", border: "1px solid var(--hairline)" }}>
               <span style={{ width: 9, height: 9, borderRadius: 3, background: dot, flex: "none" }} />{material}
             </span>
           )}
         </div>
         <div className="pt">{item.title}</div>
-        <div style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 12, color: "var(--muted)" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 5, fontSize: "var(--fs-12)", color: "var(--muted)" }}>
           <I.star size={13} style={{ color: "var(--accent)" }} /><span style={{ fontWeight: 700, color: "var(--text)" }}>{item.rating}</span>
           <span style={{ color: "var(--faint)" }}>· {fmt(item.reviews)} отз.</span>
         </div>
         {/* наличие + доставка */}
-        <div style={{ display: "flex", alignItems: "center", gap: 7, fontSize: 11.5, marginTop: "auto", flexWrap: "wrap" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 7, fontSize: "var(--fs-11)", marginTop: "auto", flexWrap: "wrap" }}>
           <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontWeight: 700, color: stock.color }}>
             <span style={{ width: 7, height: 7, borderRadius: "50%", background: stock.color, flex: "none" }} />{stock.label}
           </span>
@@ -2084,7 +2089,7 @@ function ProductCard({ item, selected, onClick, priceAdj, oldAdj, material, dot 
         <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
           <span className="pprice">{fmtMoney(price)}</span>
           {disc > 0 && <span className="pold">{fmtMoney(old)}</span>}
-          {disc > 0 && <span style={{ marginLeft: "auto", fontSize: 11, fontWeight: 800, color: "var(--accent-2)" }}>−{disc}%</span>}
+          {disc > 0 && <span style={{ marginLeft: "auto", fontSize: "var(--fs-11)", fontWeight: 700, color: "var(--accent-2)" }}>−{disc}%</span>}
         </div>
       </div>
     </button>
@@ -2100,10 +2105,10 @@ function CartBar({ items, total, oldTotal, budget, style, onExport, onSave, save
       <div style={{ display: "flex", alignItems: "center", gap: 18, flexWrap: "wrap" }}>
         <SmetaTotal amount={total} size={21}
           caption={<React.Fragment>{items.length} {plural(items.length, ["позиция", "позиции", "позиций"])} · {over ? <span style={{ color: "var(--accent-ink)" }}>сверх бюджета</span> : <span style={{ color: "var(--accent-2)" }}>в рамках бюджета</span>}</React.Fragment>} />
-        {style && <span className="glass" style={{ display: "inline-flex", alignItems: "center", gap: 7, padding: "7px 12px", borderRadius: 99, fontSize: 12.5, fontWeight: 700 }}>
+        {style && <span className="glass" style={{ display: "inline-flex", alignItems: "center", gap: 7, padding: "7px 12px", borderRadius: 99, fontSize: "var(--fs-12)", fontWeight: 700 }}>
           <span style={{ width: 9, height: 9, borderRadius: 3, background: style.palette[0], flex: "none" }} />{style.name}
         </span>}
-        {discount > 0 && <span className="glass" style={{ padding: "7px 12px", borderRadius: 99, fontSize: 12.5, fontWeight: 700, color: "var(--accent-2)" }}>Скидка по каталогу: −{fmtMoney(discount)}</span>}
+        {discount > 0 && <span className="glass" style={{ padding: "7px 12px", borderRadius: 99, fontSize: "var(--fs-12)", fontWeight: 700, color: "var(--accent-2)" }}>Скидка по каталогу: −{fmtMoney(discount)}</span>}
         <div style={{ marginLeft: "auto", display: "flex", gap: 10 }}>
           <button className="btn btn-ghost" style={{ padding: "11px 16px" }} onClick={onExport}><I.layers size={16} />Выгрузить PDF</button>
           <button className="btn btn-primary" style={{ padding: "11px 18px" }} onClick={onSave}>{saved ? <React.Fragment><I.check size={16} />Сохранено</React.Fragment> : <React.Fragment><I.check size={16} />Сохранить смету</React.Fragment>}</button>
@@ -2143,9 +2148,9 @@ function AdvisorChat({ id, hello, onAction, onClose }) {
       <div className="pd-chat-head">
         <span style={{ width: 38, height: 38, borderRadius: 11, background: "var(--accent)", color: "var(--on-accent)", display: "grid", placeItems: "center", flex: "none" }}><I.spark size={20} /></span>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontWeight: 800, fontSize: 15 }}>Помощник проекта</div>
+          <div style={{ fontWeight: 700, fontSize: "var(--fs-15)" }}>Помощник проекта</div>
           {/* честный лейбл: чат работает на сценариях-командах (дешевле/премиум/стиль), настоящий ИИ подключится Worker-слоем */}
-          <div style={{ fontSize: 12, color: "var(--muted)", display: "flex", alignItems: "center", gap: 6 }}><span style={{ width: 7, height: 7, borderRadius: "50%", background: "var(--accent-2)" }} />демо-сценарии · без ИИ</div>
+          <div style={{ fontSize: "var(--fs-12)", color: "var(--muted)", display: "flex", alignItems: "center", gap: 6 }}><span style={{ width: 7, height: 7, borderRadius: "50%", background: "var(--accent-2)" }} />демо-сценарии · без ИИ</div>
         </div>
         <button className="icon-btn pd-rail-close" onClick={onClose} aria-label="Свернуть чат"><I.close size={18} /></button>
       </div>

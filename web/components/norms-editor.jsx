@@ -133,20 +133,20 @@ function NormsSettings() {
     <div className="reveal in" ref={reveal}>
       {/* заголовок */}
       <div style={{ marginBottom: 8 }}>
-        <span style={{ fontFamily: "var(--font-mono)", fontSize: 12, letterSpacing: ".12em", textTransform: "uppercase", color: "var(--accent)", display: "inline-flex", alignItems: "center", gap: 9 }}>
+        <span style={{ fontFamily: "var(--font-mono)", fontSize: "var(--fs-12)", letterSpacing: ".12em", textTransform: "uppercase", color: "var(--accent)", display: "inline-flex", alignItems: "center", gap: 9 }}>
           <I.sliders size={15} />Нормы дизайна
         </span>
-        <h1 className="display" style={{ fontSize: 30, marginTop: 10 }}>Правила эргономики</h1>
-        <p style={{ color: "var(--muted)", fontSize: 14.5, marginTop: 8, maxWidth: 680, lineHeight: 1.6 }}>
+        <h1 className="display" style={{ fontSize: "var(--fs-30)", marginTop: 10 }}>Правила эргономики</h1>
+        <p style={{ color: "var(--muted)", fontSize: "var(--fs-14)", marginTop: 8, maxWidth: 680, lineHeight: 1.6 }}>
           Вшитый канон Design Ledger (NKBA / Нойферт) работает по умолчанию — здесь вы подстраиваете пороги под себя. Слой правок ложится поверх канона, хранится только отличие. Проверка проектов сразу считает по этим нормам.
         </p>
       </div>
 
       {/* тулбар */}
       <div style={{ display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap", margin: "22px 0 16px" }}>
-        <label style={{ display: "inline-flex", alignItems: "center", gap: 8, fontSize: 13, color: "var(--muted)" }}>
+        <label style={{ display: "inline-flex", alignItems: "center", gap: 8, fontSize: "var(--fs-13)", color: "var(--muted)" }}>
           Заполнить из:
-          <select value={baseKey} onChange={(e) => applyPreset(e.target.value)} className="fld" style={{ width: "auto", padding: "8px 12px", fontSize: 13, fontWeight: 700, cursor: "pointer" }}>
+          <select value={baseKey} onChange={(e) => applyPreset(e.target.value)} className="fld" style={{ width: "auto", padding: "8px 12px", fontSize: "var(--fs-13)", fontWeight: 700, cursor: "pointer" }}>
             <option value="canon">Канон Design Ledger</option>
             <option value="nkba">NKBA (США)</option>
             <option value="neufert">Нойферт (ЕС)</option>
@@ -155,8 +155,8 @@ function NormsSettings() {
           </select>
         </label>
         <div style={{ flex: 1 }} />
-        <button onClick={() => setOnlyMod((v) => !v)} aria-pressed={onlyMod} style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "8px 14px", borderRadius: 99, fontSize: 13, fontWeight: 700,
-          border: "1px solid " + (onlyMod ? "var(--accent)" : "var(--hairline)"), background: onlyMod ? "rgba(183,80,44,.08)" : "var(--surface)", color: onlyMod ? "var(--accent-ink)" : "var(--muted)" }}>
+        <button onClick={() => setOnlyMod((v) => !v)} aria-pressed={onlyMod} style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "8px 14px", borderRadius: 99, fontSize: "var(--fs-13)", fontWeight: 700,
+          border: "1px solid " + (onlyMod ? "var(--accent)" : "var(--hairline)"), background: onlyMod ? "var(--accent-tint)" : "var(--surface)", color: onlyMod ? "var(--accent-ink)" : "var(--muted)" }}>
           <span style={{ width: 8, height: 8, borderRadius: "50%", background: "currentColor" }} />Только изменённые
         </button>
       </div>
@@ -165,12 +165,12 @@ function NormsSettings() {
         {/* строки-правила */}
         <div className="glass" style={{ borderRadius: "var(--r-lg)", overflow: "hidden" }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 22px", borderBottom: "1px solid var(--hairline)" }}>
-            <h3 style={{ fontSize: 15.5, fontWeight: 700 }}>Пороги эргономики</h3>
-            <span style={{ fontFamily: "var(--font-mono)", fontSize: 12, color: "var(--faint)" }}>{modCount ? modCount + " изменено" : "всё по канону"}</span>
+            <h3 style={{ fontSize: "var(--fs-15)", fontWeight: 700 }}>Пороги эргономики</h3>
+            <span style={{ fontFamily: "var(--font-mono)", fontSize: "var(--fs-12)", color: "var(--faint)" }}>{modCount ? modCount + " изменено" : "всё по канону"}</span>
           </div>
 
           {linkNote && (
-            <div role="status" style={{ display: "flex", alignItems: "center", gap: 9, padding: "10px 22px", fontSize: 13, color: "var(--info)", background: "rgba(62,74,89,.07)", borderBottom: "1px solid var(--hairline-2)" }}>
+            <div role="status" style={{ display: "flex", alignItems: "center", gap: 9, padding: "10px 22px", fontSize: "var(--fs-13)", color: "var(--info)", background: "rgba(62,74,89,.07)", borderBottom: "1px solid var(--hairline-2)" }}>
               <I.info size={15} style={{ flex: "none" }} />{linkNote}
             </div>
           )}
@@ -179,11 +179,11 @@ function NormsSettings() {
               onChange={(v) => setKey(d.key, v)} onReset={() => resetKey(d.key)} onToggle={() => toggleKey(d.key)} />
           ))}
           {onlyMod && modCount === 0 && (
-            <div style={{ padding: "34px 22px", textAlign: "center", color: "var(--muted)", fontSize: 14 }}>Пока ничего не изменено — все нормы по канону Design Ledger.</div>
+            <div style={{ padding: "34px 22px", textAlign: "center", color: "var(--muted)", fontSize: "var(--fs-14)" }}>Пока ничего не изменено — все нормы по канону Design Ledger.</div>
           )}
 
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 14, padding: "14px 22px", borderTop: "1px solid var(--hairline)", background: justSaved ? "rgba(94,107,91,.08)" : saved ? "transparent" : "rgba(183,80,44,.05)", transition: "background .3s" }}>
-            <div className={justSaved ? "save-pulse" : ""} style={{ display: "flex", alignItems: "center", gap: 9, fontSize: 13, color: justSaved ? "var(--accent-2)" : "var(--muted)", fontWeight: justSaved ? 700 : 400 }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 14, padding: "14px 22px", borderTop: "1px solid var(--hairline)", background: justSaved ? "var(--accent-2-tint)" : saved ? "transparent" : "rgba(183,80,44,.05)", transition: "background .3s" }}>
+            <div className={justSaved ? "save-pulse" : ""} style={{ display: "flex", alignItems: "center", gap: 9, fontSize: "var(--fs-13)", color: justSaved ? "var(--accent-2)" : "var(--muted)", fontWeight: justSaved ? 700 : 400 }}>
               {justSaved
                 ? <I.check size={15} />
                 : <span style={{ width: 8, height: 8, borderRadius: "50%", background: saved ? "var(--faint)" : "var(--accent)" }} />}
@@ -200,20 +200,20 @@ function NormsSettings() {
         <aside className="norms-aside" style={{ position: "sticky", top: "calc(var(--nav-h) + 20px)" }}>
           <div className="glass" style={{ borderRadius: "var(--r-lg)", overflow: "hidden" }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 20px", borderBottom: "1px solid var(--hairline)" }}>
-              <h3 style={{ fontSize: 15, fontWeight: 700, display: "flex", alignItems: "center", gap: 8 }}>
+              <h3 style={{ fontSize: "var(--fs-15)", fontWeight: 700, display: "flex", alignItems: "center", gap: 8 }}>
                 <span style={{ width: 8, height: 8, borderRadius: "50%", background: "var(--accent-2)" }} />Проверка на примере
               </h3>
-              <span style={{ fontFamily: "var(--font-mono)", fontSize: 11, color: "var(--faint)" }}>Гостиная · 4.4×5.2 м</span>
+              <span style={{ fontFamily: "var(--font-mono)", fontSize: "var(--fs-11)", color: "var(--faint)" }}>Гостиная · 4.4×5.2 м</span>
             </div>
             <div style={{ padding: "18px 20px 20px" }}>
               <div style={{ display: "flex", gap: 16, alignItems: "flex-start" }}>
                 <NormsMiniPlan />
                 <div style={{ flex: 1 }}>
-                  <div className="display" style={{ fontSize: 34, lineHeight: 1, color: warnN === 0 ? "var(--accent-2)" : "var(--accent)" }}>{warnN === 0 ? "OK" : warnN}</div>
-                  <div style={{ fontSize: 12.5, color: "var(--muted)", marginTop: 4 }}>{warnN === 0 ? "по нормам" : plural(warnN, ["замечание", "замечания", "замечаний"])}</div>
+                  <div className="display" style={{ fontSize: "var(--fs-32)", lineHeight: 1, color: warnN === 0 ? "var(--accent-2)" : "var(--accent)" }}>{warnN === 0 ? "OK" : warnN}</div>
+                  <div style={{ fontSize: "var(--fs-12)", color: "var(--muted)", marginTop: 4 }}>{warnN === 0 ? "по нормам" : plural(warnN, ["замечание", "замечания", "замечаний"])}</div>
                   <div style={{ display: "flex", gap: 16, marginTop: 14 }}>
-                    <div style={{ fontSize: 12.5 }}><div style={{ fontFamily: "var(--font-mono)", fontWeight: 500, fontSize: 18, color: "var(--accent-2)" }}>{okN}</div>в норме</div>
-                    <div style={{ fontSize: 12.5 }}><div style={{ fontFamily: "var(--font-mono)", fontWeight: 500, fontSize: 18, color: "var(--accent)" }}>{warnN}</div>{plural(warnN, ["замечание", "замечания", "замечаний"])}</div>
+                    <div style={{ fontSize: "var(--fs-12)" }}><div style={{ fontFamily: "var(--font-mono)", fontWeight: 500, fontSize: "var(--fs-18)", color: "var(--accent-2)" }}>{okN}</div>в норме</div>
+                    <div style={{ fontSize: "var(--fs-12)" }}><div style={{ fontFamily: "var(--font-mono)", fontWeight: 500, fontSize: "var(--fs-18)", color: "var(--accent)" }}>{warnN}</div>{plural(warnN, ["замечание", "замечания", "замечаний"])}</div>
                   </div>
                 </div>
               </div>
@@ -221,11 +221,11 @@ function NormsSettings() {
                 {check.findings.map((f, i) => (
                   <div key={i} className={"find " + (f.kind === "plus" ? "plus" : "warn")}>
                     <span className="fi">{f.kind === "plus" ? <I.check size={14} /> : <I.info size={14} />}</span>
-                    <span style={{ fontSize: 13, lineHeight: 1.45, color: "var(--text)" }}>{f.text}</span>
+                    <span style={{ fontSize: "var(--fs-13)", lineHeight: 1.45, color: "var(--text)" }}>{f.text}</span>
                   </div>
                 ))}
               </div>
-              <div style={{ marginTop: 16, paddingTop: 14, borderTop: "1px solid var(--hairline-2)", fontSize: 12, color: "var(--muted)" }}>
+              <div style={{ marginTop: 16, paddingTop: 14, borderTop: "1px solid var(--hairline-2)", fontSize: "var(--fs-12)", color: "var(--muted)" }}>
                 Меняете порог — проверка пересчитывается сразу. Эти же нормы применяются в проверке ваших проектов.
               </div>
             </div>
@@ -254,14 +254,14 @@ function NormRow({ def, value, modified, enabled, onChange, onReset, onToggle })
   return (
     <div className="norm-row" style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: "14px 20px", alignItems: "start", padding: "18px 22px", borderBottom: "1px solid var(--hairline-2)", opacity: enabled ? 1 : 0.45 }}>
       <div style={{ minWidth: 0 }}>
-        <div style={{ fontWeight: 600, fontSize: 15, display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+        <div style={{ fontWeight: 600, fontSize: "var(--fs-15)", display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
           {def.label}
           {modified
-            ? <span style={{ fontSize: 11, fontWeight: 600, padding: "2px 9px", borderRadius: 99, background: "rgba(183,80,44,.14)", color: "var(--accent-ink)" }}>изменено</span>
-            : <span style={{ fontSize: 11, fontWeight: 600, padding: "2px 9px", borderRadius: 99, background: "var(--surface-2)", color: "var(--faint)" }}>по канону</span>}
+            ? <span style={{ fontSize: "var(--fs-11)", fontWeight: 600, padding: "2px 9px", borderRadius: 99, background: "rgba(183,80,44,.14)", color: "var(--accent-ink)" }}>изменено</span>
+            : <span style={{ fontSize: "var(--fs-11)", fontWeight: 600, padding: "2px 9px", borderRadius: 99, background: "var(--surface-2)", color: "var(--faint)" }}>по канону</span>}
         </div>
-        <div style={{ color: "var(--muted)", fontSize: 13, marginTop: 3 }}>{def.hint}</div>
-        <div style={{ fontFamily: "var(--font-mono)", fontSize: 11, color: "var(--faint)", marginTop: 6 }}>
+        <div style={{ color: "var(--muted)", fontSize: "var(--fs-13)", marginTop: 3 }}>{def.hint}</div>
+        <div style={{ fontFamily: "var(--font-mono)", fontSize: "var(--fs-11)", color: "var(--faint)", marginTop: 6 }}>
           {modified ? "источник: мой канон" : "дефолт: канон Design Ledger · " + canonDisp + " " + def.unit}
         </div>
       </div>
@@ -280,10 +280,10 @@ function NormRow({ def, value, modified, enabled, onChange, onReset, onToggle })
               <Stepper value={d1} step={def.step} onSet={setSingle} disabled={!enabled} />
             </React.Fragment>
           )}
-          <span style={{ fontFamily: "var(--font-mono)", fontSize: 12, color: "var(--faint)", minWidth: 18 }}>{def.unit}</span>
+          <span style={{ fontFamily: "var(--font-mono)", fontSize: "var(--fs-12)", color: "var(--faint)", minWidth: 18 }}>{def.unit}</span>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          {modified && <button onClick={onReset} style={{ display: "inline-flex", alignItems: "center", gap: 5, fontFamily: "var(--font-mono)", fontSize: 11, color: "var(--muted)", border: "1px solid var(--hairline)", borderRadius: 99, padding: "5px 10px" }}>↺ сброс</button>}
+          {modified && <button onClick={onReset} style={{ display: "inline-flex", alignItems: "center", gap: 5, fontFamily: "var(--font-mono)", fontSize: "var(--fs-11)", color: "var(--muted)", border: "1px solid var(--hairline)", borderRadius: 99, padding: "5px 10px" }}>↺ сброс</button>}
           <Switch on={enabled} onChange={onToggle} title={enabled ? "Выключить правило" : "Включить правило"} ariaLabel={"Правило «" + def.label + "»"} />
         </div>
       </div>
@@ -294,10 +294,10 @@ function NormRow({ def, value, modified, enabled, onChange, onReset, onToggle })
 function Stepper({ value, step, onSet, disabled }) {
   return (
     <span style={{ display: "inline-flex", alignItems: "center", background: "var(--surface-2)", border: "1px solid var(--hairline)", borderRadius: 10, overflow: "hidden", opacity: disabled ? 0.5 : 1 }}>
-      <button onClick={() => onSet(value - step)} disabled={disabled} style={{ width: 30, height: 34, fontSize: 17, color: "var(--muted)" }}>−</button>
+      <button onClick={() => onSet(value - step)} disabled={disabled} style={{ width: 30, height: 34, fontSize: "var(--fs-16)", color: "var(--muted)" }}>−</button>
       <input value={value} disabled={disabled} inputMode="numeric" onChange={(e) => { const v = parseInt(e.target.value, 10); if (!isNaN(v)) onSet(v); }}
-        style={{ width: 48, height: 34, border: "none", textAlign: "center", background: "transparent", fontFamily: "var(--font-mono)", fontWeight: 500, fontSize: 14, color: "var(--text)" }} />
-      <button onClick={() => onSet(value + step)} disabled={disabled} style={{ width: 30, height: 34, fontSize: 17, color: "var(--muted)" }}>+</button>
+        style={{ width: 48, height: 34, border: "none", textAlign: "center", background: "transparent", fontFamily: "var(--font-mono)", fontWeight: 500, fontSize: "var(--fs-14)", color: "var(--text)" }} />
+      <button onClick={() => onSet(value + step)} disabled={disabled} style={{ width: 30, height: 34, fontSize: "var(--fs-16)", color: "var(--muted)" }}>+</button>
     </span>
   );
 }

@@ -405,11 +405,14 @@
      клиентского портала. Хранение — localStorage; // → API: позже YDB.
      Запись версии: { id, label, createdAt, total, clientTotal, positions, status, statusAt,
      note, snapshot:{rooms, extras, markup, mode} }. */
+  // color = ЗАЛИВКА (точка-индикатор), ink = ТЕКСТ (ink-пара ≥4.5:1 на бледном фоне чипа):
+  // правило пар styles.css:21-30 — заливочные токены нельзя красить текстом (--faint ~2.3:1,
+  // --accent <4.5:1). Паттерн Programa «pale-фон + dark-текст того же тона» (аудит §1, D1).
   const VERSION_STATUSES = [
-    { id: "draft",    label: "Черновик",            color: "var(--faint)" },
-    { id: "sent",     label: "Отправлена клиенту",  color: "var(--info)" },
-    { id: "approved", label: "Согласована",         color: "var(--accent-2)" },
-    { id: "rejected", label: "Замечания",           color: "var(--accent)" },
+    { id: "draft",    label: "Черновик",            color: "var(--faint)",    ink: "var(--muted)" },
+    { id: "sent",     label: "Отправлена клиенту",  color: "var(--info)",     ink: "var(--info)" },
+    { id: "approved", label: "Согласована",         color: "var(--accent-2)", ink: "var(--accent-2-ink)" },
+    { id: "rejected", label: "Замечания",           color: "var(--accent)",   ink: "var(--accent-ink)" },
   ];
   const VSTATUS_BY_ID = Object.fromEntries(VERSION_STATUSES.map((s) => [s.id, s]));
   const vStatusMeta = (id) => VSTATUS_BY_ID[id] || VSTATUS_BY_ID.draft;
