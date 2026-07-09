@@ -158,19 +158,24 @@ function motionOK() {
    Держит tabular-nums верстку неизменной — меняется только значение внутри. */
 function useCountUp(target, duration = 300) {
   const [shown, setShown] = useState(target);
-  const fromRef = useRef(target);
+  // shownRef всегда = текущему отображаемому значению (не last-completed target) —
+  // при быстрой смене target (drag слайдера) новая анимация стартует оттуда, где
+  // реально остановилась предыдущая, а не прыгает к нулю/старому from.
+  const shownRef = useRef(target);
   const rafRef = useRef(null);
   useEffect(() => {
-    if (!motionOK()) { fromRef.current = target; setShown(target); return; }
-    const from = fromRef.current;
+    if (!motionOK()) { shownRef.current = target; setShown(target); return; }
+    const from = shownRef.current;
     if (from === target) return;
     const t0 = performance.now();
     const tick = (now) => {
       const p = Math.min(1, (now - t0) / duration);
       const eased = 1 - Math.pow(1 - p, 3);
-      setShown(from + (target - from) * eased);
+      const v = from + (target - from) * eased;
+      shownRef.current = v;
+      setShown(v);
       if (p < 1) rafRef.current = requestAnimationFrame(tick);
-      else fromRef.current = target;
+      else { shownRef.current = target; setShown(target); }
     };
     rafRef.current = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(rafRef.current);
@@ -185,6 +190,7 @@ function CountUpOnView({ value, duration = 900 }) {
   const num = m ? parseInt(m[1].replace(/\s/g, ""), 10) : null;
   const suffix = m ? m[2] : "";
   const ref = useRef(null);
+  const rafRef = useRef(null);
   const [shown, setShown] = useState(num == null || !motionOK() ? num : 0);
   useEffect(() => {
     const el = ref.current;
@@ -196,12 +202,12 @@ function CountUpOnView({ value, duration = 900 }) {
       const tick = (now) => {
         const p = Math.min(1, (now - t0) / duration);
         setShown(Math.round(num * (1 - Math.pow(1 - p, 3))));
-        if (p < 1) requestAnimationFrame(tick);
+        if (p < 1) rafRef.current = requestAnimationFrame(tick);
       };
-      requestAnimationFrame(tick);
+      rafRef.current = requestAnimationFrame(tick);
     }), { threshold: 0.4 });
     io.observe(el);
-    return () => io.disconnect();
+    return () => { io.disconnect(); cancelAnimationFrame(rafRef.current); };
   }, [num, duration]);
   return <span ref={ref}>{num == null ? value : new Intl.NumberFormat("ru-RU").format(shown) + suffix}</span>;
 }
@@ -235,7 +241,7 @@ function InlineCta({ text, sub, cta = "Начать бесплатно", go }) {
           <div style={{ fontFamily: "var(--font-display)", fontWeight: 600, fontSize: "var(--fs-18)" }}>{text}</div>
           {sub && <div style={{ color: "var(--muted)", fontSize: "var(--fs-13)", marginTop: 4 }}>{sub}</div>}
         </div>
-        <button className="btn btn-primary" style={{ padding: "12px 22px", flex: "none" }} onClick={() => go && go("auth")}>
+        <button type="button" className="btn btn-primary" style={{ padding: "12px 22px", flex: "none" }} onClick={() => go && go("auth")}>
           {cta} <I.arrow size={15} />
         </button>
       </div>
@@ -373,6 +379,12 @@ function Modal({ onClose, label, maxWidth, className, children }) {
   const cardRef = useRef(null);
   const idRef = useRef(null);
   const closingRef = useRef(false);
+  const closeTimerRef = useRef(null);
+  // ref, а не прямой onClose — keydown-эффект смонтирован один раз ([] deps) и должен
+  // звать АКТУАЛЬНЫЙ колбэк родителя (иначе Esc после ре-рендера с новым onClose
+  // срабатывает по устаревшему замыканию первого рендера)
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
   const [closing, setClosing] = useState(false);
   if (idRef.current == null) idRef.current = ++modalIdSeq;
   // вход анимирован (pop/fadeIn), выход — нет, была асимметрия с toast; тут закрываем сами
@@ -380,9 +392,9 @@ function Modal({ onClose, label, maxWidth, className, children }) {
   const requestClose = () => {
     if (closingRef.current) return;
     closingRef.current = true;
-    if (!motionOK()) { onClose(); return; }
+    if (!motionOK()) { onCloseRef.current(); return; }
     setClosing(true);
-    setTimeout(onClose, 170);
+    closeTimerRef.current = setTimeout(() => onCloseRef.current(), 170);
   };
   useEffect(() => {
     const prev = document.activeElement;
@@ -412,6 +424,7 @@ function Modal({ onClose, label, maxWidth, className, children }) {
       modalStack = modalStack.filter((x) => x !== id);
       document.removeEventListener("keydown", onKey, true);
       unlockBodyScroll();
+      clearTimeout(closeTimerRef.current);
       if (prev && prev.focus) prev.focus();
     };
   }, []);
@@ -542,8 +555,13 @@ function PriceAgeChip({ d, note }) {
 
 /* дата+время треда («08.07 14:32») — короче ISO, читаемо в переписке клиент↔студия */
 const fmtCommentAt = (iso) => {
-  try { return new Date(iso).toLocaleString("ru-RU", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }); }
-  catch (e) { return ""; }
+  // new Date(bogus) не бросает — даёт Invalid Date, toLocaleString тогда вернёт
+  // литеральную строку "Invalid Date"; ловим через isNaN, а не try/catch
+  try {
+    const d = new Date(iso);
+    if (isNaN(d.getTime())) return "";
+    return d.toLocaleString("ru-RU", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
+  } catch (e) { return ""; }
 };
 /* пузырь одного сообщения в треде. isMine — сообщение «твоей» стороны
    (на портале это клиент, в кабинете — дизайнер): заливка олива, без рамки.
@@ -575,7 +593,7 @@ function StatusPill({ tone = "muted", dot = true, children, onClick, title }) {
   const t = PILL_TONES[tone] || PILL_TONES.muted;
   const Comp = onClick ? "button" : "span";
   return (
-    <Comp className="status-pill" onClick={onClick} title={title} style={{ background: t.bg, color: t.fg, borderColor: t.bd }}>
+    <Comp type={onClick ? "button" : undefined} className="status-pill" onClick={onClick} title={title} style={{ background: t.bg, color: t.fg, borderColor: t.bd }}>
       {dot && <span style={{ width: 7, height: 7, borderRadius: "50%", background: t.dot, flex: "none" }} />}
       {children}
     </Comp>
@@ -643,7 +661,8 @@ function KpiCard({ k }) {
     : k.unit === "abs" ? fmt(k.value)
     : k.unit === "%" ? k.value.toLocaleString("ru-RU") + "%"
     : fmt(k.value) + (k.unit || "");
-  const big = val.length > 9 ? 22 : (val.length > 7 ? 26 : 30);
+  // токены шкалы (П2) — не сырые px; 22 в шкале нет, ближайшая ступень 21
+  const big = val.length > 9 ? "var(--fs-21)" : (val.length > 7 ? "var(--fs-26)" : "var(--fs-30)");
   return (
     <div className="glass" style={{ borderRadius: "var(--r-lg)", padding: 22 }}>
       <div style={{ color: "var(--muted)", fontSize: "var(--fs-13)", marginBottom: 12 }}>{k.label}</div>

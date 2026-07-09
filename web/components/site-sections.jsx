@@ -199,14 +199,14 @@ function DemoStage({ active, sub }) {
         <div style={{ display: "flex", gap: 10 }}>
           <div className="glass" style={{ flex: 1, padding: "12px 14px", borderRadius: 14, opacity: .6 }}>
             <span className="mono" style={{ display: "block", fontSize: "var(--fs-10)", letterSpacing: ".06em", color: "var(--spec-meta)" }}>СЕБЕСТОИМОСТЬ</span>
-            <div style={{ fontSize: "var(--fs-14)", fontWeight: 600, marginTop: 4 }}>2 689 000 ₽</div>
+            <div className="mono" style={{ fontSize: "var(--fs-14)", fontWeight: 600, marginTop: 4 }}>2 689 000 ₽</div>
           </div>
           <div className="glass" style={{ flex: 1, padding: "12px 14px", borderRadius: 14, borderColor: "rgba(183,80,44,.4)", boxShadow: "var(--shadow-card)" }}>
             <span className="mono" style={{ display: "block", fontSize: "var(--fs-10)", letterSpacing: ".06em", color: "var(--accent-ink)" }}>ЦЕНА КЛИЕНТУ</span>
-            <div style={{ fontSize: "var(--fs-16)", fontWeight: 700, marginTop: 4 }}>3 550 000 ₽</div>
+            <div className="mono" style={{ fontSize: "var(--fs-16)", fontWeight: 700, marginTop: 4 }}>3 550 000 ₽</div>
           </div>
         </div>
-        <div className="mono" style={{ fontSize: "var(--fs-11)", color: "var(--accent-2)", textAlign: "center" }}>наценка +32% · прибыль 861 000 ₽</div>
+        <div className="mono" style={{ fontSize: "var(--fs-11)", color: "var(--accent-2-ink)", textAlign: "center" }}>наценка +32% · прибыль 861 000 ₽</div>
       </div>
 
       {/* СТАДИЯ 3 — PDF клиенту (без себестоимости и наценки) */}

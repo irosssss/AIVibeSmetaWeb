@@ -364,8 +364,12 @@
           const F = window.AIVibeFFE;
           const prev = db.library[i];
           const body = F && F.blankProduct ? F.blankProduct({ ...prev, ...patch }) : { ...prev, ...patch };
+          // сравниваем ОБЕ стороны через ту же нормализацию (blankProduct), а не body
+          // (нормализовано) vs prev (может быть «сырым» — строка/float из старой схемы
+          // или внешнего импорта) — иначе '1000' !== 1000 ложно обнуляет priceDate
+          const prevNorm = F && F.blankProduct ? F.blankProduct(prev) : prev;
           // цену поправили руками — проверили сейчас, пометка давности обнуляется (та же механика, что у позиций сметы)
-          if (F && body.price !== prev.price) body.priceDate = today();
+          if (F && body.price !== prevNorm.price) body.priceDate = today();
           db.library[i] = { ...prev, ...body, updatedAt: today() };
           LS.set("library", db.library);
         }

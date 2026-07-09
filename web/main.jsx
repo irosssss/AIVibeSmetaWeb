@@ -12,15 +12,29 @@ import "./vendor-globals.js";
    .woff2 из node_modules, хэширует ассеты в бандл, инжектит @font-face.
    Inter/JBMono — variable-woff2 (один файл покрывает все веса), Spectral
    variable не выпущен → статические веса, реально используемые в стеке
-   (400/500/600/700/800 + italic 400 для .spec2.more .pos и цитат-blockquote). */
+   (400/500/600/700/800 + italic 400 для .spec2.more .pos и цитат-blockquote).
+
+   Spectral импортирован per-subset (cyrillic+latin) вместо полного index —
+   у сайта только русский+латиница (бренд/термины), а полный набор веса тащит
+   ещё cyrillic-ext/greek/greek-ext/vietnamese — 30 лишних @font-face блоков
+   в критическом render-blocking CSS. У @fontsource-variable/inter и
+   jetbrains-mono такого per-subset среза нет (variable-CSS всегда one-file-
+   all-subsets) — оставлены как есть; сузить можно только сменой на статические
+   веса, что убьёт саму причину брать variable (один файл на все веса). */
 import "@fontsource-variable/inter";
 import "@fontsource-variable/jetbrains-mono";
-import "@fontsource/spectral/400.css";
-import "@fontsource/spectral/500.css";
-import "@fontsource/spectral/600.css";
-import "@fontsource/spectral/700.css";
-import "@fontsource/spectral/800.css";
-import "@fontsource/spectral/400-italic.css";
+import "@fontsource/spectral/cyrillic-400.css";
+import "@fontsource/spectral/latin-400.css";
+import "@fontsource/spectral/cyrillic-500.css";
+import "@fontsource/spectral/latin-500.css";
+import "@fontsource/spectral/cyrillic-600.css";
+import "@fontsource/spectral/latin-600.css";
+import "@fontsource/spectral/cyrillic-700.css";
+import "@fontsource/spectral/latin-700.css";
+import "@fontsource/spectral/cyrillic-800.css";
+import "@fontsource/spectral/latin-800.css";
+import "@fontsource/spectral/cyrillic-400-italic.css";
+import "@fontsource/spectral/latin-400-italic.css";
 
 // data + движок + выгрузки (пишут в window.Design Ledger*)
 import "./mock.js";

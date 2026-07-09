@@ -287,6 +287,12 @@ function RoomSpecOverlay({ data, onClose }) {
   const [editPos, setEditPos] = usePD(null); // {ri, ii} — открытый редактор строки; ii === -1 — новая позиция в комнате ri
   const [flashPos, setFlashPos] = usePD(null); // {ri, ii} — только что добавленная строка, короткая олива-подсветка
   const [flashSup, setFlashSup] = usePD(null); // {ri, ii} — строка только что сменила поставщика и переехала в новую группу закупки
+  // таймеры флэша — в ref (не в замыкание setTimeout), иначе повторный флэш той же
+  // комнаты не гасит предыдущий таймер (стек тайм-аутов) и оверлей может размонтироваться
+  // раньше 1300мс без отмены — setState летит на unmounted-компонент
+  const flashPosTimerRef = usePDR(null);
+  const flashSupTimerRef = usePDR(null);
+  usePDE(() => () => { clearTimeout(flashPosTimerRef.current); clearTimeout(flashSupTimerRef.current); }, []);
   const todayISO = () => new Date().toISOString().slice(0, 10);
   // d — нормализованный черновик из PosEditor: {title, qty, price, cat, sup} (строки trim, числа целые)
   const savePos = (ri, ii, d) => {
@@ -310,13 +316,21 @@ function RoomSpecOverlay({ data, onClose }) {
     }));
     setEditPos(null);
     if (ii === -1) {
+      clearTimeout(flashPosTimerRef.current);
       setFlashPos({ ri, ii: newIndex });
-      setTimeout(() => setFlashPos((f) => (f && f.ri === ri && f.ii === newIndex ? null : f)), 1300);
+      flashPosTimerRef.current = setTimeout(() => setFlashPos((f) => (f && f.ri === ri && f.ii === newIndex ? null : f)), 1300);
     }
   };
   const removePos = (ri, ii) => {
     const it = rooms[ri].items[ii];
     setRooms((prev) => prev.map((r, i) => (i !== ri ? r : { ...r, items: r.items.filter((_, j) => j !== ii) })));
+    // удаление сдвигает индексы всех позиций после ii в этой комнате — отложенный
+    // флэш-таргет (flashPos/flashSup) мог указывать на строку, которая теперь
+    // на другом месте; проще и безопаснее погасить оба флэша этой комнаты сразу
+    clearTimeout(flashPosTimerRef.current);
+    clearTimeout(flashSupTimerRef.current);
+    setFlashPos((f) => (f && f.ri === ri ? null : f));
+    setFlashSup((f) => (f && f.ri === ri ? null : f));
     setEditPos(null);
     toast("Позиция «" + it.title + "» удалена. Не забудьте сохранить смету.");
   };
@@ -379,8 +393,9 @@ function RoomSpecOverlay({ data, onClose }) {
     setRooms((prev) => prev.map((r, i) => i !== ri ? r
       : { ...r, items: r.items.map((it, j) => j !== ii ? it : (() => { const { sup, ...rest } = it; const s = (v || "").trim(); return s ? { ...rest, sup: s } : rest; })()) }));
     // поставщик сменился — строка переехала в другую группу закупки, коротко подсветим её там
+    clearTimeout(flashSupTimerRef.current);
     setFlashSup({ ri, ii });
-    setTimeout(() => setFlashSup((f) => (f && f.ri === ri && f.ii === ii ? null : f)), 1300);
+    flashSupTimerRef.current = setTimeout(() => setFlashSup((f) => (f && f.ri === ri && f.ii === ii ? null : f)), 1300);
   };
 
   /* --- стадии закупки по позициям (фаза 2 слияния, шаг 2; словарь стадий — web/ffe.js).

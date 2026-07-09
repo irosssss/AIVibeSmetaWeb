@@ -84,7 +84,10 @@ function SitePage({ go }) {
      скролл — раньше useEffect всегда сбрасывал в 0 (аудит Programa) */
   useE3(() => {
     const h = window.location.hash;
-    const el = h && document.querySelector(h);
+    // хэш может быть не CSS-ID-селектором (соц.сети/маркетинг-ссылки дописывают
+    // #!promo, #foo bar, #123start) — querySelector на таком бросает SyntaxError
+    let el = null;
+    if (/^#[A-Za-z][\w-]*$/.test(h)) { try { el = document.querySelector(h); } catch (e) {} }
     if (el) { el.scrollIntoView({ behavior: motionOK() ? "smooth" : "auto" }); return; }
     window.scrollTo({ top: 0 });
   }, []);
