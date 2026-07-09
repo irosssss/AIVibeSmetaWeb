@@ -209,6 +209,11 @@ select.fld { appearance: none; cursor: pointer;
    sticky-панели сметы (наезжал на «Выгрузка: Рабочая/Клиенту/Закупка») */
 body:has(.pd-overlay) .proto-switch { display: none; }
 
+/* Обзор проекта (W2): KPI/документы-кнопки — hover-акцент; шапка складывается на узком */
+.ov-kpi, .ov-docs > button { transition: border-color .15s ease; }
+.ov-kpi:hover, .ov-docs > button:hover { border-color: var(--accent); }
+@media (max-width: 720px) { .ov-hero { grid-template-columns: 1fr !important; } }
+
 /* ============================================================
    ОБОЛОЧКА ВОРКСПЕЙСА (волна W1): сайдбар студии ↔ сайдбар проекта
    ============================================================ */

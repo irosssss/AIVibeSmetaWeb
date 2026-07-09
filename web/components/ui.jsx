@@ -770,6 +770,24 @@ function useMenu(open, close, wrapCls) {
 }
 window.useMenu = useMenu;
 
+/* Пункты меню статуса петли проекта (точка + подпись + галочка активного) —
+   общий для карточки проекта (cabinet-views) и «Обзора» (project-detail, W2),
+   чтобы не было копипаста двух дропдаунов. Словарь — из ffe.js. onPick(status)
+   получает выбор (вызывающий сам решает закрыть меню / вернуть фокус). */
+function StatusMenuItems({ current, onPick }) {
+  const F = window.AIVibeFFE || {};
+  const statuses = F.PROJ_STATUSES || [], colors = F.PROJ_STATUS_COLOR || {};
+  return statuses.map((s) => (
+    <button key={s} role="menuitem" onClick={(e) => { e.stopPropagation(); onPick(s); }}
+      style={{ display: "flex", alignItems: "center", gap: 9, width: "100%", padding: "8px 12px", borderRadius: 9, fontSize: "var(--fs-13)", fontWeight: s === current ? 700 : 600, color: "var(--text)", textAlign: "left" }}
+      onMouseEnter={(e) => (e.currentTarget.style.background = "var(--surface-2)")} onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}>
+      <span style={{ width: 8, height: 8, borderRadius: "50%", background: colors[s], flex: "none" }} />{s}
+      {s === current && <I.check size={14} style={{ marginLeft: "auto", color: "var(--accent-2)" }} />}
+    </button>
+  ));
+}
+window.StatusMenuItems = StatusMenuItems;
+
 /* ============================================================
    ГРАФИКИ (рисуем сами на SVG, цвет --chart / Wasabi)
    ============================================================ */

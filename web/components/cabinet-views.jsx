@@ -107,19 +107,12 @@ function Row({ k, v }) {
 
 /* стиль-квиз → читаемое имя стиля для нового проекта */
 const QUIZ_STYLE_NAME = { deco: "Neo Deco", warm: "Тёплый минимализм", japandi: "Japandi", scandi: "Сканди", indust: "Индустриальный", midmod: "Mid-century" };
-/* стадии петли комплектатора: проект живёт по workflow «собрал → согласовал →
-   закупил → сдал», а не по абстрактному «в работе». Цвета — язык темы:
-   синий = информация/начало, охра = ждём решения, терракота = активные деньги,
-   олива = финал-ок. Подсказка следующего шага — статичный словарь стадии
-   (не имитация событий: событий пока нет, это просто смысл стадии). */
-const PROJ_STATUSES = ["Сбор", "Согласование", "Закупка", "Сдача", "Архив"];
-const statusColor = { "Сбор": "var(--info)", "Согласование": "var(--chart)", "Закупка": "var(--accent)", "Сдача": "var(--accent-2)", "Архив": "var(--faint)" };
-const STAGE_NEXT = {
-  "Сбор": "собрать смету и отправить клиенту",
-  "Согласование": "получить решение клиента по смете",
-  "Закупка": "вести заказы и поставки по позициям",
-  "Сдача": "выгрузить клиентский пакет документов",
-};
+/* стадии петли комплектатора (статус ПРОЕКТА «собрал → согласовал → закупил →
+   сдал») — единый домовой словарь в ffe.js (как STATUS/APPROVE), общий с «Обзором»
+   проекта (W2). Здесь только алиасы; ffe.js грузится раньше (main.jsx). */
+const PROJ_STATUSES = window.AIVibeFFE.PROJ_STATUSES;
+const statusColor = window.AIVibeFFE.PROJ_STATUS_COLOR;
+const STAGE_NEXT = window.AIVibeFFE.PROJ_STAGE_NEXT;
 const fmtDCV = (d) => { const t = new Date(d + "T00:00:00"); return isNaN(t.getTime()) ? String(d) : t.toLocaleDateString("ru-RU", { day: "2-digit", month: "2-digit" }); };
 
 /* «Сегодня в работе» (волна C2, шаг «Стол комплектатора», бенчмарк Programa) —
@@ -398,12 +391,8 @@ function ProjectCard({ p, menuOpen, onOpen, onMenu, onRename, onDuplicate, onSta
             {mItem("Дублировать", I.layers, onDuplicate)}
             <div style={{ height: 1, background: "var(--hairline)", margin: "5px 4px" }} />
             <div style={{ fontSize: "var(--fs-11)", fontWeight: 700, letterSpacing: ".04em", textTransform: "uppercase", color: "var(--faint)", padding: "4px 12px 6px" }}>Статус</div>
-            {PROJ_STATUSES.map((s) => (
-              <button key={s} role="menuitem" onClick={(e) => { e.stopPropagation(); if (trigRef.current) trigRef.current.focus(); onStatus(s); }} style={{ display: "flex", alignItems: "center", gap: 9, width: "100%", padding: "8px 12px", borderRadius: 9, fontSize: "var(--fs-13)", fontWeight: p.status === s ? 700 : 600, color: "var(--text)", textAlign: "left" }}
-                onMouseEnter={(e) => (e.currentTarget.style.background = "var(--surface-2)")} onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}>
-                <span style={{ width: 8, height: 8, borderRadius: "50%", background: statusColor[s], flex: "none" }} />{s}{p.status === s && <I.check size={14} style={{ marginLeft: "auto", color: "var(--accent-2)" }} />}
-              </button>
-            ))}
+            <StatusMenuItems current={p.status} onPick={(s) => { if (trigRef.current) trigRef.current.focus(); onStatus(s); }} />
+            {/* меню закрывается через onStatus→changeStatus (setMenuId null) */}
             <div style={{ height: 1, background: "var(--hairline)", margin: "5px 4px" }} />
             {mItem("Удалить", I.trash, onRemove, true)}
           </div>

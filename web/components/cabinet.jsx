@@ -5,8 +5,9 @@
 const { useState: useC, useEffect: useCE } = React;
 
 /* ---------- Хеш-роутинг: #view/tab/sub/s2 (переживает F5, работает «назад»,
-   sub — открытый проект: #cabinet/projects/p_1 → deep-link на смету,
-   s2 — раздел открытого проекта: /client · /procure · /versions — волна W1) ---------- */
+   sub — открытый проект: #cabinet/projects/p_1 → deep-link в проект (обзор смет-
+   комплектаций — волна W2; для AI-демо — сразу деталь),
+   s2 — раздел открытого проекта: '' обзор · smeta · client · procure · versions — W1/W2) ---------- */
 const CAB_TABS = [["projects", "Проекты"], ["workshop", "Мастерская"], ["favorites", "Избранное"], ["profile", "Профиль"]];
 const CAB_TAB_IDS = CAB_TABS.map((t) => t[0]);
 /* старые адреса вкладок-редакторов живут как deep-links внутрь Мастерской:
@@ -119,9 +120,12 @@ function AuthScreen({ onAuthed, go }) {
 /* конфиг сайдбара студии; Мастерская — группа с под-пунктами (те же адреса, что были) */
 const WS_ICONS = { projects: "layers", workshop: "sliders", favorites: "heart", profile: "user" };
 const WS_SUB_ICONS = { styles: "spark", products: "sofa", norms: "ruler" };
-/* разделы открытого проекта (s2 адреса); только для смет-комплектаций (data.rooms) */
+/* разделы открытого проекта (s2 адреса); только для смет-комплектаций (data.rooms).
+   W2: «Обзор» — лицо проекта и новый дефолт посадки (s2=''), смета переехала на
+   'smeta' (паттерн Programa «клик по проекту = обзор, не сразу таблица»). */
 const WS_PROJ_ITEMS = [
-  ["", "Смета", "grid"],
+  ["", "Обзор", "chart"],
+  ["smeta", "Смета", "grid"],
   ["client", "Для клиента", "user"],
   ["procure", "Закупка", "truck"],
   ["versions", "Версии и согласование", "news"],

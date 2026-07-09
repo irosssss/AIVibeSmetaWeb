@@ -178,9 +178,13 @@ function ProjectDetail({ id, nav, onClose, initialStyle }) {
     );
   }
 
+  // W2: у смет-комплектаций раздел '' — «Обзор» (лицо проекта), смета живёт на 'smeta'.
   // key: при смене id через hash state оверлея (наценки/скидка/savedId) обязан переинициализироваться,
   // иначе «Сохранить» запишет значения предыдущего проекта в новый
-  if (data.rooms) return <RoomSpecOverlay key={data.id || "imported"} data={data} nav={nav} onClose={onClose} />;
+  if (data.rooms) {
+    if (nav === "") return <ProjectOverview key={data.id || "overview"} data={data} onClose={onClose} />;
+    return <RoomSpecOverlay key={data.id || "imported"} data={data} nav={nav} onClose={onClose} />;
+  }
 
   const activeStyle = [...data.styles, ...myStyles].find((s) => s.id === styleId) || data.styles[0];
   const activeLayout = LAYOUTS.find((l) => l.id === layoutId) || LAYOUTS[0];
@@ -585,14 +589,14 @@ function RoomSpecOverlay({ data, nav, onClose }) {
      открытую роутингом (nav задан); Excel-импорт без адреса живёт как раньше. --- */
   const wsRouted = () => { const r = parseRoute(); return r.view === "cabinet" && r.tab === "projects" && r.sub ? r : null; };
   const wsSyncNav = (s2) => { const r = wsRouted(); if (r && (r.s2 || "") !== s2) setRoute("cabinet", "projects", r.sub, s2); };
-  const modeToS2 = (m) => (m === "work" ? "" : m);   // единственное место маппинга режим→сегмент адреса
+  const modeToS2 = (m) => (m === "work" ? "smeta" : m);   // единственное место маппинга режим→сегмент адреса (W2: смета на 'smeta', '' — Обзор)
   usePDE(() => {
     if (nav == null) return;
     if (nav === "client" || nav === "procure") { setMode(nav); setVersionsOpen(false); }
     else if (nav === "versions") {
       if (savedId) setVersionsOpen(true);
-      else { toast("Сначала сохраните смету — версии привязаны к проекту.", "warn", 5000); wsSyncNav(""); }
-    } else { setMode("work"); setVersionsOpen(false); }
+      else { toast("Сначала сохраните смету — версии привязаны к проекту.", "warn", 5000); wsSyncNav("smeta"); }
+    } else { setMode("work"); setVersionsOpen(false); }   // nav === 'smeta' (и любой неожиданный) → рабочая смета
   }, [nav]);
   const changeMode = (m) => { setMode(m); if (nav != null) wsSyncNav(modeToS2(m)); };
   const closeVersions = () => { setVersionsOpen(false); if (nav === "versions") wsSyncNav(modeToS2(mode)); };
@@ -2349,5 +2353,229 @@ function AdvisorChat({ id, hello, onAction, onClose }) {
   );
 }
 
+/* ============================================================
+   ОБЗОР ПРОЕКТА (волна W2, бенчмарк Programa «Overview») — «лицо» проекта:
+   шапка (статус-петля + описание + обложка) · KPI-ряд ЖИВЫХ цифр · Recent-
+   документы. Все цифры считаются ИЗ СОХРАНЁННОЙ записи проекта теми же
+   формулами, что и смета (FFE.clientPricing/priceFreshness/статусы/версии) —
+   чтобы Обзор и Смета не противоречили друг другу. Каждая KPI и карточка —
+   переход в соответствующий раздел (setRoute s2), нулевые состояния словами.
+   ============================================================ */
+
+/* Чистый агрегат метрик проекта из его записи (rooms + настройки наценки).
+   Зеркалит клиентскую матшу сметы (RoomSpecOverlay): grand — себестоимость,
+   client/totalClient/profit — через FFE.clientPricing; согласование, стадии
+   закупки, свежесть цен, версии — из тех же справочников FFE. */
+function projectMetrics(data) {
+  const FFE = window.AIVibeFFE;
+  const rooms = (data && data.rooms) || [];
+  const markup = data.markupPct != null ? data.markupPct : PD_DEFAULT_MARKUP;
+  const catMarkup = data.catMarkupPct || {};
+  const discount = data.discountPct || 0, delivery = data.deliveryCost || 0, install = data.installCost || 0;
+  const items = rooms.flatMap((r) => r.items || []);
+  const itemsCount = items.length;
+  const grand = items.reduce((s, it) => s + (it.price || 0) * (it.qty || 1), 0);
+  const pricing = FFE ? FFE.clientPricing({ rooms, markup, catMarkup, discount, delivery, install })
+    : { client: 0, discountAmt: 0, totalClient: 0 };
+  const profit = pricing.client - pricing.discountAmt - grand;  // доставка/монтаж — транзит (без наценки), в профит не входят
+  // согласование клиента по позициям (то же правило: отсутствие поля = «ждёт»)
+  const apOk = FFE ? items.filter((it) => FFE.APPROVE_BY_ID[it.approve] && it.approve === "ok").length : 0;
+  const apWaiting = itemsCount - apOk;
+  // стадии закупки: заказано..установлено = «в работе», принято = закрыто; просрочка — по датам стадий/платежей
+  let inWork = 0, accepted = 0, overdue = 0;
+  if (FFE) items.forEach((it) => {
+    const order = FFE.statusMeta(it.status).order;
+    if (order >= 8) accepted++; else if (order >= 3) inWork++;
+    if (FFE.itemDueItems(it).some((d) => FFE.urgencyBucket(d.date) === "overdue")) overdue++;
+  });
+  const fresh = FFE && FFE.priceFreshness ? FFE.priceFreshness(rooms) : null;
+  const versions = FFE && data.id ? FFE.loadVersions(data.id) : [];
+  const approved = versions.find((v) => v.status === "approved") || null;
+  const share = versions.find((v) => v.shareId) || null;   // портал клиента выпущен, если у версии есть shareId
+  const photos = items.map((it) => it.img).filter(Boolean);
+  return { itemsCount, grand, client: pricing.client, totalClient: pricing.totalClient, profit,
+    apOk, apWaiting, inWork, accepted, overdue, fresh, versions, approved, share, photos, roomsCount: rooms.length };
+}
+
+/* тумбнейл документа: коллаж 2×2 из фото позиций (паттерн Programa); нет фото —
+   обложка проекта striped-плейсхолдером (Img сам рисует ph при отсутствии src) */
+function DocThumb({ photos, cover, label }) {
+  const pics = (photos || []).slice(0, 4);
+  if (pics.length <= 1) return <Img src={pics[0] || PHOTOS[cover]} label={label} style={{ borderRadius: 0 }} />;
+  return (
+    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gridTemplateRows: "1fr 1fr", gap: 2, width: "100%", height: "100%", background: "var(--hairline)" }}>
+      {Array.from({ length: 4 }).map((_, i) => (
+        <div key={i} style={{ overflow: "hidden", background: "var(--surface-2)" }}>
+          {pics[i] && <Img src={pics[i]} label="" style={{ borderRadius: 0 }} />}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/* тумбнейл-иконка для документов без фото-коллажа (портал/протокол/закупка):
+   центрированная иконка на плашке; цвет/фон задаёт состояние документа */
+function IconThumb({ icon, bg, color }) {
+  const Ico = I[icon] || I.grid;
+  return <div style={{ width: "100%", height: "100%", display: "grid", placeItems: "center", background: bg, color }}><Ico size={34} /></div>;
+}
+
+/* карточка-документ Recent: тумбнейл + тип + подпись, вся кликабельна в раздел */
+function DocCard({ thumb, title, sub, onClick }) {
+  return (
+    <button className="glass" onClick={onClick} style={{ borderRadius: "var(--r-lg)", overflow: "hidden", textAlign: "left", display: "flex", flexDirection: "column", cursor: "pointer" }}>
+      <div style={{ aspectRatio: "16/10", position: "relative", overflow: "hidden" }}>{thumb}</div>
+      <div style={{ padding: "13px 16px" }}>
+        <div style={{ fontWeight: 700, fontSize: "var(--fs-15)" }}>{title}</div>
+        <div style={{ color: "var(--muted)", fontSize: "var(--fs-12)", marginTop: 3, lineHeight: 1.4 }}>{sub}</div>
+      </div>
+    </button>
+  );
+}
+
+/* KPI-плитка обзора: подпись + стрелка-переход + крупная цифра + подпись-контекст
+   (нулевое состояние словами). Деньги — mono, счётчики — display (канон П2). */
+function OvKpi({ label, value, mono, sub, subTone, onClick, title }) {
+  return (
+    <button className="glass ov-kpi" onClick={onClick} title={title}
+      style={{ borderRadius: "var(--r-lg)", padding: 22, textAlign: "left", display: "flex", flexDirection: "column", cursor: "pointer" }}>
+      <span style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, color: "var(--muted)", fontSize: "var(--fs-13)", marginBottom: 12 }}>
+        {label}<I.arrow size={15} style={{ color: "var(--faint)", flex: "none" }} />
+      </span>
+      <span className={mono ? "mono" : "display"} style={{ fontSize: "var(--fs-26)", fontWeight: mono ? 600 : undefined, letterSpacing: mono ? undefined : "-0.02em", lineHeight: 1, whiteSpace: "nowrap" }}>{value}</span>
+      {sub && <span style={{ fontSize: "var(--fs-12)", color: subTone || "var(--muted)", marginTop: 8, lineHeight: 1.4 }}>{sub}</span>}
+    </button>
+  );
+}
+
+/* чип-статус петли комплектатора с дропдауном — общий словарь ffe.js
+   (FFE.PROJ_STATUSES/PROJ_STATUS_COLOR) и общие пункты меню (StatusMenuItems),
+   те же, что на карточке проекта: без копипаста дропдауна. */
+function LoopStatusChip({ status, onChange }) {
+  const colors = (window.AIVibeFFE && window.AIVibeFFE.PROJ_STATUS_COLOR) || {};
+  const [open, setOpen] = usePD(false);
+  useMenu(open, () => setOpen(false), "ov-status-wrap");
+  return (
+    <div className="ov-status-wrap" style={{ position: "relative" }}>
+      <button className="glass" aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen((o) => !o)}
+        style={{ display: "flex", alignItems: "center", gap: 8, padding: "7px 13px", borderRadius: 99, fontSize: "var(--fs-13)", fontWeight: 700, whiteSpace: "nowrap" }}>
+        <span aria-hidden="true" style={{ width: 8, height: 8, borderRadius: "50%", background: colors[status], flex: "none" }} />
+        {status}
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" aria-hidden="true" style={{ color: "var(--faint)" }}><path d="M6 9l6 6 6-6" /></svg>
+      </button>
+      {open && (
+        <div className="glass menu-pop" role="menu" style={{ position: "absolute", top: "calc(100% + 6px)", right: 0, minWidth: 200, borderRadius: 12, boxShadow: "var(--shadow-pop)", padding: 6, zIndex: 40 }}>
+          <StatusMenuItems current={status} onPick={(s) => { setOpen(false); if (s !== status) onChange(s); }} />
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ProjectOverview({ data, onClose }) {
+  const [status, setStatus] = usePD(data.status || "Сбор");
+  // метрики зависят только от data — мемоизируем, чтобы смена статуса (частый ре-рендер)
+  // не гоняла flatMap/reduce/clientPricing и синхронное чтение localStorage (loadVersions)
+  const m = React.useMemo(() => projectMetrics(data), [data]);
+  const stageNext = (window.AIVibeFFE && window.AIVibeFFE.PROJ_STAGE_NEXT) || {};   // подсказка следующего шага петли (словарь — ffe.js)
+  const goSection = (s2) => setRoute("cabinet", "projects", data.id, s2);
+  const changeStatus = (s) => {
+    if (!data.id) { setStatus(s); return; }   // несохранённая смета — некуда persist'ить, просто отражаем
+    const prev = status;
+    setStatus(s);   // оптимистично — чип реагирует сразу
+    AIVibeAPI.projects.update(data.id, { status: s })
+      .then(() => toast("Статус проекта: «" + s + "»"))
+      .catch(() => { setStatus(prev); toast("Не удалось сменить статус — попробуйте ещё раз.", "warn", 5000); });   // откат оптимизма
+  };
+  const meta = [data.room, data.style, data.area ? data.area + " м²" : null, data.updated ? "изменён " + fmtDateRu(data.updated) : null].filter(Boolean).join(" · ");
+
+  return (
+    <div className="pd-overlay" role="dialog" aria-label={"Обзор проекта: " + data.name}>
+      <OverlayHead onBack={onClose} budget={data.budget}
+        crumbs={[{ label: "Проекты", onClick: onClose }, { label: data.name }, { label: "Обзор" }]}
+        title={data.name} sub={meta}
+        right={<LoopStatusChip status={status} onChange={changeStatus} />} />
+
+      <div className="pd-body solo">
+        <div className="pd-main">
+          <section className="pd-section" style={{ borderBottom: "none" }}>
+            {/* ── шапка проекта: описание + обложка + следующий шаг петли ── */}
+            <div className="ov-hero" style={{ display: "grid", gridTemplateColumns: "1fr 300px", gap: 24, alignItems: "start", marginBottom: 30 }}>
+              <div>
+                <div className="eyebrow jade" style={{ marginBottom: 12 }}>Обзор проекта</div>
+                {data.summaryShort
+                  ? <p style={{ color: "var(--muted)", fontSize: "var(--fs-15)", lineHeight: 1.65, maxWidth: 640 }}>{data.summaryShort}</p>
+                  : <p style={{ color: "var(--faint)", fontSize: "var(--fs-15)", lineHeight: 1.65 }}>Описание проекта появится здесь — соберите смету, задайте наценку и опубликуйте версию клиенту.</p>}
+                {stageNext[status] && (
+                  <div style={{ display: "flex", alignItems: "baseline", gap: 8, fontSize: "var(--fs-13)", color: "var(--muted)", marginTop: 16 }}>
+                    <span style={{ fontWeight: 700, color: "var(--text)", whiteSpace: "nowrap" }}>Дальше:</span>
+                    <span style={{ lineHeight: 1.4 }}>{stageNext[status]}</span>
+                  </div>
+                )}
+              </div>
+              <div style={{ aspectRatio: "16/10", borderRadius: "var(--r-lg)", overflow: "hidden", border: "1px solid var(--hairline)" }}>
+                <Img src={PHOTOS[data.cover]} label={data.room || data.name} />
+              </div>
+            </div>
+
+            {/* ── KPI-ряд живых цифр (каждая = переход в раздел) ── */}
+            <h3 className="pd-h" style={{ fontSize: "var(--fs-18)", marginBottom: 14 }}>Ключевые цифры</h3>
+            <div className="ov-kpis" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 14, marginBottom: 34 }}>
+              <OvKpi label="Позиции" value={m.itemsCount} onClick={() => goSection("smeta")}
+                title="Открыть смету"
+                sub={m.itemsCount === 0 ? "добавьте первую позицию"
+                  : m.apWaiting > 0 ? m.apWaiting + " ждут решения · " + m.apOk + " согласовано"
+                  : "все " + m.apOk + " согласованы"}
+                subTone={m.itemsCount > 0 && m.apWaiting > 0 ? "var(--accent-ink)" : m.itemsCount > 0 ? "var(--accent-2-ink)" : undefined} />
+              <OvKpi label="Сумма для клиента" mono value={fmtMoney(m.totalClient)} onClick={() => goSection("client")}
+                title="Открыть смету для клиента"
+                sub={m.profit > 0 ? "ваша наценка " + fmtMoney(m.profit) : "наценка не задана"}
+                subTone={m.profit > 0 ? "var(--accent-2-ink)" : undefined} />
+              <OvKpi label="Закупка" value={m.itemsCount === 0 ? "—" : m.inWork} onClick={() => goSection("procure")}
+                title="Открыть закупку"
+                sub={m.itemsCount === 0 ? "смета ещё пустая"
+                  : m.overdue > 0 ? m.overdue + " просрочено · " + m.accepted + " принято"
+                  : m.inWork > 0 ? (m.accepted > 0 ? "в работе · " + m.accepted + " принято" : "в работе · просрочек нет")
+                  : m.accepted > 0 ? "всё принято · " + m.accepted + " " + plural(m.accepted, ["позиция", "позиции", "позиций"])
+                  : "закупка не начата"}
+                subTone={m.overdue > 0 ? "var(--accent-ink)" : (m.itemsCount > 0 && m.inWork === 0 && m.accepted > 0 ? "var(--accent-2-ink)" : undefined)} />
+              <OvKpi label="Свежесть цен" value={!m.fresh ? "—" : m.fresh.days === 0 ? "сегодня" : m.fresh.days + " " + plural(m.fresh.days, ["день", "дня", "дней"])}
+                onClick={() => goSection("smeta")} title="Проверить цены в смете"
+                sub={!m.fresh ? "цены не датированы" : "проверено " + m.fresh.checked + " из " + m.fresh.total + (m.fresh.stale ? " · перепроверьте" : "")}
+                subTone={m.fresh && m.fresh.stale ? "var(--accent-ink)" : undefined} />
+              <OvKpi label="Версии" value={m.versions.length} onClick={() => goSection("versions")}
+                title="Открыть версии и согласование"
+                sub={m.approved ? "согласована «" + m.approved.label + "»" : m.versions.length ? "снимков сохранено" : "снимков ещё нет"}
+                subTone={m.approved ? "var(--accent-2-ink)" : undefined} />
+            </div>
+
+            {/* ── Recent-документы: смета (коллаж фото) · портал · протокол · закупка ── */}
+            <h3 className="pd-h" style={{ fontSize: "var(--fs-18)", marginBottom: 14 }}>Документы проекта</h3>
+            <div className="ov-docs" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: 16, maxWidth: 960 }}>
+              <DocCard onClick={() => goSection("smeta")}
+                thumb={<DocThumb photos={m.photos} cover={data.cover} label={data.room || data.name} />}
+                title="Смета"
+                sub={m.itemsCount + " " + plural(m.itemsCount, ["позиция", "позиции", "позиций"]) + " · " + m.roomsCount + " " + plural(m.roomsCount, ["комната", "комнаты", "комнат"])} />
+              <DocCard onClick={() => goSection("versions")}
+                thumb={<IconThumb icon="user" bg={m.share ? "var(--accent-2)" : "var(--surface-2)"} color={m.share ? "var(--on-accent)" : "var(--faint)"} />}
+                title="Портал клиента"
+                sub={m.share ? "ссылка выпущена" + (m.share.label ? " · " + m.share.label : "") : "ещё не выпущен"} />
+              <DocCard onClick={() => goSection("versions")}
+                thumb={<IconThumb icon="check" bg="var(--surface-2)" color={m.apOk > 0 ? "var(--accent-2-ink)" : "var(--faint)"} />}
+                title="Протокол согласования"
+                sub={m.apOk > 0 ? "согласовано " + m.apOk + " из " + m.itemsCount : "решения ещё не собраны"} />
+              <DocCard onClick={() => goSection("procure")}
+                thumb={<IconThumb icon="truck" bg="var(--surface-2)" color={m.overdue > 0 ? "var(--accent-ink)" : "var(--muted)"} />}
+                title="Закупочный лист"
+                sub={m.itemsCount === 0 ? "смета ещё пустая" : m.overdue > 0 ? m.inWork + " в работе · " + m.overdue + " просрочено" : m.inWork > 0 ? m.inWork + " в работе" : m.accepted > 0 ? "всё принято" : "закупка не начата"} />
+            </div>
+          </section>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 window.ProjectDetail = ProjectDetail;
+window.ProjectOverview = ProjectOverview;
 window.RoomSpecOverlay = RoomSpecOverlay;   // рендерится из кабинета (импорт Excel / черновик калькулятора); в ES-модулях без явного экспорта был бы ReferenceError

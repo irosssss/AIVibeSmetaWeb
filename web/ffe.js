@@ -576,7 +576,22 @@
     return rec;
   }
 
+  /* ----------------------------- СТАДИИ ПЕТЛИ КОМПЛЕКТАТОРА (статус ПРОЕКТА) -----------------------------
+     Не путать со статусом ПОЗИЦИИ (FFE_STATUSES) — это стадия всего проекта:
+     «собрал → согласовал → закупил → сдал» (+ Архив). Цвета — язык темы; STAGE_NEXT —
+     подсказка следующего шага (статичный смысл стадии, не имитация событий).
+     Домовой словарь: и карточка проекта (cabinet-views), и Обзор проекта (project-detail, W2). */
+  const PROJ_STATUSES = ["Сбор", "Согласование", "Закупка", "Сдача", "Архив"];
+  const PROJ_STATUS_COLOR = { "Сбор": "var(--info)", "Согласование": "var(--chart)", "Закупка": "var(--accent)", "Сдача": "var(--accent-2)", "Архив": "var(--faint)" };
+  const PROJ_STAGE_NEXT = {
+    "Сбор": "собрать смету и отправить клиенту",
+    "Согласование": "получить решение клиента по смете",
+    "Закупка": "вести заказы и поставки по позициям",
+    "Сдача": "выгрузить клиентский пакет документов",
+  };
+
   window.AIVibeFFE = {
+    PROJ_STATUSES, PROJ_STATUS_COLOR, PROJ_STAGE_NEXT,
     FFE_CATEGORIES, FFE_UNITS, FFE_STATUSES, STATUS_LABEL, STATUS_BY_ID, DEFAULT_STATUS,
     DEFAULT_MARKUP_PCT,
     APPROVE_STATUSES, APPROVE_BY_ID, approveMeta,
