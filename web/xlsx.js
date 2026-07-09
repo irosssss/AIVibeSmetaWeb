@@ -42,6 +42,7 @@
     rooms = rooms || [];
     if (mode === "procure") return exportProcure({ project, area, rooms, grand, budget });
     const clientMode = mode === "client";
+    const fresh = window.AIVibeFFE && window.AIVibeFFE.priceFreshness ? window.AIVibeFFE.priceFreshness(rooms) : null;
     // итог структурой: скидка округляется до рубля от подытога — та же формула, что в UI/PDF
     const discountAmt = Math.round((clientTotal || 0) * (discountPct || 0) / 100);
     const totalClient = (clientTotal || 0) - discountAmt + (deliveryCost || 0) + (installCost || 0);
@@ -111,6 +112,11 @@
       push([]);
       { const ri = push(["Бюджет проекта", budget]); mc.push([ri, 1]); }
       { const ri = push([over ? "Превышение бюджета" : "Остаток бюджета", Math.abs(budget - grand)]); mc.push([ri, 1]); }
+    }
+    if (fresh) {  // паспорт свежести цен (роадмап «Стол комплектатора» шаг C1)
+      push([]);
+      push([(fresh.checked === fresh.total ? "Цены проверены не позднее" : "Цены проверены у " + fresh.checked + " из " + fresh.total + " позиций — не позднее")
+        + " " + fmtDateCell(fresh.oldest) + (fresh.stale ? " (" + fresh.days + " дн. назад)" : "")]);
     }
 
     const wsS = XLSX.utils.aoa_to_sheet(svod);

@@ -393,6 +393,8 @@ function RoomSpecOverlay({ data, onClose }) {
   const client = rooms.reduce((s, r) => s + roomClient(r), 0);
   const itemsCount = rooms.reduce((s, r) => s + r.items.length, 0);
   const over = grand > data.budget;
+  // паспорт свежести цен (роадмап «Стол комплектатора» шаг C1) — та же честная нижняя граница, что уходит в PDF/Excel
+  const fresh = window.AIVibeFFE && window.AIVibeFFE.priceFreshness ? window.AIVibeFFE.priceFreshness(rooms) : null;
   // разделы проекта — из фактических позиций, тяжёлые по себестоимости первыми
   const catCost = {}, catCli = {};   // catCli — суммой округлённых строк, чтобы панель сходилась с итогом и выгрузками
   rooms.forEach((r) => r.items.forEach((it) => { const k = catOf(it); catCost[k] = (catCost[k] || 0) + lineCost(it); catCli[k] = (catCli[k] || 0) + lineClient(it); }));
@@ -945,6 +947,13 @@ function RoomSpecOverlay({ data, onClose }) {
                 <span style={{ fontWeight: 800, fontFamily: "var(--font-display)", fontSize: "var(--fs-15)" }}>{mode === "work" ? "Итого для клиента" : "Итого"}</span>
                 <span id="rs-total-val" className="mono rs-val" style={{ fontWeight: 600, fontSize: "var(--fs-24)", letterSpacing: "-0.01em" }} aria-live="off">{fmtMoney(totalClient)}</span>
               </div>
+              {/* паспорт свежести цен: та же честная нижняя граница, что уходит в PDF/Excel */}
+              {fresh && (
+                <div className="mono" style={{ marginTop: 10, paddingTop: 10, borderTop: "1px solid var(--hairline-2)", fontSize: "var(--fs-11)", color: fresh.stale ? "var(--accent-ink)" : "var(--spec-meta)" }}>
+                  {fresh.checked === fresh.total ? "Цены проверены не позднее " : "Цены проверены у " + fresh.checked + " из " + fresh.total + " позиций — не позднее "}
+                  {fmtDateRu(fresh.oldest)}{fresh.stale ? " · рекомендуем перепроверить" : ""}
+                </div>
+              )}
             </div>}
           </section>
 

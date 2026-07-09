@@ -89,6 +89,21 @@
     sd[statusId] = date || sd[statusId] || today();
     return sd;
   }
+
+  /* Паспорт свежести цен (роадмап «Стол комплектатора» шаг C1): агрегат по priceDate
+     позиций сметы — честная нижняя граница «на что смотрел клиент». oldest — самая
+     старая дата среди позиций, у которых она вообще проставлена (ISO-строки сравнимы
+     лексикографически); null, если ни у одной позиции даты нет — заявлять нечего. */
+  function priceFreshness(rooms) {
+    let total = 0, checked = 0, oldest = null;
+    (rooms || []).forEach((r) => (r.items || []).forEach((it) => {
+      total++;
+      if (it.priceDate) { checked++; if (!oldest || it.priceDate < oldest) oldest = it.priceDate; }
+    }));
+    if (!checked) return null;
+    const days = Math.max(0, Math.floor((Date.now() - new Date(oldest + "T00:00:00").getTime()) / 86400000));
+    return { checked, total, oldest, days, stale: days > 30 };
+  }
   // терпимый парсер чисел: «12 500 ₽» → 12500, «4,5» → 4.5 (пробелы-разделители, запятая-дробь)
   const num = (v, def = 0) => {
     if (typeof v === "number") return isFinite(v) ? v : def;
@@ -492,7 +507,7 @@
   window.AIVibeFFE = {
     FFE_CATEGORIES, FFE_UNITS, FFE_STATUSES, STATUS_LABEL, STATUS_BY_ID, DEFAULT_STATUS,
     APPROVE_STATUSES, APPROVE_BY_ID, approveMeta,
-    EXTRA_PRESETS, statusMeta, statusProgress, stampStatus, today,
+    EXTRA_PRESETS, statusMeta, statusProgress, stampStatus, today, priceFreshness,
     blankPosition, normalizePosition, dimsLabel, lineTotal,
     blankComment, addComment,
     blankProduct, productFromPosition, positionFromProduct,

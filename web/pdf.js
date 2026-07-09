@@ -105,6 +105,9 @@
     if (!window.pdfMake) { (window.toast ? toast("PDF-модуль ещё загружается — попробуйте через секунду.", "info") : 0); return false; }
     if (mode === "procure") return exportProcurePDF({ project, area, rooms: rooms || [], grand, budget });
     const clientMode = mode === "client";
+    const FFE = window.AIVibeFFE || null;
+    const fresh = FFE && FFE.priceFreshness ? FFE.priceFreshness(rooms) : null;
+    const fmtD = (d) => { const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(d || "")); return m ? m[3] + "." + m[2] + "." + m[1] : ""; };
     // итог структурой: скидка округляется до рубля от подытога — та же формула, что в UI/Excel
     const discountAmt = Math.round((clientTotal || 0) * (discountPct || 0) / 100);
     const totalClient = (clientTotal || 0) - discountAmt + (deliveryCost || 0) + (installCost || 0);
@@ -157,6 +160,13 @@
         { text: over ? "Превышение бюджета на " + money(grand - budget) : "В рамках бюджета (" + money(budget) + ")", color: over ? PDF.warn : PDF.ok, fontSize: 10, margin: [0, 6, 0, 0] },
         { stack: totalRows, margin: [0, 6, 0, 0] },
       ] });
+    }
+    if (fresh) {
+      content.push({
+        text: (fresh.checked === fresh.total ? "Цены проверены не позднее " : "Цены проверены у " + fresh.checked + " из " + fresh.total + " позиций — не позднее ")
+          + fmtD(fresh.oldest) + (fresh.stale ? " (" + fresh.days + " дн. назад — рекомендуем перепроверить)" : ""),
+        fontSize: 8, color: fresh.stale ? PDF.warn : PDF.foot, margin: [0, 10, 0, 0],
+      });
     }
     content.push({ text: "Комплектация (мебель, техника, сантехника, свет, текстиль). Ремонтные работы и отделочные материалы — отдельной сметой. Цены — рыночный ориентир. Документ сформирован в Design Ledger.", style: "foot", margin: [0, 16, 0, 0] });
 
