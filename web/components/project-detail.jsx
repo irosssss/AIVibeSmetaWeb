@@ -557,7 +557,7 @@ function RoomSpecOverlay({ data, nav, onClose }) {
     setCatMarkup(s.catMarkup || {});
     setDiscount(s.discount || 0); setDelivery(s.delivery || 0); setInstall(s.install || 0);
     setEditPos(null);
-    setVersionsOpen(false);
+    closeVersions();   // не голый setVersionsOpen(false): роут /versions обязан сброситься, иначе пункт сайдбара «Версии» мёртв (hash уже равен цели — hashchange не случится)
     toast("Версия «" + v.label + "» загружена в рабочую смету. Не забудьте сохранить.");
   };
   const patchVersion = (id, patch) => setVersions((prev) => prev.map((v) => (v.id === id ? { ...v, ...patch } : v)));
@@ -585,6 +585,7 @@ function RoomSpecOverlay({ data, nav, onClose }) {
      открытую роутингом (nav задан); Excel-импорт без адреса живёт как раньше. --- */
   const wsRouted = () => { const r = parseRoute(); return r.view === "cabinet" && r.tab === "projects" && r.sub ? r : null; };
   const wsSyncNav = (s2) => { const r = wsRouted(); if (r && (r.s2 || "") !== s2) setRoute("cabinet", "projects", r.sub, s2); };
+  const modeToS2 = (m) => (m === "work" ? "" : m);   // единственное место маппинга режим→сегмент адреса
   usePDE(() => {
     if (nav == null) return;
     if (nav === "client" || nav === "procure") { setMode(nav); setVersionsOpen(false); }
@@ -593,8 +594,8 @@ function RoomSpecOverlay({ data, nav, onClose }) {
       else { toast("Сначала сохраните смету — версии привязаны к проекту.", "warn", 5000); wsSyncNav(""); }
     } else { setMode("work"); setVersionsOpen(false); }
   }, [nav]);
-  const changeMode = (m) => { setMode(m); if (nav != null) wsSyncNav(m === "work" ? "" : m); };
-  const closeVersions = () => { setVersionsOpen(false); if (nav === "versions") wsSyncNav(mode === "work" ? "" : mode); };
+  const changeMode = (m) => { setMode(m); if (nav != null) wsSyncNav(modeToS2(m)); };
+  const closeVersions = () => { setVersionsOpen(false); if (nav === "versions") wsSyncNav(modeToS2(mode)); };
 
   return (
     <div className={"pd-overlay" + (nav == null ? " pd-fullscreen" : "")} role="dialog" aria-label={"Смета: " + data.name}>

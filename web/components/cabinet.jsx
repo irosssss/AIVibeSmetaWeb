@@ -130,9 +130,10 @@ const WS_PROJ_ITEMS = [
 function Cabinet({ user, onLogout, go }) {
   // старые адреса #cabinet/styles|norms сразу переписываем на Мастерскую
   const normTab = (t) => (LEGACY_WORKSHOP[t] ? "workshop" : t);
-  const [tab, setTab] = useC(() => { const t = normTab(parseRoute().tab); return CAB_TAB_IDS.includes(t) ? t : "projects"; });
-  const [projId, setProjId] = useC(() => (parseRoute().tab === "projects" && parseRoute().sub) || null);
-  const [projS2, setProjS2] = useC(() => parseRoute().s2 || "");
+  const r0 = parseRoute();   // один разбор адреса на все инициализаторы (useC-инициализатор выполняется единожды)
+  const [tab, setTab] = useC(() => { const t = normTab(r0.tab); return CAB_TAB_IDS.includes(t) ? t : "projects"; });
+  const [projId, setProjId] = useC((r0.tab === "projects" && r0.sub) || null);
+  const [projS2, setProjS2] = useC(r0.s2 || "");
   const [proj, setProj] = useC(null);            // мета открытого проекта для сайдбара (имя, rooms?)
   const [drawer, setDrawer] = useC(false);       // мобильный сайдбар-drawer
   const changeTab = (t) => {
@@ -173,7 +174,7 @@ function Cabinet({ user, onLogout, go }) {
   return (
     <div className="ws minh-screen">
       <WsSidebar user={user} onLogout={onLogout} go={go} tab={tab} onTab={changeTab}
-        proj={projId ? proj : null} projS2={projS2} onNewProject={newProject}
+        proj={projId ? (proj || { id: projId, name: "", pending: true }) : null} projS2={projS2} onNewProject={newProject}
         open={drawer} onClose={() => setDrawer(false)} />
       {drawer && <div className="ws-scrim" onClick={() => setDrawer(false)} aria-hidden="true" />}
       <div className="ws-content">
@@ -203,13 +204,12 @@ function WsSidebar({ user, onLogout, go, tab, onTab, proj, projS2, onNewProject,
   const wsSub = tab === "workshop" ? (WS_SUBS.some((x) => x.id === r.sub) ? r.sub : "styles") : null;
   const goProjSection = (s2) => proj && setRoute("cabinet", "projects", proj.id, s2);
 
-  const item = (key, label, icon, { on, onClick, sub, badge } = {}) => {
+  const item = (key, label, icon, { on, onClick, sub } = {}) => {
     const Ico = I[icon] || I.grid;
     return (
       <button key={key} className={"ws-item" + (on ? " on" : "") + (sub ? " sub" : "")} onClick={onClick} aria-current={on ? "page" : undefined}>
         <Ico size={17} style={{ flex: "none" }} />
         <span className="ws-item-t">{label}</span>
-        {badge != null && <span className="ws-badge">{badge}</span>}
       </button>
     );
   };
@@ -227,7 +227,7 @@ function WsSidebar({ user, onLogout, go, tab, onTab, proj, projS2, onNewProject,
           <nav className="ws-nav" aria-label="Кабинет">
             {CAB_TABS.map(([k, t]) => (
               <React.Fragment key={k}>
-                {item(k, t, WS_ICONS[k], { on: tab === k && (k !== "workshop"), onClick: () => onTab(k) })}
+                {item(k, t, WS_ICONS[k], { on: tab === k, onClick: () => onTab(k) })}
                 {k === "workshop" && tab === "workshop" && WS_SUBS.map((s) =>
                   item("ws_" + s.id, s.label, WS_SUB_ICONS[s.id], { sub: true, on: wsSub === s.id, onClick: () => setRoute("cabinet", "workshop", s.id) }))}
               </React.Fragment>
@@ -239,12 +239,17 @@ function WsSidebar({ user, onLogout, go, tab, onTab, proj, projS2, onNewProject,
       {proj && (
         <React.Fragment>
           <button className="ws-back" onClick={() => setRoute("cabinet", "projects")}><I.arrow size={15} style={{ transform: "rotate(180deg)" }} />Все проекты</button>
-          <div className="ws-proj-name display" title={proj.name}>{proj.name}</div>
-          <nav className="ws-nav" aria-label="Разделы проекта">
-            {proj.rooms
-              ? WS_PROJ_ITEMS.map(([s2, label, icon]) => item("p_" + s2, label, icon, { on: (projS2 || "") === s2, onClick: () => goProjSection(s2) }))
-              : item("p_", "Проект", "cube", { on: true, onClick: () => goProjSection("") })}
-          </nav>
+          {/* пока мета проекта грузится — скелетон вместо ложного студийного меню (у оверлея уже проектный контекст) */}
+          {proj.pending
+            ? <div style={{ padding: "0 12px" }}><div className="skel" style={{ height: 22, borderRadius: 8, marginBottom: 14 }} /><div className="skel" style={{ height: 120, borderRadius: 10 }} /></div>
+            : <React.Fragment>
+                <div className="ws-proj-name display" title={proj.name}>{proj.name}</div>
+                <nav className="ws-nav" aria-label="Разделы проекта">
+                  {proj.rooms
+                    ? WS_PROJ_ITEMS.map(([s2, label, icon]) => item("p_" + s2, label, icon, { on: (projS2 || "") === s2, onClick: () => goProjSection(s2) }))
+                    : item("p_", "Проект", "cube", { on: true, onClick: () => goProjSection("") })}
+                </nav>
+              </React.Fragment>}
         </React.Fragment>
       )}
 
@@ -280,30 +285,8 @@ function Workshop() {
   );
 }
 
-/* верхняя панель приложения (кабинет): логотип · вкладки · +Новый проект · аккаунт-меню */
-function AppTopBar({ user, onLogout, go, tabs, tab, setTab, onNewProject }) {
-  return (
-    <header style={{ position: "fixed", top: 0, left: 0, right: 0, zIndex: 80, height: "var(--nav-h)", background: "var(--surface-glass)", backdropFilter: "blur(16px)", borderBottom: "1px solid var(--hairline)" }}>
-      <div className="container" style={{ height: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 20 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 24, minWidth: 0 }}>
-          <Logo size={23} onClick={() => go("site")} />
-          {tabs && (
-            <div className="cab-tabs" style={{ display: "flex", gap: 4, padding: 4, background: "var(--glass-2)", borderRadius: 99, border: "1px solid var(--hairline)" }}>
-              {tabs.map(([k, t]) => (
-                <button key={k} onClick={() => setTab(k)} aria-current={tab === k ? "page" : undefined} style={{ padding: "8px 15px", borderRadius: 99, fontWeight: 700, fontSize: "var(--fs-13)",
-                  background: tab === k ? "var(--surface-2)" : "transparent", color: tab === k ? "var(--text)" : "var(--muted)" }}>{t}</button>
-              ))}
-            </div>
-          )}
-        </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          {onNewProject && <button className="btn btn-primary cab-new" style={{ padding: "9px 15px", fontSize: "var(--fs-13)" }} onClick={onNewProject} aria-label="Новый проект"><I.plus size={16} /><span className="cab-new-t">Новый проект</span></button>}
-          <AccountMenu user={user} onLogout={onLogout} onTab={setTab} />
-        </div>
-      </div>
-    </header>
-  );
-}
+/* AppTopBar (фикс-топбар с вкладками) удалён в W1: кабинет целиком на WsSidebar,
+   других потребителей у топбара не было (админка рендерит свою шапку сама) */
 
 /* аккаунт-меню: профиль · тариф/биллинг · настройки · выйти
    up — раскрытие вверх (низ сайдбара воркспейса, волна W1) */
@@ -355,5 +338,4 @@ function Avatar({ user, size = 40 }) {
 
 window.AuthScreen = AuthScreen;
 window.Cabinet = Cabinet;
-window.AppTopBar = AppTopBar;
 window.Avatar = Avatar;

@@ -131,20 +131,13 @@ select.fld { appearance: none; cursor: pointer;
   .profile-grid, .cab-stats { grid-template-columns: 1fr !important; }
   .reveal[style*="grid-template-columns: 0.8fr"] { grid-template-columns: 1fr !important; }
   .proj-grid, .news-grid { grid-template-columns: repeat(2,1fr) !important; }
-  .cab-username { display: none; }
+  /* .cab-username больше не прячем: в drawer-сайдбаре (W1) месту имя не мешает,
+     правило жило ради тесного фикс-топбара, которого больше нет */
   .fav-layout { grid-template-columns: 1fr !important; }
   .fav-shop { position: static !important; }
 }
 
-/* ---- responsive: вкладки кабинета — скролл внутри пилюли, не переполнение ---- */
-@media (max-width: 720px) {
-  .cab-tabs { overflow-x: auto; max-width: 46vw; scrollbar-width: none; -webkit-overflow-scrolling: touch;
-    mask-image: linear-gradient(90deg, #000 88%, transparent); -webkit-mask-image: linear-gradient(90deg, #000 88%, transparent); }
-  .cab-tabs::-webkit-scrollbar { display: none; }
-  .cab-tabs button { white-space: nowrap; flex: none; }
-  .cab-new-t { display: none; }                                  /* «+ Новый проект» → только плюс */
-  .cab-new { padding: 9px 12px !important; }
-}
+/* (.cab-tabs/.cab-new удалены в W1 вместе с AppTopBar — навигацию кабинета ведёт сайдбар) */
 
 /* ---- responsive: аналитика-карточки (кабинет + админка) ---- */
 @media (max-width: 1040px) {
@@ -182,8 +175,6 @@ select.fld { appearance: none; cursor: pointer;
   .proj-grid, .news-grid { grid-template-columns: 1fr !important; }
   .fav-board { column-count: 1 !important; }
 
-  /* вкладки кабинета остаются доступны, просто компактнее (раньше прятались) */
-  .cab-tabs button { padding: 7px 12px !important; font-size: var(--fs-12) !important; }
 }
 
 /* очень узкие экраны — прячем словесную часть логотипа, чтобы топбар не переполнялся */
@@ -221,7 +212,7 @@ body:has(.pd-overlay) .proto-switch { display: none; }
 /* ============================================================
    ОБОЛОЧКА ВОРКСПЕЙСА (волна W1): сайдбар студии ↔ сайдбар проекта
    ============================================================ */
-.ws { --ws-w: 248px; }
+/* --ws-w объявлен в :root (styles.css) — его читает и body-level dev-свитчер */
 .ws-side { position: fixed; inset: 0 auto 0 0; width: var(--ws-w); z-index: 160; display: flex; flex-direction: column;
   padding: 18px 14px 16px; border-right: 1px solid var(--hairline); background: var(--surface); overflow-y: auto; }
 .ws-head { display: flex; align-items: center; justify-content: space-between; padding: 2px 8px 6px; }
@@ -246,12 +237,16 @@ body:has(.pd-overlay) .proto-switch { display: none; }
 /* открытый проект: полотно сметы занимает всё, кроме сайдбара проекта */
 .ws .pd-overlay { inset: 0 0 0 var(--ws-w); }
 /* смета вне роутинга (Excel-импорт, черновик калькулятора) — сайдбар не при делах:
-   на весь экран и выше него, как жила до W1 */
-.ws .pd-overlay.pd-fullscreen { inset: 0; z-index: 220; }
+   на весь экран и выше него, как жила до W1. z ниже 200: confirm/promptDialog
+   монтируются в body (.modal-back, z 200) и обязаны оставаться поверх */
+.ws .pd-overlay.pd-fullscreen { inset: 0; z-index: 190; }
 
 @media (max-width: 920px) {
-  .ws-side { width: min(300px, 84vw); transform: translateX(-102%); transition: transform var(--dur-base) var(--ease-pop); z-index: 210; }
-  .ws-side.open { transform: none; box-shadow: var(--shadow-pop); }
+  /* закрытый drawer не только уезжает, но и visibility:hidden — его кнопки
+     не должны ловить Tab/скринридер за краем экрана (фокус-ловушка) */
+  .ws-side { width: min(300px, 84vw); transform: translateX(-102%); visibility: hidden;
+    transition: transform var(--dur-base) var(--ease-pop), visibility 0s var(--dur-base); z-index: 210; }
+  .ws-side.open { transform: none; visibility: visible; transition-delay: 0s; box-shadow: var(--shadow-pop); }
   .ws-close { display: inline-flex; }
   .ws-content { margin-left: 0; }
   .ws-topbar { display: flex; align-items: center; gap: 12px; position: sticky; top: 0; z-index: 80; height: var(--nav-h);
@@ -265,7 +260,7 @@ body:has(.pd-overlay) .proto-switch { display: none; }
 @media (min-width: 921px) {
   .ws .ws-dup-tabs { display: none; }
   /* dev-свитчер не наезжает на аккаунт-карточку сайдбара */
-  body:has(.ws-side) .proto-switch { left: calc(248px + 20px); }
+  body:has(.ws-side) .proto-switch { left: calc(var(--ws-w) + 20px); }
 }
 
 /* карточка-редактор позиции: на узких экранах поля в две колонки */
