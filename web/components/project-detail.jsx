@@ -276,6 +276,29 @@ function RoomJumpMenu({ rooms }) {
   );
 }
 
+/* Д2 (W6): меню переключателя под-вьюх проекта для крошки OverlayHead (паттерн Programa
+   «Files > Project Schedule ▾»). Список разделов — WS_PROJ_ITEMS сайдбара (cabinet.jsx,
+   через window — кросс-файловые bare-const в этом Vite-трансформе нестабильны, журнал W2).
+   Только для сохранённых смет-комплектаций: у AI-демо-проекта разделов нет. */
+const projCrumbMenu = (id, current) => {
+  const items = (window.WS_PROJ_ITEMS || []).map(([s2, label]) => ({
+    id: s2 || "overview", label, on: (current || "") === s2,
+    onPick: () => setRoute("cabinet", "projects", id, s2),
+  }));
+  return items.length ? { items } : null;
+};
+const projS2Label = (s2) => { const it = (window.WS_PROJ_ITEMS || []).find(([k]) => k === s2); return it ? it[1] : "Смета"; };
+
+/* Д4 (W6): метрика «значение над подписью» для раскрытой полосы итога (физика Programa §5.5) */
+function CartMetric({ v, cap, tone }) {
+  return (
+    <span style={{ display: "inline-flex", flexDirection: "column", alignItems: "flex-end", gap: 2 }}>
+      <span className="mono" style={{ fontSize: "var(--fs-13)", fontWeight: 600, lineHeight: 1, color: tone || "var(--text)" }}>{v}</span>
+      <span className="mono" style={{ fontSize: "var(--fs-10)", color: "var(--spec-meta)", letterSpacing: ".05em", textTransform: "uppercase", whiteSpace: "nowrap" }}>{cap}</span>
+    </span>
+  );
+}
+
 /* ---------------- СМЕТА-КОМПЛЕКТАЦИЯ ПО КОМНАТАМ (реальный дизайн-проект) ----------------
    nav — раздел из сайдбара проекта (волна W1): '' смета · client · procure · versions */
 function RoomSpecOverlay({ data, nav, onClose }) {
@@ -286,8 +309,11 @@ function RoomSpecOverlay({ data, nav, onClose }) {
   const [delivery, setDelivery] = usePD(data.deliveryCost || 0);     // доставка, ₽ (транзитом, без наценки)
   const [install, setInstall] = usePD(data.installCost || 0);        // монтаж и сборка, ₽
   const [mode, setMode] = usePD("work");   // режим выгрузки: "work" (рабочая) / "client" (для клиента) / "procure" (закупка)
+  const [cartOpen, setCartOpen] = usePD(false);   // Д4 (W6): раскладка липкого итога (паттерн Programa Financial-полосы)
   const [rooms, setRooms] = usePD(data.rooms || []);  // позиции редактируемы: копии из прошлых проектов, шаблоны, поставщики
-  const [addOpen, setAddOpen] = usePD(false);         // модалка «Из прошлого проекта / шаблона»
+  // модалка «Из прошлого проекта / шаблона / по ссылке»: null | {tab, room?} —
+  // Д1 (W6): инлайн-панель комнаты открывает сразу вкладку «По ссылке» со своей комнатой
+  const [addOpen, setAddOpen] = usePD(null);
   const [roomSaved, setRoomSaved] = usePD(false);
   const [roomSaving, setRoomSaving] = usePD(false);   // guard: двойной клик «Сохранить» не должен создать проект-дубль
   const [savedId, setSavedId] = usePD(data.id || null);
@@ -359,7 +385,7 @@ function RoomSpecOverlay({ data, nav, onClose }) {
       });
       return next;
     });
-    setAddOpen(false);
+    setAddOpen(null);
     // «Первые шаги» на «Сегодня» (волна W3.1): честный флаг ровно для пути «по ссылке»
     // (AddPositionsModal, вкладка «По ссылке») — остальные источники (из проекта/шаблона)
     // не считаются этим шагом чек-листа. markOnboardStep живёт в cabinet-views.jsx —
@@ -426,6 +452,19 @@ function RoomSpecOverlay({ data, nav, onClose }) {
     const v = name.trim();
     if (rooms.some((r, i) => i !== ri && r.name === v)) { toast("Комната «" + v + "» уже есть — выберите другое имя"); return; }
     setRooms((prev) => prev.map((r, i) => (i === ri ? { ...r, name: v } : r)));
+  };
+  // Д1 (W6): новая пустая комната после ri — раньше комнату в смете создавали только
+  // импорт/копия/клиппер. Дубль имени запрещаем: комнаты рендерятся по key=name,
+  // а addFrom сливает вставки по имени. Открытый редактор позиции закрываем ДО вставки —
+  // editPos/flashPos держат индексы комнат, и сдвиг ri+1.. увёл бы редактор в чужую комнату.
+  const addRoomAfter = async (ri) => {
+    const name = await promptDialog({ title: "Новая комната", label: "Название", value: "" });
+    if (!name || !name.trim()) return;
+    const v = name.trim();
+    if (rooms.some((r) => r.name === v)) { toast("Комната «" + v + "» уже есть — выберите другое имя"); return; }
+    setEditPos(null); setFlashPos(null); setFlashSup(null);
+    setRooms((prev) => { const next = [...prev]; next.splice(ri + 1, 0, { name: v, items: [] }); return next; });
+    toast("Комната «" + v + "» добавлена — не забудьте сохранить смету.");
   };
 
   // Esc закрывает смету-оверлей (когда открыта напрямую, напр. из импорта Excel);
@@ -668,7 +707,9 @@ function RoomSpecOverlay({ data, nav, onClose }) {
   return (
     <div className={"pd-overlay" + (nav == null ? " pd-fullscreen" : "")} role="dialog" aria-label={"Смета: " + data.name}>
       <OverlayHead onBack={onClose} budget={data.budget}
-        crumbs={[{ label: "Проекты", onClick: onClose }, { label: data.name }, { label: "Смета" }]}
+        crumbs={[{ label: "Проекты", onClick: onClose }, { label: data.name },
+          { label: projS2Label(versionsOpen ? "versions" : modeToS2(mode)) }]}
+        crumbMenu={nav != null && savedId ? projCrumbMenu(savedId, versionsOpen ? "versions" : modeToS2(mode)) : null}
         title={data.name}
         sub={"Комплектация по дизайн-проекту · " + data.area + " м² · " + itemsCount + " " + plural(itemsCount, ["позиция", "позиции", "позиций"])
           + (FFE && apCnt.ok > 0 ? " · согласовано " + apCnt.ok + " из " + itemsCount : "")}
@@ -691,7 +732,7 @@ function RoomSpecOverlay({ data, nav, onClose }) {
                прыжок по комнатам + переиспользование наработанного + версии + фильтр решения */}
             <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 20 }}>
               {mode !== "procure" && rooms.length > 1 && <RoomJumpMenu rooms={rooms} />}
-              <button className="btn-ws" onClick={() => setAddOpen(true)}
+              <button className="btn-ws" onClick={() => setAddOpen({ tab: "past" })}
                 title="Скопировать позиции из прошлого проекта (с пометкой давности цены) или добавить типовую комплектацию">
                 <I.plus size={15} />Из прошлого проекта / шаблона
               </button>
@@ -887,9 +928,16 @@ function RoomSpecOverlay({ data, nav, onClose }) {
                   {mode === "work" && (editPos && editPos.ri === ri && editPos.ii === -1
                     ? <PosEditor isNew cats={cats} sups={supList} library={library} onToLibrary={saveToLibrary} onCancel={() => setEditPos(null)} onSave={(d) => savePos(ri, -1, d)} />
                     : <div style={{ display: "flex", gap: 8, marginTop: 10, flexWrap: "wrap" }}>
-                        <button className="btn-ws" onClick={() => setEditPos({ ri, ii: -1 })}>
-                          <I.plus size={14} />Позиция вручную{ri === 0 && <span className="kbd">N</span>}</button>
+                        {/* Д1 (W6): инлайн-панель добавления в контексте комнаты — паттерн Programa
+                           «строка вставки между секциями»; «По ссылке» первым с искоркой (клиппер) */}
+                        <button className="btn-ws" onClick={() => setAddOpen({ tab: "clip", room: r.name })}
+                          title={"Вставить ссылку на товар — клиппер извлечёт название и цену сразу в комнату «" + r.name + "»"}>
+                          <I.spark size={14} style={{ color: "var(--accent)" }} />По ссылке</button>
                         {FFE && <button className="btn-ws" onClick={() => setPickerRoom(ri)}><I.layers size={14} />Из библиотеки</button>}
+                        <button className="btn-ws" onClick={() => setEditPos({ ri, ii: -1 })}>
+                          <I.plus size={14} />Вручную{ri === 0 && <span className="kbd">N</span>}</button>
+                        <button className="btn-ws" onClick={() => addRoomAfter(ri)} title="Добавить новую комнату после этой">
+                          <I.plan size={14} />Комната</button>
                       </div>)}
                 </div>
               ))}
@@ -1155,12 +1203,36 @@ function RoomSpecOverlay({ data, nav, onClose }) {
               {/* статус — с суммой бюджета: на ≤560px чип шапки скрыт, и это единственная цифра бюджета */}
               <SmetaTotal amount={mode === "procure" ? grand : totalClient}
                 caption={<React.Fragment>{mode === "procure" ? "итого закупка" : "итого клиенту"} · {itemsCount} {plural(itemsCount, ["позиция", "позиции", "позиций"])} · <span role="status" aria-atomic="true">{over ? <span style={{ color: "var(--accent-ink)" }}>закупка сверх бюджета {fmtMoney(data.budget)}</span> : <span style={{ color: "var(--accent-2)" }}>закупка в бюджете {fmtMoney(data.budget)}</span>}</span></React.Fragment>} />
-              {mode === "work" && (
-                <span className="glass mono" style={{ padding: "7px 12px", borderRadius: 99, fontSize: "var(--fs-12)", fontWeight: 500, color: "var(--muted)" }}>
-                  {/* маржа после скидки: убыток — терракотой, не оливой-успехом */}
-                  себестоимость {fmtMoney(grand)} · наценка {ovrCount > 0 ? "≈ +" + effPct + "%" : "+" + markup + "%"}{discountAmt > 0 && " − скидка " + discount + "%"} = <b style={{ color: client - discountAmt - grand < 0 ? "var(--accent-ink)" : "var(--accent-2)", fontWeight: 600 }}>{fmtMoney(client - discountAmt - grand)}</b>
-                </span>
-              )}
+              {mode === "work" && (() => {
+                // Д4 (W6): раскладка итога по образцу Financial-полосы Programa — свёрнуто
+                // только маржа, кнопка ›/‹ разворачивает метрики «значение над подписью».
+                // Маржа после скидки: убыток — терракотой, не оливой-успехом.
+                const margin = client - discountAmt - grand;
+                const marginTone = margin < 0 ? "var(--accent-ink)" : "var(--accent-2)";
+                return (
+                  <span style={{ display: "inline-flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+                    {cartOpen ? (
+                      <span style={{ display: "inline-flex", alignItems: "flex-start", gap: 16, flexWrap: "wrap" }}>
+                        <CartMetric v={fmtMoney(grand)} cap="себестоимость" />
+                        <CartMetric v={"+" + fmtMoney(client - grand)} cap={"наценка " + (ovrCount > 0 ? "≈ +" + effPct + "%" : "+" + markup + "%")} />
+                        {discountAmt > 0 && <CartMetric v={"−" + fmtMoney(discountAmt)} cap={"скидка " + discount + "%"} tone="var(--accent-ink)" />}
+                        {(delivery > 0 || install > 0) && <CartMetric v={"+" + fmtMoney(delivery + install)} cap="доставка и монтаж" />}
+                        <CartMetric v={fmtMoney(margin)} cap="ваша маржа" tone={marginTone} />
+                      </span>
+                    ) : (
+                      <span className="glass mono" style={{ padding: "7px 12px", borderRadius: 99, fontSize: "var(--fs-12)", fontWeight: 500, color: "var(--muted)" }}>
+                        ваша маржа <b style={{ color: marginTone, fontWeight: 600 }}>{fmtMoney(margin)}</b>
+                      </span>
+                    )}
+                    <button className="btn-mini" onClick={() => setCartOpen((o) => !o)} aria-expanded={cartOpen}
+                      aria-label={cartOpen ? "Свернуть раскладку итога" : "Показать раскладку итога: себестоимость, наценка, скидка, доставка"}
+                      title={cartOpen ? "Свернуть" : "Раскладка итога"}>
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" aria-hidden="true"
+                        style={{ transform: cartOpen ? "rotate(180deg)" : "none", transition: "transform .15s var(--ease-pop)" }}><path d="M9 6l6 6-6 6" /></svg>
+                    </button>
+                  </span>
+                );
+              })()}
               <div style={{ marginLeft: "auto", display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
                 <SegTabs className="spec-mode" cap="Выгрузка" ariaLabel="Режим выгрузки" value={mode} onChange={changeMode}
                   items={[
@@ -1176,7 +1248,8 @@ function RoomSpecOverlay({ data, nav, onClose }) {
           </div>
         </div>
       </div>
-      {addOpen && <AddPositionsModal excludeId={savedId} roomNames={rooms.map((r) => r.name)} onClose={() => setAddOpen(false)} onAdd={addFrom} />}
+      {addOpen && <AddPositionsModal excludeId={savedId} roomNames={rooms.map((r) => r.name)}
+        initialTab={addOpen.tab} initialRoom={addOpen.room} onClose={() => setAddOpen(null)} onAdd={addFrom} />}
       {versionsOpen && (
         <VersionsModal versions={versions} current={{ project: data.name, studioName, studioContact, rooms, grand, totalClient, itemsCount }}
           onSave={saveVersion} onRestore={restoreVersion} onSetStatus={setVersionStatus}
@@ -1561,8 +1634,9 @@ function PayTrackEditor({ item, onCancel, onSave }) {
    Роадмап #1 (фаза 1 слияния): вкладка «По ссылке» — клиппер URL/HTML →
    позиция сметы через window.AIVibeClipper (перенос с vite-ветки); при
    CORS-блоке честный фолбэк «вставьте HTML страницы вручную». */
-function AddPositionsModal({ excludeId, roomNames, onClose, onAdd }) {
-  const [tab, setTab] = usePD("past");        // past | tpl | clip
+function AddPositionsModal({ excludeId, roomNames, initialTab, initialRoom, onClose, onAdd }) {
+  // Д1 (W6): инлайн-панель комнаты открывает модалку сразу на «По ссылке» со своей комнатой
+  const [tab, setTab] = usePD(initialTab || "past");        // past | tpl | clip
   const [sources, setSources] = usePD(null);  // прошлые проекты со сметой по комнатам
   const [tpls, setTpls] = usePD(null);        // типовые комплектации
   const [src, setSrc] = usePD(null);          // выбранный источник {label, stamp?, note?, rooms}
@@ -1622,7 +1696,7 @@ function AddPositionsModal({ excludeId, roomNames, onClose, onAdd }) {
       price: f.price != null ? String(Math.round(f.price)) : "",
       qty: "1",
       sup: f.supplier || "",
-      room: (roomNames && roomNames[0]) || "Гостиная",
+      room: initialRoom || (roomNames && roomNames[0]) || "Гостиная",
       // низкая уверенность или отсутствие цены → предупреждение в форме
       warnPrice: f.price == null || (conf.price != null && conf.price < 0.7),
       via: via || "",
@@ -1666,7 +1740,7 @@ function AddPositionsModal({ excludeId, roomNames, onClose, onAdd }) {
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, padding: "20px 24px", borderBottom: "1px solid var(--hairline)", flexWrap: "wrap" }}>
         <div>
           <h3 className="display" style={{ fontSize: "var(--fs-21)" }}>Добавить позиции</h3>
-          <div style={{ fontSize: "var(--fs-13)", color: "var(--muted)", marginTop: 3 }}>Из прошлого проекта или типовой комплектации</div>
+          <div style={{ fontSize: "var(--fs-13)", color: "var(--muted)", marginTop: 3 }}>Из прошлого проекта, шаблона или по ссылке на товар</div>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <SegTabs className="spec-mode" ariaLabel="Источник позиций" value={tab} onChange={switchTab}
@@ -2585,8 +2659,21 @@ function ProjectOverview({ data, onClose }) {
     <div className="pd-overlay" role="dialog" aria-label={"Обзор проекта: " + data.name}>
       <OverlayHead onBack={onClose} budget={data.budget}
         crumbs={[{ label: "Проекты", onClick: onClose }, { label: data.name }, { label: "Обзор" }]}
+        crumbMenu={data.id ? projCrumbMenu(data.id, "") : null}
         title={data.name} sub={meta}
-        right={<LoopStatusChip status={status} onChange={changeStatus} />} />
+        right={<React.Fragment>
+          {/* Д6 (W6): срок — чипом рядом со статусом (Programa: ряд чипов в шапке проекта);
+             клик ведёт в Настройки, где срок и задаётся (W4.2) */}
+          {(data.dateStart || data.dateEnd) && (
+            <button className="glass mono ov-dates" onClick={() => goSection("settings")}
+              title="Срок проекта — изменить в настройках"
+              style={{ display: "flex", alignItems: "center", gap: 7, padding: "7px 13px", borderRadius: 99, fontSize: "var(--fs-12)", fontWeight: 600, whiteSpace: "nowrap", color: "var(--muted)" }}>
+              <I.calendar size={14} style={{ color: "var(--accent-2)" }} />
+              {data.dateStart ? fmtDateRu(data.dateStart) : "—"} → {data.dateEnd ? fmtDateRu(data.dateEnd) : "—"}
+            </button>
+          )}
+          <LoopStatusChip status={status} onChange={changeStatus} />
+        </React.Fragment>} />
 
       <div className="pd-body solo">
         <div className="pd-main">
@@ -2595,12 +2682,11 @@ function ProjectOverview({ data, onClose }) {
             <div className="ov-hero" style={{ display: "grid", gridTemplateColumns: "1fr 300px", gap: 24, alignItems: "start", marginBottom: 30 }}>
               <div>
                 <div className="eyebrow jade" style={{ marginBottom: 12 }}>Обзор проекта</div>
-                {/* срок/адрес объекта (волна W4.2) — задаются в Настройках, здесь только чтение */}
-                {(data.dateStart || data.dateEnd || data.address) && (
+                {/* адрес объекта (волна W4.2) — задаётся в Настройках, здесь только чтение;
+                   срок переехал чипом в шапку рядом со статусом (Д6, W6) */}
+                {data.address && (
                   <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", fontSize: "var(--fs-13)", color: "var(--muted)", marginBottom: 10 }}>
-                    {(data.dateStart || data.dateEnd) && <span className="mono">{data.dateStart ? fmtDateRu(data.dateStart) : "—"} → {data.dateEnd ? fmtDateRu(data.dateEnd) : "—"}</span>}
-                    {(data.dateStart || data.dateEnd) && data.address && <span aria-hidden="true">·</span>}
-                    {data.address && <span>{data.address}</span>}
+                    <span>{data.address}</span>
                   </div>
                 )}
                 {data.summaryShort
@@ -2740,6 +2826,7 @@ function ProjectSettings({ data, onClose, onSaved }) {
     <div className="pd-overlay" role="dialog" aria-label={"Настройки проекта: " + data.name}>
       <OverlayHead onBack={onClose} budget={data.budget}
         crumbs={[{ label: "Проекты", onClick: onClose }, { label: data.name, onClick: () => goSection("") }, { label: "Настройки" }]}
+        crumbMenu={data.id ? projCrumbMenu(data.id, "settings") : null}
         title="Настройки проекта" sub="Имя, срок, адрес объекта и обложка — видны в Обзоре и выгрузках" />
 
       <div className="pd-body solo">

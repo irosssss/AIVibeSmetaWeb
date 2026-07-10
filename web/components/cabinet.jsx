@@ -135,6 +135,37 @@ const WS_PROJ_ITEMS = [
   ["versions", "Версии и согласование", "news"],
   ["settings", "Настройки", "gear"],   // волна W4.2: детали проекта (срок/адрес/обложка/архив)
 ];
+// Д2 (W6): список нужен и переключателю под-вьюх в крошке (OverlayHead, project-detail.jsx) —
+// через window: кросс-файловые bare-const в этом Vite-трансформе нестабильны (журнал W2)
+window.WS_PROJ_ITEMS = WS_PROJ_ITEMS;
+
+/* Д3 (W6): «Недавнее» для ⌘K (паттерн Programa «Recently visited» при пустом запросе).
+   Последние открытые проекты/разделы — в localStorage; пишет Cabinet при смене адреса,
+   читает CmdK. «Сегодня» не пишем — это дефолт-посадка, в недавнем она шум. */
+const RECENT_KEY = "aivibe_recent_visits";
+const RECENT_MAX = 6;
+const readRecents = () => {
+  try { const a = JSON.parse(localStorage.getItem(RECENT_KEY) || "[]"); return Array.isArray(a) ? a : []; }
+  catch (_) { return []; }
+};
+const pushRecent = (kind, id) => {
+  if (!id) return;
+  const rest = readRecents().filter((r) => !(r.kind === kind && r.id === id));
+  try { localStorage.setItem(RECENT_KEY, JSON.stringify([{ kind, id, at: Date.now() }, ...rest].slice(0, RECENT_MAX))); }
+  catch (_) { /* квота/приватный режим — «Недавнее» просто не пополнится */ }
+};
+// относительное время для «Недавнего»: минутная точность (fmtRelDays в ui.jsx — дневная)
+const fmtAgo = (ts) => {
+  const m = Math.round(Math.max(0, Date.now() - ts) / 60000);
+  if (m < 1) return "только что";
+  if (m < 60) return m + " мин назад";
+  const h = Math.round(m / 60);
+  if (h < 24) return h + " ч назад";
+  const d = Math.round(h / 24);
+  if (d === 1) return "вчера";
+  if (d < 30) return d + " " + plural(d, ["день", "дня", "дней"]) + " назад";
+  return new Date(ts).toLocaleDateString("ru-RU", { day: "2-digit", month: "2-digit" });
+};
 
 function Cabinet({ user, onLogout, go }) {
   // старые адреса #cabinet/styles|norms сразу переписываем на Мастерскую
@@ -200,6 +231,12 @@ function Cabinet({ user, onLogout, go }) {
     window.addEventListener("aivibe:project-renamed", onRenamed);
     return () => window.removeEventListener("aivibe:project-renamed", onRenamed);
   }, [projId]);
+
+  // Д3 (W6): пишем «Недавнее» для ⌘K — открытый проект важнее вкладки-контейнера
+  useCE(() => {
+    if (projId) pushRecent("proj", projId);
+    else if (tab !== "today") pushRecent("tab", tab);
+  }, [tab, projId]);
 
   const newProject = () => { setDrawer(false); changeTab("projects"); setTimeout(() => window.dispatchEvent(new CustomEvent("aivibe:new-project")), 0); };
 
@@ -346,9 +383,23 @@ function CmdK({ onClose, onTab }) {
   useCE(() => { AIVibeAPI.projects.list().then((l) => setProjects(l || [])); }, []);
   const qq = q.trim().toLowerCase();
   const match = (s) => !qq || (s.label + " " + (s.sub || "")).toLowerCase().includes(qq);
+  // Д3 (W6): пустой запрос = «Недавнее» первым (паттерн Programa «Recently visited»);
+  // ниже — полные списки без дублей недавнего. Поиск — по полным спискам, как раньше.
+  const recentRows = qq ? [] : readRecents().map((r) => {
+    if (r.kind === "proj") {
+      const p = (projects || []).find((x) => x.id === r.id);   // удалённый проект — тихо выпадает
+      return p && { kind: "proj", id: p.id, label: p.name, sub: fmtAgo(r.at), group: "Недавнее" };
+    }
+    const t = CAB_TABS.find(([id]) => id === r.id);
+    return t && { kind: "tab", id: t[0], label: t[1], sub: fmtAgo(r.at), group: "Недавнее" };
+  }).filter(Boolean);
+  const inRecent = new Set(recentRows.map((r) => r.kind + ":" + r.id));
   const results = [
-    ...(projects || []).map((p) => ({ kind: "proj", id: p.id, label: p.name, sub: [p.status, p.style, p.room].filter(Boolean).join(" · ") })).filter(match),
-    ...CAB_TABS.map(([id, label]) => ({ kind: "tab", id, label, sub: "Раздел кабинета" })).filter(match),
+    ...recentRows,
+    ...(projects || []).map((p) => ({ kind: "proj", id: p.id, label: p.name, sub: [p.status, p.style, p.room].filter(Boolean).join(" · ") }))
+      .filter(match).filter((r) => !inRecent.has("proj:" + r.id)),
+    ...CAB_TABS.map(([id, label]) => ({ kind: "tab", id, label, sub: "Раздел кабинета" }))
+      .filter(match).filter((r) => !inRecent.has("tab:" + r.id)),
   ];
   const cur = Math.min(idx, Math.max(0, results.length - 1));
   const pick = (r) => { if (!r) return; onClose(); if (r.kind === "proj") setRoute("cabinet", "projects", r.id); else onTab(r.id); };
@@ -359,7 +410,7 @@ function CmdK({ onClose, onTab }) {
     }
     if (e.key === "Enter") { e.preventDefault(); pick(results[cur]); }
   };
-  let lastKind = null;
+  let lastGroup = null;   // заголовки групп: «Недавнее» → «Проекты» → «Разделы» (Д3)
   return (
     <Modal onClose={onClose} label="Поиск по кабинету" maxWidth={560}>
       <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "14px 16px", borderBottom: "1px solid var(--hairline)" }}>
@@ -372,10 +423,11 @@ function CmdK({ onClose, onTab }) {
         {projects == null && <div style={{ padding: "14px 12px", fontSize: "var(--fs-13)", color: "var(--muted)" }}>Загрузка…</div>}
         {projects != null && results.length === 0 && <div style={{ padding: "14px 12px", fontSize: "var(--fs-13)", color: "var(--muted)" }}>По запросу «{q.trim()}» ничего не нашлось.</div>}
         {results.map((r, i) => {
-          const head = r.kind !== lastKind ? (lastKind = r.kind, r.kind === "proj" ? "Проекты" : "Разделы") : null;
+          const group = r.group || (r.kind === "proj" ? "Проекты" : "Разделы");
+          const head = group !== lastGroup ? (lastGroup = group, group) : null;
           const Ico = r.kind === "proj" ? I.layers : (I[WS_ICONS[r.id]] || I.grid);
           return (
-            <React.Fragment key={r.kind + r.id}>
+            <React.Fragment key={(r.group ? "rec:" : "") + r.kind + r.id}>
               {head && <div style={{ fontSize: "var(--fs-11)", fontWeight: 700, letterSpacing: ".04em", textTransform: "uppercase", color: "var(--faint)", padding: "8px 10px 4px" }}>{head}</div>}
               <button role="option" aria-selected={i === cur} className="menu-item" onClick={() => pick(r)} onMouseEnter={() => setIdx(i)}
                 style={i === cur ? { background: "var(--surface-2)" } : undefined}>

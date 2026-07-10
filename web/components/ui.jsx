@@ -485,8 +485,13 @@ function SegTabs({ items, value, onChange, ariaLabel, className = "pd-seg", cap,
 }
 
 /* шапка оверлея проекта/сметы: назад + крошки + заголовок + бюджет-чип/правый слот.
-   Не PageHead — это имя занято шапкой раздела админки (admin.jsx). */
-function OverlayHead({ onBack, crumbs, title, sub, budget, right }) {
+   Не PageHead — это имя занято шапкой раздела админки (admin.jsx).
+   Д2 (W6): crumbMenu — переключатель под-вьюх проекта прямо в крошке (паттерн Programa
+   «Files > Project Schedule ▾»): каретка за последней крошкой, меню по канону §5.6.
+   Форма: { items: [{ id, label, on, onPick }] }. */
+function OverlayHead({ onBack, crumbs, title, sub, budget, right, crumbMenu }) {
+  const [menuOpen, setMenuOpen] = useState(false);
+  useMenu(menuOpen, () => setMenuOpen(false), "pd-crumb-switch");
   return (
     <header className="pd-head">
       <button className="icon-btn" onClick={onBack} title="Назад к проектам" aria-label="Назад"><I.arrow size={18} style={{ transform: "rotate(180deg)" }} /></button>
@@ -500,6 +505,27 @@ function OverlayHead({ onBack, crumbs, title, sub, budget, right }) {
                 : <span aria-current={i === crumbs.length - 1 ? "page" : undefined}>{c.label}</span>}
             </React.Fragment>
           ))}
+          {crumbMenu && crumbMenu.items.length > 0 && (
+            <span className="pd-crumb-switch" style={{ position: "relative", display: "inline-flex", alignSelf: "center" }}>
+              <button className="icon-btn xs" aria-haspopup="menu" aria-expanded={menuOpen}
+                aria-label="Разделы проекта" title="Разделы проекта" onClick={() => setMenuOpen((o) => !o)}>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" aria-hidden="true"><path d="M6 9l6 6 6-6" /></svg>
+              </button>
+              {menuOpen && (
+                <div className="menu menu-pop" role="menu" aria-label="Разделы проекта"
+                  style={{ position: "absolute", top: "calc(100% + 6px)", left: 0, minWidth: 210, zIndex: 60, transformOrigin: "top left" }}>
+                  {crumbMenu.items.map((it) => (
+                    <button key={it.id} role="menuitem" className="menu-item" aria-current={it.on ? "true" : undefined}
+                      onClick={() => { setMenuOpen(false); if (!it.on) it.onPick(); }}
+                      style={it.on ? { background: "var(--surface-2)" } : undefined}>
+                      <span style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{it.label}</span>
+                      {it.on && <I.check size={14} style={{ marginLeft: "auto", color: "var(--accent-2-ink)", flex: "none" }} />}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </span>
+          )}
         </nav>
         <h2>{title}</h2>
         <div className="pd-sub">{sub}</div>
