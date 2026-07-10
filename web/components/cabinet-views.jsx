@@ -3,17 +3,27 @@
    ============================================================ */
 const { useState: useCV, useEffect: useCVE, useRef: useCVR } = React;
 
+const STUDIO_FIELDS = ["studioName", "studioCity", "studioPhone", "studioEmail", "studioTaxId"];
 function Profile({ user }) {
   const [an, setAn] = useCV(null);
-  const [studioName, setStudioName] = useCV("");   // брендинг клиентского портала (волна A5)
+  // брендинг + реквизиты студии (волна A5 + W4.1) — подставляются в портал, протокол
+  // согласования и PDF-выгрузки клиенту (шапки «Смета клиенту»/«Закупочный лист»)
+  const [studio, setStudio] = useCV({ studioName: "", studioCity: "", studioPhone: "", studioEmail: "", studioTaxId: "" });
   useCVE(() => {
     AIVibeAPI.profile.analytics().then(setAn);
-    AIVibeAPI.settings.get().then((s) => setStudioName((s && s.studioName) || ""));
+    AIVibeAPI.settings.get().then((s) => { if (s) setStudio(Object.fromEntries(STUDIO_FIELDS.map((k) => [k, s[k] || ""]))); });
   }, []);
-  const saveStudioName = () => {
-    const v = studioName.trim();
-    setStudioName(v);
-    AIVibeAPI.settings.update({ studioName: v }).then(() => toast(v ? "Имя для клиентского портала сохранено." : "Портал будет показывать имя вашего аккаунта.", "info", 3000));
+  const setStudioField = (k) => (e) => setStudio((s) => ({ ...s, [k]: e.target.value }));
+  // дебаунс: табуляция по всем 5 полям блюрит каждое по очереди — без задержки это было бы
+  // 5 отдельных PATCH одним и тем же объектом и 5 сложенных тостов «сохранено» подряд
+  const saveTimer = useCVR(null);
+  const saveStudio = () => {
+    if (saveTimer.current) clearTimeout(saveTimer.current);
+    saveTimer.current = setTimeout(() => {
+      const trimmed = Object.fromEntries(STUDIO_FIELDS.map((k) => [k, (studio[k] || "").trim()]));
+      setStudio(trimmed);
+      AIVibeAPI.settings.update(trimmed).then(() => toast("Реквизиты студии сохранены — подставятся в портал, протокол и PDF клиенту.", "info", 3500));
+    }, 600);
   };
   return (
     <div className="reveal in" style={{ display: "flex", flexDirection: "column", gap: 22 }} ref={useReveal()}>
@@ -83,18 +93,44 @@ function Profile({ user }) {
         </div>
       </div>
 
-      {/* ── брендинг клиентского портала (волна A5): имя студии над платформенной
-          подписью «Design Ledger» — её отключение (white-label) появится с платным
-          тарифом и настоящим биллингом, см. роадмап п.9 */}
+      {/* ── студия: брендинг + реквизиты (волна A5 + W4.1) — имя студии над платформенной
+          подписью «Design Ledger» (её отключение — white-label — появится с платным тарифом
+          и настоящим биллингом, см. роадмап п.9); город/телефон/e-mail/ИНН — контакты для
+          клиента и реквизиты к счетам (волна D) — подставляются в портал, протокол и PDF */}
       <div className="glass" style={{ borderRadius: "var(--r-xl)", padding: 30 }}>
-        <h3 style={{ fontSize: "var(--fs-18)", fontWeight: 700, marginBottom: 6 }}>Брендинг клиентского портала</h3>
-        <p style={{ color: "var(--muted)", fontSize: "var(--fs-13)", lineHeight: 1.5, marginBottom: 16, maxWidth: 640 }}>
-          Это имя клиент увидит на портале согласования и в протоколе — пусто, и мы покажем имя вашего аккаунта. Подпись «Design Ledger» внизу портала останется бесплатно; убрать её (white-label) можно будет на платном тарифе.
+        <h3 style={{ fontSize: "var(--fs-18)", fontWeight: 700, marginBottom: 6 }}>Студия</h3>
+        <p style={{ color: "var(--muted)", fontSize: "var(--fs-13)", lineHeight: 1.5, marginBottom: 20, maxWidth: 640 }}>
+          Имя, контакты и реквизиты студии — клиент увидит их на портале согласования и в PDF-выгрузках. Пустое имя — на портале покажем имя вашего аккаунта.
         </p>
-        <div style={{ display: "flex", gap: 8, maxWidth: 420 }}>
-          <input className="fld" value={studioName} onChange={(e) => setStudioName(e.target.value)}
-            onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }}
-            onBlur={saveStudioName} placeholder={user.name} aria-label="Имя студии для клиентского портала" />
+        <div style={{ display: "flex", flexDirection: "column", gap: 14, maxWidth: 480 }}>
+          {[
+            ["studioName", "Название студии", "text", user.name],
+            ["studioCity", "Город", "text", "Напр. Москва"],
+          ].map(([k, label, type, ph]) => (
+            <label key={k} style={{ display: "block" }}>
+              <span style={{ display: "block", fontSize: "var(--fs-13)", color: "var(--muted)", marginBottom: 6, fontWeight: 600 }}>{label}</span>
+              <input className="fld" type={type} value={studio[k]} onChange={setStudioField(k)}
+                onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }}
+                onBlur={saveStudio} placeholder={ph} aria-label={label} />
+            </label>
+          ))}
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+            <label style={{ display: "block" }}>
+              <span style={{ display: "block", fontSize: "var(--fs-13)", color: "var(--muted)", marginBottom: 6, fontWeight: 600 }}>Телефон для клиента</span>
+              <input className="fld" type="tel" value={studio.studioPhone} onChange={setStudioField("studioPhone")}
+                onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }} onBlur={saveStudio} placeholder="+7 900 000-00-00" aria-label="Телефон для клиента" />
+            </label>
+            <label style={{ display: "block" }}>
+              <span style={{ display: "block", fontSize: "var(--fs-13)", color: "var(--muted)", marginBottom: 6, fontWeight: 600 }}>E-mail для клиента</span>
+              <input className="fld" type="email" value={studio.studioEmail} onChange={setStudioField("studioEmail")}
+                onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }} onBlur={saveStudio} placeholder={user.email} aria-label="E-mail для клиента" />
+            </label>
+          </div>
+          <label style={{ display: "block" }}>
+            <span style={{ display: "block", fontSize: "var(--fs-13)", color: "var(--muted)", marginBottom: 6, fontWeight: 600 }}>ИНН <span style={{ color: "var(--faint)", fontWeight: 400 }}>(пригодится для счетов)</span></span>
+            <input className="fld mono" value={studio.studioTaxId} onChange={setStudioField("studioTaxId")}
+              onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }} onBlur={saveStudio} placeholder="770000000000" aria-label="ИНН" />
+          </label>
         </div>
       </div>
     </div>

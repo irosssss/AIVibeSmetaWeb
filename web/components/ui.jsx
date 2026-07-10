@@ -68,6 +68,7 @@ const I = {
   spinner: (p) => <Icon {...p} d="M12 3a9 9 0 1 0 9 9" />,
   download: (p) => <Icon {...p} d={<><path d="M12 3v12M7 10l5 5 5-5" /><path d="M5 21h14" /></>} />,
   calendar: (p) => <Icon {...p} d={<><rect x="3.5" y="5" width="17" height="15" rx="2" /><path d="M3.5 9.5h17M8 3v4M16 3v4" /></>} />,
+  gear: (p) => <Icon {...p} d={<><circle cx="12" cy="12" r="3.2" /><path d="M12 3.5v2.4M12 18.1v2.4M20.5 12h-2.4M5.9 12H3.5M17.8 6.2l-1.7 1.7M7.9 16.1l-1.7 1.7M17.8 17.8l-1.7-1.7M7.9 7.9 6.2 6.2" /></>} />,
 };
 
 /* ---------- Картинка с striped-плейсхолдером и fallback ---------- */

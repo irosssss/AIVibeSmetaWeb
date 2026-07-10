@@ -101,6 +101,12 @@ function ClientPortal({ shareId }) {
         <span style={{ fontSize: "var(--fs-12)", fontWeight: 700, letterSpacing: ".04em", textTransform: "uppercase", color: "var(--faint)" }}>Смета на согласование</span>
       </div>
       {rec.studioName && <div style={{ fontSize: "var(--fs-13)", fontWeight: 700, color: "var(--accent-ink)", marginTop: 14 }}>{rec.studioName}</div>}
+      {/* контакты студии (волна W4.1) — снимок на момент публикации ссылки, как и studioName */}
+      {(rec.studioCity || rec.studioPhone || rec.studioEmail) && (
+        <div style={{ fontSize: "var(--fs-12)", color: "var(--muted)", marginTop: 2 }}>
+          {[rec.studioCity, rec.studioPhone, rec.studioEmail].filter(Boolean).join(" · ")}
+        </div>
+      )}
       <h1 className="display" style={{ fontSize: "clamp(26px,4vw,34px)", marginTop: rec.studioName ? 4 : 14 }}>{rec.projectName || "Смета комплектации"}</h1>
       <p style={{ color: "var(--muted)", fontSize: "var(--fs-14)", marginTop: 6 }}>
         {itemsCount} {plural(itemsCount, ["позиция", "позиции", "позиций"])} · итог {fmtMoney(cp.totalClient)}

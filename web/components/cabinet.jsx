@@ -133,6 +133,7 @@ const WS_PROJ_ITEMS = [
   ["client", "Для клиента", "user"],
   ["procure", "Закупка", "truck"],
   ["versions", "Версии и согласование", "news"],
+  ["settings", "Настройки", "gear"],   // волна W4.2: детали проекта (срок/адрес/обложка/архив)
 ];
 
 function Cabinet({ user, onLogout, go }) {
@@ -175,6 +176,14 @@ function Cabinet({ user, onLogout, go }) {
     let alive = true;
     AIVibeAPI.projects.get(projId).then((d) => { if (alive) setProj(d && d.id ? { id: d.id, name: d.name, rooms: !!d.rooms } : null); });
     return () => { alive = false; };
+  }, [projId]);
+  // «Настройки» проекта (волна W4.2) переименовывают, пока сайдбар уже держит своё имя
+  // из фетча выше (не перезапускается — он завязан на [projId], а не на смену имени) —
+  // без этого шапка сайдбара показывала бы старое имя до закрытия/переоткрытия проекта
+  useCE(() => {
+    const onRenamed = (e) => { if (e.detail && e.detail.id === projId) setProj((p) => (p ? { ...p, name: e.detail.name } : p)); };
+    window.addEventListener("aivibe:project-renamed", onRenamed);
+    return () => window.removeEventListener("aivibe:project-renamed", onRenamed);
   }, [projId]);
 
   const newProject = () => { setDrawer(false); changeTab("projects"); setTimeout(() => window.dispatchEvent(new CustomEvent("aivibe:new-project")), 0); };

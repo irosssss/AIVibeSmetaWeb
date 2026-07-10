@@ -133,6 +133,11 @@ function ProjectDetail({ id, nav, onClose, initialStyle }) {
     });
     return () => { alive = false; setTitle("cabinet"); };
   }, [id]);
+  // «Настройки» (волна W4.2) сохраняют через AIVibeAPI напрямую, не через setData — без
+  // этого Обзор показывал бы старые значения до следующего полного перемонтирования.
+  // projects.update(...) уже возвращает свежую запись — мержим её в data локально, вместо
+  // повторного projects.get(id) (тот делает 2 цепочки delay() ради данных, которые уже есть)
+  const applyPatch = (patch) => setData((d) => (d ? { ...d, ...patch } : d));
 
   usePDE(() => {
     AIVibeAPI.settings.get().then(setSettings);
@@ -183,6 +188,8 @@ function ProjectDetail({ id, nav, onClose, initialStyle }) {
   // иначе «Сохранить» запишет значения предыдущего проекта в новый
   if (data.rooms) {
     if (nav === "") return <ProjectOverview key={data.id || "overview"} data={data} onClose={onClose} />;
+    // W4.2: «Настройки» — детали проекта (не режим выгрузки сметы), отдельная от RoomSpecOverlay ветка
+    if (nav === "settings") return <ProjectSettings key={data.id || "settings"} data={data} onClose={onClose} onSaved={applyPatch} />;
     return <RoomSpecOverlay key={data.id || "imported"} data={data} nav={nav} onClose={onClose} />;
   }
 
@@ -256,6 +263,10 @@ function RoomSpecOverlay({ data, nav, onClose }) {
   usePDE(() => { AIVibeAPI.settings.get().then(setSettings); }, []);
   const [me, setMe] = usePD(null);               // аккаунт — фолбэк имени студии для брендинга портала (волна A5)
   usePDE(() => { AIVibeAPI.profile.get().then(setMe); }, []);
+  // брендинг + контакты студии (волна A5 + W4.1) — один источник для портала/протокола/PDF,
+  // вместо повтора одной и той же сборки в 3 местах
+  const studioName = (settings && settings.studioName) || (me && me.name) || "";
+  const studioContact = settings ? [settings.studioCity, settings.studioPhone, settings.studioEmail].filter(Boolean).join(" · ") : "";
   const [library, setLibrary] = usePD([]);       // библиотека товаров студии (волна B1): автоподстановка + пикер
   const reloadLibrary = () => AIVibeAPI.library.list().then(setLibrary);
   usePDE(() => { reloadLibrary(); }, []);
@@ -532,7 +543,7 @@ function RoomSpecOverlay({ data, nav, onClose }) {
     : [];
   const ergoWarns = ergo.reduce((s, e) => s + e.res.warns, 0);
   const ergoSkipped = rooms.length - ergo.length;
-  const specArgs = () => ({ project: data.name, area: data.area, rooms, grand, markupPct: markup, catMarkupPct: catMarkup, clientTotal: client, discountPct: discount, deliveryCost: delivery, installCost: install, budget: data.budget, mode });
+  const specArgs = () => ({ project: data.name, area: data.area, rooms, grand, markupPct: markup, catMarkupPct: catMarkup, clientTotal: client, discountPct: discount, deliveryCost: delivery, installCost: install, budget: data.budget, mode, studioName, studioContact });
   const exportPDF = () => { if (window.AIVibePDF && AIVibePDF.exportRoomSpec) withLib("pdf", () => AIVibePDF.exportRoomSpec(specArgs())); };
   const exportXLSX = () => { if (window.AIVibeXLSX) withLib("xlsx", () => AIVibeXLSX.exportRoomSpec(specArgs())); };
 
@@ -581,9 +592,7 @@ function RoomSpecOverlay({ data, nav, onClose }) {
   const shareVersion = (v) => {
     let rec = v.shareId ? FFE.loadPortalShare(v.shareId) : null;
     if (!rec) {
-      // брендинг портала (волна A5): своё имя студии из настроек, иначе — имя аккаунта
-      const studioName = (settings && settings.studioName) || (me && me.name) || "";
-      rec = FFE.createPortalShare({ projectId: savedId, projectName: data.name, versionId: v.id, versionLabel: v.label, snapshot: v.snapshot, studioName });
+      rec = FFE.createPortalShare({ projectId: savedId, projectName: data.name, versionId: v.id, versionLabel: v.label, snapshot: v.snapshot, studioName, studioCity: settings && settings.studioCity, studioPhone: settings && settings.studioPhone, studioEmail: settings && settings.studioEmail });
       patchVersion(v.id, { shareId: rec.shareId, status: v.status === "draft" ? "sent" : v.status, statusAt: FFE.today() });
       // «Первые шаги» на «Сегодня» (волна W3.1): честный флаг — первая настоящая выдача
       // ссылки клиенту (не повторная, см. `if (!rec)` выше)
@@ -1115,7 +1124,7 @@ function RoomSpecOverlay({ data, nav, onClose }) {
       </div>
       {addOpen && <AddPositionsModal excludeId={savedId} roomNames={rooms.map((r) => r.name)} onClose={() => setAddOpen(false)} onAdd={addFrom} />}
       {versionsOpen && (
-        <VersionsModal versions={versions} current={{ project: data.name, studioName: (settings && settings.studioName) || (me && me.name) || "", rooms, grand, totalClient, itemsCount }}
+        <VersionsModal versions={versions} current={{ project: data.name, studioName, studioContact, rooms, grand, totalClient, itemsCount }}
           onSave={saveVersion} onRestore={restoreVersion} onSetStatus={setVersionStatus}
           onPatch={patchVersion} onRemove={removeVersion} onShare={shareVersion} onClose={closeVersions} />
       )}
@@ -1237,6 +1246,7 @@ function VersionsModal({ versions, current, onSave, onRestore, onSetStatus, onPa
                     project: current.project, versionLabel: v.label, createdAt: v.createdAt,
                     vStatusLabel: sm.label, statusAt: v.statusAt, respondedAt: sh && sh.respondedAt,
                     studioName: (sh && sh.studioName) || current.studioName,
+                    studioContact: (sh && [sh.studioCity, sh.studioPhone, sh.studioEmail].filter(Boolean).join(" · ")) || current.studioContact,
                     snapshot: sh ? sh.snapshot : v.snapshot,
                   }))}
                   title="Скачать протокол согласования: решения клиента по позициям, переписка и таймстампы">
@@ -2512,6 +2522,14 @@ function ProjectOverview({ data, onClose }) {
             <div className="ov-hero" style={{ display: "grid", gridTemplateColumns: "1fr 300px", gap: 24, alignItems: "start", marginBottom: 30 }}>
               <div>
                 <div className="eyebrow jade" style={{ marginBottom: 12 }}>Обзор проекта</div>
+                {/* срок/адрес объекта (волна W4.2) — задаются в Настройках, здесь только чтение */}
+                {(data.dateStart || data.dateEnd || data.address) && (
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", fontSize: "var(--fs-13)", color: "var(--muted)", marginBottom: 10 }}>
+                    {(data.dateStart || data.dateEnd) && <span className="mono">{data.dateStart ? fmtDateRu(data.dateStart) : "—"} → {data.dateEnd ? fmtDateRu(data.dateEnd) : "—"}</span>}
+                    {(data.dateStart || data.dateEnd) && data.address && <span aria-hidden="true">·</span>}
+                    {data.address && <span>{data.address}</span>}
+                  </div>
+                )}
                 {data.summaryShort
                   ? <p style={{ color: "var(--muted)", fontSize: "var(--fs-15)", lineHeight: 1.65, maxWidth: 640 }}>{data.summaryShort}</p>
                   : <p style={{ color: "var(--faint)", fontSize: "var(--fs-15)", lineHeight: 1.65 }}>Описание проекта появится здесь — соберите смету, задайте наценку и опубликуйте версию клиенту.</p>}
@@ -2585,6 +2603,128 @@ function ProjectOverview({ data, onClose }) {
   );
 }
 
+/* ---------------- НАСТРОЙКИ ПРОЕКТА (волна W4.2) ----------------
+   «Детали»: имя/срок/адрес объекта/описание/обложка + Архив (= статус петли «Архив»,
+   не отдельная сущность — тот же AIVibeAPI.projects.update, что и смена статуса в
+   Обзоре/карточке). «Портал клиента» (дефолтная вьюха, список клиентов) сознательно НЕ
+   строим сейчас — у нас нет ни режима просмотра сметы клиентом (кроме единственного,
+   который уже есть), ни multi-user доступа: делать переключатель без реального эффекта
+   значило бы имитировать функцию. Вернётся вместе с режимом «Превью» (роадмап #11,
+   отмечен 🔴 «нужны детали от владельца») — см. журнал волны W4. */
+const SETTINGS_COVERS = ["living", "bedroom", "kitchen", "office", "deco", "studio"];
+function ProjectSettings({ data, onClose, onSaved }) {
+  const [name, setName] = usePD(data.name || "");
+  const [address, setAddress] = usePD(data.address || "");
+  const [dateStart, setDateStart] = usePD(data.dateStart || "");
+  const [dateEnd, setDateEnd] = usePD(data.dateEnd || "");
+  const [summaryShort, setSummaryShort] = usePD(data.summaryShort || "");
+  const [cover, setCover] = usePD(data.cover || "living");
+  const [saving, setSaving] = usePD(false);
+  const [archiving, setArchiving] = usePD(false);
+  const goSection = (s2) => setRoute("cabinet", "projects", data.id, s2);
+
+  const save = async () => {
+    if (saving) return;
+    setSaving(true);
+    const cleanName = name.trim() || data.name;
+    try {
+      const updated = await AIVibeAPI.projects.update(data.id, { name: cleanName, address: address.trim(), dateStart, dateEnd, summaryShort: summaryShort.trim(), cover });
+      onSaved(updated);   // Обзор держит отдельную копию data — без мержа показал бы старое
+      setName(cleanName);
+      setTitle("cabinet", cleanName);
+      // шапка сайдбара (cabinet.jsx WsSidebar) держит СВОЮ отдельную копию имени, фетчнутую
+      // по [projId] — событие, не проп: тот эффект живёт в другом компоненте дерева
+      window.dispatchEvent(new CustomEvent("aivibe:project-renamed", { detail: { id: data.id, name: cleanName } }));
+      toast("Настройки проекта сохранены");
+    } catch (e) {
+      toast("Не удалось сохранить настройки — попробуйте ещё раз.", "warn", 5000);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const archive = async () => {
+    if (archiving) return;
+    const ok = await confirmDialog({ title: "Архивировать проект?", text: "«" + data.name + "» перейдёт в статус «Архив» — данные останутся на месте, просто уйдёт из активных.", confirmLabel: "В архив" });
+    if (!ok) return;
+    setArchiving(true);
+    try {
+      const updated = await AIVibeAPI.projects.update(data.id, { status: "Архив" });
+      onSaved(updated);
+      toast("Проект «" + data.name + "» отправлен в архив");
+    } catch (e) {
+      toast("Не удалось архивировать проект — попробуйте ещё раз.", "warn", 5000);
+      setArchiving(false);
+      return;
+    }
+    goSection("");   // назад в Обзор — новый статус там уже отразится
+  };
+
+  const fld = { display: "block" };
+  const lbl = { display: "block", fontSize: "var(--fs-13)", color: "var(--muted)", marginBottom: 7, fontWeight: 600 };
+
+  return (
+    <div className="pd-overlay" role="dialog" aria-label={"Настройки проекта: " + data.name}>
+      <OverlayHead onBack={onClose} budget={data.budget}
+        crumbs={[{ label: "Проекты", onClick: onClose }, { label: data.name, onClick: () => goSection("") }, { label: "Настройки" }]}
+        title="Настройки проекта" sub="Имя, срок, адрес объекта и обложка — видны в Обзоре и выгрузках" />
+
+      <div className="pd-body solo">
+        <div className="pd-main">
+          <section className="pd-section" style={{ borderBottom: "none" }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: 18, maxWidth: 640 }}>
+              <label style={fld}>
+                <span style={lbl}>Название проекта</span>
+                <input className="fld" value={name} onChange={(e) => setName(e.target.value)} aria-label="Название проекта" />
+              </label>
+
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                <label style={fld}>
+                  <span style={lbl}>Начало работ</span>
+                  <input className="fld" type="date" value={dateStart} onChange={(e) => setDateStart(e.target.value)} aria-label="Начало работ" />
+                </label>
+                <label style={fld}>
+                  <span style={lbl}>Окончание</span>
+                  <input className="fld" type="date" value={dateEnd} onChange={(e) => setDateEnd(e.target.value)} aria-label="Окончание работ" />
+                </label>
+              </div>
+
+              <label style={fld}>
+                <span style={lbl}>Адрес объекта</span>
+                <input className="fld" value={address} onChange={(e) => setAddress(e.target.value)} placeholder="Напр. Москва, ул. Тверская, 12" aria-label="Адрес объекта" />
+              </label>
+
+              <label style={fld}>
+                <span style={lbl}>Описание <span style={{ color: "var(--faint)", fontWeight: 400 }}>(показывается в Обзоре)</span></span>
+                <textarea className="fld" rows={3} value={summaryShort} onChange={(e) => setSummaryShort(e.target.value)}
+                  placeholder="Пара предложений о проекте — увидите на Обзоре и на портале" style={{ resize: "vertical", minHeight: 74 }} aria-label="Описание" />
+              </label>
+
+              <div>
+                <span style={lbl}>Обложка</span>
+                <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                  {SETTINGS_COVERS.map((c) => (
+                    <button key={c} type="button" onClick={() => setCover(c)} aria-pressed={cover === c} aria-label={"Обложка: " + c}
+                      style={{ width: 72, height: 52, borderRadius: 10, overflow: "hidden", border: "2px solid " + (cover === c ? "var(--accent)" : "var(--hairline)"), flex: "none" }}>
+                      <Img src={PHOTOS[c]} label="" />
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </section>
+        </div>
+      </div>
+
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap", padding: "16px 26px", borderTop: "1px solid var(--hairline)", background: "var(--surface)" }}>
+        <button className="btn btn-ghost" onClick={archive} disabled={archiving}>{archiving ? "Архивируем…" : "Архивировать проект"}</button>
+        <button className="btn btn-primary" onClick={save} disabled={saving}>{saving ? "Сохраняем…" : <React.Fragment><I.check size={16} />Сохранить</React.Fragment>}</button>
+      </div>
+    </div>
+  );
+}
+
 window.ProjectDetail = ProjectDetail;
+window.ProjectSettings = ProjectSettings;
 window.ProjectOverview = ProjectOverview;
 window.RoomSpecOverlay = RoomSpecOverlay;   // рендерится из кабинета (импорт Excel / черновик калькулятора); в ES-модулях без явного экспорта был бы ReferenceError

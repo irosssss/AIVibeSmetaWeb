@@ -537,6 +537,9 @@
       versionId: src.versionId || null,
       versionLabel: str(src.versionLabel),
       studioName: str(src.studioName),          // брендинг портала (волна A5): имя студии на момент публикации ссылки
+      // контакты студии для клиента (волна W4.1) — тот же снимок-на-момент-публикации;
+      // ИНН намеренно не сюда — он для будущих счетов (волна D), не для клиентского портала
+      studioCity: str(src.studioCity), studioPhone: str(src.studioPhone), studioEmail: str(src.studioEmail),
       snapshot: JSON.parse(JSON.stringify(src.snapshot || {})),
       createdAt: new Date().toISOString(),
       respondedAt: null,
