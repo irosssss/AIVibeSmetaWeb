@@ -244,6 +244,38 @@ function ProjectDetail({ id, nav, onClose, initialStyle }) {
   );
 }
 
+/* W5.1: «К комнате ▾» — прыжок по секциям длинной сметы (паттерн Programa «View section»):
+   пункты-menuitem «имя + счётчик позиций» по канону .menu (§5.6), Esc/↑↓/click-outside —
+   useMenu, т.е. работает с клавиатуры. Скролл — scrollIntoView внутри .pd-main. */
+function RoomJumpMenu({ rooms }) {
+  const [open, setOpen] = usePD(false);
+  useMenu(open, () => setOpen(false), "rs-jump-wrap");
+  const jump = (ri) => {
+    setOpen(false);
+    const el = document.getElementById("rs-room-" + ri);
+    if (el) el.scrollIntoView({ behavior: motionOK() ? "smooth" : "auto", block: "start" });
+  };
+  return (
+    <div className="rs-jump-wrap" style={{ position: "relative" }}>
+      <button className="btn-ws" aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen((o) => !o)} title="Перейти к комнате">
+        <I.plan size={15} />К комнате
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" aria-hidden="true" style={{ color: "var(--faint)" }}><path d="M6 9l6 6 6-6" /></svg>
+      </button>
+      {open && (
+        <div className="menu menu-pop" role="menu" aria-label="Комнаты сметы"
+          style={{ position: "absolute", top: "calc(100% + 6px)", left: 0, minWidth: 220, maxHeight: 320, overflowY: "auto", zIndex: 40, transformOrigin: "top left" }}>
+          {rooms.map((r, ri) => (
+            <button key={ri} role="menuitem" className="menu-item" onClick={() => jump(ri)}>
+              <span style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.name}</span>
+              <span className="mi-count">{r.items.length}</span>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 /* ---------------- СМЕТА-КОМПЛЕКТАЦИЯ ПО КОМНАТАМ (реальный дизайн-проект) ----------------
    nav — раздел из сайдбара проекта (волна W1): '' смета · client · procure · versions */
 function RoomSpecOverlay({ data, nav, onClose }) {
@@ -407,6 +439,20 @@ function RoomSpecOverlay({ data, nav, onClose }) {
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
   }, []);
+  // W5.4: хоткей N — новая позиция (в первой комнате, подсказка-бейдж на её кнопке).
+  // Не срабатывает из полей ввода, при открытом редакторе/модалке и вне «Рабочей».
+  usePDE(() => {
+    const onKey = (e) => {
+      if (e.code !== "KeyN" || e.metaKey || e.ctrlKey || e.altKey) return;
+      if (/^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName) || e.target.isContentEditable) return;
+      if (mode !== "work" || editPos || !rooms.length) return;
+      if (document.querySelector(".modal-back")) return;   // поверх — модалка (версии/диалог/квиз)
+      e.preventDefault();
+      setEditPos({ ri: 0, ii: -1 });
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [mode, editPos, rooms.length]);
   // наценка: базовая + необязательный оверрайд по разделу. Округляется ЦЕНА ЗА ШТУКУ,
   // сумма строки = цена × кол-во — тогда колонки документа бьются арифметически (UI = PDF = Excel)
   const catOf = (it) => it.cat || "Прочее";
@@ -641,22 +687,23 @@ function RoomSpecOverlay({ data, nav, onClose }) {
             <h3 className="pd-h">Смета по комнатам</h3>
             <p style={{ color: "var(--muted)", fontSize: "var(--fs-14)", marginTop: 4, marginBottom: 14, maxWidth: 820, lineHeight: 1.6 }}>{data.summaryShort}</p>
 
-            {/* переиспользование наработанного: копии позиций из прошлых смет + типовые комплектации */}
-            <div style={{ marginBottom: 20 }}>
-              <button className="btn btn-ghost" onClick={() => setAddOpen(true)}
+            {/* тулбар сметы (W5.0: компактные .btn-ws 28px с ring-тенью):
+               прыжок по комнатам + переиспользование наработанного + версии + фильтр решения */}
+            <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 20 }}>
+              {mode !== "procure" && rooms.length > 1 && <RoomJumpMenu rooms={rooms} />}
+              <button className="btn-ws" onClick={() => setAddOpen(true)}
                 title="Скопировать позиции из прошлого проекта (с пометкой давности цены) или добавить типовую комплектацию">
-                <I.plus size={16} />Из прошлого проекта / шаблона
+                <I.plus size={15} />Из прошлого проекта / шаблона
               </button>
               {FFE && (
-                <button className="btn btn-ghost" onClick={openVersions} title="Снимки сметы, сравнение с текущей и статус согласования с клиентом">
-                  <I.news size={16} />Версии{versions.length ? " · " + versions.length : ""}
+                <button className="btn-ws" onClick={openVersions} title="Снимки сметы, сравнение с текущей и статус согласования с клиентом">
+                  <I.news size={15} />Версии{versions.length ? " · " + versions.length : ""}
                 </button>
               )}
               {FFE && mode === "work" && itemsCount > 0 && (
-                <button className="btn btn-ghost" onClick={() => setApFilter((f) => !f)} aria-pressed={apFilter}
-                  title={apFilter ? "Показать все позиции" : "Оставить только позиции, ждущие решения клиента (согласованные скрыть)"}
-                  style={apFilter ? { color: "var(--accent-ink)" } : undefined}>
-                  <I.check size={16} />{apFilter ? "Показать все" : "Ждут решения · " + apWaiting}
+                <button className="btn-ws" onClick={() => setApFilter((f) => !f)} aria-pressed={apFilter}
+                  title={apFilter ? "Показать все позиции" : "Оставить только позиции, ждущие решения клиента (согласованные скрыть)"}>
+                  <I.check size={15} />{apFilter ? "Показать все" : "Ждут решения · " + apWaiting}
                 </button>
               )}
             </div>
@@ -741,7 +788,7 @@ function RoomSpecOverlay({ data, nav, onClose }) {
                можно переименовать, позицию — добавить вручную. «Для клиента» — чистый просмотр. */}
             {mode !== "procure" && <div key={"rooms-" + mode} className="view-enter" style={{ display: "flex", flexDirection: "column", gap: 14 }}>
               {rooms.map((r, ri) => (
-                <div key={r.name} className="glass" style={{ borderRadius: "var(--r-lg)", padding: "16px 18px" }}>
+                <div key={r.name} id={"rs-room-" + ri} className="glass" style={{ borderRadius: "var(--r-lg)", padding: "16px 18px", scrollMarginTop: 12 }}>
                   <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 12, marginBottom: 8, flexWrap: "wrap" }}>
                     <span style={{ display: "flex", alignItems: "baseline", gap: 6, minWidth: 0 }}>
                       <span style={{ fontWeight: 800, fontFamily: "var(--font-display)", fontSize: "var(--fs-16)" }}>{r.name}{r.area ? <span style={{ color: "var(--faint)", fontWeight: 500, fontSize: "var(--fs-13)" }}> · {r.area} м²</span> : null}</span>
@@ -817,10 +864,21 @@ function RoomSpecOverlay({ data, nav, onClose }) {
                           </button>
                         )}
                       </div>
-                      {editing && (
-                        <PosEditor item={it} cats={cats} sups={supList} library={library} onToLibrary={saveToLibrary}
-                          onCancel={() => setEditPos(null)} onSave={(d) => savePos(ri, i, d)} onDelete={() => removePos(ri, i)} />
-                      )}
+                      {editing && (() => {
+                        // W5.3: prev/next по ВИДИМЫМ строкам (фильтр «ждут решения» скрывает
+                        // согласованные — прыжок на скрытую строку спрятал бы и редактор)
+                        const visIdx = (from, dir) => {
+                          let j = from + dir;
+                          while (j >= 0 && j < r.items.length && apFilter && apOf(r.items[j]) === "ok") j += dir;
+                          return j >= 0 && j < r.items.length ? j : null;
+                        };
+                        return (
+                          <PosEditor item={it} cats={cats} sups={supList} library={library} onToLibrary={saveToLibrary}
+                            posNav={{ index: i, total: r.items.length, prev: visIdx(i, -1), next: visIdx(i, 1),
+                              go: (j, draft) => { if (draft) savePos(ri, i, draft); setEditPos({ ri, ii: j }); } }}
+                            onCancel={() => setEditPos(null)} onSave={(d) => savePos(ri, i, d)} onDelete={() => removePos(ri, i)} />
+                        );
+                      })()}
                       </React.Fragment>
                       );
                     })}
@@ -832,10 +890,9 @@ function RoomSpecOverlay({ data, nav, onClose }) {
                   {mode === "work" && (editPos && editPos.ri === ri && editPos.ii === -1
                     ? <PosEditor isNew cats={cats} sups={supList} library={library} onToLibrary={saveToLibrary} onCancel={() => setEditPos(null)} onSave={(d) => savePos(ri, -1, d)} />
                     : <div style={{ display: "flex", gap: 8, marginTop: 10, flexWrap: "wrap" }}>
-                        <button className="btn btn-ghost" style={{ padding: "7px 12px", fontSize: "var(--fs-12)" }}
-                          onClick={() => setEditPos({ ri, ii: -1 })}><I.plus size={14} />Позиция вручную</button>
-                        {FFE && <button className="btn btn-ghost" style={{ padding: "7px 12px", fontSize: "var(--fs-12)" }}
-                          onClick={() => setPickerRoom(ri)}><I.layers size={14} />Из библиотеки</button>}
+                        <button className="btn-ws" onClick={() => setEditPos({ ri, ii: -1 })}>
+                          <I.plus size={14} />Позиция вручную{ri === 0 && <span className="kbd">N</span>}</button>
+                        {FFE && <button className="btn-ws" onClick={() => setPickerRoom(ri)}><I.layers size={14} />Из библиотеки</button>}
                       </div>)}
                 </div>
               ))}
@@ -1197,9 +1254,7 @@ function VersionsModal({ versions, current, onSave, onRestore, onSetStatus, onPa
         </div>
 
         {!versions.length && (
-          <div style={{ padding: "22px 8px", textAlign: "center", color: "var(--muted)", fontSize: "var(--fs-14)", lineHeight: 1.6 }}>
-            Пока нет сохранённых версий.<br />Сохраните снимок перед отправкой клиенту — и отмечайте статус согласования по ответу.
-          </div>
+          <EmptyState compact icon="news" text={<React.Fragment>Пока нет сохранённых версий.<br />Сохраните снимок перед отправкой клиенту — и отмечайте статус согласования по ответу.</React.Fragment>} />
         )}
 
         {versions.map((v) => {
@@ -1349,7 +1404,7 @@ function CommentThreadCard({ group, onReply }) {
    деньги нормализуются до целых рублей, расчёты идут прежним конвейером
    (инвариант UI=PDF=Excel не трогаем). Enter — сохранить, Esc — закрыть
    редактор (не оверлей: stopPropagation до window-слушателя). */
-function PosEditor({ item, cats, sups, isNew, onSave, onDelete, onCancel, library, onToLibrary }) {
+function PosEditor({ item, cats, sups, isNew, onSave, onDelete, onCancel, library, onToLibrary, posNav }) {
   const [d, setD] = usePD({
     title: item ? item.title : "",
     cat: (item && item.cat) || "",
@@ -1363,6 +1418,10 @@ function PosEditor({ item, cats, sups, isNew, onSave, onDelete, onCancel, librar
   const ok = !!d.title.trim() && price > 0;
   const draft = () => ({ title: d.title.trim(), qty, price, cat: d.cat.trim(), sup: d.sup.trim() });
   const submit = () => { if (ok) onSave(draft()); };
+  // W5.3: правил ли пользователь поля (для prev/next: изменённый валидный черновик сохраняем перед переходом)
+  const dirty = !!item && (d.title.trim() !== item.title || qty !== (item.qty || 1) || price !== item.price
+    || d.cat.trim() !== (item.cat || "") || d.sup.trim() !== (item.sup || ""));
+  const goNav = (j) => { if (j != null && posNav) posNav.go(j, ok && dirty ? draft() : null); };
   // библиотека товаров студии (волна B1): подсказки по названию + подстановка цены/раздела/поставщика
   const lib = library || [];
   const libMatch = d.title.trim() ? lib.find((p) => (p.title || "").trim().toLowerCase() === d.title.trim().toLowerCase()) : null;
@@ -1385,6 +1444,19 @@ function PosEditor({ item, cats, sups, isNew, onSave, onDelete, onCancel, librar
         if (e.key === "Enter" && e.target.tagName === "INPUT") { e.preventDefault(); submit(); }
         if (e.key === "Escape") { e.stopPropagation(); onCancel(); }
       }}>
+      {/* W5.3 (§5.7): листание позиций комнаты не закрывая редактор — мини-стрелки в шапке;
+         изменённый валидный черновик сохраняется при переходе, нетронутый — просто листаем */}
+      {!isNew && posNav && posNav.total > 1 && (
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginBottom: -2 }}>
+          <span className="mono" style={{ fontSize: "var(--fs-11)", color: "var(--spec-meta)" }}>Позиция {posNav.index + 1} из {posNav.total}</span>
+          <span style={{ display: "inline-flex", gap: 4 }}>
+            <button type="button" className="btn-mini" disabled={posNav.prev == null} onClick={() => goNav(posNav.prev)}
+              title="К предыдущей позиции (правки сохранятся)" aria-label="Предыдущая позиция"><Icon size={12} stroke={2} d="M5 15l7-7 7 7" /></button>
+            <button type="button" className="btn-mini" disabled={posNav.next == null} onClick={() => goNav(posNav.next)}
+              title="К следующей позиции (правки сохранятся)" aria-label="Следующая позиция"><Icon size={12} stroke={2} d="M5 9l7 7 7-7" /></button>
+          </span>
+        </div>
+      )}
       <label style={lab}>Название
         <input style={fld} value={d.title} autoFocus list="pe-lib-list" onChange={(e) => onTitle(e.target.value)} />
       </label>
@@ -1605,9 +1677,7 @@ function AddPositionsModal({ excludeId, roomNames, onClose, onAdd }) {
         <div style={{ padding: 16, display: "flex", flexDirection: "column", gap: 8, maxHeight: "54vh", overflow: "auto" }}>
           {tab === "past" && !sources && Array.from({ length: 2 }).map((_, i) => <div key={i} className="skel" style={{ height: 62, borderRadius: 12 }} />)}
           {tab === "past" && sources && sources.length === 0 && (
-            <div style={{ padding: "28px 16px", textAlign: "center", color: "var(--muted)", fontSize: "var(--fs-14)", lineHeight: 1.55 }}>
-              Пока нет прошлых проектов со сметой по комнатам.<br />Сохраните смету — и её позиции можно будет переиспользовать здесь.
-            </div>
+            <EmptyState compact icon="layers" text={<React.Fragment>Пока нет прошлых проектов со сметой по комнатам.<br />Сохраните смету — и её позиции можно будет переиспользовать здесь.</React.Fragment>} />
           )}
           {tab === "past" && sources && sources.map((s) => (
             <button key={s.id} onClick={() => pickSrc(s, false)} style={rowBtn}
@@ -2483,7 +2553,7 @@ function LoopStatusChip({ status, onChange }) {
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" aria-hidden="true" style={{ color: "var(--faint)" }}><path d="M6 9l6 6 6-6" /></svg>
       </button>
       {open && (
-        <div className="glass menu-pop" role="menu" style={{ position: "absolute", top: "calc(100% + 6px)", right: 0, minWidth: 200, borderRadius: 12, boxShadow: "var(--shadow-pop)", padding: 6, zIndex: 40 }}>
+        <div className="menu menu-pop" role="menu" style={{ position: "absolute", top: "calc(100% + 6px)", right: 0, minWidth: 200, zIndex: 40 }}>
           <StatusMenuItems current={status} onPick={(s) => { setOpen(false); if (s !== status) onChange(s); }} />
         </div>
       )}

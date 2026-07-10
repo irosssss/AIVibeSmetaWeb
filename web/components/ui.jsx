@@ -648,25 +648,26 @@ function PageHead({ eyebrow, eyebrowIcon, title, sub, right, style }) {
   );
 }
 
-/* пустое состояние: полное (первый запуск — крупная иконка + заголовок + CTA)
-   или компактное (после фильтра/поиска — маленькая иконка + строка текста) */
+/* пустое состояние (W5.2, шаблон Programa §5.8): по центру, без тяжёлой карточки —
+   маленькая иконка серым → заголовок → 1–2 строки ценности → CTA. Компактный вариант —
+   для «после фильтра/поиска» внутри списков и модалок. */
 function EmptyState({ icon, title, text, action, compact }) {
   const Ico = icon ? I[icon] : null;
   if (compact) {
     return (
-      <div className="glass" style={{ borderRadius: "var(--r-lg)", padding: 40, textAlign: "center", color: "var(--muted)" }}>
-        {Ico && <Ico size={26} style={{ color: "var(--faint)" }} />}
-        {text && <div style={{ marginTop: 10, fontSize: "var(--fs-14)" }}>{text}</div>}
-        {action}
+      <div style={{ padding: "34px 20px", textAlign: "center", color: "var(--muted)" }}>
+        {Ico && <Ico size={20} style={{ color: "var(--faint)" }} />}
+        {text && <div style={{ marginTop: 8, fontSize: "var(--fs-13)", lineHeight: 1.6, maxWidth: 420, marginInline: "auto" }}>{text}</div>}
+        {action && <div style={{ marginTop: 14, display: "flex", justifyContent: "center", gap: 10, flexWrap: "wrap" }}>{action}</div>}
       </div>
     );
   }
   return (
-    <div className="glass" style={{ borderRadius: "var(--r-xl)", padding: "52px 32px", textAlign: "center" }}>
-      {Ico && <span style={{ width: 58, height: 58, borderRadius: 17, background: "var(--surface-2)", color: "var(--accent)", display: "grid", placeItems: "center", margin: "0 auto 18px" }}><Ico size={27} /></span>}
-      {title && <h3 className="display" style={{ fontSize: "var(--fs-21)" }}>{title}</h3>}
-      {text && <p style={{ color: "var(--muted)", fontSize: "var(--fs-14)", marginTop: 8, maxWidth: 440, marginInline: "auto", lineHeight: 1.6 }}>{text}</p>}
-      {action}
+    <div style={{ padding: "clamp(48px,10vh,96px) 24px", textAlign: "center" }}>
+      {Ico && <Ico size={20} style={{ color: "var(--faint)" }} />}
+      {title && <h3 style={{ fontSize: "var(--fs-15)", fontWeight: 600, marginTop: 10 }}>{title}</h3>}
+      {text && <p style={{ color: "var(--muted)", fontSize: "var(--fs-13)", marginTop: 6, maxWidth: 420, marginInline: "auto", lineHeight: 1.6 }}>{text}</p>}
+      {action && <div style={{ marginTop: 18, display: "flex", justifyContent: "center", alignItems: "center", gap: 12, flexWrap: "wrap" }}>{action}</div>}
     </div>
   );
 }
@@ -795,9 +796,8 @@ function StatusMenuItems({ current, onPick }) {
   const F = window.AIVibeFFE || {};
   const statuses = F.PROJ_STATUSES || [], colors = F.PROJ_STATUS_COLOR || {};
   return statuses.map((s) => (
-    <button key={s} role="menuitem" onClick={(e) => { e.stopPropagation(); onPick(s); }}
-      style={{ display: "flex", alignItems: "center", gap: 9, width: "100%", padding: "8px 12px", borderRadius: 9, fontSize: "var(--fs-13)", fontWeight: s === current ? 700 : 600, color: "var(--text)", textAlign: "left" }}
-      onMouseEnter={(e) => (e.currentTarget.style.background = "var(--surface-2)")} onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}>
+    <button key={s} role="menuitem" className="menu-item" onClick={(e) => { e.stopPropagation(); onPick(s); }}
+      style={{ fontWeight: s === current ? 700 : 600 }}>
       <span style={{ width: 8, height: 8, borderRadius: "50%", background: colors[s], flex: "none" }} />{s}
       {s === current && <I.check size={14} style={{ marginLeft: "auto", color: "var(--accent-2)" }} />}
     </button>

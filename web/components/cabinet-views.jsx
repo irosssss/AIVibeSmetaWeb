@@ -550,8 +550,8 @@ function ProjectCard({ p, menuOpen, onOpen, onMenu, onRename, onDuplicate, onSta
   const trigRef = useCVR(null);                 // «⋯»: сюда возвращаем фокус перед действием —
                                                 // иначе диалог запомнит размонтированный пункт меню
   const mItem = (label, Ico, onClick, danger) => (
-    <button role="menuitem" onClick={(e) => { e.stopPropagation(); if (trigRef.current) trigRef.current.focus(); onClick(); }} style={{ display: "flex", alignItems: "center", gap: 10, width: "100%", padding: "9px 12px", borderRadius: 9, fontSize: "var(--fs-13)", fontWeight: 600, color: danger ? "var(--accent-ink)" : "var(--text)", textAlign: "left" }}
-      onMouseEnter={(e) => (e.currentTarget.style.background = "var(--surface-2)")} onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}>
+    <button role="menuitem" className="menu-item" onClick={(e) => { e.stopPropagation(); if (trigRef.current) trigRef.current.focus(); onClick(); }}
+      style={danger ? { color: "var(--accent-ink)" } : undefined}>
       <Ico size={16} style={{ color: danger ? "var(--accent-ink)" : "var(--muted)", flex: "none" }} />{label}
     </button>
   );
@@ -589,7 +589,7 @@ function ProjectCard({ p, menuOpen, onOpen, onMenu, onRename, onDuplicate, onSta
           <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="12" cy="5" r="1.8" /><circle cx="12" cy="12" r="1.8" /><circle cx="12" cy="19" r="1.8" /></svg>
         </button>
         {menuOpen && (
-          <div className="glass menu-pop" role="menu" onClick={(e) => e.stopPropagation()} style={{ position: "absolute", top: "calc(100% + 6px)", right: 0, minWidth: 194, borderRadius: 12, boxShadow: "var(--shadow-pop)", padding: 6, zIndex: 40 }}>
+          <div className="menu menu-pop" role="menu" onClick={(e) => e.stopPropagation()} style={{ position: "absolute", top: "calc(100% + 6px)", right: 0, minWidth: 194, zIndex: 40 }}>
             {mItem("Переименовать", I.edit, onRename)}
             {mItem("Дублировать", I.layers, onDuplicate)}
             <div style={{ height: 1, background: "var(--hairline)", margin: "5px 4px" }} />
