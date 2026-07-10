@@ -67,6 +67,7 @@ const I = {
   plan: (p) => <Icon {...p} d={<><rect x="3" y="3" width="18" height="18" rx="1.5" /><path d="M3 14h7V3M10 14v7M14 3v6h7" /></>} />,
   spinner: (p) => <Icon {...p} d="M12 3a9 9 0 1 0 9 9" />,
   download: (p) => <Icon {...p} d={<><path d="M12 3v12M7 10l5 5 5-5" /><path d="M5 21h14" /></>} />,
+  calendar: (p) => <Icon {...p} d={<><rect x="3.5" y="5" width="17" height="15" rx="2" /><path d="M3.5 9.5h17M8 3v4M16 3v4" /></>} />,
 };
 
 /* ---------- Картинка с striped-плейсхолдером и fallback ---------- */
@@ -553,6 +554,21 @@ function PriceAgeChip({ d, note }) {
     </span>
   );
 }
+
+/* «Изменено N дней назад» (карточка проекта, волна W3, паттерн Programa
+   «Edited N hours ago») — честно по дням: `updated` в данных хранится только
+   датой (YYYY-MM-DD), без времени суток, так что часы/минуты были бы
+   выдуманной точностью. За порогом в месяц — просто дата (day.month). */
+function fmtRelDays(dateStr) {
+  const d = new Date(dateStr + "T00:00:00");
+  if (isNaN(d.getTime())) return "";
+  const days = Math.round((new Date(new Date().toDateString()) - d) / 86400000);
+  if (days <= 0) return "сегодня";
+  if (days === 1) return "вчера";
+  if (days < 30) return days + " " + plural(days, ["день", "дня", "дней"]) + " назад";
+  return d.toLocaleDateString("ru-RU", { day: "2-digit", month: "2-digit" });
+}
+window.fmtRelDays = fmtRelDays;
 
 /* дата+время треда («08.07 14:32») — короче ISO, читаемо в переписке клиент↔студия */
 const fmtCommentAt = (iso) => {

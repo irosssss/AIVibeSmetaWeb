@@ -317,6 +317,12 @@ function RoomSpecOverlay({ data, nav, onClose }) {
       return next;
     });
     setAddOpen(false);
+    // «Первые шаги» на «Сегодня» (волна W3.1): честный флаг ровно для пути «по ссылке»
+    // (AddPositionsModal, вкладка «По ссылке») — остальные источники (из проекта/шаблона)
+    // не считаются этим шагом чек-листа. markOnboardStep живёт в cabinet-views.jsx —
+    // читаем через window (bare cross-файловый const в этом Vite-транcформе нестабилен,
+    // см. журнал W2 про PROJ_STATUSES/STAGE_NEXT); ffe.js/cabinet-views.jsx грузятся раньше.
+    if (srcLabel === "по ссылке" && window.markOnboardStep) window.markOnboardStep("clip");
     toast("Добавлено " + n + " " + plural(n, ["позиция", "позиции", "позиций"]) + " — «" + srcLabel + "». Не забудьте сохранить смету.");
   };
 
@@ -579,6 +585,9 @@ function RoomSpecOverlay({ data, nav, onClose }) {
       const studioName = (settings && settings.studioName) || (me && me.name) || "";
       rec = FFE.createPortalShare({ projectId: savedId, projectName: data.name, versionId: v.id, versionLabel: v.label, snapshot: v.snapshot, studioName });
       patchVersion(v.id, { shareId: rec.shareId, status: v.status === "draft" ? "sent" : v.status, statusAt: FFE.today() });
+      // «Первые шаги» на «Сегодня» (волна W3.1): честный флаг — первая настоящая выдача
+      // ссылки клиенту (не повторная, см. `if (!rec)` выше)
+      if (window.markOnboardStep) window.markOnboardStep("share");
     }
     setShareModal(rec);
   };

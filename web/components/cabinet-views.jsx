@@ -129,7 +129,7 @@ function buildUrgentQueue(projects) {
     FFE.itemDueItems(it).forEach((d) => {
       const bucket = FFE.urgencyBucket(d.date);
       if (!bucket) return;
-      rows.push({ bucket, projectId: p.id, projectName: p.name, room: r.name, title: it.title, kind: d.kind, label: d.label, date: d.date });
+      rows.push({ bucket, projectId: p.id, projectName: p.name, room: r.name, title: it.title, kind: d.kind, label: d.label, date: d.date, sup: it.sup || "" });
     });
   })));
   return rows.sort((a, b) => rank[a.bucket] - rank[b.bucket] || a.date.localeCompare(b.date));
@@ -142,6 +142,25 @@ function buildUrgentQueue(projects) {
 function loadUrgentQueue(projects) {
   return Promise.all((projects || []).map((p) => AIVibeAPI.projects.get(p.id).catch(() => null)))
     .then((full) => buildUrgentQueue(full.filter((d) => d && d.rooms)));
+}
+
+/* строка очереди срочности (дата · точка-цвет · заголовок+контекст · подпись) — общая
+   для TodayWidget (топ-8, компактная) и ProcureHub (полный список, волна W3.2), чтобы
+   исправление разметки/a11y не приходилось повторять в двух местах */
+function UrgencyRow({ r, onOpen, first, compact }) {
+  const FFE = window.AIVibeFFE;
+  const b = FFE.URGENCY_BY_ID[r.bucket];
+  return (
+    <button onClick={() => onOpen(r.projectId)}
+      style={{ display: "flex", alignItems: "baseline", gap: compact ? 10 : 12, padding: compact ? "7px 0" : "12px 0", borderTop: first ? "none" : "1px solid var(--hairline-2)", fontSize: compact ? "var(--fs-13)" : "var(--fs-14)", textAlign: "left", width: "100%" }}>
+      <span aria-hidden="true" style={{ width: compact ? 7 : 8, height: compact ? 7 : 8, borderRadius: "50%", background: b.color, flex: "none", alignSelf: "center" }} />
+      <span className="mono" style={{ fontSize: compact ? "var(--fs-11)" : "var(--fs-12)", color: "var(--muted)", flex: "none", width: compact ? 40 : 44 }}>{fmtDCV(r.date)}</span>
+      <span style={{ flex: 1, minWidth: 0, color: "var(--text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+        {r.title} <span style={{ color: "var(--spec-meta)" }}>· {r.projectName} · {r.room}{r.sup ? " · " + r.sup : ""}</span>
+      </span>
+      <span style={{ color: "var(--spec-meta)", fontSize: compact ? "var(--fs-12)" : "var(--fs-13)", flex: "none", whiteSpace: "nowrap" }}>{r.label}</span>
+    </button>
+  );
 }
 
 function TodayWidget({ rows, onOpen }) {
@@ -170,22 +189,145 @@ function TodayWidget({ rows, onOpen }) {
         ? <div style={{ fontSize: "var(--fs-13)", color: "var(--muted)" }}>Ничего не горит — по датам стадий закупки и платежам всё под контролем.</div>
         : (
           <div style={{ display: "flex", flexDirection: "column" }}>
-            {actionable.map((r, i) => {
-              const b = FFE.URGENCY_BY_ID[r.bucket];
-              return (
-                <button key={i} onClick={() => onOpen(r.projectId)}
-                  style={{ display: "flex", alignItems: "baseline", gap: 10, padding: "7px 0", borderTop: i ? "1px solid var(--hairline-2)" : "none", fontSize: "var(--fs-13)", textAlign: "left", width: "100%" }}>
-                  <span aria-hidden="true" style={{ width: 7, height: 7, borderRadius: "50%", background: b.color, flex: "none", alignSelf: "center" }} />
-                  <span className="mono" style={{ fontSize: "var(--fs-11)", color: "var(--muted)", flex: "none", width: 40 }}>{fmtDCV(r.date)}</span>
-                  <span style={{ flex: 1, minWidth: 0, color: "var(--text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                    {r.title} <span style={{ color: "var(--spec-meta)" }}>· {r.projectName} · {r.room}</span>
-                  </span>
-                  <span style={{ color: "var(--spec-meta)", fontSize: "var(--fs-12)", flex: "none", whiteSpace: "nowrap" }}>{r.label}</span>
-                </button>
-              );
-            })}
+            {actionable.map((r, i) => <UrgencyRow key={i} r={r} onOpen={onOpen} first={i === 0} compact />)}
           </div>
         )}
+    </div>
+  );
+}
+
+/* ---------------- «СЕГОДНЯ» — домашний экран студийного уровня (волна W3.1) ----------------
+   Паттерн Programa Pulse: дата+приветствие serif, чек-лист первых шагов, затем очередь
+   срочности (TodayWidget переехал сюда с «Проектов» — новый пользователь видит путь,
+   опытный сразу очередь). Чек-лист — честные локальные флаги: ставятся в местах РЕАЛЬНЫХ
+   действий (onCreated/finishQuiz ниже; addFrom «по ссылке» и первый shareVersion —
+   в project-detail.jsx), не имитация прогресса. Живая перепроверка Programa (09/10.07):
+   у них шаги тоже не кликаются инлайн — отмечаются переходом на отдельную onboarding-
+   страницу; мы проще — отмечаем сам факт действия, без отдельного тур-флоу. */
+const ONBOARD_STEPS = [
+  { id: "project", flag: "aivibe_step_project", label: "Создайте свой первый проект" },
+  { id: "clip", flag: "aivibe_step_clip", label: "Добавьте позицию по ссылке на товар" },
+  { id: "share", flag: "aivibe_step_share", label: "Отправьте ссылку клиенту" },
+];
+const greetingWord = () => { const h = new Date().getHours(); return h < 5 ? "Доброй ночи" : h < 12 ? "Доброе утро" : h < 18 ? "Добрый день" : "Добрый вечер"; };
+/* единая точка записи флагов чек-листа (вместо сырых localStorage.setItem-литералов,
+   разбросанных по вызывающим местам, в т.ч. в project-detail.jsx — оттуда через
+   window.markOnboardStep, см. конвенцию window.PROJ_STATUSES выше про кросс-файловые const) */
+const markOnboardStep = (id) => {
+  const step = ONBOARD_STEPS.find((s) => s.id === id);
+  if (!step) return;
+  try { localStorage.setItem(step.flag, "1"); } catch (e) {}
+};
+window.markOnboardStep = markOnboardStep;
+
+function OnboardChecklist({ onNewProject, onOpenProjects, hasProjects }) {
+  // шаг 1 — бутстрап для аккаунтов СО СТАРШИМ данными (флага ещё нет, проекты уже есть):
+  // «создайте первый проект» не должен звучать нелепо, если их уже 5 — это факт, не имитация
+  const done = ONBOARD_STEPS.map((s, i) => {
+    if (i === 0 && hasProjects) return true;
+    try { return !!localStorage.getItem(s.flag); } catch (e) { return false; }
+  });
+  const n = done.filter(Boolean).length;
+  if (n >= ONBOARD_STEPS.length) return null;   // весь чек-лист выполнен — не занимаем место у опытного пользователя
+  return (
+    <div style={{ marginBottom: 22 }}>
+      <div style={{ display: "flex", alignItems: "baseline", gap: 10, marginBottom: 12 }}>
+        <h2 style={{ fontSize: "var(--fs-16)", fontWeight: 700 }}>Первые шаги</h2>
+        <span className="glass" style={{ padding: "3px 10px", borderRadius: 99, fontSize: "var(--fs-11)", fontWeight: 700, color: "var(--accent-ink)", background: "var(--accent-tint)" }}>{n}/{ONBOARD_STEPS.length}</span>
+      </div>
+      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+        {ONBOARD_STEPS.map((s, i) => (
+          <div key={s.id} className="glass" style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 14px", borderRadius: "var(--r-md)" }}>
+            {done[i]
+              ? <span style={{ width: 24, height: 24, borderRadius: "50%", background: "var(--accent-2)", color: "var(--on-accent)", display: "grid", placeItems: "center", flex: "none" }}><I.check size={13} /></span>
+              : <span className="mono" style={{ width: 24, height: 24, borderRadius: "50%", border: "1.5px solid var(--hairline)", color: "var(--faint)", fontSize: "var(--fs-12)", fontWeight: 700, display: "grid", placeItems: "center", flex: "none" }}>{i + 1}</span>}
+            <span style={{ flex: 1, fontSize: "var(--fs-14)", fontWeight: 600, textDecoration: done[i] ? "line-through" : "none", color: done[i] ? "var(--faint)" : "var(--text)" }}>{s.label}</span>
+            {!done[i] && (
+              <button className="btn btn-ghost" style={{ padding: "7px 12px", fontSize: "var(--fs-12)", flex: "none" }}
+                onClick={s.id === "project" ? onNewProject : onOpenProjects}>Перейти <I.arrow size={13} /></button>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function Today({ user, onNewProject, onOpenProjects }) {
+  const [rows, setRows] = useCV(null);
+  const [urgent, setUrgent] = useCV([]);
+  useCVE(() => { AIVibeAPI.projects.list().then((list) => { setRows(list); loadUrgentQueue(list).then(setUrgent); }); }, []);
+  const dateStr = new Date().toLocaleDateString("ru-RU", { weekday: "long", day: "numeric", month: "long" });
+  return (
+    <div className="reveal in" ref={useReveal()}>
+      <div style={{ marginBottom: 22 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 7, color: "var(--muted)", fontSize: "var(--fs-13)", marginBottom: 4 }}>
+          <I.calendar size={14} style={{ flex: "none" }} />{dateStr.charAt(0).toUpperCase() + dateStr.slice(1)}
+        </div>
+        <h1 className="display" style={{ fontSize: "var(--fs-30)" }}>{greetingWord()}, {(user.name || "").split(" ")[0]}</h1>
+      </div>
+      <OnboardChecklist onNewProject={onNewProject} onOpenProjects={onOpenProjects} hasProjects={!!(rows && rows.length > 0)} />
+      {!rows && <div className="glass skel" style={{ borderRadius: "var(--r-lg)", height: 140 }} />}
+      {rows && rows.length > 0 && <TodayWidget rows={urgent} onOpen={(id) => setRoute("cabinet", "projects", id)} />}
+      {rows && rows.length === 0 && (
+        <EmptyState icon="layers" title="Пока нет проектов"
+          text="Создайте первый проект — задайте комнату и бюджет, дальше Design Ledger соберёт смету и проверит эргономику."
+          action={<button className="btn btn-primary" style={{ marginTop: 20 }} onClick={onNewProject}><I.plus size={17} />Создать первый проект</button>} />
+      )}
+    </div>
+  );
+}
+
+/* ---------------- ЗАКУПКА-ХАБ (волна W3.2) ----------------
+   Сквозная страница студийного уровня: та же очередь срочности, что в TodayWidget
+   (buildUrgentQueue), но полная (без среза в 8) + фильтр по проекту/поставщику —
+   паттерн Programa Financials→Purchase Orders. Разведка 09.07 живого Purchase Orders
+   у Programa застала пустой триал-аккаунт (0 заказов ни в одном из 3 проектов) — у
+   нас, в отличие от их пустого демо, хаб сразу содержит живые даты стадий закупки и
+   платежей по всем сохранённым проектам. */
+function ProcureHub({ onOpen }) {
+  const [rows, setRows] = useCV(null);
+  const [projF, setProjF] = useCV("Все");
+  const [supF, setSupF] = useCV("Все");
+  useCVE(() => { AIVibeAPI.projects.list().then((list) => loadUrgentQueue(list).then(setRows)); }, []);
+  const projects = rows ? ["Все", ...Array.from(new Set(rows.map((r) => r.projectName)))] : ["Все"];
+  const suppliers = rows ? ["Все", ...Array.from(new Set(rows.map((r) => r.sup).filter(Boolean)))] : ["Все"];
+  const shown = rows ? rows.filter((r) => (projF === "Все" || r.projectName === projF) && (supF === "Все" || r.sup === supF)) : null;
+  const FFE = window.AIVibeFFE;
+  return (
+    <div className="reveal in" ref={useReveal()}>
+      <PageHead title="Закупка" sub="Сквозная очередь срочности по всем проектам — даты стадий закупки и платежи" />
+
+      {rows && rows.length > 0 && (
+        <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 18 }}>
+          <select className="fld" value={projF} onChange={(e) => setProjF(e.target.value)} style={{ width: "auto", padding: "9px 12px", fontSize: "var(--fs-13)", fontWeight: 700, cursor: "pointer" }}>
+            {projects.map((p) => <option key={p} value={p}>{p === "Все" ? "Все проекты" : p}</option>)}
+          </select>
+          {suppliers.length > 1 && (
+            <select className="fld" value={supF} onChange={(e) => setSupF(e.target.value)} style={{ width: "auto", padding: "9px 12px", fontSize: "var(--fs-13)", fontWeight: 700, cursor: "pointer" }}>
+              {suppliers.map((s) => <option key={s} value={s}>{s === "Все" ? "Все поставщики" : s}</option>)}
+            </select>
+          )}
+        </div>
+      )}
+
+      {!rows && <div className="glass skel" style={{ borderRadius: "var(--r-lg)", height: 320 }} />}
+
+      {rows && rows.length === 0 && (
+        <EmptyState icon="truck" title="Закупка пока пуста"
+          text="Как только у позиций появятся даты стадий закупки или платежей, здесь появится сквозная очередь срочности по всем проектам." />
+      )}
+
+      {shown && shown.length === 0 && rows.length > 0 && (
+        <EmptyState compact icon="search" text="По этим фильтрам ничего не нашлось."
+          action={<button className="btn btn-ghost" style={{ marginTop: 14 }} onClick={() => { setProjF("Все"); setSupF("Все"); }}>Сбросить фильтры</button>} />
+      )}
+
+      {shown && shown.length > 0 && FFE && (
+        <div className="glass" style={{ borderRadius: "var(--r-lg)", padding: "6px 18px" }}>
+          {shown.map((r, i) => <UrgencyRow key={i} r={r} onOpen={onOpen} first={i === 0} />)}
+        </div>
+      )}
     </div>
   );
 }
@@ -194,7 +336,6 @@ function TodayWidget({ rows, onOpen }) {
 function Projects() {
   const [rows, setRows] = useCV(null);
   const [sum, setSum] = useCV(null);          // сводная аналитика
-  const [urgent, setUrgent] = useCV([]);      // «Сегодня в работе» (волна C2) — полные карточки, не list()
   const [openId, setOpenId] = useCV(() => parseRoute().sub || null);   // открытая деталь проекта (из hash — deep-link/F5)
   const [openNav, setOpenNav] = useCV(() => parseRoute().s2 || "");    // раздел проекта из сайдбара W1: '' | client | procure | versions
   const [openStyle, setOpenStyle] = useCV(null); // стиль, с которым открыть проект (из квиза)
@@ -207,7 +348,7 @@ function Projects() {
   const [menuId, setMenuId] = useCV(null);    // открытое ⋯-меню карточки
 
   const refresh = () => {
-    AIVibeAPI.projects.list().then((list) => { setRows(list); loadUrgentQueue(list).then(setUrgent); });
+    AIVibeAPI.projects.list().then(setRows);
     AIVibeAPI.projects.summary().then(setSum);
   };
 
@@ -243,7 +384,9 @@ function Projects() {
     return () => { window.removeEventListener("aivibe:new-project", onNew); window.removeEventListener("hashchange", onHash); };
   }, []);
 
-  const onCreated = (p) => { setNewOpen(false); refresh(); openProject(p.id); };
+  // «Первые шаги» на «Сегодня» (волна W3.1): честный флаг ставится в момент реального
+  // создания проекта, а не имитацией — здесь и в finishQuiz (оба пути создают проект)
+  const onCreated = (p) => { markOnboardStep("project"); setNewOpen(false); refresh(); openProject(p.id); };
 
   const finishQuiz = (styleId, extra) => {
     try { localStorage.setItem("aivibe_quiz_done", "1"); } catch (e) {}
@@ -251,7 +394,7 @@ function Projects() {
     const room = (extra && extra.room) || "Гостиная";
     const budget = (extra && extra.budget) || 420000;
     const styleName = QUIZ_STYLE_NAME[styleId] || "";
-    AIVibeAPI.projects.create({ name: room + " · " + (styleName || "проект"), room, budget, style: styleName }).then((p) => { refresh(); setOpenStyle(styleId); openProject(p.id); });
+    AIVibeAPI.projects.create({ name: room + " · " + (styleName || "проект"), room, budget, style: styleName }).then((p) => { markOnboardStep("project"); refresh(); setOpenStyle(styleId); openProject(p.id); });
   };
 
   // импорт сметы из Excel → открываем в той же смете-комплектации (RoomSpecOverlay)
@@ -273,8 +416,12 @@ function Projects() {
     const name = await promptDialog({ title: "Переименовать проект", label: "Название", value: p.name });
     if (name && name.trim()) { await AIVibeAPI.projects.update(p.id, { name: name.trim() }); refresh(); toast("Проект переименован"); }
   };
-  const duplicate = async (p) => { setMenuId(null); const { id, ...rest } = p; await AIVibeAPI.projects.create({ ...rest, name: p.name + " (копия)" }); refresh(); toast("Копия создана — «" + p.name + " (копия)»"); };
+  // pinned не копируем — закреп это выбор пользователя про КОНКРЕТНУЮ карточку,
+  // копия не должна молча запрыгивать наверх сетки без его действия
+  const duplicate = async (p) => { setMenuId(null); const { id, pinned, ...rest } = p; await AIVibeAPI.projects.create({ ...rest, name: p.name + " (копия)" }); refresh(); toast("Копия создана — «" + p.name + " (копия)»"); };
   const changeStatus = async (p, status) => { setMenuId(null); await AIVibeAPI.projects.update(p.id, { status }); refresh(); };
+  // закрепить сверху сетки (волна W3.3, паттерн Programa: hover-кнопка на обложке)
+  const togglePin = async (p) => { await AIVibeAPI.projects.update(p.id, { pinned: !p.pinned }); refresh(); };
   const removeP = async (p) => {
     setMenuId(null);
     const ok = await confirmDialog({ title: "Удалить проект?", text: "«" + p.name + "» будет удалён вместе со сметой. Это действие нельзя отменить.", confirmLabel: "Удалить проект" });
@@ -285,7 +432,8 @@ function Projects() {
     .filter((p) => statusF === "Все" || p.status === statusF)
     .filter((p) => !q.trim() || ((p.name || "") + " " + (p.style || "") + " " + (p.room || "")).toLowerCase().includes(q.trim().toLowerCase()))
     .slice()
-    .sort((a, b) => sort === "budget" ? b.budget - a.budget : sort === "name" ? (a.name || "").localeCompare(b.name || "") : (b.updated || "").localeCompare(a.updated || "")) : null;
+    .sort((a, b) => (a.pinned ? 0 : 1) - (b.pinned ? 0 : 1)
+      || (sort === "budget" ? b.budget - a.budget : sort === "name" ? (a.name || "").localeCompare(b.name || "") : (b.updated || "").localeCompare(a.updated || ""))) : null;
 
   return (
     <div className="reveal in" ref={useReveal()}>
@@ -304,9 +452,6 @@ function Projects() {
         {!sum && Array.from({ length: 4 }).map((_, i) => <div key={i} className="glass skel" style={{ borderRadius: "var(--r-lg)", height: 104 }} />)}
         {sum && sum.kpis.map((k) => <KpiCard key={k.key} k={k} />)}
       </div>
-
-      {/* ── «Сегодня в работе» (волна C2): сквозная срочность закупки по всем проектам ── */}
-      {rows && rows.length > 0 && <TodayWidget rows={urgent} onOpen={openProject} />}
 
       {/* ── тулбар: поиск · статус · сортировка ── */}
       {rows && rows.length > 0 && (
@@ -346,7 +491,7 @@ function Projects() {
           {shown.map((p) => (
             <ProjectCard key={p.id} p={p} menuOpen={menuId === p.id}
               onOpen={() => openProject(p.id)} onMenu={() => setMenuId((m) => m === p.id ? null : p.id)}
-              onRename={() => rename(p)} onDuplicate={() => duplicate(p)} onStatus={(s) => changeStatus(p, s)} onRemove={() => removeP(p)} />
+              onRename={() => rename(p)} onDuplicate={() => duplicate(p)} onStatus={(s) => changeStatus(p, s)} onRemove={() => removeP(p)} onPin={() => togglePin(p)} />
           ))}
         </div>
       )}
@@ -359,8 +504,12 @@ function Projects() {
   );
 }
 
-/* карточка проекта с меню действий (⋯): переименовать · дублировать · статус · удалить */
-function ProjectCard({ p, menuOpen, onOpen, onMenu, onRename, onDuplicate, onStatus, onRemove }) {
+/* карточка проекта с меню действий (⋯): переименовать · дублировать · статус · удалить.
+   Волна W3.3 (полировка по Programa): закреп на hover (звезда, всегда видна если закреплён —
+   CSS .pc-pin в app.css), «Изменено N назад» в статус-чипе (fmtRelDays, ui.jsx), обложка шире
+   (2/1 вместо 16/10 — их пропорция превью), плашка-заглушка serif-именем вместо стокового
+   фото у проектов без единой позиции (p.items===0) — честнее случайного интерьерного кадра. */
+function ProjectCard({ p, menuOpen, onOpen, onMenu, onRename, onDuplicate, onStatus, onRemove, onPin }) {
   useMenu(menuOpen, onMenu, "pc-menu-wrap");   // Esc/стрелки/click-outside — единый паттерн меню
   const trigRef = useCVR(null);                 // «⋯»: сюда возвращаем фокус перед действием —
                                                 // иначе диалог запомнит размонтированный пункт меню
@@ -372,15 +521,33 @@ function ProjectCard({ p, menuOpen, onOpen, onMenu, onRename, onDuplicate, onSta
   );
   return (
     <article className="glass news-card" style={{ position: "relative", borderRadius: "var(--r-lg)", display: "flex", flexDirection: "column", cursor: "pointer" }}>
-      <div onClick={onOpen} style={{ position: "relative", aspectRatio: "16/10", overflow: "hidden", borderRadius: "var(--r-lg) var(--r-lg) 0 0" }}>
-        <Img src={PHOTOS[p.cover] || PHOTOS.living} label={p.room} />
+      <div onClick={onOpen} style={{ position: "relative", aspectRatio: "2/1", overflow: "hidden", borderRadius: "var(--r-lg) var(--r-lg) 0 0" }}>
+        {p.items
+          ? <Img src={PHOTOS[p.cover] || PHOTOS.living} label={p.room} />
+          : <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", padding: 18, textAlign: "center", background: "var(--surface-2)" }}>
+              <div>
+                <div className="display" style={{ fontSize: "var(--fs-18)", lineHeight: 1.25 }}>{p.name}</div>
+                <div style={{ marginTop: 5, fontSize: "var(--fs-12)", color: "var(--muted)" }}>{[p.style, p.room].filter(Boolean).join(" · ")}</div>
+              </div>
+            </div>}
         <span style={{ position: "absolute", top: 12, left: 12, padding: "5px 11px", borderRadius: 99, fontSize: "var(--fs-11)", fontWeight: 700, color: "#FCF6EE", background: "rgba(46,42,38,.62)", backdropFilter: "blur(6px)", border: "1px solid rgba(252,246,238,.22)", display: "flex", alignItems: "center", gap: 6 }}>
-          <span style={{ width: 7, height: 7, borderRadius: "50%", background: statusColor[p.status] }} />{p.status}
+          <span style={{ width: 7, height: 7, borderRadius: "50%", background: statusColor[p.status] }} />{p.status}{p.updated && <React.Fragment> · {fmtRelDays(p.updated)}</React.Fragment>}
         </span>
       </div>
 
+      {/* закреп + «⋯» в одном флекс-ряду — размер кнопок (34px десктоп / 44px мобильный
+          бамп app.css:159) не захардкожен смещением, ряд сам подстраивается под любой брейкпоинт */}
+      <div style={{ position: "absolute", top: 10, right: 10, display: "flex", alignItems: "center", gap: 6 }}>
+      {/* закреп: видна на hover карточки (кроме touch — см. .pc-pin в app.css), остаётся видна
+          (заливкой) если уже закреплён */}
+      <button className={"icon-btn sm pc-pin" + (p.pinned ? " on" : "")} aria-label={p.pinned ? "Открепить" : "Закрепить"} aria-pressed={!!p.pinned}
+        onClick={(e) => { e.stopPropagation(); onPin(); }}
+        style={{ background: p.pinned ? "var(--accent)" : "rgba(251,248,242,.92)", border: "1px solid " + (p.pinned ? "var(--accent)" : "var(--hairline)"), color: p.pinned ? "var(--on-accent)" : "var(--muted)" }}>
+        <I.star size={15} fill={p.pinned ? "currentColor" : "none"} />
+      </button>
+
       {/* ⋯ меню */}
-      <div className="pc-menu-wrap" style={{ position: "absolute", top: 10, right: 10 }}>
+      <div className="pc-menu-wrap" style={{ position: "relative" }}>
         <button ref={trigRef} className="icon-btn sm" aria-label="Действия" aria-haspopup="menu" aria-expanded={menuOpen} onClick={(e) => { e.stopPropagation(); onMenu(); }}
           style={{ background: "rgba(251,248,242,.92)", border: "1px solid var(--hairline)" }}>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="12" cy="5" r="1.8" /><circle cx="12" cy="12" r="1.8" /><circle cx="12" cy="19" r="1.8" /></svg>
@@ -397,6 +564,7 @@ function ProjectCard({ p, menuOpen, onOpen, onMenu, onRename, onDuplicate, onSta
             {mItem("Удалить", I.trash, onRemove, true)}
           </div>
         )}
+      </div>
       </div>
 
       <div onClick={onOpen} style={{ padding: 20, display: "flex", flexDirection: "column", gap: 12, flex: 1 }}>
@@ -635,3 +803,5 @@ window.Profile = Profile;
 window.Projects = Projects;
 window.Favorites = Favorites;
 window.NewProjectModal = NewProjectModal;
+window.Today = Today;
+window.ProcureHub = ProcureHub;

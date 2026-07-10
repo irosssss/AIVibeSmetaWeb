@@ -214,6 +214,16 @@ body:has(.pd-overlay) .proto-switch { display: none; }
 .ov-kpi:hover, .ov-docs > button:hover { border-color: var(--accent); }
 @media (max-width: 720px) { .ov-hero { grid-template-columns: 1fr !important; } }
 
+/* Карточка проекта (W3.3): закреп виден на hover карточки; уже закреплённая —
+   видна всегда (заливкой), как «⋯»-меню — паттерн Programa (пин hover-only, кебаб постоянный).
+   hover-only ТОЛЬКО там, где есть настоящий hover: на тач (без :hover) кнопка держала бы
+   opacity:0, но оставалась кликабельной поверх обложки — невидимый хотспот, случайный закреп
+   вместо открытия проекта. На тач — видна всегда, как кебаб. */
+@media (hover: hover) and (pointer: fine) {
+  .pc-pin { opacity: 0; transition: var(--dur-fast); }
+  .news-card:hover .pc-pin, .pc-pin.on, .pc-pin:focus-visible { opacity: 1; }
+}
+
 /* ============================================================
    ОБОЛОЧКА ВОРКСПЕЙСА (волна W1): сайдбар студии ↔ сайдбар проекта
    ============================================================ */

@@ -7,8 +7,12 @@ const { useState: useC, useEffect: useCE } = React;
 /* ---------- Хеш-роутинг: #view/tab/sub/s2 (переживает F5, работает «назад»,
    sub — открытый проект: #cabinet/projects/p_1 → deep-link в проект (обзор смет-
    комплектаций — волна W2; для AI-демо — сразу деталь),
-   s2 — раздел открытого проекта: '' обзор · smeta · client · procure · versions — W1/W2) ---------- */
-const CAB_TABS = [["projects", "Проекты"], ["workshop", "Мастерская"], ["favorites", "Избранное"], ["profile", "Профиль"]];
+   s2 — раздел открытого проекта: '' обзор · smeta · client · procure · versions — W1/W2.
+   Волна W3: студийные вкладки today (домашний экран «Сегодня») и procure
+   (закупка-хаб — сквозная очередь по всем проектам) — не путать с тем же именем
+   `procure` в s2: это студийный tab (#cabinet/procure), а s2 — раздел ОДНОГО
+   открытого проекта (#cabinet/projects/p_1/procure); разные позиции адреса. ---------- */
+const CAB_TABS = [["today", "Сегодня"], ["projects", "Проекты"], ["workshop", "Мастерская"], ["procure", "Закупка"], ["favorites", "Избранное"], ["profile", "Профиль"]];
 const CAB_TAB_IDS = CAB_TABS.map((t) => t[0]);
 /* старые адреса вкладок-редакторов живут как deep-links внутрь Мастерской:
    #cabinet/styles → #cabinet/workshop/styles, #cabinet/norms → #cabinet/workshop/norms */
@@ -111,14 +115,14 @@ function AuthScreen({ onAuthed, go }) {
   );
 }
 
-/* ---------------- КАБИНЕТ (рабочее пространство, волна W1) ----------------
+/* ---------------- КАБИНЕТ (рабочее пространство, волны W1+W3) ----------------
    Двухуровневая оболочка по эталону Programa: постоянный сайдбар студии
-   (Проекты / Мастерская / Избранное / Профиль), при открытом проекте сайдбар
-   подменяется контекстом проекта (← назад · Смета · Для клиента · Закупка · Версии).
-   Роутинг прежний: #cabinet/{tab}/{sub}/{s2}. */
+   (Сегодня / Проекты / Мастерская / Закупка / Избранное / Профиль), при открытом
+   проекте сайдбар подменяется контекстом проекта (← назад · Обзор · Смета · Для
+   клиента · Закупка · Версии). Роутинг прежний: #cabinet/{tab}/{sub}/{s2}. */
 
 /* конфиг сайдбара студии; Мастерская — группа с под-пунктами (те же адреса, что были) */
-const WS_ICONS = { projects: "layers", workshop: "sliders", favorites: "heart", profile: "user" };
+const WS_ICONS = { today: "sun", projects: "layers", workshop: "sliders", procure: "truck", favorites: "heart", profile: "user" };
 const WS_SUB_ICONS = { styles: "spark", products: "sofa", norms: "ruler" };
 /* разделы открытого проекта (s2 адреса); только для смет-комплектаций (data.rooms).
    W2: «Обзор» — лицо проекта и новый дефолт посадки (s2=''), смета переехала на
@@ -135,7 +139,7 @@ function Cabinet({ user, onLogout, go }) {
   // старые адреса #cabinet/styles|norms сразу переписываем на Мастерскую
   const normTab = (t) => (LEGACY_WORKSHOP[t] ? "workshop" : t);
   const r0 = parseRoute();   // один разбор адреса на все инициализаторы (useC-инициализатор выполняется единожды)
-  const [tab, setTab] = useC(() => { const t = normTab(r0.tab); return CAB_TAB_IDS.includes(t) ? t : "projects"; });
+  const [tab, setTab] = useC(() => { const t = normTab(r0.tab); return CAB_TAB_IDS.includes(t) ? t : "today"; });
   const [projId, setProjId] = useC((r0.tab === "projects" && r0.sub) || null);
   const [projS2, setProjS2] = useC(r0.s2 || "");
   const [proj, setProj] = useC(null);            // мета открытого проекта для сайдбара (имя, rooms?)
@@ -192,7 +196,9 @@ function Cabinet({ user, onLogout, go }) {
             {tab === "profile" ? <Profile user={user} />
               : tab === "favorites" ? <Favorites />
               : tab === "workshop" ? <Workshop />
-              : <Projects />}
+              : tab === "procure" ? <ProcureHub onOpen={(id) => setRoute("cabinet", "projects", id)} />
+              : tab === "projects" ? <Projects />
+              : <Today user={user} onNewProject={newProject} onOpenProjects={() => changeTab("projects")} />}
           </div>
         </main>
       </div>

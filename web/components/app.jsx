@@ -49,9 +49,13 @@ function App() {
   const effectiveView = view === "cabinet" && !user ? "auth" : view === "admin" && !DEV_MODE ? "site" : view;
   useAppE(() => { setTitle(effectiveView); }, [effectiveView]);
 
+  // дефолтная вкладка кабинета (сейчас «Сегодня», волна W3) решается ОДИН раз —
+  // в Cabinet (cabinet.jsx: CAB_TAB_IDS.includes(t) ? t : "today"); здесь и в
+  // onAuthed ниже НЕ дублируем этот выбор хардкодом — при пустом табе просто не
+  // указываем его в адресе, и Cabinet сам подставит дефолт при монтировании
   const go = (v) => {
     if (v === "cabinet") {
-      if (user) { setView("cabinet"); setRoute("cabinet", parseRoute().tab || "projects"); }
+      if (user) { setView("cabinet"); setRoute("cabinet", parseRoute().tab); }
       else { setView("auth"); setRoute("auth"); }
       return;
     }
@@ -63,7 +67,7 @@ function App() {
     setView(v); setRoute(v);
   };
 
-  const onAuthed = (u) => { setUser(u); setView("cabinet"); setRoute("cabinet", "projects"); };
+  const onAuthed = (u) => { setUser(u); setView("cabinet"); setRoute("cabinet"); };
   const onLogout = () => { AIVibeAPI.auth.logout(); setUser(null); setView("site"); setRoute("site"); };
 
   // ждём проверку сессии, если целимся в кабинет — чтобы не мигнуть промо/логином
