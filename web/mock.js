@@ -140,7 +140,9 @@
   ];
 
   /* гидрация из localStorage поверх дефолтов */
-  db.settings = LS.get("settings", { normsOverride: {}, enabledNorms: {}, studioName: "" }); // studioName — брендинг клиентского портала (волна A5)
+  // studioName — брендинг клиентского портала (волна A5); studioCity/Phone/Email/TaxId —
+  // реквизиты студии (волна W4.1) — подставляются в портал, протокол и PDF-выгрузки клиенту
+  db.settings = LS.get("settings", { normsOverride: {}, enabledNorms: {}, studioName: "", studioCity: "", studioPhone: "", studioEmail: "", studioTaxId: "" });
   db.styles   = LS.get("styles", SEED_STYLES);
   db.library  = LS.get("library", []);   // библиотека товаров студии (волна B1) — пустая до первого товара
   db.markupProfiles = LS.get("markupProfiles", []);   // сохранённые профили наценки — пусто до первого «мой стандарт»

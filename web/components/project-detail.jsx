@@ -105,7 +105,7 @@ function pickByTier(catalog, tier) {
   return sel;
 }
 
-function ProjectDetail({ id, onClose, initialStyle }) {
+function ProjectDetail({ id, nav, onClose, initialStyle }) {
   const [data, setData] = usePD(null);
   const [styleId, setStyleId] = usePD(null);
   const [tier, setTier] = usePD("opt");
@@ -133,6 +133,11 @@ function ProjectDetail({ id, onClose, initialStyle }) {
     });
     return () => { alive = false; setTitle("cabinet"); };
   }, [id]);
+  // «Настройки» (волна W4.2) сохраняют через AIVibeAPI напрямую, не через setData — без
+  // этого Обзор показывал бы старые значения до следующего полного перемонтирования.
+  // projects.update(...) уже возвращает свежую запись — мержим её в data локально, вместо
+  // повторного projects.get(id) (тот делает 2 цепочки delay() ради данных, которые уже есть)
+  const applyPatch = (patch) => setData((d) => (d ? { ...d, ...patch } : d));
 
   usePDE(() => {
     AIVibeAPI.settings.get().then(setSettings);
@@ -178,9 +183,15 @@ function ProjectDetail({ id, onClose, initialStyle }) {
     );
   }
 
+  // W2: у смет-комплектаций раздел '' — «Обзор» (лицо проекта), смета живёт на 'smeta'.
   // key: при смене id через hash state оверлея (наценки/скидка/savedId) обязан переинициализироваться,
   // иначе «Сохранить» запишет значения предыдущего проекта в новый
-  if (data.rooms) return <RoomSpecOverlay key={data.id || "imported"} data={data} onClose={onClose} />;
+  if (data.rooms) {
+    if (nav === "") return <ProjectOverview key={data.id || "overview"} data={data} onClose={onClose} />;
+    // W4.2: «Настройки» — детали проекта (не режим выгрузки сметы), отдельная от RoomSpecOverlay ветка
+    if (nav === "settings") return <ProjectSettings key={data.id || "settings"} data={data} onClose={onClose} onSaved={applyPatch} />;
+    return <RoomSpecOverlay key={data.id || "imported"} data={data} nav={nav} onClose={onClose} />;
+  }
 
   const activeStyle = [...data.styles, ...myStyles].find((s) => s.id === styleId) || data.styles[0];
   const activeLayout = LAYOUTS.find((l) => l.id === layoutId) || LAYOUTS[0];
@@ -233,8 +244,41 @@ function ProjectDetail({ id, onClose, initialStyle }) {
   );
 }
 
-/* ---------------- СМЕТА-КОМПЛЕКТАЦИЯ ПО КОМНАТАМ (реальный дизайн-проект) ---------------- */
-function RoomSpecOverlay({ data, onClose }) {
+/* W5.1: «К комнате ▾» — прыжок по секциям длинной сметы (паттерн Programa «View section»):
+   пункты-menuitem «имя + счётчик позиций» по канону .menu (§5.6), Esc/↑↓/click-outside —
+   useMenu, т.е. работает с клавиатуры. Скролл — scrollIntoView внутри .pd-main. */
+function RoomJumpMenu({ rooms }) {
+  const [open, setOpen] = usePD(false);
+  useMenu(open, () => setOpen(false), "rs-jump-wrap");
+  const jump = (ri) => {
+    setOpen(false);
+    const el = document.getElementById("rs-room-" + ri);
+    if (el) el.scrollIntoView({ behavior: motionOK() ? "smooth" : "auto", block: "start" });
+  };
+  return (
+    <div className="rs-jump-wrap" style={{ position: "relative" }}>
+      <button className="btn-ws" aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen((o) => !o)} title="Перейти к комнате">
+        <I.plan size={15} />К комнате
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" aria-hidden="true" style={{ color: "var(--faint)" }}><path d="M6 9l6 6 6-6" /></svg>
+      </button>
+      {open && (
+        <div className="menu menu-pop" role="menu" aria-label="Комнаты сметы"
+          style={{ position: "absolute", top: "calc(100% + 6px)", left: 0, minWidth: 220, maxHeight: 320, overflowY: "auto", zIndex: 40, transformOrigin: "top left" }}>
+          {rooms.map((r, ri) => (
+            <button key={ri} role="menuitem" className="menu-item" onClick={() => jump(ri)}>
+              <span style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.name}</span>
+              <span className="mi-count">{r.items.length}</span>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ---------------- СМЕТА-КОМПЛЕКТАЦИЯ ПО КОМНАТАМ (реальный дизайн-проект) ----------------
+   nav — раздел из сайдбара проекта (волна W1): '' смета · client · procure · versions */
+function RoomSpecOverlay({ data, nav, onClose }) {
   const [markup, setMarkup] = usePD(data.markupPct != null ? data.markupPct : PD_DEFAULT_MARKUP);
   const [catMarkup, setCatMarkup] = usePD(data.catMarkupPct || {});  // {раздел: %} — своя наценка поверх базовой (пусто = наследует)
   const [catOpen, setCatOpen] = usePD(false);
@@ -251,6 +295,10 @@ function RoomSpecOverlay({ data, onClose }) {
   usePDE(() => { AIVibeAPI.settings.get().then(setSettings); }, []);
   const [me, setMe] = usePD(null);               // аккаунт — фолбэк имени студии для брендинга портала (волна A5)
   usePDE(() => { AIVibeAPI.profile.get().then(setMe); }, []);
+  // брендинг + контакты студии (волна A5 + W4.1) — один источник для портала/протокола/PDF,
+  // вместо повтора одной и той же сборки в 3 местах
+  const studioName = (settings && settings.studioName) || (me && me.name) || "";
+  const studioContact = settings ? [settings.studioCity, settings.studioPhone, settings.studioEmail].filter(Boolean).join(" · ") : "";
   const [library, setLibrary] = usePD([]);       // библиотека товаров студии (волна B1): автоподстановка + пикер
   const reloadLibrary = () => AIVibeAPI.library.list().then(setLibrary);
   usePDE(() => { reloadLibrary(); }, []);
@@ -312,6 +360,12 @@ function RoomSpecOverlay({ data, onClose }) {
       return next;
     });
     setAddOpen(false);
+    // «Первые шаги» на «Сегодня» (волна W3.1): честный флаг ровно для пути «по ссылке»
+    // (AddPositionsModal, вкладка «По ссылке») — остальные источники (из проекта/шаблона)
+    // не считаются этим шагом чек-листа. markOnboardStep живёт в cabinet-views.jsx —
+    // читаем через window (bare cross-файловый const в этом Vite-транcформе нестабилен,
+    // см. журнал W2 про PROJ_STATUSES/STAGE_NEXT); ffe.js/cabinet-views.jsx грузятся раньше.
+    if (srcLabel === "по ссылке" && window.markOnboardStep) window.markOnboardStep("clip");
     toast("Добавлено " + n + " " + plural(n, ["позиция", "позиции", "позиций"]) + " — «" + srcLabel + "». Не забудьте сохранить смету.");
   };
 
@@ -385,6 +439,20 @@ function RoomSpecOverlay({ data, onClose }) {
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
   }, []);
+  // W5.4: хоткей N — новая позиция (в первой комнате, подсказка-бейдж на её кнопке).
+  // Не срабатывает из полей ввода, при открытом редакторе/модалке и вне «Рабочей».
+  usePDE(() => {
+    const onKey = (e) => {
+      if (e.code !== "KeyN" || e.metaKey || e.ctrlKey || e.altKey) return;
+      if (/^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName) || e.target.isContentEditable) return;
+      if (mode !== "work" || editPos || !rooms.length) return;
+      if (document.querySelector(".modal-back")) return;   // поверх — модалка (версии/диалог/квиз)
+      e.preventDefault();
+      setEditPos({ ri: 0, ii: -1 });
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [mode, editPos, rooms.length]);
   // наценка: базовая + необязательный оверрайд по разделу. Округляется ЦЕНА ЗА ШТУКУ,
   // сумма строки = цена × кол-во — тогда колонки документа бьются арифметически (UI = PDF = Excel)
   const catOf = (it) => it.cat || "Прочее";
@@ -521,7 +589,7 @@ function RoomSpecOverlay({ data, onClose }) {
     : [];
   const ergoWarns = ergo.reduce((s, e) => s + e.res.warns, 0);
   const ergoSkipped = rooms.length - ergo.length;
-  const specArgs = () => ({ project: data.name, area: data.area, rooms, grand, markupPct: markup, catMarkupPct: catMarkup, clientTotal: client, discountPct: discount, deliveryCost: delivery, installCost: install, budget: data.budget, mode });
+  const specArgs = () => ({ project: data.name, area: data.area, rooms, grand, markupPct: markup, catMarkupPct: catMarkup, clientTotal: client, discountPct: discount, deliveryCost: delivery, installCost: install, budget: data.budget, mode, studioName, studioContact });
   const exportPDF = () => { if (window.AIVibePDF && AIVibePDF.exportRoomSpec) withLib("pdf", () => AIVibePDF.exportRoomSpec(specArgs())); };
   const exportXLSX = () => { if (window.AIVibeXLSX) withLib("xlsx", () => AIVibeXLSX.exportRoomSpec(specArgs())); };
 
@@ -537,6 +605,7 @@ function RoomSpecOverlay({ data, onClose }) {
   const openVersions = () => {
     if (!savedId) { toast("Сначала сохраните смету — версии привязаны к проекту.", "warn", 5000); return; }
     setVersionsOpen(true);
+    if (nav != null) wsSyncNav("versions");   // подсветка сайдбара проекта (W1) следует за модалкой
   };
   const saveVersion = (label) => {
     setVersions((prev) => [{
@@ -555,7 +624,7 @@ function RoomSpecOverlay({ data, onClose }) {
     setCatMarkup(s.catMarkup || {});
     setDiscount(s.discount || 0); setDelivery(s.delivery || 0); setInstall(s.install || 0);
     setEditPos(null);
-    setVersionsOpen(false);
+    closeVersions();   // не голый setVersionsOpen(false): роут /versions обязан сброситься, иначе пункт сайдбара «Версии» мёртв (hash уже равен цели — hashchange не случится)
     toast("Версия «" + v.label + "» загружена в рабочую смету. Не забудьте сохранить.");
   };
   const patchVersion = (id, patch) => setVersions((prev) => prev.map((v) => (v.id === id ? { ...v, ...patch } : v)));
@@ -569,16 +638,35 @@ function RoomSpecOverlay({ data, onClose }) {
   const shareVersion = (v) => {
     let rec = v.shareId ? FFE.loadPortalShare(v.shareId) : null;
     if (!rec) {
-      // брендинг портала (волна A5): своё имя студии из настроек, иначе — имя аккаунта
-      const studioName = (settings && settings.studioName) || (me && me.name) || "";
-      rec = FFE.createPortalShare({ projectId: savedId, projectName: data.name, versionId: v.id, versionLabel: v.label, snapshot: v.snapshot, studioName });
+      rec = FFE.createPortalShare({ projectId: savedId, projectName: data.name, versionId: v.id, versionLabel: v.label, snapshot: v.snapshot, studioName, studioCity: settings && settings.studioCity, studioPhone: settings && settings.studioPhone, studioEmail: settings && settings.studioEmail });
       patchVersion(v.id, { shareId: rec.shareId, status: v.status === "draft" ? "sent" : v.status, statusAt: FFE.today() });
+      // «Первые шаги» на «Сегодня» (волна W3.1): честный флаг — первая настоящая выдача
+      // ссылки клиенту (не повторная, см. `if (!rec)` выше)
+      if (window.markOnboardStep) window.markOnboardStep("share");
     }
     setShareModal(rec);
   };
 
+  /* --- сайдбар проекта (волна W1): раздел из адреса (s2) управляет режимом выгрузки
+     и модалкой версий, а внутренние переключатели пишут адрес обратно — подсветка
+     сайдбара и «назад» браузера остаются честными. Синхронизируем только смету,
+     открытую роутингом (nav задан); Excel-импорт без адреса живёт как раньше. --- */
+  const wsRouted = () => { const r = parseRoute(); return r.view === "cabinet" && r.tab === "projects" && r.sub ? r : null; };
+  const wsSyncNav = (s2) => { const r = wsRouted(); if (r && (r.s2 || "") !== s2) setRoute("cabinet", "projects", r.sub, s2); };
+  const modeToS2 = (m) => (m === "work" ? "smeta" : m);   // единственное место маппинга режим→сегмент адреса (W2: смета на 'smeta', '' — Обзор)
+  usePDE(() => {
+    if (nav == null) return;
+    if (nav === "client" || nav === "procure") { setMode(nav); setVersionsOpen(false); }
+    else if (nav === "versions") {
+      if (savedId) setVersionsOpen(true);
+      else { toast("Сначала сохраните смету — версии привязаны к проекту.", "warn", 5000); wsSyncNav("smeta"); }
+    } else { setMode("work"); setVersionsOpen(false); }   // nav === 'smeta' (и любой неожиданный) → рабочая смета
+  }, [nav]);
+  const changeMode = (m) => { setMode(m); if (nav != null) wsSyncNav(modeToS2(m)); };
+  const closeVersions = () => { setVersionsOpen(false); if (nav === "versions") wsSyncNav(modeToS2(mode)); };
+
   return (
-    <div className="pd-overlay" role="dialog" aria-label={"Смета: " + data.name}>
+    <div className={"pd-overlay" + (nav == null ? " pd-fullscreen" : "")} role="dialog" aria-label={"Смета: " + data.name}>
       <OverlayHead onBack={onClose} budget={data.budget}
         crumbs={[{ label: "Проекты", onClick: onClose }, { label: data.name }, { label: "Смета" }]}
         title={data.name}
@@ -599,22 +687,23 @@ function RoomSpecOverlay({ data, onClose }) {
             <h3 className="pd-h">Смета по комнатам</h3>
             <p style={{ color: "var(--muted)", fontSize: "var(--fs-14)", marginTop: 4, marginBottom: 14, maxWidth: 820, lineHeight: 1.6 }}>{data.summaryShort}</p>
 
-            {/* переиспользование наработанного: копии позиций из прошлых смет + типовые комплектации */}
-            <div style={{ marginBottom: 20 }}>
-              <button className="btn btn-ghost" onClick={() => setAddOpen(true)}
+            {/* тулбар сметы (W5.0: компактные .btn-ws 28px с ring-тенью):
+               прыжок по комнатам + переиспользование наработанного + версии + фильтр решения */}
+            <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 20 }}>
+              {mode !== "procure" && rooms.length > 1 && <RoomJumpMenu rooms={rooms} />}
+              <button className="btn-ws" onClick={() => setAddOpen(true)}
                 title="Скопировать позиции из прошлого проекта (с пометкой давности цены) или добавить типовую комплектацию">
-                <I.plus size={16} />Из прошлого проекта / шаблона
+                <I.plus size={15} />Из прошлого проекта / шаблона
               </button>
               {FFE && (
-                <button className="btn btn-ghost" onClick={openVersions} title="Снимки сметы, сравнение с текущей и статус согласования с клиентом">
-                  <I.news size={16} />Версии{versions.length ? " · " + versions.length : ""}
+                <button className="btn-ws" onClick={openVersions} title="Снимки сметы, сравнение с текущей и статус согласования с клиентом">
+                  <I.news size={15} />Версии{versions.length ? " · " + versions.length : ""}
                 </button>
               )}
               {FFE && mode === "work" && itemsCount > 0 && (
-                <button className="btn btn-ghost" onClick={() => setApFilter((f) => !f)} aria-pressed={apFilter}
-                  title={apFilter ? "Показать все позиции" : "Оставить только позиции, ждущие решения клиента (согласованные скрыть)"}
-                  style={apFilter ? { color: "var(--accent-ink)" } : undefined}>
-                  <I.check size={16} />{apFilter ? "Показать все" : "Ждут решения · " + apWaiting}
+                <button className="btn-ws" onClick={() => setApFilter((f) => !f)} aria-pressed={apFilter}
+                  title={apFilter ? "Показать все позиции" : "Оставить только позиции, ждущие решения клиента (согласованные скрыть)"}>
+                  <I.check size={15} />{apFilter ? "Показать все" : "Ждут решения · " + apWaiting}
                 </button>
               )}
             </div>
@@ -699,7 +788,7 @@ function RoomSpecOverlay({ data, onClose }) {
                можно переименовать, позицию — добавить вручную. «Для клиента» — чистый просмотр. */}
             {mode !== "procure" && <div key={"rooms-" + mode} className="view-enter" style={{ display: "flex", flexDirection: "column", gap: 14 }}>
               {rooms.map((r, ri) => (
-                <div key={r.name} className="glass" style={{ borderRadius: "var(--r-lg)", padding: "16px 18px" }}>
+                <div key={r.name} id={"rs-room-" + ri} className="glass" style={{ borderRadius: "var(--r-lg)", padding: "16px 18px", scrollMarginTop: 12 }}>
                   <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 12, marginBottom: 8, flexWrap: "wrap" }}>
                     <span style={{ display: "flex", alignItems: "baseline", gap: 6, minWidth: 0 }}>
                       <span style={{ fontWeight: 800, fontFamily: "var(--font-display)", fontSize: "var(--fs-16)" }}>{r.name}{r.area ? <span style={{ color: "var(--faint)", fontWeight: 500, fontSize: "var(--fs-13)" }}> · {r.area} м²</span> : null}</span>
@@ -775,10 +864,18 @@ function RoomSpecOverlay({ data, onClose }) {
                           </button>
                         )}
                       </div>
-                      {editing && (
-                        <PosEditor item={it} cats={cats} sups={supList} library={library} onToLibrary={saveToLibrary}
-                          onCancel={() => setEditPos(null)} onSave={(d) => savePos(ri, i, d)} onDelete={() => removePos(ri, i)} />
-                      )}
+                      {editing && (() => {
+                        // W5.3: соседний индекс без пропусков — фильтр «ждут решения» прячет строку
+                        // ТОЛЬКО когда она не редактируется (см. `!editing` в гварде рендера выше),
+                        // а prev/next сам делает целевую позицию editing → она рендерится в любом случае
+                        const adjIdx = (dir) => { const j = i + dir; return j >= 0 && j < r.items.length ? j : null; };
+                        return (
+                          <PosEditor item={it} cats={cats} sups={supList} library={library} onToLibrary={saveToLibrary}
+                            posNav={{ index: i, total: r.items.length, prev: adjIdx(-1), next: adjIdx(1),
+                              go: (j, draft) => { if (draft) savePos(ri, i, draft); setEditPos({ ri, ii: j }); } }}
+                            onCancel={() => setEditPos(null)} onSave={(d) => savePos(ri, i, d)} onDelete={() => removePos(ri, i)} />
+                        );
+                      })()}
                       </React.Fragment>
                       );
                     })}
@@ -790,10 +887,9 @@ function RoomSpecOverlay({ data, onClose }) {
                   {mode === "work" && (editPos && editPos.ri === ri && editPos.ii === -1
                     ? <PosEditor isNew cats={cats} sups={supList} library={library} onToLibrary={saveToLibrary} onCancel={() => setEditPos(null)} onSave={(d) => savePos(ri, -1, d)} />
                     : <div style={{ display: "flex", gap: 8, marginTop: 10, flexWrap: "wrap" }}>
-                        <button className="btn btn-ghost" style={{ padding: "7px 12px", fontSize: "var(--fs-12)" }}
-                          onClick={() => setEditPos({ ri, ii: -1 })}><I.plus size={14} />Позиция вручную</button>
-                        {FFE && <button className="btn btn-ghost" style={{ padding: "7px 12px", fontSize: "var(--fs-12)" }}
-                          onClick={() => setPickerRoom(ri)}><I.layers size={14} />Из библиотеки</button>}
+                        <button className="btn-ws" onClick={() => setEditPos({ ri, ii: -1 })}>
+                          <I.plus size={14} />Позиция вручную{ri === 0 && <span className="kbd">N</span>}</button>
+                        {FFE && <button className="btn-ws" onClick={() => setPickerRoom(ri)}><I.layers size={14} />Из библиотеки</button>}
                       </div>)}
                 </div>
               ))}
@@ -1066,7 +1162,7 @@ function RoomSpecOverlay({ data, onClose }) {
                 </span>
               )}
               <div style={{ marginLeft: "auto", display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
-                <SegTabs className="spec-mode" cap="Выгрузка" ariaLabel="Режим выгрузки" value={mode} onChange={setMode}
+                <SegTabs className="spec-mode" cap="Выгрузка" ariaLabel="Режим выгрузки" value={mode} onChange={changeMode}
                   items={[
                     { id: "work", label: "Рабочая", title: "Рабочая смета: себестоимость, наценка и цена клиента" },
                     { id: "client", label: "Для клиента", title: "Для клиента: только итоговая цена, без себестоимости и наценки" },
@@ -1082,9 +1178,9 @@ function RoomSpecOverlay({ data, onClose }) {
       </div>
       {addOpen && <AddPositionsModal excludeId={savedId} roomNames={rooms.map((r) => r.name)} onClose={() => setAddOpen(false)} onAdd={addFrom} />}
       {versionsOpen && (
-        <VersionsModal versions={versions} current={{ project: data.name, studioName: (settings && settings.studioName) || (me && me.name) || "", rooms, grand, totalClient, itemsCount }}
+        <VersionsModal versions={versions} current={{ project: data.name, studioName, studioContact, rooms, grand, totalClient, itemsCount }}
           onSave={saveVersion} onRestore={restoreVersion} onSetStatus={setVersionStatus}
-          onPatch={patchVersion} onRemove={removeVersion} onShare={shareVersion} onClose={() => setVersionsOpen(false)} />
+          onPatch={patchVersion} onRemove={removeVersion} onShare={shareVersion} onClose={closeVersions} />
       )}
       {shareModal && <ShareLinkModal share={shareModal} onClose={() => setShareModal(null)} />}
       {pickerRoom != null && rooms[pickerRoom] && (
@@ -1155,9 +1251,7 @@ function VersionsModal({ versions, current, onSave, onRestore, onSetStatus, onPa
         </div>
 
         {!versions.length && (
-          <div style={{ padding: "22px 8px", textAlign: "center", color: "var(--muted)", fontSize: "var(--fs-14)", lineHeight: 1.6 }}>
-            Пока нет сохранённых версий.<br />Сохраните снимок перед отправкой клиенту — и отмечайте статус согласования по ответу.
-          </div>
+          <EmptyState compact icon="news" text={<React.Fragment>Пока нет сохранённых версий.<br />Сохраните снимок перед отправкой клиенту — и отмечайте статус согласования по ответу.</React.Fragment>} />
         )}
 
         {versions.map((v) => {
@@ -1204,6 +1298,7 @@ function VersionsModal({ versions, current, onSave, onRestore, onSetStatus, onPa
                     project: current.project, versionLabel: v.label, createdAt: v.createdAt,
                     vStatusLabel: sm.label, statusAt: v.statusAt, respondedAt: sh && sh.respondedAt,
                     studioName: (sh && sh.studioName) || current.studioName,
+                    studioContact: (sh && [sh.studioCity, sh.studioPhone, sh.studioEmail].filter(Boolean).join(" · ")) || current.studioContact,
                     snapshot: sh ? sh.snapshot : v.snapshot,
                   }))}
                   title="Скачать протокол согласования: решения клиента по позициям, переписка и таймстампы">
@@ -1306,7 +1401,7 @@ function CommentThreadCard({ group, onReply }) {
    деньги нормализуются до целых рублей, расчёты идут прежним конвейером
    (инвариант UI=PDF=Excel не трогаем). Enter — сохранить, Esc — закрыть
    редактор (не оверлей: stopPropagation до window-слушателя). */
-function PosEditor({ item, cats, sups, isNew, onSave, onDelete, onCancel, library, onToLibrary }) {
+function PosEditor({ item, cats, sups, isNew, onSave, onDelete, onCancel, library, onToLibrary, posNav }) {
   const [d, setD] = usePD({
     title: item ? item.title : "",
     cat: (item && item.cat) || "",
@@ -1320,6 +1415,16 @@ function PosEditor({ item, cats, sups, isNew, onSave, onDelete, onCancel, librar
   const ok = !!d.title.trim() && price > 0;
   const draft = () => ({ title: d.title.trim(), qty, price, cat: d.cat.trim(), sup: d.sup.trim() });
   const submit = () => { if (ok) onSave(draft()); };
+  // W5.3: правил ли пользователь поля (для prev/next: изменённый валидный черновик сохраняем перед переходом)
+  const dirty = !!item && (d.title.trim() !== item.title || qty !== (item.qty || 1) || price !== item.price
+    || d.cat.trim() !== (item.cat || "") || d.sup.trim() !== (item.sup || ""));
+  // dirty, но невалидно (например, стёрли название) — не топим правку молча: держим редактор
+  // на месте, пусть починят или явно жмут «Отмена» (кнопки честно обещают «правки сохранятся»)
+  const goNav = (j) => {
+    if (j == null || !posNav) return;
+    if (dirty && !ok) { toast("Заполните название и цену/шт — или отмените правки, прежде чем перейти к другой позиции.", "warn"); return; }
+    posNav.go(j, dirty ? draft() : null);
+  };
   // библиотека товаров студии (волна B1): подсказки по названию + подстановка цены/раздела/поставщика
   const lib = library || [];
   const libMatch = d.title.trim() ? lib.find((p) => (p.title || "").trim().toLowerCase() === d.title.trim().toLowerCase()) : null;
@@ -1342,6 +1447,19 @@ function PosEditor({ item, cats, sups, isNew, onSave, onDelete, onCancel, librar
         if (e.key === "Enter" && e.target.tagName === "INPUT") { e.preventDefault(); submit(); }
         if (e.key === "Escape") { e.stopPropagation(); onCancel(); }
       }}>
+      {/* W5.3 (§5.7): листание позиций комнаты не закрывая редактор — мини-стрелки в шапке;
+         изменённый валидный черновик сохраняется при переходе, нетронутый — просто листаем */}
+      {!isNew && posNav && posNav.total > 1 && (
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginBottom: -2 }}>
+          <span className="mono" style={{ fontSize: "var(--fs-11)", color: "var(--spec-meta)" }}>Позиция {posNav.index + 1} из {posNav.total}</span>
+          <span style={{ display: "inline-flex", gap: 4 }}>
+            <button type="button" className="btn-mini" disabled={posNav.prev == null} onClick={() => goNav(posNav.prev)}
+              title="К предыдущей позиции (правки сохранятся)" aria-label="Предыдущая позиция"><Icon size={12} stroke={2} d="M5 15l7-7 7 7" /></button>
+            <button type="button" className="btn-mini" disabled={posNav.next == null} onClick={() => goNav(posNav.next)}
+              title="К следующей позиции (правки сохранятся)" aria-label="Следующая позиция"><Icon size={12} stroke={2} d="M5 9l7 7 7-7" /></button>
+          </span>
+        </div>
+      )}
       <label style={lab}>Название
         <input style={fld} value={d.title} autoFocus list="pe-lib-list" onChange={(e) => onTitle(e.target.value)} />
       </label>
@@ -1562,9 +1680,7 @@ function AddPositionsModal({ excludeId, roomNames, onClose, onAdd }) {
         <div style={{ padding: 16, display: "flex", flexDirection: "column", gap: 8, maxHeight: "54vh", overflow: "auto" }}>
           {tab === "past" && !sources && Array.from({ length: 2 }).map((_, i) => <div key={i} className="skel" style={{ height: 62, borderRadius: 12 }} />)}
           {tab === "past" && sources && sources.length === 0 && (
-            <div style={{ padding: "28px 16px", textAlign: "center", color: "var(--muted)", fontSize: "var(--fs-14)", lineHeight: 1.55 }}>
-              Пока нет прошлых проектов со сметой по комнатам.<br />Сохраните смету — и её позиции можно будет переиспользовать здесь.
-            </div>
+            <EmptyState compact icon="layers" text={<React.Fragment>Пока нет прошлых проектов со сметой по комнатам.<br />Сохраните смету — и её позиции можно будет переиспользовать здесь.</React.Fragment>} />
           )}
           {tab === "past" && sources && sources.map((s) => (
             <button key={s.id} onClick={() => pickSrc(s, false)} style={rowBtn}
@@ -2329,5 +2445,359 @@ function AdvisorChat({ id, hello, onAction, onClose }) {
   );
 }
 
+/* ============================================================
+   ОБЗОР ПРОЕКТА (волна W2, бенчмарк Programa «Overview») — «лицо» проекта:
+   шапка (статус-петля + описание + обложка) · KPI-ряд ЖИВЫХ цифр · Recent-
+   документы. Все цифры считаются ИЗ СОХРАНЁННОЙ записи проекта теми же
+   формулами, что и смета (FFE.clientPricing/priceFreshness/статусы/версии) —
+   чтобы Обзор и Смета не противоречили друг другу. Каждая KPI и карточка —
+   переход в соответствующий раздел (setRoute s2), нулевые состояния словами.
+   ============================================================ */
+
+/* Чистый агрегат метрик проекта из его записи (rooms + настройки наценки).
+   Зеркалит клиентскую матшу сметы (RoomSpecOverlay): grand — себестоимость,
+   client/totalClient/profit — через FFE.clientPricing; согласование, стадии
+   закупки, свежесть цен, версии — из тех же справочников FFE. */
+function projectMetrics(data) {
+  const FFE = window.AIVibeFFE;
+  const rooms = (data && data.rooms) || [];
+  const markup = data.markupPct != null ? data.markupPct : PD_DEFAULT_MARKUP;
+  const catMarkup = data.catMarkupPct || {};
+  const discount = data.discountPct || 0, delivery = data.deliveryCost || 0, install = data.installCost || 0;
+  const items = rooms.flatMap((r) => r.items || []);
+  const itemsCount = items.length;
+  const grand = items.reduce((s, it) => s + (it.price || 0) * (it.qty || 1), 0);
+  const pricing = FFE ? FFE.clientPricing({ rooms, markup, catMarkup, discount, delivery, install })
+    : { client: 0, discountAmt: 0, totalClient: 0 };
+  const profit = pricing.client - pricing.discountAmt - grand;  // доставка/монтаж — транзит (без наценки), в профит не входят
+  // согласование клиента по позициям (то же правило: отсутствие поля = «ждёт»)
+  const apOk = FFE ? items.filter((it) => FFE.APPROVE_BY_ID[it.approve] && it.approve === "ok").length : 0;
+  const apWaiting = itemsCount - apOk;
+  // стадии закупки: заказано..установлено = «в работе», принято = закрыто; просрочка — по датам стадий/платежей
+  let inWork = 0, accepted = 0, overdue = 0;
+  if (FFE) items.forEach((it) => {
+    const order = FFE.statusMeta(it.status).order;
+    if (order >= 8) accepted++; else if (order >= 3) inWork++;
+    if (FFE.itemDueItems(it).some((d) => FFE.urgencyBucket(d.date) === "overdue")) overdue++;
+  });
+  const fresh = FFE && FFE.priceFreshness ? FFE.priceFreshness(rooms) : null;
+  const versions = FFE && data.id ? FFE.loadVersions(data.id) : [];
+  const approved = versions.find((v) => v.status === "approved") || null;
+  const share = versions.find((v) => v.shareId) || null;   // портал клиента выпущен, если у версии есть shareId
+  const photos = items.map((it) => it.img).filter(Boolean);
+  return { itemsCount, grand, client: pricing.client, totalClient: pricing.totalClient, profit,
+    apOk, apWaiting, inWork, accepted, overdue, fresh, versions, approved, share, photos, roomsCount: rooms.length };
+}
+
+/* тумбнейл документа: коллаж 2×2 из фото позиций (паттерн Programa); нет фото —
+   обложка проекта striped-плейсхолдером (Img сам рисует ph при отсутствии src) */
+function DocThumb({ photos, cover, label }) {
+  const pics = (photos || []).slice(0, 4);
+  if (pics.length <= 1) return <Img src={pics[0] || PHOTOS[cover]} label={label} style={{ borderRadius: 0 }} />;
+  return (
+    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gridTemplateRows: "1fr 1fr", gap: 2, width: "100%", height: "100%", background: "var(--hairline)" }}>
+      {Array.from({ length: 4 }).map((_, i) => (
+        <div key={i} style={{ overflow: "hidden", background: "var(--surface-2)" }}>
+          {pics[i] && <Img src={pics[i]} label="" style={{ borderRadius: 0 }} />}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/* тумбнейл-иконка для документов без фото-коллажа (портал/протокол/закупка):
+   центрированная иконка на плашке; цвет/фон задаёт состояние документа */
+function IconThumb({ icon, bg, color }) {
+  const Ico = I[icon] || I.grid;
+  return <div style={{ width: "100%", height: "100%", display: "grid", placeItems: "center", background: bg, color }}><Ico size={34} /></div>;
+}
+
+/* карточка-документ Recent: тумбнейл + тип + подпись, вся кликабельна в раздел */
+function DocCard({ thumb, title, sub, onClick }) {
+  return (
+    <button className="glass" onClick={onClick} style={{ borderRadius: "var(--r-lg)", overflow: "hidden", textAlign: "left", display: "flex", flexDirection: "column", cursor: "pointer" }}>
+      <div style={{ aspectRatio: "16/10", position: "relative", overflow: "hidden" }}>{thumb}</div>
+      <div style={{ padding: "13px 16px" }}>
+        <div style={{ fontWeight: 700, fontSize: "var(--fs-15)" }}>{title}</div>
+        <div style={{ color: "var(--muted)", fontSize: "var(--fs-12)", marginTop: 3, lineHeight: 1.4 }}>{sub}</div>
+      </div>
+    </button>
+  );
+}
+
+/* KPI-плитка обзора: подпись + стрелка-переход + крупная цифра + подпись-контекст
+   (нулевое состояние словами). Деньги — mono, счётчики — display (канон П2). */
+function OvKpi({ label, value, mono, sub, subTone, onClick, title }) {
+  return (
+    <button className="glass ov-kpi" onClick={onClick} title={title}
+      style={{ borderRadius: "var(--r-lg)", padding: 22, textAlign: "left", display: "flex", flexDirection: "column", cursor: "pointer" }}>
+      <span style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, color: "var(--muted)", fontSize: "var(--fs-13)", marginBottom: 12 }}>
+        {label}<I.arrow size={15} style={{ color: "var(--faint)", flex: "none" }} />
+      </span>
+      <span className={mono ? "mono" : "display"} style={{ fontSize: "var(--fs-26)", fontWeight: mono ? 600 : undefined, letterSpacing: mono ? undefined : "-0.02em", lineHeight: 1, whiteSpace: "nowrap" }}>{value}</span>
+      {sub && <span style={{ fontSize: "var(--fs-12)", color: subTone || "var(--muted)", marginTop: 8, lineHeight: 1.4 }}>{sub}</span>}
+    </button>
+  );
+}
+
+/* чип-статус петли комплектатора с дропдауном — общий словарь ffe.js
+   (FFE.PROJ_STATUSES/PROJ_STATUS_COLOR) и общие пункты меню (StatusMenuItems),
+   те же, что на карточке проекта: без копипаста дропдауна. */
+function LoopStatusChip({ status, onChange }) {
+  const colors = (window.AIVibeFFE && window.AIVibeFFE.PROJ_STATUS_COLOR) || {};
+  const [open, setOpen] = usePD(false);
+  useMenu(open, () => setOpen(false), "ov-status-wrap");
+  return (
+    <div className="ov-status-wrap" style={{ position: "relative" }}>
+      <button className="glass" aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen((o) => !o)}
+        style={{ display: "flex", alignItems: "center", gap: 8, padding: "7px 13px", borderRadius: 99, fontSize: "var(--fs-13)", fontWeight: 700, whiteSpace: "nowrap" }}>
+        <span aria-hidden="true" style={{ width: 8, height: 8, borderRadius: "50%", background: colors[status], flex: "none" }} />
+        {status}
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" aria-hidden="true" style={{ color: "var(--faint)" }}><path d="M6 9l6 6 6-6" /></svg>
+      </button>
+      {open && (
+        <div className="menu menu-pop" role="menu" style={{ position: "absolute", top: "calc(100% + 6px)", right: 0, minWidth: 200, zIndex: 40 }}>
+          <StatusMenuItems current={status} onPick={(s) => { setOpen(false); if (s !== status) onChange(s); }} />
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ProjectOverview({ data, onClose }) {
+  const [status, setStatus] = usePD(data.status || "Сбор");
+  // метрики зависят только от data — мемоизируем, чтобы смена статуса (частый ре-рендер)
+  // не гоняла flatMap/reduce/clientPricing и синхронное чтение localStorage (loadVersions)
+  const m = React.useMemo(() => projectMetrics(data), [data]);
+  const stageNext = (window.AIVibeFFE && window.AIVibeFFE.PROJ_STAGE_NEXT) || {};   // подсказка следующего шага петли (словарь — ffe.js)
+  const goSection = (s2) => setRoute("cabinet", "projects", data.id, s2);
+  const changeStatus = (s) => {
+    if (!data.id) { setStatus(s); return; }   // несохранённая смета — некуда persist'ить, просто отражаем
+    const prev = status;
+    setStatus(s);   // оптимистично — чип реагирует сразу
+    AIVibeAPI.projects.update(data.id, { status: s })
+      .then(() => toast("Статус проекта: «" + s + "»"))
+      .catch(() => { setStatus(prev); toast("Не удалось сменить статус — попробуйте ещё раз.", "warn", 5000); });   // откат оптимизма
+  };
+  const meta = [data.room, data.style, data.area ? data.area + " м²" : null, data.updated ? "изменён " + fmtDateRu(data.updated) : null].filter(Boolean).join(" · ");
+
+  return (
+    <div className="pd-overlay" role="dialog" aria-label={"Обзор проекта: " + data.name}>
+      <OverlayHead onBack={onClose} budget={data.budget}
+        crumbs={[{ label: "Проекты", onClick: onClose }, { label: data.name }, { label: "Обзор" }]}
+        title={data.name} sub={meta}
+        right={<LoopStatusChip status={status} onChange={changeStatus} />} />
+
+      <div className="pd-body solo">
+        <div className="pd-main">
+          <section className="pd-section" style={{ borderBottom: "none" }}>
+            {/* ── шапка проекта: описание + обложка + следующий шаг петли ── */}
+            <div className="ov-hero" style={{ display: "grid", gridTemplateColumns: "1fr 300px", gap: 24, alignItems: "start", marginBottom: 30 }}>
+              <div>
+                <div className="eyebrow jade" style={{ marginBottom: 12 }}>Обзор проекта</div>
+                {/* срок/адрес объекта (волна W4.2) — задаются в Настройках, здесь только чтение */}
+                {(data.dateStart || data.dateEnd || data.address) && (
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", fontSize: "var(--fs-13)", color: "var(--muted)", marginBottom: 10 }}>
+                    {(data.dateStart || data.dateEnd) && <span className="mono">{data.dateStart ? fmtDateRu(data.dateStart) : "—"} → {data.dateEnd ? fmtDateRu(data.dateEnd) : "—"}</span>}
+                    {(data.dateStart || data.dateEnd) && data.address && <span aria-hidden="true">·</span>}
+                    {data.address && <span>{data.address}</span>}
+                  </div>
+                )}
+                {data.summaryShort
+                  ? <p style={{ color: "var(--muted)", fontSize: "var(--fs-15)", lineHeight: 1.65, maxWidth: 640 }}>{data.summaryShort}</p>
+                  : <p style={{ color: "var(--faint)", fontSize: "var(--fs-15)", lineHeight: 1.65 }}>Описание проекта появится здесь — соберите смету, задайте наценку и опубликуйте версию клиенту.</p>}
+                {stageNext[status] && (
+                  <div style={{ display: "flex", alignItems: "baseline", gap: 8, fontSize: "var(--fs-13)", color: "var(--muted)", marginTop: 16 }}>
+                    <span style={{ fontWeight: 700, color: "var(--text)", whiteSpace: "nowrap" }}>Дальше:</span>
+                    <span style={{ lineHeight: 1.4 }}>{stageNext[status]}</span>
+                  </div>
+                )}
+              </div>
+              <div style={{ aspectRatio: "16/10", borderRadius: "var(--r-lg)", overflow: "hidden", border: "1px solid var(--hairline)" }}>
+                <Img src={PHOTOS[data.cover]} label={data.room || data.name} />
+              </div>
+            </div>
+
+            {/* ── KPI-ряд живых цифр (каждая = переход в раздел) ── */}
+            <h3 className="pd-h" style={{ fontSize: "var(--fs-18)", marginBottom: 14 }}>Ключевые цифры</h3>
+            <div className="ov-kpis" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 14, marginBottom: 34 }}>
+              <OvKpi label="Позиции" value={m.itemsCount} onClick={() => goSection("smeta")}
+                title="Открыть смету"
+                sub={m.itemsCount === 0 ? "добавьте первую позицию"
+                  : m.apWaiting > 0 ? m.apWaiting + " ждут решения · " + m.apOk + " согласовано"
+                  : "все " + m.apOk + " согласованы"}
+                subTone={m.itemsCount > 0 && m.apWaiting > 0 ? "var(--accent-ink)" : m.itemsCount > 0 ? "var(--accent-2-ink)" : undefined} />
+              <OvKpi label="Сумма для клиента" mono value={fmtMoney(m.totalClient)} onClick={() => goSection("client")}
+                title="Открыть смету для клиента"
+                sub={m.profit > 0 ? "ваша наценка " + fmtMoney(m.profit) : "наценка не задана"}
+                subTone={m.profit > 0 ? "var(--accent-2-ink)" : undefined} />
+              <OvKpi label="Закупка" value={m.itemsCount === 0 ? "—" : m.inWork} onClick={() => goSection("procure")}
+                title="Открыть закупку"
+                sub={m.itemsCount === 0 ? "смета ещё пустая"
+                  : m.overdue > 0 ? m.overdue + " просрочено · " + m.accepted + " принято"
+                  : m.inWork > 0 ? (m.accepted > 0 ? "в работе · " + m.accepted + " принято" : "в работе · просрочек нет")
+                  : m.accepted > 0 ? "всё принято · " + m.accepted + " " + plural(m.accepted, ["позиция", "позиции", "позиций"])
+                  : "закупка не начата"}
+                subTone={m.overdue > 0 ? "var(--accent-ink)" : (m.itemsCount > 0 && m.inWork === 0 && m.accepted > 0 ? "var(--accent-2-ink)" : undefined)} />
+              <OvKpi label="Свежесть цен" value={!m.fresh ? "—" : m.fresh.days === 0 ? "сегодня" : m.fresh.days + " " + plural(m.fresh.days, ["день", "дня", "дней"])}
+                onClick={() => goSection("smeta")} title="Проверить цены в смете"
+                sub={!m.fresh ? "цены не датированы" : "проверено " + m.fresh.checked + " из " + m.fresh.total + (m.fresh.stale ? " · перепроверьте" : "")}
+                subTone={m.fresh && m.fresh.stale ? "var(--accent-ink)" : undefined} />
+              <OvKpi label="Версии" value={m.versions.length} onClick={() => goSection("versions")}
+                title="Открыть версии и согласование"
+                sub={m.approved ? "согласована «" + m.approved.label + "»" : m.versions.length ? "снимков сохранено" : "снимков ещё нет"}
+                subTone={m.approved ? "var(--accent-2-ink)" : undefined} />
+            </div>
+
+            {/* ── Recent-документы: смета (коллаж фото) · портал · протокол · закупка ── */}
+            <h3 className="pd-h" style={{ fontSize: "var(--fs-18)", marginBottom: 14 }}>Документы проекта</h3>
+            <div className="ov-docs" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: 16, maxWidth: 960 }}>
+              <DocCard onClick={() => goSection("smeta")}
+                thumb={<DocThumb photos={m.photos} cover={data.cover} label={data.room || data.name} />}
+                title="Смета"
+                sub={m.itemsCount + " " + plural(m.itemsCount, ["позиция", "позиции", "позиций"]) + " · " + m.roomsCount + " " + plural(m.roomsCount, ["комната", "комнаты", "комнат"])} />
+              <DocCard onClick={() => goSection("versions")}
+                thumb={<IconThumb icon="user" bg={m.share ? "var(--accent-2)" : "var(--surface-2)"} color={m.share ? "var(--on-accent)" : "var(--faint)"} />}
+                title="Портал клиента"
+                sub={m.share ? "ссылка выпущена" + (m.share.label ? " · " + m.share.label : "") : "ещё не выпущен"} />
+              <DocCard onClick={() => goSection("versions")}
+                thumb={<IconThumb icon="check" bg="var(--surface-2)" color={m.apOk > 0 ? "var(--accent-2-ink)" : "var(--faint)"} />}
+                title="Протокол согласования"
+                sub={m.apOk > 0 ? "согласовано " + m.apOk + " из " + m.itemsCount : "решения ещё не собраны"} />
+              <DocCard onClick={() => goSection("procure")}
+                thumb={<IconThumb icon="truck" bg="var(--surface-2)" color={m.overdue > 0 ? "var(--accent-ink)" : "var(--muted)"} />}
+                title="Закупочный лист"
+                sub={m.itemsCount === 0 ? "смета ещё пустая" : m.overdue > 0 ? m.inWork + " в работе · " + m.overdue + " просрочено" : m.inWork > 0 ? m.inWork + " в работе" : m.accepted > 0 ? "всё принято" : "закупка не начата"} />
+            </div>
+          </section>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ---------------- НАСТРОЙКИ ПРОЕКТА (волна W4.2) ----------------
+   «Детали»: имя/срок/адрес объекта/описание/обложка + Архив (= статус петли «Архив»,
+   не отдельная сущность — тот же AIVibeAPI.projects.update, что и смена статуса в
+   Обзоре/карточке). «Портал клиента» (дефолтная вьюха, список клиентов) сознательно НЕ
+   строим сейчас — у нас нет ни режима просмотра сметы клиентом (кроме единственного,
+   который уже есть), ни multi-user доступа: делать переключатель без реального эффекта
+   значило бы имитировать функцию. Вернётся вместе с режимом «Превью» (роадмап #11,
+   отмечен 🔴 «нужны детали от владельца») — см. журнал волны W4. */
+const SETTINGS_COVERS = ["living", "bedroom", "kitchen", "office", "deco", "studio"];
+function ProjectSettings({ data, onClose, onSaved }) {
+  const [name, setName] = usePD(data.name || "");
+  const [address, setAddress] = usePD(data.address || "");
+  const [dateStart, setDateStart] = usePD(data.dateStart || "");
+  const [dateEnd, setDateEnd] = usePD(data.dateEnd || "");
+  const [summaryShort, setSummaryShort] = usePD(data.summaryShort || "");
+  const [cover, setCover] = usePD(data.cover || "living");
+  const [saving, setSaving] = usePD(false);
+  const [archiving, setArchiving] = usePD(false);
+  const goSection = (s2) => setRoute("cabinet", "projects", data.id, s2);
+
+  const save = async () => {
+    if (saving) return;
+    setSaving(true);
+    const cleanName = name.trim() || data.name;
+    try {
+      const updated = await AIVibeAPI.projects.update(data.id, { name: cleanName, address: address.trim(), dateStart, dateEnd, summaryShort: summaryShort.trim(), cover });
+      onSaved(updated);   // Обзор держит отдельную копию data — без мержа показал бы старое
+      setName(cleanName);
+      setTitle("cabinet", cleanName);
+      // шапка сайдбара (cabinet.jsx WsSidebar) держит СВОЮ отдельную копию имени, фетчнутую
+      // по [projId] — событие, не проп: тот эффект живёт в другом компоненте дерева
+      window.dispatchEvent(new CustomEvent("aivibe:project-renamed", { detail: { id: data.id, name: cleanName } }));
+      toast("Настройки проекта сохранены");
+    } catch (e) {
+      toast("Не удалось сохранить настройки — попробуйте ещё раз.", "warn", 5000);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const archive = async () => {
+    if (archiving) return;
+    const ok = await confirmDialog({ title: "Архивировать проект?", text: "«" + data.name + "» перейдёт в статус «Архив» — данные останутся на месте, просто уйдёт из активных.", confirmLabel: "В архив" });
+    if (!ok) return;
+    setArchiving(true);
+    try {
+      const updated = await AIVibeAPI.projects.update(data.id, { status: "Архив" });
+      onSaved(updated);
+      toast("Проект «" + data.name + "» отправлен в архив");
+    } catch (e) {
+      toast("Не удалось архивировать проект — попробуйте ещё раз.", "warn", 5000);
+      setArchiving(false);
+      return;
+    }
+    goSection("");   // назад в Обзор — новый статус там уже отразится
+  };
+
+  const fld = { display: "block" };
+  const lbl = { display: "block", fontSize: "var(--fs-13)", color: "var(--muted)", marginBottom: 7, fontWeight: 600 };
+
+  return (
+    <div className="pd-overlay" role="dialog" aria-label={"Настройки проекта: " + data.name}>
+      <OverlayHead onBack={onClose} budget={data.budget}
+        crumbs={[{ label: "Проекты", onClick: onClose }, { label: data.name, onClick: () => goSection("") }, { label: "Настройки" }]}
+        title="Настройки проекта" sub="Имя, срок, адрес объекта и обложка — видны в Обзоре и выгрузках" />
+
+      <div className="pd-body solo">
+        <div className="pd-main">
+          <section className="pd-section" style={{ borderBottom: "none" }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: 18, maxWidth: 640 }}>
+              <label style={fld}>
+                <span style={lbl}>Название проекта</span>
+                <input className="fld" value={name} onChange={(e) => setName(e.target.value)} aria-label="Название проекта" />
+              </label>
+
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                <label style={fld}>
+                  <span style={lbl}>Начало работ</span>
+                  <input className="fld" type="date" value={dateStart} onChange={(e) => setDateStart(e.target.value)} aria-label="Начало работ" />
+                </label>
+                <label style={fld}>
+                  <span style={lbl}>Окончание</span>
+                  <input className="fld" type="date" value={dateEnd} onChange={(e) => setDateEnd(e.target.value)} aria-label="Окончание работ" />
+                </label>
+              </div>
+
+              <label style={fld}>
+                <span style={lbl}>Адрес объекта</span>
+                <input className="fld" value={address} onChange={(e) => setAddress(e.target.value)} placeholder="Напр. Москва, ул. Тверская, 12" aria-label="Адрес объекта" />
+              </label>
+
+              <label style={fld}>
+                <span style={lbl}>Описание <span style={{ color: "var(--faint)", fontWeight: 400 }}>(показывается в Обзоре)</span></span>
+                <textarea className="fld" rows={3} value={summaryShort} onChange={(e) => setSummaryShort(e.target.value)}
+                  placeholder="Пара предложений о проекте — увидите на Обзоре и на портале" style={{ resize: "vertical", minHeight: 74 }} aria-label="Описание" />
+              </label>
+
+              <div>
+                <span style={lbl}>Обложка</span>
+                <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                  {SETTINGS_COVERS.map((c) => (
+                    <button key={c} type="button" onClick={() => setCover(c)} aria-pressed={cover === c} aria-label={"Обложка: " + c}
+                      style={{ width: 72, height: 52, borderRadius: 10, overflow: "hidden", border: "2px solid " + (cover === c ? "var(--accent)" : "var(--hairline)"), flex: "none" }}>
+                      <Img src={PHOTOS[c]} label="" />
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </section>
+        </div>
+      </div>
+
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap", padding: "16px 26px", borderTop: "1px solid var(--hairline)", background: "var(--surface)" }}>
+        <button className="btn btn-ghost" onClick={archive} disabled={archiving}>{archiving ? "Архивируем…" : "Архивировать проект"}</button>
+        <button className="btn btn-primary" onClick={save} disabled={saving}>{saving ? "Сохраняем…" : <React.Fragment><I.check size={16} />Сохранить</React.Fragment>}</button>
+      </div>
+    </div>
+  );
+}
+
 window.ProjectDetail = ProjectDetail;
+window.ProjectSettings = ProjectSettings;
+window.ProjectOverview = ProjectOverview;
 window.RoomSpecOverlay = RoomSpecOverlay;   // рендерится из кабинета (импорт Excel / черновик калькулятора); в ES-модулях без явного экспорта был бы ReferenceError

@@ -67,6 +67,8 @@ const I = {
   plan: (p) => <Icon {...p} d={<><rect x="3" y="3" width="18" height="18" rx="1.5" /><path d="M3 14h7V3M10 14v7M14 3v6h7" /></>} />,
   spinner: (p) => <Icon {...p} d="M12 3a9 9 0 1 0 9 9" />,
   download: (p) => <Icon {...p} d={<><path d="M12 3v12M7 10l5 5 5-5" /><path d="M5 21h14" /></>} />,
+  calendar: (p) => <Icon {...p} d={<><rect x="3.5" y="5" width="17" height="15" rx="2" /><path d="M3.5 9.5h17M8 3v4M16 3v4" /></>} />,
+  gear: (p) => <Icon {...p} d={<><circle cx="12" cy="12" r="3.2" /><path d="M12 3.5v2.4M12 18.1v2.4M20.5 12h-2.4M5.9 12H3.5M17.8 6.2l-1.7 1.7M7.9 16.1l-1.7 1.7M17.8 17.8l-1.7-1.7M7.9 7.9 6.2 6.2" /></>} />,
 };
 
 /* ---------- Картинка с striped-плейсхолдером и fallback ---------- */
@@ -554,6 +556,21 @@ function PriceAgeChip({ d, note }) {
   );
 }
 
+/* «Изменено N дней назад» (карточка проекта, волна W3, паттерн Programa
+   «Edited N hours ago») — честно по дням: `updated` в данных хранится только
+   датой (YYYY-MM-DD), без времени суток, так что часы/минуты были бы
+   выдуманной точностью. За порогом в месяц — просто дата (day.month). */
+function fmtRelDays(dateStr) {
+  const d = new Date(dateStr + "T00:00:00");
+  if (isNaN(d.getTime())) return "";
+  const days = Math.round((new Date(new Date().toDateString()) - d) / 86400000);
+  if (days <= 0) return "сегодня";
+  if (days === 1) return "вчера";
+  if (days < 30) return days + " " + plural(days, ["день", "дня", "дней"]) + " назад";
+  return d.toLocaleDateString("ru-RU", { day: "2-digit", month: "2-digit" });
+}
+window.fmtRelDays = fmtRelDays;
+
 /* дата+время треда («08.07 14:32») — короче ISO, читаемо в переписке клиент↔студия */
 const fmtCommentAt = (iso) => {
   // new Date(bogus) не бросает — даёт Invalid Date, toLocaleString тогда вернёт
@@ -631,25 +648,26 @@ function PageHead({ eyebrow, eyebrowIcon, title, sub, right, style }) {
   );
 }
 
-/* пустое состояние: полное (первый запуск — крупная иконка + заголовок + CTA)
-   или компактное (после фильтра/поиска — маленькая иконка + строка текста) */
+/* пустое состояние (W5.2, шаблон Programa §5.8): по центру, без тяжёлой карточки —
+   маленькая иконка серым → заголовок → 1–2 строки ценности → CTA. Компактный вариант —
+   для «после фильтра/поиска» внутри списков и модалок. */
 function EmptyState({ icon, title, text, action, compact }) {
   const Ico = icon ? I[icon] : null;
   if (compact) {
     return (
-      <div className="glass" style={{ borderRadius: "var(--r-lg)", padding: 40, textAlign: "center", color: "var(--muted)" }}>
-        {Ico && <Ico size={26} style={{ color: "var(--faint)" }} />}
-        {text && <div style={{ marginTop: 10, fontSize: "var(--fs-14)" }}>{text}</div>}
-        {action}
+      <div style={{ padding: "34px 20px", textAlign: "center", color: "var(--muted)" }}>
+        {Ico && <Ico size={20} style={{ color: "var(--faint)" }} />}
+        {text && <div style={{ marginTop: 8, fontSize: "var(--fs-13)", lineHeight: 1.6, maxWidth: 420, marginInline: "auto" }}>{text}</div>}
+        {action && <div style={{ marginTop: 14, display: "flex", justifyContent: "center", gap: 10, flexWrap: "wrap" }}>{action}</div>}
       </div>
     );
   }
   return (
-    <div className="glass" style={{ borderRadius: "var(--r-xl)", padding: "52px 32px", textAlign: "center" }}>
-      {Ico && <span style={{ width: 58, height: 58, borderRadius: 17, background: "var(--surface-2)", color: "var(--accent)", display: "grid", placeItems: "center", margin: "0 auto 18px" }}><Ico size={27} /></span>}
-      {title && <h3 className="display" style={{ fontSize: "var(--fs-21)" }}>{title}</h3>}
-      {text && <p style={{ color: "var(--muted)", fontSize: "var(--fs-14)", marginTop: 8, maxWidth: 440, marginInline: "auto", lineHeight: 1.6 }}>{text}</p>}
-      {action}
+    <div style={{ padding: "clamp(48px,10vh,96px) 24px", textAlign: "center" }}>
+      {Ico && <Ico size={20} style={{ color: "var(--faint)" }} />}
+      {title && <h3 style={{ fontSize: "var(--fs-15)", fontWeight: 600, marginTop: 10 }}>{title}</h3>}
+      {text && <p style={{ color: "var(--muted)", fontSize: "var(--fs-13)", marginTop: 6, maxWidth: 420, marginInline: "auto", lineHeight: 1.6 }}>{text}</p>}
+      {action && <div style={{ marginTop: 18, display: "flex", justifyContent: "center", alignItems: "center", gap: 12, flexWrap: "wrap" }}>{action}</div>}
     </div>
   );
 }
@@ -769,6 +787,23 @@ function useMenu(open, close, wrapCls) {
   }, [open]);
 }
 window.useMenu = useMenu;
+
+/* Пункты меню статуса петли проекта (точка + подпись + галочка активного) —
+   общий для карточки проекта (cabinet-views) и «Обзора» (project-detail, W2),
+   чтобы не было копипаста двух дропдаунов. Словарь — из ffe.js. onPick(status)
+   получает выбор (вызывающий сам решает закрыть меню / вернуть фокус). */
+function StatusMenuItems({ current, onPick }) {
+  const F = window.AIVibeFFE || {};
+  const statuses = F.PROJ_STATUSES || [], colors = F.PROJ_STATUS_COLOR || {};
+  return statuses.map((s) => (
+    <button key={s} role="menuitem" className="menu-item" onClick={(e) => { e.stopPropagation(); onPick(s); }}
+      style={{ fontWeight: s === current ? 700 : 600 }}>
+      <span style={{ width: 8, height: 8, borderRadius: "50%", background: colors[s], flex: "none" }} />{s}
+      {s === current && <I.check size={14} style={{ marginLeft: "auto", color: "var(--accent-2)" }} />}
+    </button>
+  ));
+}
+window.StatusMenuItems = StatusMenuItems;
 
 /* ============================================================
    ГРАФИКИ (рисуем сами на SVG, цвет --chart / Wasabi)

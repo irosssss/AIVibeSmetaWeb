@@ -23,6 +23,15 @@
   };
   const PDF_DEFAULT = { fontSize: 10, color: PDF.ink };
 
+  // шапка студии (волна W4.1) — имя + контакты под заголовком документа; общая для
+  // exportRoomSpec/exportProcurePDF/exportApprovalProtocol, было скопипащено в каждую
+  function studioHeaderBlock(studioName, studioContact) {
+    return [
+      ...(studioName ? [{ text: studioName, bold: true, fontSize: 10.5, color: PDF.accent, margin: [0, 0, 0, 2] }] : []),
+      ...(studioContact ? [{ text: studioContact, fontSize: 9, color: PDF.muted, margin: [0, 0, 0, 2] }] : []),
+    ];
+  }
+
   function exportSpec({ project, styleName, rows, total, budget, checks }) {
     if (!window.pdfMake) { (window.toast ? toast("PDF-модуль ещё загружается — попробуйте через секунду.", "info") : 0); return false; }
     const over = total > budget;
@@ -101,9 +110,9 @@
   //       "client" — только цена клиента, без себестоимости/наценки/бюджета;
   //       "procure" — закупочный лист: группировка по поставщикам, только себестоимость.
   // catMarkupPct: {раздел: %} — свои наценки поверх базовой markupPct (как на экране сметы).
-  function exportRoomSpec({ project, area, rooms, grand, markupPct, catMarkupPct, clientTotal, discountPct, deliveryCost, installCost, budget, mode }) {
+  function exportRoomSpec({ project, area, rooms, grand, markupPct, catMarkupPct, clientTotal, discountPct, deliveryCost, installCost, budget, mode, studioName, studioContact }) {
     if (!window.pdfMake) { (window.toast ? toast("PDF-модуль ещё загружается — попробуйте через секунду.", "info") : 0); return false; }
-    if (mode === "procure") return exportProcurePDF({ project, area, rooms: rooms || [], grand, budget });
+    if (mode === "procure") return exportProcurePDF({ project, area, rooms: rooms || [], grand, budget, studioName, studioContact });
     const clientMode = mode === "client";
     const FFE = window.AIVibeFFE || null;
     const fresh = FFE && FFE.priceFreshness ? FFE.priceFreshness(rooms) : null;
@@ -120,6 +129,7 @@
       { columns: [ { text: "Design Ledger", style: "logo" }, { text: "Смета-комплектация", alignment: "right", style: "muted", margin: [0, 6, 0, 0] } ] },
       { canvas: [{ type: "line", x1: 0, y1: 0, x2: 515, y2: 0, lineWidth: 1, lineColor: "#B7502C" }], margin: [0, 8, 0, 0] },
       { text: project || "Проект", style: "h1", margin: [0, 14, 0, 2] },
+      ...studioHeaderBlock(studioName, studioContact),
       { text: "Комплектация по дизайн-проекту · " + (area || "—") + " м²", style: "muted", margin: [0, 0, 0, 14] },
     ];
     (rooms || []).forEach((r) => {
@@ -183,7 +193,7 @@
 
   // Закупочный лист (роадмап #10): группы по поставщикам, только себестоимость;
   // «цена от …» — давность цены скопированной позиции (тем же цветом-варнингом после 30 дней)
-  function exportProcurePDF({ project, area, rooms, grand, budget }) {
+  function exportProcurePDF({ project, area, rooms, grand, budget, studioName, studioContact }) {
     const NO_SUP = "Поставщик не указан";
     const lineCost = (it) => it.price * (it.qty || 1);
     const fmtD = (d) => { const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(d || "")); return m ? m[3] + "." + m[2] + "." + m[1] : ""; };
@@ -204,6 +214,7 @@
       { columns: [ { text: "Design Ledger", style: "logo" }, { text: "Закупочный лист", alignment: "right", style: "muted", margin: [0, 6, 0, 0] } ] },
       { canvas: [{ type: "line", x1: 0, y1: 0, x2: 515, y2: 0, lineWidth: 1, lineColor: "#B7502C" }], margin: [0, 8, 0, 0] },
       { text: project || "Проект", style: "h1", margin: [0, 14, 0, 2] },
+      ...studioHeaderBlock(studioName, studioContact),
       { text: "Закупка по поставщикам · " + (area || "—") + " м² · цены — себестоимость, без наценки", style: "muted", margin: [0, 0, 0, 14] },
     ];
     names.forEach((nm) => {
@@ -255,7 +266,7 @@
      и на что отвечает дизайнер в «Версиях»), иначе — собственный снимок версии
      (решения могли быть проставлены дизайнером вручную ещё до портала, волна A1).
      Юридически фиксирует состояние переговоров на момент выгрузки. */
-  function exportApprovalProtocol({ project, versionLabel, createdAt, vStatusLabel, statusAt, respondedAt, studioName, snapshot }) {
+  function exportApprovalProtocol({ project, versionLabel, createdAt, vStatusLabel, statusAt, respondedAt, studioName, studioContact, snapshot }) {
     if (!window.pdfMake) { (window.toast ? toast("PDF-модуль ещё загружается — попробуйте через секунду.", "info") : 0); return false; }
     const FFE = window.AIVibeFFE;
     const snap = snapshot || {};
@@ -275,7 +286,7 @@
       { columns: [ { text: "Design Ledger", style: "logo" }, { text: "Протокол согласования", alignment: "right", style: "muted", margin: [0, 6, 0, 0] } ] },
       { canvas: [{ type: "line", x1: 0, y1: 0, x2: 515, y2: 0, lineWidth: 1, lineColor: "#B7502C" }], margin: [0, 8, 0, 0] },
       { text: project || "Проект", style: "h1", margin: [0, 14, 0, 2] },
-      ...(studioName ? [{ text: studioName, bold: true, fontSize: 10.5, color: "#B7502C", margin: [0, 0, 0, 2] }] : []),
+      ...studioHeaderBlock(studioName, studioContact),
       { text: "Версия «" + (versionLabel || "—") + "»" + (createdAt ? " · снимок от " + fmtDT(createdAt) : ""), style: "muted", margin: [0, 0, 0, 2] },
       { text: "Статус: " + (vStatusLabel || "—") + (statusAt ? " · " + fmtD(statusAt) : "") + (respondedAt ? "   ·   клиент отвечал " + fmtDT(respondedAt) : ""), style: "muted", margin: [0, 0, 0, 14] },
     ];

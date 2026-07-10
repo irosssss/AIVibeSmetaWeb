@@ -4,20 +4,26 @@
    ============================================================ */
 const { useState: useC, useEffect: useCE } = React;
 
-/* ---------- Хеш-роутинг: #view/tab/sub (переживает F5, работает «назад»,
-   sub — открытый проект: #cabinet/projects/p_1 → deep-link на смету) ---------- */
-const CAB_TABS = [["projects", "Проекты"], ["workshop", "Мастерская"], ["favorites", "Избранное"], ["profile", "Профиль"]];
+/* ---------- Хеш-роутинг: #view/tab/sub/s2 (переживает F5, работает «назад»,
+   sub — открытый проект: #cabinet/projects/p_1 → deep-link в проект (обзор смет-
+   комплектаций — волна W2; для AI-демо — сразу деталь),
+   s2 — раздел открытого проекта: '' обзор · smeta · client · procure · versions — W1/W2.
+   Волна W3: студийные вкладки today (домашний экран «Сегодня») и procure
+   (закупка-хаб — сквозная очередь по всем проектам) — не путать с тем же именем
+   `procure` в s2: это студийный tab (#cabinet/procure), а s2 — раздел ОДНОГО
+   открытого проекта (#cabinet/projects/p_1/procure); разные позиции адреса. ---------- */
+const CAB_TABS = [["today", "Сегодня"], ["projects", "Проекты"], ["workshop", "Мастерская"], ["procure", "Закупка"], ["favorites", "Избранное"], ["profile", "Профиль"]];
 const CAB_TAB_IDS = CAB_TABS.map((t) => t[0]);
 /* старые адреса вкладок-редакторов живут как deep-links внутрь Мастерской:
    #cabinet/styles → #cabinet/workshop/styles, #cabinet/norms → #cabinet/workshop/norms */
 const LEGACY_WORKSHOP = { styles: "styles", norms: "norms" };
 function parseRoute() {
   const h = (location.hash || "").replace(/^#\/?/, "");
-  const [view, tab, sub] = h.split("/");
-  return { view: view || "site", tab: tab || "", sub: sub || "" };
+  const [view, tab, sub, s2] = h.split("/");
+  return { view: view || "site", tab: tab || "", sub: sub || "", s2: s2 || "" };
 }
-function setRoute(view, tab, sub) {
-  const next = "#" + view + (tab ? "/" + tab : "") + (sub ? "/" + sub : "");
+function setRoute(view, tab, sub, s2) {
+  const next = "#" + view + (tab ? "/" + tab : "") + (sub ? "/" + sub : "") + (s2 ? "/" + s2 : "");
   if (location.hash !== next) location.hash = next;
 }
 /* прототип-свитчер и синтетический вход в админку — только в dev-окружении */
@@ -109,11 +115,51 @@ function AuthScreen({ onAuthed, go }) {
   );
 }
 
-/* ---------------- КАБИНЕТ (рабочее пространство) ---------------- */
+/* ---------------- КАБИНЕТ (рабочее пространство, волны W1+W3) ----------------
+   Двухуровневая оболочка по эталону Programa: постоянный сайдбар студии
+   (Сегодня / Проекты / Мастерская / Закупка / Избранное / Профиль), при открытом
+   проекте сайдбар подменяется контекстом проекта (← назад · Обзор · Смета · Для
+   клиента · Закупка · Версии). Роутинг прежний: #cabinet/{tab}/{sub}/{s2}. */
+
+/* конфиг сайдбара студии; Мастерская — группа с под-пунктами (те же адреса, что были) */
+const WS_ICONS = { today: "sun", projects: "layers", workshop: "sliders", procure: "truck", favorites: "heart", profile: "user" };
+const WS_SUB_ICONS = { styles: "spark", products: "sofa", norms: "ruler" };
+/* разделы открытого проекта (s2 адреса); только для смет-комплектаций (data.rooms).
+   W2: «Обзор» — лицо проекта и новый дефолт посадки (s2=''), смета переехала на
+   'smeta' (паттерн Programa «клик по проекту = обзор, не сразу таблица»). */
+const WS_PROJ_ITEMS = [
+  ["", "Обзор", "chart"],
+  ["smeta", "Смета", "grid"],
+  ["client", "Для клиента", "user"],
+  ["procure", "Закупка", "truck"],
+  ["versions", "Версии и согласование", "news"],
+  ["settings", "Настройки", "gear"],   // волна W4.2: детали проекта (срок/адрес/обложка/архив)
+];
+
 function Cabinet({ user, onLogout, go }) {
   // старые адреса #cabinet/styles|norms сразу переписываем на Мастерскую
   const normTab = (t) => (LEGACY_WORKSHOP[t] ? "workshop" : t);
-  const [tab, setTab] = useC(() => { const t = normTab(parseRoute().tab); return CAB_TAB_IDS.includes(t) ? t : "projects"; });
+  const r0 = parseRoute();   // один разбор адреса на все инициализаторы (useC-инициализатор выполняется единожды)
+  const [tab, setTab] = useC(() => { const t = normTab(r0.tab); return CAB_TAB_IDS.includes(t) ? t : "today"; });
+  const [projId, setProjId] = useC((r0.tab === "projects" && r0.sub) || null);
+  const [projS2, setProjS2] = useC(r0.s2 || "");
+  const [proj, setProj] = useC(null);            // мета открытого проекта для сайдбара (имя, rooms?)
+  const [drawer, setDrawer] = useC(false);       // мобильный сайдбар-drawer
+  const [cmdk, setCmdk] = useC(false);           // W5.4: ⌘K-палитра поиска
+  // ⌘K/Ctrl+K — везде в кабинете (e.code: не зависит от раскладки), повторное нажатие закрывает.
+  // Закрытие (setCmdk(false)) разрешено всегда даже из полей ввода — это просто Esc-эквивалент;
+  // ОТКРЫТИЕ из текстового поля/contentEditable глушим — иначе ⌘K посреди печати (переименование,
+  // поле PosEditor, настройки) обрывает ввод и крадёт фокус под открывшуюся палитру.
+  useCE(() => {
+    const onKey = (e) => {
+      if (e.code !== "KeyK" || !(e.metaKey || e.ctrlKey)) return;
+      if (!cmdk && (/^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName) || e.target.isContentEditable)) return;
+      e.preventDefault();
+      setCmdk((o) => !o);
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [cmdk]);
   const changeTab = (t) => {
     if (LEGACY_WORKSHOP[t]) { setTab("workshop"); setRoute("cabinet", "workshop", LEGACY_WORKSHOP[t]); return; }
     setTab(t); setRoute("cabinet", t);
@@ -125,6 +171,9 @@ function Cabinet({ user, onLogout, go }) {
       const r = parseRoute();
       if (LEGACY_WORKSHOP[r.tab]) { setRoute("cabinet", "workshop", LEGACY_WORKSHOP[r.tab]); return; }
       if (CAB_TAB_IDS.includes(r.tab)) setTab(r.tab);
+      setProjId((r.view === "cabinet" && r.tab === "projects" && r.sub) || null);
+      setProjS2(r.s2 || "");
+      setDrawer(false);
     };
     window.addEventListener("hashchange", on);
     return () => window.removeEventListener("hashchange", on);
@@ -136,20 +185,128 @@ function Cabinet({ user, onLogout, go }) {
     else if (!CAB_TAB_IDS.includes(r.tab)) setRoute("cabinet", tab);
   }, []);
 
-  const newProject = () => { changeTab("projects"); setTimeout(() => window.dispatchEvent(new CustomEvent("aivibe:new-project")), 0); };
+  // мета открытого проекта — только для сайдбара (имя + есть ли смета-комплектация)
+  useCE(() => {
+    if (!projId) { setProj(null); return; }
+    let alive = true;
+    AIVibeAPI.projects.get(projId).then((d) => { if (alive) setProj(d && d.id ? { id: d.id, name: d.name, rooms: !!d.rooms } : null); });
+    return () => { alive = false; };
+  }, [projId]);
+  // «Настройки» проекта (волна W4.2) переименовывают, пока сайдбар уже держит своё имя
+  // из фетча выше (не перезапускается — он завязан на [projId], а не на смену имени) —
+  // без этого шапка сайдбара показывала бы старое имя до закрытия/переоткрытия проекта
+  useCE(() => {
+    const onRenamed = (e) => { if (e.detail && e.detail.id === projId) setProj((p) => (p ? { ...p, name: e.detail.name } : p)); };
+    window.addEventListener("aivibe:project-renamed", onRenamed);
+    return () => window.removeEventListener("aivibe:project-renamed", onRenamed);
+  }, [projId]);
+
+  const newProject = () => { setDrawer(false); changeTab("projects"); setTimeout(() => window.dispatchEvent(new CustomEvent("aivibe:new-project")), 0); };
 
   return (
-    <div className="minh-screen">
-      <AppTopBar user={user} onLogout={onLogout} go={go} tabs={CAB_TABS} tab={tab} setTab={changeTab} onNewProject={newProject} />
-      <main id="main" className="container" style={{ paddingBlock: "clamp(28px,4vh,48px)", paddingTop: "calc(var(--nav-h) + 28px)" }}>
-        <div key={tab} className="view-enter">
-          {tab === "profile" ? <Profile user={user} />
-            : tab === "favorites" ? <Favorites />
-            : tab === "workshop" ? <Workshop />
-            : <Projects />}
+    <div className="ws minh-screen">
+      {cmdk && <CmdK onClose={() => setCmdk(false)} onTab={changeTab} />}
+      <WsSidebar user={user} onLogout={onLogout} go={go} tab={tab} onTab={changeTab}
+        proj={projId ? (proj || { id: projId, name: "", pending: true }) : null} projS2={projS2} onNewProject={newProject}
+        onSearch={() => setCmdk(true)}
+        open={drawer} onClose={() => setDrawer(false)} />
+      {drawer && <div className="ws-scrim" onClick={() => setDrawer(false)} aria-hidden="true" />}
+      <div className="ws-content">
+        <div className="ws-topbar">
+          <button className="icon-btn" onClick={() => setDrawer(true)} aria-label="Открыть меню кабинета"><I.grid size={19} /></button>
+          <Logo size={21} onClick={() => go("site")} />
+          <button className="btn btn-primary" style={{ padding: "8px 13px", fontSize: "var(--fs-13)", marginLeft: "auto" }} onClick={newProject}><I.plus size={15} />Проект</button>
         </div>
-      </main>
+        <main id="main" className="container" style={{ paddingBlock: "clamp(28px,4vh,48px)" }}>
+          <div key={tab} className="view-enter">
+            {tab === "profile" ? <Profile user={user} />
+              : tab === "favorites" ? <Favorites />
+              : tab === "workshop" ? <Workshop />
+              : tab === "procure" ? <ProcureHub onOpen={(id) => setRoute("cabinet", "projects", id)} />
+              : tab === "projects" ? <Projects />
+              : <Today user={user} onNewProject={newProject} onOpenProjects={() => changeTab("projects")} />}
+          </div>
+        </main>
+      </div>
     </div>
+  );
+}
+
+/* ---------------- Сайдбар воркспейса (W1) ----------------
+   Студийный уровень ↔ уровень проекта: при открытом проекте контент сайдбара
+   полностью подменяется (паттерн Programa), «←» возвращает к списку проектов. */
+function WsSidebar({ user, onLogout, go, tab, onTab, proj, projS2, onNewProject, onSearch, open, onClose }) {
+  const r = parseRoute();
+  const wsSub = tab === "workshop" ? (WS_SUBS.some((x) => x.id === r.sub) ? r.sub : "styles") : null;
+  const goProjSection = (s2) => proj && setRoute("cabinet", "projects", proj.id, s2);
+
+  const item = (key, label, icon, { on, onClick, sub } = {}) => {
+    const Ico = I[icon] || I.grid;
+    return (
+      <button key={key} className={"ws-item" + (on ? " on" : "") + (sub ? " sub" : "")} onClick={onClick} aria-current={on ? "page" : undefined}>
+        <Ico size={16} style={{ flex: "none" }} />
+        <span className="ws-item-t">{label}</span>
+      </button>
+    );
+  };
+  /* W5.4: «Поиск ⌘K» над навигацией (паттерн Programa) — бейдж хоткея видим в UI */
+  const searchItem = (
+    <button className="ws-item" onClick={() => { onClose(); onSearch(); }}>
+      <I.search size={16} style={{ flex: "none" }} />
+      <span className="ws-item-t">Поиск</span>
+      <span className="kbd" style={{ marginLeft: "auto" }}>⌘K</span>
+    </button>
+  );
+
+  return (
+    <aside className={"ws-side" + (open ? " open" : "")} aria-label={proj ? "Разделы проекта" : "Разделы кабинета"}>
+      <div className="ws-head">
+        <Logo size={22} onClick={() => go("site")} />
+        <button className="icon-btn ws-close" onClick={onClose} aria-label="Закрыть меню"><I.close size={17} /></button>
+      </div>
+
+      {!proj && (
+        <React.Fragment>
+          <button className="btn btn-primary ws-new" onClick={onNewProject}><I.plus size={16} />Новый проект</button>
+          {searchItem}
+          <div style={{ height: 6 }} />
+          <nav className="ws-nav" aria-label="Кабинет">
+            {CAB_TABS.map(([k, t]) => (
+              <React.Fragment key={k}>
+                {item(k, t, WS_ICONS[k], { on: tab === k, onClick: () => onTab(k) })}
+                {k === "workshop" && tab === "workshop" && WS_SUBS.map((s) =>
+                  item("ws_" + s.id, s.label, WS_SUB_ICONS[s.id], { sub: true, on: wsSub === s.id, onClick: () => setRoute("cabinet", "workshop", s.id) }))}
+              </React.Fragment>
+            ))}
+          </nav>
+        </React.Fragment>
+      )}
+
+      {proj && (
+        <React.Fragment>
+          <button className="ws-back" onClick={() => setRoute("cabinet", "projects")}><I.arrow size={15} style={{ transform: "rotate(180deg)" }} />Все проекты</button>
+          {searchItem}
+          <div style={{ height: 6 }} />
+          {/* пока мета проекта грузится — скелетон вместо ложного студийного меню (у оверлея уже проектный контекст) */}
+          {proj.pending
+            ? <div style={{ padding: "0 12px" }}><div className="skel" style={{ height: 22, borderRadius: 8, marginBottom: 14 }} /><div className="skel" style={{ height: 120, borderRadius: 10 }} /></div>
+            : <React.Fragment>
+                <div className="ws-proj-name display" title={proj.name}>{proj.name}</div>
+                <nav className="ws-nav" aria-label="Разделы проекта">
+                  {proj.rooms
+                    ? WS_PROJ_ITEMS.map(([s2, label, icon]) => item("p_" + s2, label, icon, { on: (projS2 || "") === s2, onClick: () => goProjSection(s2) }))
+                    : item("p_", "Проект", "cube", { on: true, onClick: () => goProjSection("") })}
+                </nav>
+              </React.Fragment>}
+        </React.Fragment>
+      )}
+
+      <div className="ws-foot">
+        {item("changelog", "Что нового", "news", { onClick: () => go("changelog") })}
+        <div style={{ height: 8 }} />
+        <AccountMenu user={user} onLogout={onLogout} onTab={(t) => { onClose(); onTab(t); }} up />
+      </div>
+    </aside>
   );
 }
 
@@ -169,47 +326,85 @@ function Workshop() {
   useCE(() => { const r = parseRoute(); if (r.tab === "workshop" && !WS_SUBS.some((x) => x.id === r.sub)) setRoute("cabinet", "workshop", sub); }, []);
   return (
     <div>
-      <SegTabs className="pd-seg" items={WS_SUBS} value={sub} onChange={change} ariaLabel="Раздел мастерской" style={{ marginBottom: 22 }} />
+      {/* на десктопе разделы Мастерской ведёт сайдбар (W1); сег-табы остаются мобильной навигацией */}
+      <SegTabs className="pd-seg ws-dup-tabs" items={WS_SUBS} value={sub} onChange={change} ariaLabel="Раздел мастерской" style={{ marginBottom: 22 }} />
       {sub === "norms" ? <NormsSettings /> : sub === "products" ? <ProductsLibrary /> : <StylesLibrary />}
     </div>
   );
 }
 
-/* верхняя панель приложения (кабинет): логотип · вкладки · +Новый проект · аккаунт-меню */
-function AppTopBar({ user, onLogout, go, tabs, tab, setTab, onNewProject }) {
+/* AppTopBar (фикс-топбар с вкладками) удалён в W1: кабинет целиком на WsSidebar,
+   других потребителей у топбара не было (админка рендерит свою шапку сама) */
+
+/* ---------------- ⌘K-палитра (W5.4, спека §5.9) ----------------
+   Поиск по проектам и разделам кабинета: ↑↓ — по результатам, ↵ — открыть,
+   Esc — закрыть (Modal). Проекты первыми, футер — видимые подсказки клавиш. */
+function CmdK({ onClose, onTab }) {
+  const [q, setQ] = useC("");
+  const [projects, setProjects] = useC(null);
+  const [idx, setIdx] = useC(0);
+  useCE(() => { AIVibeAPI.projects.list().then((l) => setProjects(l || [])); }, []);
+  const qq = q.trim().toLowerCase();
+  const match = (s) => !qq || (s.label + " " + (s.sub || "")).toLowerCase().includes(qq);
+  const results = [
+    ...(projects || []).map((p) => ({ kind: "proj", id: p.id, label: p.name, sub: [p.status, p.style, p.room].filter(Boolean).join(" · ") })).filter(match),
+    ...CAB_TABS.map(([id, label]) => ({ kind: "tab", id, label, sub: "Раздел кабинета" })).filter(match),
+  ];
+  const cur = Math.min(idx, Math.max(0, results.length - 1));
+  const pick = (r) => { if (!r) return; onClose(); if (r.kind === "proj") setRoute("cabinet", "projects", r.id); else onTab(r.id); };
+  const onKey = (e) => {
+    if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+      e.preventDefault();
+      setIdx((i) => { const n = results.length; if (!n) return 0; return e.key === "ArrowDown" ? (Math.min(i, n - 1) + 1) % n : (Math.min(i, n - 1) - 1 + n) % n; });
+    }
+    if (e.key === "Enter") { e.preventDefault(); pick(results[cur]); }
+  };
+  let lastKind = null;
   return (
-    <header style={{ position: "fixed", top: 0, left: 0, right: 0, zIndex: 80, height: "var(--nav-h)", background: "var(--surface-glass)", backdropFilter: "blur(16px)", borderBottom: "1px solid var(--hairline)" }}>
-      <div className="container" style={{ height: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 20 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 24, minWidth: 0 }}>
-          <Logo size={23} onClick={() => go("site")} />
-          {tabs && (
-            <div className="cab-tabs" style={{ display: "flex", gap: 4, padding: 4, background: "var(--glass-2)", borderRadius: 99, border: "1px solid var(--hairline)" }}>
-              {tabs.map(([k, t]) => (
-                <button key={k} onClick={() => setTab(k)} aria-current={tab === k ? "page" : undefined} style={{ padding: "8px 15px", borderRadius: 99, fontWeight: 700, fontSize: "var(--fs-13)",
-                  background: tab === k ? "var(--surface-2)" : "transparent", color: tab === k ? "var(--text)" : "var(--muted)" }}>{t}</button>
-              ))}
-            </div>
-          )}
-        </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          {onNewProject && <button className="btn btn-primary cab-new" style={{ padding: "9px 15px", fontSize: "var(--fs-13)" }} onClick={onNewProject} aria-label="Новый проект"><I.plus size={16} /><span className="cab-new-t">Новый проект</span></button>}
-          <AccountMenu user={user} onLogout={onLogout} onTab={setTab} />
-        </div>
+    <Modal onClose={onClose} label="Поиск по кабинету" maxWidth={560}>
+      <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "14px 16px", borderBottom: "1px solid var(--hairline)" }}>
+        <I.search size={17} style={{ color: "var(--faint)", flex: "none" }} />
+        <input value={q} onChange={(e) => { setQ(e.target.value); setIdx(0); }} onKeyDown={onKey}
+          placeholder="Проекты и разделы кабинета…" aria-label="Поиск по кабинету"
+          style={{ flex: 1, border: "none", outline: "none", background: "none", font: "inherit", fontSize: "var(--fs-15)", color: "var(--text)" }} />
       </div>
-    </header>
+      <div style={{ maxHeight: 380, overflowY: "auto", padding: 6 }} role="listbox" aria-label="Результаты поиска">
+        {projects == null && <div style={{ padding: "14px 12px", fontSize: "var(--fs-13)", color: "var(--muted)" }}>Загрузка…</div>}
+        {projects != null && results.length === 0 && <div style={{ padding: "14px 12px", fontSize: "var(--fs-13)", color: "var(--muted)" }}>По запросу «{q.trim()}» ничего не нашлось.</div>}
+        {results.map((r, i) => {
+          const head = r.kind !== lastKind ? (lastKind = r.kind, r.kind === "proj" ? "Проекты" : "Разделы") : null;
+          const Ico = r.kind === "proj" ? I.layers : (I[WS_ICONS[r.id]] || I.grid);
+          return (
+            <React.Fragment key={r.kind + r.id}>
+              {head && <div style={{ fontSize: "var(--fs-11)", fontWeight: 700, letterSpacing: ".04em", textTransform: "uppercase", color: "var(--faint)", padding: "8px 10px 4px" }}>{head}</div>}
+              <button role="option" aria-selected={i === cur} className="menu-item" onClick={() => pick(r)} onMouseEnter={() => setIdx(i)}
+                style={i === cur ? { background: "var(--surface-2)" } : undefined}>
+                <Ico size={16} style={{ color: "var(--muted)", flex: "none" }} />
+                <span style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.label}</span>
+                {r.sub && <span style={{ marginLeft: "auto", fontSize: "var(--fs-11)", color: "var(--spec-meta)", whiteSpace: "nowrap", flex: "none" }}>{r.sub}</span>}
+              </button>
+            </React.Fragment>
+          );
+        })}
+      </div>
+      <div style={{ display: "flex", alignItems: "center", gap: 14, padding: "10px 16px", borderTop: "1px solid var(--hairline)", fontSize: "var(--fs-11)", color: "var(--spec-meta)" }}>
+        <span><span className="kbd">↑↓</span> — по списку</span>
+        <span><span className="kbd">↵</span> — открыть</span>
+        <span style={{ marginLeft: "auto" }}><span className="kbd">esc</span> — закрыть</span>
+      </div>
+    </Modal>
   );
 }
 
-/* аккаунт-меню: профиль · тариф/биллинг · настройки · выйти */
-function AccountMenu({ user, onLogout, onTab }) {
+/* аккаунт-меню: профиль · тариф/биллинг · настройки · выйти
+   up — раскрытие вверх (низ сайдбара воркспейса, волна W1) */
+function AccountMenu({ user, onLogout, onTab, up }) {
   const [open, setOpen] = useC(false);
   useMenu(open, () => setOpen(false), "acc-menu");   // Esc/стрелки/click-outside — единый паттерн меню
   const billing = () => { setOpen(false); AIVibeAPI.billing.createPayment({ plan: "pro_month" }).then((r) => toast(r.message || "Оплата подключится позже.", "info", 5000)); };
   const item = (label, Ico, onClick, danger) => (
-    <button role="menuitem" onClick={onClick} style={{ display: "flex", alignItems: "center", gap: 11, width: "100%", padding: "10px 12px", borderRadius: 10, fontSize: "var(--fs-14)", fontWeight: 600,
-      color: danger ? "var(--accent-ink)" : "var(--text)", textAlign: "left" }}
-      onMouseEnter={(e) => (e.currentTarget.style.background = "var(--surface-2)")} onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}>
-      <Ico size={17} style={{ color: danger ? "var(--accent)" : "var(--muted)", flex: "none" }} />{label}
+    <button role="menuitem" className="menu-item" onClick={onClick} style={danger ? { color: "var(--accent-ink)" } : undefined}>
+      <Ico size={16} style={{ color: danger ? "var(--accent)" : "var(--muted)", flex: "none" }} />{label}
     </button>
   );
   return (
@@ -223,7 +418,7 @@ function AccountMenu({ user, onLogout, onTab }) {
         <I.arrow size={13} style={{ color: "var(--faint)", flex: "none", transform: open ? "rotate(-90deg)" : "rotate(90deg)", transition: "var(--dur-fast)" }} />
       </button>
       {open && (
-        <div className="glass menu-pop" role="menu" style={{ position: "absolute", top: "calc(100% + 10px)", right: 0, minWidth: 214, borderRadius: 14, boxShadow: "var(--shadow-pop)", padding: 7, zIndex: 90 }}>
+        <div className="menu menu-pop" role="menu" style={{ position: "absolute", ...(up ? { bottom: "calc(100% + 10px)", left: 0 } : { top: "calc(100% + 10px)", right: 0 }), minWidth: 214, zIndex: 90 }}>
           <div style={{ padding: "6px 12px 10px", borderBottom: "1px solid var(--hairline)", marginBottom: 6 }}>
             <div style={{ fontWeight: 700, fontSize: "var(--fs-13)" }}>{user.name}</div>
             <div style={{ fontSize: "var(--fs-12)", color: "var(--muted)" }}>{user.email}</div>
@@ -249,5 +444,4 @@ function Avatar({ user, size = 40 }) {
 
 window.AuthScreen = AuthScreen;
 window.Cabinet = Cabinet;
-window.AppTopBar = AppTopBar;
 window.Avatar = Avatar;

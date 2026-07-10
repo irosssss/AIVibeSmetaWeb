@@ -27,19 +27,50 @@ select.fld { appearance: none; cursor: pointer;
 .oauth-btn:hover:not(:disabled) { transform: translateY(-2px); filter: brightness(1.06); }
 .oauth-btn:disabled { opacity: .65; cursor: default; }
 
-/* ---- icon button ---- */
+/* ---- icon button (W5.0: белая + ring-тень вместо бордера, ховер = подъём тени) ---- */
 .icon-btn {
   width: 40px; height: 40px; border-radius: 11px;
   display: grid; place-items: center;
-  background: var(--glass-2); border: 1px solid var(--hairline); color: var(--muted);
-  transition: var(--dur-fast);
+  background: var(--surface); border: none; box-shadow: var(--shadow-ctl); color: var(--muted);
+  transition: color var(--dur-fast), box-shadow .15s var(--ease-pop);
 }
-.icon-btn:hover { color: var(--text); border-color: rgba(46,42,38,.24); transform: translateY(-1px); }
+.icon-btn:hover { color: var(--text); box-shadow: var(--shadow-lift); }
 .icon-btn.sm { width: 34px; height: 34px; border-radius: 9px; }
 /* компактный размер для плотных инлайн-контролов (переименовать/согласовать/удалить):
    класс, а не inline-размер — иначе мобильный bump 44px (медиазапрос) не перебивает inline-стиль */
 .icon-btn.xs { width: 26px; height: 26px; border-radius: 7px; }
-.icon-btn.danger:hover { color: var(--accent); border-color: rgba(183,80,44,.4); background: rgba(183,80,44,.1); }
+.icon-btn.danger:hover { color: var(--accent); background: rgba(183,80,44,.1); }
+
+/* ---- W5.0: компактный контрол воркспейса (физика Programa §5.3 — «всё 28px») ----
+   Белая кнопка с ring-тенью вместо бордера; ховер — подъём тени за 150ms.
+   Для рабочих поверхностей (тулбар сметы, меню, драуэры); промо живёт на .btn. */
+.btn-ws { display: inline-flex; align-items: center; gap: 7px; padding: 5px 11px; border-radius: 8px;
+  font-size: var(--fs-13); font-weight: 600; color: var(--text); background: var(--surface);
+  box-shadow: var(--shadow-ctl); white-space: nowrap;
+  transition: box-shadow .15s var(--ease-pop), transform var(--dur-fast), background var(--dur-fast), color var(--dur-fast); }
+.btn-ws:hover { box-shadow: var(--shadow-lift); }
+.btn-ws:active { transform: translateY(1px); }
+.btn-ws:disabled, .btn-ws[aria-disabled="true"] { opacity: .55; cursor: not-allowed; }
+.btn-ws[aria-pressed="true"] { color: var(--accent-ink); }
+
+/* мини-кнопка 20×20 (prev/next в шапке драуэра — §5.7) */
+.btn-mini { width: 22px; height: 22px; border-radius: 6px; display: grid; place-items: center;
+  background: var(--surface); box-shadow: var(--shadow-ctl); color: var(--muted);
+  transition: color var(--dur-fast), box-shadow .15s var(--ease-pop); }
+.btn-mini:hover:not(:disabled) { color: var(--text); box-shadow: var(--shadow-lift); }
+.btn-mini:disabled { opacity: .4; cursor: not-allowed; }
+
+/* видимая подпись хоткея в контроле («⌘K», «N») — §5.3 */
+.kbd { font-family: var(--font-mono); font-size: var(--fs-10); color: var(--spec-meta);
+  background: var(--surface-2); border-radius: 5px; padding: 1px 5px; flex: none; }
+
+/* ---- W5.0: канон меню (§5.6) — тёплый белый, padding 4, пункты 32px/radius 7 ---- */
+.menu { background: var(--surface); border-radius: 10px; padding: 4px; box-shadow: var(--shadow-menu); }
+.menu-item { display: flex; align-items: center; gap: 9px; width: 100%; min-height: 32px; padding: 5px 10px;
+  border-radius: 7px; font-size: var(--fs-13); font-weight: 600; color: var(--text); text-align: left;
+  transition: background var(--dur-fast); }
+.menu-item:hover { background: var(--surface-2); }
+.menu-item .mi-count { margin-left: auto; font-family: var(--font-mono); font-size: var(--fs-11); color: var(--spec-meta); }
 
 /* ---- spinner ---- */
 .spin { width: 15px; height: 15px; border-radius: 50%; border: 2px solid var(--hairline); border-top-color: var(--accent-2); display: inline-block; animation: rot .7s linear infinite; }
@@ -131,20 +162,13 @@ select.fld { appearance: none; cursor: pointer;
   .profile-grid, .cab-stats { grid-template-columns: 1fr !important; }
   .reveal[style*="grid-template-columns: 0.8fr"] { grid-template-columns: 1fr !important; }
   .proj-grid, .news-grid { grid-template-columns: repeat(2,1fr) !important; }
-  .cab-username { display: none; }
+  /* .cab-username больше не прячем: в drawer-сайдбаре (W1) месту имя не мешает,
+     правило жило ради тесного фикс-топбара, которого больше нет */
   .fav-layout { grid-template-columns: 1fr !important; }
   .fav-shop { position: static !important; }
 }
 
-/* ---- responsive: вкладки кабинета — скролл внутри пилюли, не переполнение ---- */
-@media (max-width: 720px) {
-  .cab-tabs { overflow-x: auto; max-width: 46vw; scrollbar-width: none; -webkit-overflow-scrolling: touch;
-    mask-image: linear-gradient(90deg, #000 88%, transparent); -webkit-mask-image: linear-gradient(90deg, #000 88%, transparent); }
-  .cab-tabs::-webkit-scrollbar { display: none; }
-  .cab-tabs button { white-space: nowrap; flex: none; }
-  .cab-new-t { display: none; }                                  /* «+ Новый проект» → только плюс */
-  .cab-new { padding: 9px 12px !important; }
-}
+/* (.cab-tabs/.cab-new удалены в W1 вместе с AppTopBar — навигацию кабинета ведёт сайдбар) */
 
 /* ---- responsive: аналитика-карточки (кабинет + админка) ---- */
 @media (max-width: 1040px) {
@@ -182,8 +206,6 @@ select.fld { appearance: none; cursor: pointer;
   .proj-grid, .news-grid { grid-template-columns: 1fr !important; }
   .fav-board { column-count: 1 !important; }
 
-  /* вкладки кабинета остаются доступны, просто компактнее (раньше прятались) */
-  .cab-tabs button { padding: 7px 12px !important; font-size: var(--fs-12) !important; }
 }
 
 /* очень узкие экраны — прячем словесную часть логотипа, чтобы топбар не переполнялся */
@@ -217,6 +239,83 @@ select.fld { appearance: none; cursor: pointer;
 /* внутри открытого оверлея dev-переключатель областей не плавает поверх
    sticky-панели сметы (наезжал на «Выгрузка: Рабочая/Клиенту/Закупка») */
 body:has(.pd-overlay) .proto-switch { display: none; }
+
+/* Обзор проекта (W2): KPI/документы-кнопки — hover-акцент; шапка складывается на узком */
+.ov-kpi, .ov-docs > button { transition: border-color .15s ease; }
+.ov-kpi:hover, .ov-docs > button:hover { border-color: var(--accent); }
+@media (max-width: 720px) { .ov-hero { grid-template-columns: 1fr !important; } }
+
+/* Карточка проекта (W3.3): закреп виден на hover карточки; уже закреплённая —
+   видна всегда (заливкой), как «⋯»-меню — паттерн Programa (пин hover-only, кебаб постоянный).
+   hover-only ТОЛЬКО там, где есть настоящий hover: на тач (без :hover) кнопка держала бы
+   opacity:0, но оставалась кликабельной поверх обложки — невидимый хотспот, случайный закреп
+   вместо открытия проекта. На тач — видна всегда, как кебаб. */
+@media (hover: hover) and (pointer: fine) {
+  .pc-pin { opacity: 0; transition: var(--dur-fast); }
+  .news-card:hover .pc-pin, .pc-pin.on, .pc-pin:focus-visible { opacity: 1; }
+}
+
+/* ============================================================
+   ОБОЛОЧКА ВОРКСПЕЙСА (волна W1): сайдбар студии ↔ сайдбар проекта
+   ============================================================ */
+/* --ws-w объявлен в :root (styles.css) — его читает и body-level dev-свитчер */
+/* W5.0 (физика Programa §5.1/5.4): сайдбар живёт прямо на тёплом канвасе (фон = body),
+   контент — «белый лист» с отступом 8px и ring-контуром; разделение цветом, не бордером.
+   Плотность пунктов 28–32px, активный = белая плашка с ring-подъёмом. */
+.ws-side { position: fixed; inset: 0 auto 0 0; width: var(--ws-w); z-index: 160; display: flex; flex-direction: column;
+  padding: 16px 12px 14px; background: transparent; overflow-y: auto; }
+.ws-head { display: flex; align-items: center; justify-content: space-between; padding: 2px 8px 4px; }
+.ws-close { display: none; }
+.ws-new { margin: 12px 0 14px; width: 100%; padding: 8px 12px; font-size: var(--fs-13); border-radius: 10px; }
+.ws-nav { display: flex; flex-direction: column; gap: 2px; }
+.ws-item { display: flex; align-items: center; gap: 10px; width: 100%; padding: 6px 10px 6px 8px; border-radius: 8px;
+  font-size: var(--fs-13); font-weight: 600; color: var(--muted); text-align: left;
+  transition: background var(--dur-fast), color var(--dur-fast), box-shadow var(--dur-fast); }
+.ws-item:hover { background: rgba(46,42,38,.05); color: var(--text); }
+.ws-item.on { background: var(--surface); color: var(--text); box-shadow: var(--shadow-raise); }
+.ws-item.sub { padding: 4px 10px 4px 36px; font-size: var(--fs-13); font-weight: 500; }
+.ws-item-t { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ws-back { display: flex; align-items: center; gap: 8px; margin: 10px 0 8px; padding: 6px 8px; border-radius: 8px;
+  font-size: var(--fs-13); font-weight: 700; color: var(--muted); }
+.ws-back:hover { background: rgba(46,42,38,.05); color: var(--text); }
+.ws-proj-name { font-size: var(--fs-18); padding: 0 10px 10px; line-height: 1.25; overflow-wrap: anywhere; }
+.ws-foot { margin-top: auto; padding-top: 12px; border-top: 1px solid var(--hairline); }
+.ws-content { margin: 8px 8px 8px var(--ws-w); min-width: 0; background: var(--surface);
+  border-radius: 12px; box-shadow: var(--ring); min-height: calc(100dvh - 16px); }
+.ws-topbar { display: none; }
+.ws-scrim { display: none; }
+/* открытый проект: полотно сметы = такой же «лист» на канвасе, сайдбар проекта остаётся */
+.ws .pd-overlay { inset: 8px 8px 8px var(--ws-w); border-radius: 12px; overflow: hidden; box-shadow: var(--ring); }
+/* смета вне роутинга (Excel-импорт, черновик калькулятора) — сайдбар не при делах:
+   на весь экран и выше него, как жила до W1. z ниже 200: confirm/promptDialog
+   монтируются в body (.modal-back, z 200) и обязаны оставаться поверх */
+.ws .pd-overlay.pd-fullscreen { inset: 0; z-index: 190; border-radius: 0; box-shadow: none; }
+
+@media (max-width: 920px) {
+  /* закрытый drawer не только уезжает, но и visibility:hidden — его кнопки
+     не должны ловить Tab/скринридер за краем экрана (фокус-ловушка) */
+  .ws-side { width: min(300px, 84vw); transform: translateX(-102%); visibility: hidden;
+    background: var(--surface); border-right: 1px solid var(--hairline);   /* drawer поверх контента — фон обязан быть плотным */
+    transition: transform var(--dur-base) var(--ease-pop), visibility 0s var(--dur-base); z-index: 210; }
+  .ws-side.open { transform: none; visibility: visible; transition-delay: 0s; box-shadow: var(--shadow-pop); }
+  /* в drawer'е фон сайдбара плотный (--surface) — активный пункт с тем же --surface (десктопная
+     плашка) слился бы в белое на белом; здесь ему нужна видимо другая заливка */
+  .ws-item.on { background: var(--surface-2); }
+  .ws-close { display: inline-flex; }
+  .ws-content { margin: 0; border-radius: 0; box-shadow: none; min-height: 0; }
+  .ws-topbar { display: flex; align-items: center; gap: 12px; position: sticky; top: 0; z-index: 80; height: var(--nav-h);
+    padding: 0 clamp(14px,3vw,24px); background: var(--surface-glass); backdrop-filter: blur(16px); border-bottom: 1px solid var(--hairline); }
+  .ws-scrim { display: block; position: fixed; inset: 0; z-index: 205; background: rgba(46,42,38,.4); }
+  /* мобайл: смета как раньше — на весь экран, «назад» в её собственной шапке */
+  .ws .pd-overlay { inset: 0; border-radius: 0; box-shadow: none; }
+}
+@media (prefers-reduced-motion: reduce) { .ws-side { transition: none; } }
+/* дубли навигации: сег-табы разделов (Мастерская) на десктопе прячутся — их ведёт сайдбар */
+@media (min-width: 921px) {
+  .ws .ws-dup-tabs { display: none; }
+  /* dev-свитчер не наезжает на аккаунт-карточку сайдбара */
+  body:has(.ws-side) .proto-switch { left: calc(var(--ws-w) + 20px); }
+}
 
 /* карточка-редактор позиции: на узких экранах поля в две колонки */
 @media (max-width: 640px) { .pe-grid { grid-template-columns: 1fr 1fr !important; } }
@@ -276,16 +375,20 @@ body:has(.pd-overlay) .proto-switch { display: none; }
 .pd-seg button.on { background: var(--accent); color: var(--on-accent); }
 .pd-seg button.on .sn { opacity: .9; }
 
-/* компактный переключатель режима выгрузки сметы (рабочая / для клиента) */
-.spec-mode { display: inline-flex; align-items: center; gap: 4px; padding: 4px; background: var(--glass-2); border: 1px solid var(--hairline); border-radius: 12px; }
-.spec-mode .spec-mode-cap { font-size: var(--fs-11); font-weight: 700; color: var(--faint); padding: 0 6px 0 4px; letter-spacing: .02em; }
-.spec-mode button { padding: 7px 12px; border-radius: 9px; font-weight: 700; font-size: var(--fs-12); color: var(--muted); transition: var(--dur-fast); white-space: nowrap; }
-.spec-mode button.on { background: var(--accent); color: var(--on-accent); }
+/* компактный переключатель режима выгрузки сметы (рабочая / для клиента).
+   W5.0 (§5.3): табы-«пилюли» без контейнера — активная = белая пилюля с ring-тенью
+   (режим вьюхи, не выбор данных: терракота остаётся за .pd-seg бюджета — канон П3) */
+.spec-mode { display: inline-flex; align-items: center; gap: 2px; }
+.spec-mode .spec-mode-cap { font-size: var(--fs-11); font-weight: 700; color: var(--faint); padding: 0 8px 0 2px; letter-spacing: .02em; }
+.spec-mode button { padding: 5px 12px; border-radius: 99px; font-weight: 600; font-size: var(--fs-13); color: var(--muted); transition: var(--dur-fast); white-space: nowrap; }
+.spec-mode button:hover:not(.on) { color: var(--text); }
+.spec-mode button.on { background: var(--surface); color: var(--text); font-weight: 600; box-shadow: var(--shadow-ctl); }
 
-/* светлый скин SegTabs (редакторы): выбранный = бумага, не терракота */
-.pd-seg.seg-lite { display: flex; gap: 4px; padding: 4px; background: var(--surface-2); border-radius: 12px; }
-.pd-seg.seg-lite button { flex: 1; padding: 9px; border-radius: 8px; font-size: var(--fs-13); }
-.pd-seg.seg-lite button.on { background: var(--surface); color: var(--text); box-shadow: 0 1px 2px rgba(46,42,38,.08); }
+/* светлый скин SegTabs (редакторы): те же пилюли (W5.0) */
+.pd-seg.seg-lite { display: flex; gap: 2px; padding: 0; background: none; border: none; border-radius: 0; }
+.pd-seg.seg-lite button { flex: 1; padding: 6px 12px; border-radius: 99px; font-size: var(--fs-13); font-weight: 600; }
+.pd-seg.seg-lite button:hover:not(.on) { color: var(--text); }
+.pd-seg.seg-lite button.on { background: var(--surface); color: var(--text); box-shadow: var(--shadow-ctl); }
 
 /* ---- Switch — единый переключатель вкл/выкл (олива = включено) ---- */
 .sw-toggle { width: 46px; height: 26px; border-radius: 99px; padding: 3px; flex: none;

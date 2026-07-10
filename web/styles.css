@@ -86,6 +86,14 @@
   --glow-accent: 0 10px 26px rgba(183, 80, 44, 0.22);
   --glow-jade: 0 8px 22px rgba(94, 107, 91, 0.20);
 
+  /* ---- Ring-тени (W5.0, физика Programa §5): «бордер» контрола = кольцо 1px
+     в тени + микро-подъём. Тёплый ink вместо чёрного — тот же приём, наш тон. ---- */
+  --ring: 0 0 0 1px rgba(46, 42, 38, 0.10);                                            /* просто кольцо (лист, поповер-контур) */
+  --shadow-ctl: 0 0 0 1px rgba(46, 42, 38, 0.12), 0 1px 2px rgba(46, 42, 38, 0.10);    /* кнопки/инпуты 28px */
+  --shadow-raise: 0 0 0 1px rgba(46, 42, 38, 0.09), 0 1px 2px -1px rgba(46, 42, 38, 0.09), 0 2px 4px rgba(46, 42, 38, 0.05);  /* активный пункт сайдбара / белая плашка */
+  --shadow-menu: 0 0 0 1px rgba(46, 42, 38, 0.09), 0 4px 10px rgba(46, 42, 38, 0.10);  /* меню/дропдауны */
+  --shadow-lift: 0 0 0 1px rgba(46, 42, 38, 0.09), 0 3px 10px rgba(46, 42, 38, 0.12);  /* ховер-подъём карточки-строки (150ms) */
+
   /* ---- Type (П6: self-host через @fontsource — Inter/JBMono variable-woff2,
      Spectral static-веса; в стеке после основного семейства стоит *-Fallback с
      size-adjust, чтобы FOUT не двигал суммы в смете. Имена 'Inter Variable' и
@@ -105,6 +113,7 @@
   --maxw: 1320px;
   --gutter: clamp(20px, 4vw, 56px);
   --nav-h: 76px;
+  --ws-w: 248px;               /* ширина сайдбара воркспейса (W1) — в :root, т.к. читают и элементы вне .ws (dev-свитчер) */
 
   /* ---- Type scale — РЕАЛЬНЫЕ ступени (П2, реш. владельца 09.07: полная честная система).
      Было 29 ad-hoc размеров с полупиксельными сиротами (12.5×82, 14.5×51…) при мёртвой
@@ -278,6 +287,10 @@ a { color: inherit; text-decoration: none; }
 /* появление контента при смене вкладки/режима (key={tab} даёт свежий DOM-узел — анимация играет сама) */
 .view-enter { animation: viewEnter .2s var(--ease) both; }
 @keyframes viewEnter { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+/* transform анимации входа делает вкладку containing block'ом для fixed-потомков:
+   оверлей проекта, открытый deep-link'ом внутрь анимирующейся вкладки, позиционировался бы
+   от вкладки, а не от вьюпорта (W1) — с оверлеем внутри анимацию честно выключаем */
+.view-enter:has(.pd-overlay) { animation: none; }
 
 /* выпадающее меню (AccountMenu, ⋯ карточки) — pop от верхнего правого угла, откуда открывается */
 .menu-pop { transform-origin: top right; animation: menuPop .16s var(--ease-pop) both; }
