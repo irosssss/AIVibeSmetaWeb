@@ -52,7 +52,7 @@ function ProductsLibrary() {
       {rows && all.length === 0 && (
         <EmptyState icon="layers" title="В библиотеке пока пусто"
           text="Добавьте товары, которые подбираете из проекта в проект. Они начнут подставляться в сметы по названию и появятся в пикере комнаты. Можно собрать библиотеку и постепенно — кнопкой «В библиотеку» на позициях готовой сметы."
-          action={<button className="btn btn-primary" onClick={createNew} style={{ marginTop: 4 }}><I.plus size={17} />Создать первый товар</button>} />
+          action={<button className="btn btn-primary" onClick={createNew}><I.plus size={17} />Создать первый товар</button>} />
       )}
 
       {rows && all.length > 0 && (

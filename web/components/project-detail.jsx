@@ -865,16 +865,13 @@ function RoomSpecOverlay({ data, nav, onClose }) {
                         )}
                       </div>
                       {editing && (() => {
-                        // W5.3: prev/next по ВИДИМЫМ строкам (фильтр «ждут решения» скрывает
-                        // согласованные — прыжок на скрытую строку спрятал бы и редактор)
-                        const visIdx = (from, dir) => {
-                          let j = from + dir;
-                          while (j >= 0 && j < r.items.length && apFilter && apOf(r.items[j]) === "ok") j += dir;
-                          return j >= 0 && j < r.items.length ? j : null;
-                        };
+                        // W5.3: соседний индекс без пропусков — фильтр «ждут решения» прячет строку
+                        // ТОЛЬКО когда она не редактируется (см. `!editing` в гварде рендера выше),
+                        // а prev/next сам делает целевую позицию editing → она рендерится в любом случае
+                        const adjIdx = (dir) => { const j = i + dir; return j >= 0 && j < r.items.length ? j : null; };
                         return (
                           <PosEditor item={it} cats={cats} sups={supList} library={library} onToLibrary={saveToLibrary}
-                            posNav={{ index: i, total: r.items.length, prev: visIdx(i, -1), next: visIdx(i, 1),
+                            posNav={{ index: i, total: r.items.length, prev: adjIdx(-1), next: adjIdx(1),
                               go: (j, draft) => { if (draft) savePos(ri, i, draft); setEditPos({ ri, ii: j }); } }}
                             onCancel={() => setEditPos(null)} onSave={(d) => savePos(ri, i, d)} onDelete={() => removePos(ri, i)} />
                         );
@@ -1421,7 +1418,13 @@ function PosEditor({ item, cats, sups, isNew, onSave, onDelete, onCancel, librar
   // W5.3: правил ли пользователь поля (для prev/next: изменённый валидный черновик сохраняем перед переходом)
   const dirty = !!item && (d.title.trim() !== item.title || qty !== (item.qty || 1) || price !== item.price
     || d.cat.trim() !== (item.cat || "") || d.sup.trim() !== (item.sup || ""));
-  const goNav = (j) => { if (j != null && posNav) posNav.go(j, ok && dirty ? draft() : null); };
+  // dirty, но невалидно (например, стёрли название) — не топим правку молча: держим редактор
+  // на месте, пусть починят или явно жмут «Отмена» (кнопки честно обещают «правки сохранятся»)
+  const goNav = (j) => {
+    if (j == null || !posNav) return;
+    if (dirty && !ok) { toast("Заполните название и цену/шт — или отмените правки, прежде чем перейти к другой позиции.", "warn"); return; }
+    posNav.go(j, dirty ? draft() : null);
+  };
   // библиотека товаров студии (волна B1): подсказки по названию + подстановка цены/раздела/поставщика
   const lib = library || [];
   const libMatch = d.title.trim() ? lib.find((p) => (p.title || "").trim().toLowerCase() === d.title.trim().toLowerCase()) : null;

@@ -298,6 +298,9 @@ body:has(.pd-overlay) .proto-switch { display: none; }
     background: var(--surface); border-right: 1px solid var(--hairline);   /* drawer поверх контента — фон обязан быть плотным */
     transition: transform var(--dur-base) var(--ease-pop), visibility 0s var(--dur-base); z-index: 210; }
   .ws-side.open { transform: none; visibility: visible; transition-delay: 0s; box-shadow: var(--shadow-pop); }
+  /* в drawer'е фон сайдбара плотный (--surface) — активный пункт с тем же --surface (десктопная
+     плашка) слился бы в белое на белом; здесь ему нужна видимо другая заливка */
+  .ws-item.on { background: var(--surface-2); }
   .ws-close { display: inline-flex; }
   .ws-content { margin: 0; border-radius: 0; box-shadow: none; min-height: 0; }
   .ws-topbar { display: flex; align-items: center; gap: 12px; position: sticky; top: 0; z-index: 80; height: var(--nav-h);

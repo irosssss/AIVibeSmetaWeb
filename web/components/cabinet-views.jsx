@@ -308,7 +308,7 @@ function Today({ user, onNewProject, onOpenProjects }) {
       {rows && rows.length === 0 && (
         <EmptyState icon="layers" title="Пока нет проектов"
           text="Создайте первый проект — задайте комнату и бюджет, дальше Design Ledger соберёт смету и проверит эргономику."
-          action={<button className="btn btn-primary" style={{ marginTop: 20 }} onClick={onNewProject}><I.plus size={17} />Создать первый проект</button>} />
+          action={<button className="btn btn-primary" onClick={onNewProject}><I.plus size={17} />Создать первый проект</button>} />
       )}
     </div>
   );
@@ -356,7 +356,7 @@ function ProcureHub({ onOpen }) {
 
       {shown && shown.length === 0 && rows.length > 0 && (
         <EmptyState compact icon="search" text="По этим фильтрам ничего не нашлось."
-          action={<button className="btn btn-ghost" style={{ marginTop: 14 }} onClick={() => { setProjF("Все"); setSupF("Все"); }}>Сбросить фильтры</button>} />
+          action={<button className="btn btn-ghost" onClick={() => { setProjF("Все"); setSupF("Все"); }}>Сбросить фильтры</button>} />
       )}
 
       {shown && shown.length > 0 && FFE && (
@@ -513,13 +513,13 @@ function Projects() {
       {rows && rows.length === 0 && (
         <EmptyState icon="layers" title="Пока нет проектов"
           text="Создайте первый проект — задайте комнату и бюджет, дальше Design Ledger соберёт смету и проверит эргономику."
-          action={<button className="btn btn-primary" style={{ marginTop: 20 }} onClick={() => setNewOpen(true)}><I.plus size={17} />Создать первый проект</button>} />
+          action={<button className="btn btn-primary" onClick={() => setNewOpen(true)}><I.plus size={17} />Создать первый проект</button>} />
       )}
 
       {shown && shown.length === 0 && rows.length > 0 && (
         <EmptyState compact icon="search"
           text={q.trim() ? <React.Fragment>По запросу <b style={{ color: "var(--text)" }}>«{q.trim()}»</b> ничего не нашлось{statusF !== "Все" ? " среди «" + statusF + "»" : ""}.</React.Fragment> : <React.Fragment>В статусе «{statusF}» пока нет проектов.</React.Fragment>}
-          action={<button className="btn btn-ghost" style={{ marginTop: 14 }} onClick={() => { setQ(""); setStatusF("Все"); }}>Показать все проекты</button>} />
+          action={<button className="btn btn-ghost" onClick={() => { setQ(""); setStatusF("Все"); }}>Показать все проекты</button>} />
       )}
 
       {shown && shown.length > 0 && (
@@ -720,7 +720,7 @@ function Favorites() {
           {shown && shown.length === 0 && (
             <EmptyState compact icon="heart"
               text={room === "Все" ? "В избранном пока пусто. Сохранение предметов из каталога появится вместе с реальным каталогом фабрик." : "В комнате «" + room + "» пока нет избранного."}
-              action={room !== "Все" && <button className="btn btn-ghost" style={{ marginTop: 14 }} onClick={() => setRoom("Все")}>Показать все комнаты</button>} />
+              action={room !== "Все" && <button className="btn btn-ghost" onClick={() => setRoom("Все")}>Показать все комнаты</button>} />
           )}
           {shown && shown.length > 0 && (
             <div className="fav-board" style={{ columnCount: 2, columnGap: 14 }}>

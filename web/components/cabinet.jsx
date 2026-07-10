@@ -146,12 +146,20 @@ function Cabinet({ user, onLogout, go }) {
   const [proj, setProj] = useC(null);            // мета открытого проекта для сайдбара (имя, rooms?)
   const [drawer, setDrawer] = useC(false);       // мобильный сайдбар-drawer
   const [cmdk, setCmdk] = useC(false);           // W5.4: ⌘K-палитра поиска
-  // ⌘K/Ctrl+K — везде в кабинете (e.code: не зависит от раскладки), повторное нажатие закрывает
+  // ⌘K/Ctrl+K — везде в кабинете (e.code: не зависит от раскладки), повторное нажатие закрывает.
+  // Закрытие (setCmdk(false)) разрешено всегда даже из полей ввода — это просто Esc-эквивалент;
+  // ОТКРЫТИЕ из текстового поля/contentEditable глушим — иначе ⌘K посреди печати (переименование,
+  // поле PosEditor, настройки) обрывает ввод и крадёт фокус под открывшуюся палитру.
   useCE(() => {
-    const onKey = (e) => { if (e.code === "KeyK" && (e.metaKey || e.ctrlKey)) { e.preventDefault(); setCmdk((o) => !o); } };
+    const onKey = (e) => {
+      if (e.code !== "KeyK" || !(e.metaKey || e.ctrlKey)) return;
+      if (!cmdk && (/^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName) || e.target.isContentEditable)) return;
+      e.preventDefault();
+      setCmdk((o) => !o);
+    };
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
-  }, []);
+  }, [cmdk]);
   const changeTab = (t) => {
     if (LEGACY_WORKSHOP[t]) { setTab("workshop"); setRoute("cabinet", "workshop", LEGACY_WORKSHOP[t]); return; }
     setTab(t); setRoute("cabinet", t);
