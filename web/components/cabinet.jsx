@@ -375,9 +375,10 @@ function CmdK({ onClose, onTab }) {
   useCE(() => {
     AIVibeAPI.projects.list().then((l) => {
       const list = l || [];
-      setProjects(list);
-      // мёртвые id (удалённые проекты) чистятся из слотов истории по живому списку
-      AIVibeAPI.recents.prune(list.map((p) => p.id)).then(setRecents);
+      // мёртвые id (удалённые проекты) чистятся из слотов истории по живому списку.
+      // Оба setState — в ОДНОМ колбэке (батч React 18): иначе список успевал кадр
+      // отрисоваться без «Недавнего» и строки съезжали под Enter/курсором (ревью р.2)
+      AIVibeAPI.recents.prune(list.map((p) => p.id)).then((keep) => { setRecents(keep); setProjects(list); });
     });
   }, []);
   const qq = q.trim().toLowerCase();

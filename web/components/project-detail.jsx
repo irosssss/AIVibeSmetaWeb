@@ -463,8 +463,11 @@ function RoomSpecOverlay({ data, nav, onClose }) {
     if (!name || !name.trim()) return;
     const v = name.trim();
     if (rooms.some((r) => r.name === v)) { toast("Комната «" + v + "» уже есть — выберите другое имя"); return; }
-    const shift = (p) => (p && p.ri > ri ? { ...p, ri: p.ri + 1 } : p);
-    setEditPos(shift); setFlashPos(shift); setFlashSup(shift);
+    // сдвигаем только editPos (черновик пользователя — его терять нельзя);
+    // флэши — косметика на 1.3s, чьи clear-таймеры гвардятся СТАРЫМИ индексами:
+    // сдвиг сделал бы подсветку вечной (таймер no-op), поэтому просто гасим (ревью р.2)
+    setEditPos((p) => (p && p.ri > ri ? { ...p, ri: p.ri + 1 } : p));
+    setFlashPos(null); setFlashSup(null);
     setRooms((prev) => { const next = [...prev]; next.splice(ri + 1, 0, { name: v, items: [] }); return next; });
     toast("Комната «" + v + "» добавлена — не забудьте сохранить смету.");
   };
