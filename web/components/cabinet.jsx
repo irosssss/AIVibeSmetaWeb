@@ -135,6 +135,24 @@ const WS_PROJ_ITEMS = [
   ["versions", "Версии и согласование", "news"],
   ["settings", "Настройки", "gear"],   // волна W4.2: детали проекта (срок/адрес/обложка/архив)
 ];
+// Д2 (W6): список нужен и переключателю под-вьюх в крошке (OverlayHead, project-detail.jsx) —
+// через window: кросс-файловые bare-const в этом Vite-трансформе нестабильны (журнал W2)
+window.WS_PROJ_ITEMS = WS_PROJ_ITEMS;
+
+/* Д3 (W6): «Недавнее» для ⌘K (паттерн Programa «Recently visited» при пустом запросе).
+   История — за AIVibeAPI.recents (mock.js, конвенция «вся персистенция за сигнатурой API»);
+   пишет Cabinet при смене адреса, читает CmdK. Относительное время: свежее — минуты/часы,
+   старше сегодняшнего дня — календарный fmtRelDays из ui.jsx («вчера» по границе суток
+   честнее 24-часового окна; W6-ревью: Math.round давал «2 ч назад» на 90 минутах). */
+const fmtAgo = (ts) => {
+  const m = Math.floor(Math.max(0, Date.now() - ts) / 60000);
+  if (m < 1) return "только что";
+  if (m < 60) return m + " мин назад";
+  const d = new Date(ts);
+  if (d.toDateString() === new Date().toDateString()) return Math.floor(m / 60) + " ч назад";
+  const pad = (n) => String(n).padStart(2, "0");
+  return window.fmtRelDays(d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate()));
+};
 
 function Cabinet({ user, onLogout, go }) {
   // старые адреса #cabinet/styles|norms сразу переписываем на Мастерскую
@@ -200,6 +218,15 @@ function Cabinet({ user, onLogout, go }) {
     window.addEventListener("aivibe:project-renamed", onRenamed);
     return () => window.removeEventListener("aivibe:project-renamed", onRenamed);
   }, [projId]);
+
+  // Д3 (W6): пишем «Недавнее» для ⌘K — открытый проект важнее вкладки-контейнера.
+  // «Сегодня» (дефолт-посадка) и «Проекты» (список-контейнер, всегда один клик из сайдбара)
+  // не пишем: при закрытии проекта переходное состояние projId=null/tab='projects'
+  // забивало бы слоты строкой «Проекты» поверх только что покинутого проекта (W6-ревью)
+  useCE(() => {
+    if (projId) AIVibeAPI.recents.push("proj", projId);
+    else if (tab !== "today" && tab !== "projects") AIVibeAPI.recents.push("tab", tab);
+  }, [tab, projId]);
 
   const newProject = () => { setDrawer(false); changeTab("projects"); setTimeout(() => window.dispatchEvent(new CustomEvent("aivibe:new-project")), 0); };
 
@@ -342,13 +369,42 @@ function Workshop() {
 function CmdK({ onClose, onTab }) {
   const [q, setQ] = useC("");
   const [projects, setProjects] = useC(null);
+  const [recents, setRecents] = useC([]);   // Д3: история читается раз на открытие палитры
   const [idx, setIdx] = useC(0);
-  useCE(() => { AIVibeAPI.projects.list().then((l) => setProjects(l || [])); }, []);
+  const [here] = useC(() => parseRoute());  // текущее место — самоссылку в «Недавнем» не показываем
+  useCE(() => {
+    AIVibeAPI.projects.list().then((l) => {
+      const list = l || [];
+      // мёртвые id (удалённые проекты) чистятся из слотов истории по живому списку.
+      // Оба setState — в ОДНОМ колбэке (батч React 18): иначе список успевал кадр
+      // отрисоваться без «Недавнего» и строки съезжали под Enter/курсором (ревью р.2)
+      AIVibeAPI.recents.prune(list.map((p) => p.id)).then((keep) => { setRecents(keep); setProjects(list); });
+    });
+  }, []);
   const qq = q.trim().toLowerCase();
   const match = (s) => !qq || (s.label + " " + (s.sub || "")).toLowerCase().includes(qq);
-  const results = [
-    ...(projects || []).map((p) => ({ kind: "proj", id: p.id, label: p.name, sub: [p.status, p.style, p.room].filter(Boolean).join(" · ") })).filter(match),
-    ...CAB_TABS.map(([id, label]) => ({ kind: "tab", id, label, sub: "Раздел кабинета" })).filter(match),
+  const curProj = (here.view === "cabinet" && here.tab === "projects" && here.sub) || null;
+  // Д3 (W6): пустой запрос = «Недавнее» первым (паттерн Programa «Recently visited»);
+  // ниже — полные списки без дублей недавнего. Поиск — по полным спискам, как раньше.
+  // До загрузки проектов список пуст (только «Загрузка…») — иначе Enter в первый миг
+  // улетал бы в случайно выживший ряд (W6-ревью).
+  const recentRows = qq ? [] : recents.map((r) => {
+    if (r.kind === "proj") {
+      if (r.id === curProj) return null;
+      const p = (projects || []).find((x) => x.id === r.id);
+      return p && { kind: "proj", id: p.id, label: p.name, sub: fmtAgo(r.at), group: "Недавнее" };
+    }
+    if (!curProj && r.id === here.tab) return null;
+    const t = CAB_TABS.find(([id]) => id === r.id);   // легаси-вкладка из старой истории — тихо выпадает
+    return t && { kind: "tab", id: t[0], label: t[1], sub: fmtAgo(r.at), group: "Недавнее" };
+  }).filter(Boolean);
+  const inRecent = new Set(recentRows.map((r) => r.kind + ":" + r.id));
+  const results = projects == null ? [] : [
+    ...recentRows,
+    ...projects.map((p) => ({ kind: "proj", id: p.id, label: p.name, sub: [p.status, p.style, p.room].filter(Boolean).join(" · ") }))
+      .filter(match).filter((r) => !inRecent.has("proj:" + r.id)),
+    ...CAB_TABS.map(([id, label]) => ({ kind: "tab", id, label, sub: "Раздел кабинета" }))
+      .filter(match).filter((r) => !inRecent.has("tab:" + r.id)),
   ];
   const cur = Math.min(idx, Math.max(0, results.length - 1));
   const pick = (r) => { if (!r) return; onClose(); if (r.kind === "proj") setRoute("cabinet", "projects", r.id); else onTab(r.id); };
@@ -359,7 +415,7 @@ function CmdK({ onClose, onTab }) {
     }
     if (e.key === "Enter") { e.preventDefault(); pick(results[cur]); }
   };
-  let lastKind = null;
+  let lastGroup = null;   // заголовки групп: «Недавнее» → «Проекты» → «Разделы» (Д3)
   return (
     <Modal onClose={onClose} label="Поиск по кабинету" maxWidth={560}>
       <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "14px 16px", borderBottom: "1px solid var(--hairline)" }}>
@@ -372,10 +428,11 @@ function CmdK({ onClose, onTab }) {
         {projects == null && <div style={{ padding: "14px 12px", fontSize: "var(--fs-13)", color: "var(--muted)" }}>Загрузка…</div>}
         {projects != null && results.length === 0 && <div style={{ padding: "14px 12px", fontSize: "var(--fs-13)", color: "var(--muted)" }}>По запросу «{q.trim()}» ничего не нашлось.</div>}
         {results.map((r, i) => {
-          const head = r.kind !== lastKind ? (lastKind = r.kind, r.kind === "proj" ? "Проекты" : "Разделы") : null;
+          const group = r.group || (r.kind === "proj" ? "Проекты" : "Разделы");
+          const head = group !== lastGroup ? (lastGroup = group, group) : null;
           const Ico = r.kind === "proj" ? I.layers : (I[WS_ICONS[r.id]] || I.grid);
           return (
-            <React.Fragment key={r.kind + r.id}>
+            <React.Fragment key={(r.group ? "rec:" : "") + r.kind + r.id}>
               {head && <div style={{ fontSize: "var(--fs-11)", fontWeight: 700, letterSpacing: ".04em", textTransform: "uppercase", color: "var(--faint)", padding: "8px 10px 4px" }}>{head}</div>}
               <button role="option" aria-selected={i === cur} className="menu-item" onClick={() => pick(r)} onMouseEnter={() => setIdx(i)}
                 style={i === cur ? { background: "var(--surface-2)" } : undefined}>

@@ -470,13 +470,17 @@ body:has(.pd-overlay) .proto-switch { display: none; }
 .pd-crumbs button { font-family: inherit; font-size: inherit; color: var(--spec-meta); padding: 0; }
 .pd-crumbs button:hover { color: var(--accent-ink); text-decoration: underline; }
 .pd-crumbs span[aria-current] { color: var(--text); }   /* текущий уровень — самый сильный (стандартный breadcrumb) */
-.pd-crumbs > span:not([aria-current]) { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 180px; }
+/* Д2 (W6): :not(.pd-crumb-switch) — обёртка переключателя под-вьюх тоже прямой
+   span-ребёнок крошек, но её абсолютное меню нельзя резать ellipsis-клипом (прятал дропдаун) */
+.pd-crumbs > span:not([aria-current]):not(.pd-crumb-switch) { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 180px; }
 
 /* тесная шапка оверлея на телефоне: бюджет-чип уходит (он дублируется статусом в sticky-итоге),
    крошкам — короче потолок, чтобы «Проекты / Имя / Смета» не выдавливали заголовок */
 @media (max-width: 560px) {
-  .pd-head .pd-bud { display: none !important; }   /* !important: у чипа инлайновый display:flex */
-  .pd-crumbs > span:not([aria-current]) { max-width: 90px; }
+  /* !important: у чипов инлайновый display:flex; ov-dates (Д6, W6) — та же теснота,
+     срок остаётся виден в Настройках проекта */
+  .pd-head .pd-bud, .pd-head .ov-dates { display: none !important; }
+  .pd-crumbs > span:not([aria-current]):not(.pd-crumb-switch) { max-width: 90px; }
 }
 
 /* ---- Смета по комнатам: адаптив колонок документа ---- */

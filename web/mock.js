@@ -407,6 +407,24 @@
       },
     },
 
+    /* — «Недавнее» для ⌘K (Д3, W6): последние открытые проекты/разделы кабинета.
+       Локальная история устройства, но за сигнатурой AIVibeAPI, как вся персистенция
+       (при переезде на бэкенд станет частью профиля). Без delay: это не «сеть». — */
+    recents: {
+      list: async () => clone(LS.get("recentVisits", [])),                     // → GET /api/recents
+      push: async (kind, id) => {                                             // → POST /api/recents
+        if (!id) return;
+        const rest = LS.get("recentVisits", []).filter((r) => !(r.kind === kind && r.id === id));
+        LS.set("recentVisits", [{ kind, id, at: Date.now() }, ...rest].slice(0, 6));
+      },
+      // удалённые проекты не должны занимать слоты истории — чистим по живому списку id
+      prune: async (liveProjIds) => {
+        const keep = LS.get("recentVisits", []).filter((r) => r.kind !== "proj" || liveProjIds.includes(r.id));
+        LS.set("recentVisits", keep);
+        return clone(keep);
+      },
+    },
+
     /* — Типовые комплектации-шаблоны (read-only библиотека) — */
     templates: {
       list: async () => { await delay(140); return clone(SPEC_TEMPLATES); },   // → GET /api/templates
