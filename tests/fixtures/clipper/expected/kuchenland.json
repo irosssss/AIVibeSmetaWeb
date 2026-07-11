@@ -1,0 +1,13 @@
+{
+  "url": "https://www.kuchenland.ru/product/salatnik-25kh10-sm-2-1-l-steklo-s-zolotistym-kantom-berg/",
+  "title": "Блюдо глубокое, 25х10 см, с золотистым кантом, Berg",
+  "price": 1990,
+  "currency": "RUB",
+  "dims": { "w": 25, "h": 10 },
+  "sku": "284032",
+  "brand": "Berg",
+  "material": "стекло",
+  "img": null,
+  "traps": [],
+  "notes": "Чистый JSON-LD Product; габариты только в тексте названия «25х10 см» (диаметр×высота для круглого блюда) — структурный слой их не парсит (формат не ШxГxВ), но LLM должен вытащить из title."
+}

@@ -1,0 +1,13 @@
+{
+  "url": "https://www.lustrof.ru/lyustra-potolochnaya-s-hrustalem-80111-8-hrom-evrosvet/",
+  "title": "Люстра потолочная с хрусталем 80111/8 хром ЕВРОСВЕТ",
+  "price": 11300,
+  "currency": "RUB",
+  "dims": null,
+  "sku": "80111/8",
+  "brand": "ЕВРОСВЕТ",
+  "material": "Хрусталь",
+  "img": "https://www.lustrof.ru/wa-data/public/shop/products/51/39/93951/images/627512/627512.750x0.jpg",
+  "traps": ["no-schema"],
+  "notes": "Нет JSON-LD, только microdata; itemprop=\"sku\" на странице реально содержит артикул+варианты цвета одной строкой (\"80111/8 хром/синий+красный+фиолетовый\") — эталон берёт чистый артикул без цветов; габариты на странице не нашлись."
+}

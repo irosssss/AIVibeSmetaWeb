@@ -100,6 +100,18 @@ describe("extractFromHtml — JSON-LD (главный источник)", () => 
     expect(r.fields.title).toBe("Кресло");
     expect(r.fields.price).toBe(32900);
   });
+
+  // Ловушка из живой фикстуры iddis.ru (бенч клиппера, волна E1): единица измерения
+  // зашита в ИМЕНИ additionalProperty («Длина изделия, мм»), а не в значении («124,5»).
+  // Раньше toCm() видел только значение, принимал его за уже-сантиметры и завышал габарит
+  // в 10 раз (125см вместо 12,5).
+  it("additionalProperty: единица в имени поля («Длина изделия, мм»), не в значении", () => {
+    const h = `<script type="application/ld+json">${JSON.stringify({
+      "@type": "Product", name: "Смеситель", offers: { price: 6620, priceCurrency: "RUB" },
+      additionalProperty: [{ "@type": "PropertyValue", name: "Длина изделия, мм", value: "124,5" }],
+    })}</script>`;
+    expect(CL.extractFromHtml(h, "https://x.ru").fields.dims.d).toBe(12);
+  });
 });
 
 describe("extractFromHtml — OpenGraph фолбэк", () => {

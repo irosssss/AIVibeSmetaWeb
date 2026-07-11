@@ -1,0 +1,13 @@
+{
+  "url": "https://www.stolplit.ru/internet-magazin/kupit/2292480-krovat-universalnaya-1600-vesta-sb-2264/",
+  "title": "Кровать универсальная (1600) Веста СБ-2264",
+  "price": 14595,
+  "currency": "RUB",
+  "dims": null,
+  "sku": "026-226-410-0041",
+  "brand": "STOLPLIT",
+  "material": "ЛДСП",
+  "img": "https://www.stolplit.ru/upload/iblock/d8e/jrskiggfy6skbx3ta8roz93cfonzlxnx/00000280229-detail.jpg",
+  "traps": ["no-schema"],
+  "notes": "Нет JSON-LD; og:title несёт сразу два кода («арт. 026-226-410-0041» и служебный «Код 00000280229» из URL/файла картинки) — эталон берёт «арт.»-код как настоящий SKU; габариты на странице не нашлись (характеристики за вкладкой)."
+}

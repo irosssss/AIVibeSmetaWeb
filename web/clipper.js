@@ -181,15 +181,26 @@
       dims: { w: toCm(p.width), d: toCm(p.depth), h: toCm(p.height) },
       _category: clean(p.category),
     };
-    // additionalProperty → габариты/материал, если ещё пусто
+    // additionalProperty → габариты/материал, если ещё пусто.
+    // Ловушка (найдена бенчем клиппера, волна E1, iddis.ru): единица измерения иногда
+    // зашита в ИМЕНИ свойства («Длина изделия, мм»), а не в значении («124,5») — toCm()
+    // смотрит только на значение и по умолчанию считает его сантиметрами, завышая габарит
+    // в 10 раз. Если у значения своей единицы нет — переносим маркер из имени.
+    const withUnit = (name, val) => {
+      if (typeof val !== "string" && typeof val !== "number") return val;
+      const s = String(val);
+      if (/мм|mm/.test(s)) return val;                    // маркер уже в самом значении
+      if (/(,|\()\s*мм\.?\)?\s*$/.test(name)) return s + " мм";
+      return val;
+    };
     const props = [].concat(p.additionalProperty || []);
     props.forEach((pr) => {
       const name = (clean(pr.name)).toLowerCase();
-      const val = pr.value;
+      const val = withUnit(name, pr.value);
       if (/ширина|width/.test(name) && f.dims.w === "") f.dims.w = toCm(val);
       else if (/глубина|длина|depth|length/.test(name) && f.dims.d === "") f.dims.d = toCm(val);
       else if (/высота|height/.test(name) && f.dims.h === "") f.dims.h = toCm(val);
-      else if (/материал|material/.test(name) && !f.material) f.material = clean(val);
+      else if (/материал|material/.test(name) && !f.material) f.material = clean(pr.value);
     });
     return f;
   }

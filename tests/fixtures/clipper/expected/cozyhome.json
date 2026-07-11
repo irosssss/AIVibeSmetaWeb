@@ -1,0 +1,13 @@
+{
+  "url": "https://cozyhome.ru/product/pled-osimo-ekryu-200kh220-belyy-703386",
+  "title": "Плед Osimo, экрю 200х220",
+  "price": null,
+  "currency": "RUB",
+  "dims": { "w": 200, "d": 220 },
+  "sku": "703386",
+  "brand": null,
+  "material": null,
+  "img": null,
+  "traps": ["out-of-stock", "price-null"],
+  "notes": "Товар «Нет в наличии» — цена честно null и в dataLayer-JSON ({\"price\":null}), и визуально; плед 200×220см → w/d."
+}

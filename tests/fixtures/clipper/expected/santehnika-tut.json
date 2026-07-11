@@ -1,0 +1,13 @@
+{
+  "url": "https://santehnika-tut.ru/product/smesitel-dlya-rakoviny-rose-r21f-r2101f-belyj-hrom-552559.html",
+  "title": "Смеситель для раковины Rose R21F R2101F белый хром",
+  "price": 7456,
+  "currency": "RUB",
+  "dims": null,
+  "sku": "552559",
+  "brand": null,
+  "material": "хром",
+  "img": "https://cdn.santehnika-tut.ru/img/ogimgn.jpg",
+  "traps": ["title-with-price-suffix", "no-schema"],
+  "notes": "Нет JSON-LD; og:title склеен с ценой и городом («… купить за 7456 руб в Москве») — эталон берёт только чистое название товара; sku — числовой id из URL (552559), артикул модели R21F/R2101F — часть названия, не отдельное поле."
+}
