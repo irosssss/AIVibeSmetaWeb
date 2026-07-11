@@ -259,7 +259,7 @@ function RoomJumpMenu({ rooms }) {
     <div className="rs-jump-wrap" style={{ position: "relative" }}>
       <button className="btn-ws" aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen((o) => !o)} title="Перейти к комнате">
         <I.plan size={15} />К комнате
-        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" aria-hidden="true" style={{ color: "var(--faint)" }}><path d="M6 9l6 6 6-6" /></svg>
+        <I.chevron size={11} stroke={2.4} style={{ color: "var(--faint)" }} />
       </button>
       {open && (
         <div className="menu menu-pop" role="menu" aria-label="Комнаты сметы"
@@ -285,7 +285,7 @@ const projCrumbMenu = (id, current) => {
     id: s2 || "overview", label, on: (current || "") === s2,
     onPick: () => setRoute("cabinet", "projects", id, s2),
   }));
-  return items.length ? { items } : null;
+  return items.length ? items : null;
 };
 const projS2Label = (s2) => { const it = (window.WS_PROJ_ITEMS || []).find(([k]) => k === s2); return it ? it[1] : "Смета"; };
 
@@ -455,14 +455,16 @@ function RoomSpecOverlay({ data, nav, onClose }) {
   };
   // Д1 (W6): новая пустая комната после ri — раньше комнату в смете создавали только
   // импорт/копия/клиппер. Дубль имени запрещаем: комнаты рендерятся по key=name,
-  // а addFrom сливает вставки по имени. Открытый редактор позиции закрываем ДО вставки —
-  // editPos/flashPos держат индексы комнат, и сдвиг ri+1.. увёл бы редактор в чужую комнату.
+  // а addFrom сливает вставки по имени. editPos/flashPos держат индексы комнат —
+  // сдвигаем их за точкой вставки, НЕ сбрасывая: незакрытый черновик позиции
+  // (W6-ревью: setEditPos(null) молча съедал полунабранную позицию в другой комнате).
   const addRoomAfter = async (ri) => {
     const name = await promptDialog({ title: "Новая комната", label: "Название", value: "" });
     if (!name || !name.trim()) return;
     const v = name.trim();
     if (rooms.some((r) => r.name === v)) { toast("Комната «" + v + "» уже есть — выберите другое имя"); return; }
-    setEditPos(null); setFlashPos(null); setFlashSup(null);
+    const shift = (p) => (p && p.ri > ri ? { ...p, ri: p.ri + 1 } : p);
+    setEditPos(shift); setFlashPos(shift); setFlashSup(shift);
     setRooms((prev) => { const next = [...prev]; next.splice(ri + 1, 0, { name: v, items: [] }); return next; });
     toast("Комната «" + v + "» добавлена — не забудьте сохранить смету.");
   };
@@ -619,6 +621,11 @@ function RoomSpecOverlay({ data, nav, onClose }) {
   // итог структурой: подытог (client) → скидка → доставка/монтаж → ИТОГО.
   // Скидка округляется до рубля от подытога — та же формула в PDF/Excel (инвариант выгрузок)
   const discountAmt = Math.round(client * discount / 100);
+  // производные наценки/маржи — ОДНО место для липкой полосы (Д4) и блока «Итог сметы»
+  // (W6-ревью: формулы были скопированы, правка «наценки по разделам» разъехалась бы)
+  const markupAmt = client - grand;
+  const markupLabel = ovrCount > 0 ? "≈ +" + effPct + "%" : "+" + markup + "%";
+  const margin = client - discountAmt - grand;   // транзитные доставка/монтаж в марже не участвуют
   const totalClient = client - discountAmt + delivery + install;
   // эргономика по комнатам: там, где в РД есть план расстановки (plan+layout); мои нормы учитываются.
   // До прихода settings не считаем — иначе первый кадр показан по канону и «мигает» при загрузке моих норм
@@ -703,13 +710,15 @@ function RoomSpecOverlay({ data, nav, onClose }) {
   }, [nav]);
   const changeMode = (m) => { setMode(m); if (nav != null) wsSyncNav(modeToS2(m)); };
   const closeVersions = () => { setVersionsOpen(false); if (nav === "versions") wsSyncNav(modeToS2(mode)); };
+  // текущая под-вьюха для крошки и её меню — ОДНО место (W6-ревью: было два дубля выражения,
+  // рассинхрон дал бы крошку «Смета» с галкой на «Версиях»)
+  const curS2 = versionsOpen ? "versions" : modeToS2(mode);
 
   return (
     <div className={"pd-overlay" + (nav == null ? " pd-fullscreen" : "")} role="dialog" aria-label={"Смета: " + data.name}>
       <OverlayHead onBack={onClose} budget={data.budget}
-        crumbs={[{ label: "Проекты", onClick: onClose }, { label: data.name },
-          { label: projS2Label(versionsOpen ? "versions" : modeToS2(mode)) }]}
-        crumbMenu={nav != null && savedId ? projCrumbMenu(savedId, versionsOpen ? "versions" : modeToS2(mode)) : null}
+        crumbs={[{ label: "Проекты", onClick: onClose }, { label: data.name }, { label: projS2Label(curS2) }]}
+        crumbMenu={nav != null && savedId ? projCrumbMenu(savedId, curS2) : null}
         title={data.name}
         sub={"Комплектация по дизайн-проекту · " + data.area + " м² · " + itemsCount + " " + plural(itemsCount, ["позиция", "позиции", "позиций"])
           + (FFE && apCnt.ok > 0 ? " · согласовано " + apCnt.ok + " из " + itemsCount : "")}
@@ -1069,8 +1078,8 @@ function RoomSpecOverlay({ data, nav, onClose }) {
                     <span className="mono rs-val">{fmtMoney(grand)}</span>
                   </div>
                   <div style={{ ...RS_ROW, borderTop: "1px solid var(--hairline-2)" }}>
-                    <span style={{ color: "var(--muted)" }}>Наценка дизайнера {ovrCount > 0 ? "· по разделам ≈ +" + effPct + "%" : "+" + markup + "%"}</span>
-                    <span className="mono rs-val" style={{ color: "var(--accent-2-ink)" }}>+{fmtMoney(client - grand)}</span>
+                    <span style={{ color: "var(--muted)" }}>Наценка дизайнера {ovrCount > 0 ? "· по разделам " : ""}{markupLabel}</span>
+                    <span className="mono rs-val" style={{ color: "var(--accent-2-ink)" }}>+{fmtMoney(markupAmt)}</span>
                   </div>
                 </React.Fragment>
               )}
@@ -1205,30 +1214,32 @@ function RoomSpecOverlay({ data, nav, onClose }) {
                 caption={<React.Fragment>{mode === "procure" ? "итого закупка" : "итого клиенту"} · {itemsCount} {plural(itemsCount, ["позиция", "позиции", "позиций"])} · <span role="status" aria-atomic="true">{over ? <span style={{ color: "var(--accent-ink)" }}>закупка сверх бюджета {fmtMoney(data.budget)}</span> : <span style={{ color: "var(--accent-2)" }}>закупка в бюджете {fmtMoney(data.budget)}</span>}</span></React.Fragment>} />
               {mode === "work" && (() => {
                 // Д4 (W6): раскладка итога по образцу Financial-полосы Programa — свёрнуто
-                // только маржа, кнопка ›/‹ разворачивает метрики «значение над подписью».
+                // наценка + маржа (ключевой взгляд дизайнера), кнопка ›/‹ разворачивает
+                // метрики «значение над подписью». Цепочка профита идёт подряд
+                // (себестоимость → наценка → скидка → маржа), транзитные доставка/монтаж —
+                // в конце с явной подписью «вне наценки», чтобы «+» не читался слагаемым маржи.
                 // Маржа после скидки: убыток — терракотой, не оливой-успехом.
-                const margin = client - discountAmt - grand;
                 const marginTone = margin < 0 ? "var(--accent-ink)" : "var(--accent-2)";
                 return (
                   <span style={{ display: "inline-flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
                     {cartOpen ? (
                       <span style={{ display: "inline-flex", alignItems: "flex-start", gap: 16, flexWrap: "wrap" }}>
                         <CartMetric v={fmtMoney(grand)} cap="себестоимость" />
-                        <CartMetric v={"+" + fmtMoney(client - grand)} cap={"наценка " + (ovrCount > 0 ? "≈ +" + effPct + "%" : "+" + markup + "%")} />
+                        <CartMetric v={"+" + fmtMoney(markupAmt)} cap={"наценка " + markupLabel} />
                         {discountAmt > 0 && <CartMetric v={"−" + fmtMoney(discountAmt)} cap={"скидка " + discount + "%"} tone="var(--accent-ink)" />}
-                        {(delivery > 0 || install > 0) && <CartMetric v={"+" + fmtMoney(delivery + install)} cap="доставка и монтаж" />}
                         <CartMetric v={fmtMoney(margin)} cap="ваша маржа" tone={marginTone} />
+                        {(delivery > 0 || install > 0) && <CartMetric v={fmtMoney(delivery + install)} cap="доставка и монтаж · вне наценки" />}
                       </span>
                     ) : (
                       <span className="glass mono" style={{ padding: "7px 12px", borderRadius: 99, fontSize: "var(--fs-12)", fontWeight: 500, color: "var(--muted)" }}>
-                        ваша маржа <b style={{ color: marginTone, fontWeight: 600 }}>{fmtMoney(margin)}</b>
+                        наценка {markupLabel} · маржа <b style={{ color: marginTone, fontWeight: 600 }}>{fmtMoney(margin)}</b>
                       </span>
                     )}
                     <button className="btn-mini" onClick={() => setCartOpen((o) => !o)} aria-expanded={cartOpen}
                       aria-label={cartOpen ? "Свернуть раскладку итога" : "Показать раскладку итога: себестоимость, наценка, скидка, доставка"}
                       title={cartOpen ? "Свернуть" : "Раскладка итога"}>
-                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" aria-hidden="true"
-                        style={{ transform: cartOpen ? "rotate(180deg)" : "none", transition: "transform .15s var(--ease-pop)" }}><path d="M9 6l6 6-6 6" /></svg>
+                      {/* базовый шеврон смотрит вниз: -90° = «›» (раскрыть), 90° = «‹» (свернуть) */}
+                      <I.chevron size={12} stroke={2.4} style={{ transform: cartOpen ? "rotate(90deg)" : "rotate(-90deg)", transition: "transform .15s var(--ease-pop)" }} />
                     </button>
                   </span>
                 );
@@ -2627,7 +2638,7 @@ function LoopStatusChip({ status, onChange }) {
         style={{ display: "flex", alignItems: "center", gap: 8, padding: "7px 13px", borderRadius: 99, fontSize: "var(--fs-13)", fontWeight: 700, whiteSpace: "nowrap" }}>
         <span aria-hidden="true" style={{ width: 8, height: 8, borderRadius: "50%", background: colors[status], flex: "none" }} />
         {status}
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" aria-hidden="true" style={{ color: "var(--faint)" }}><path d="M6 9l6 6 6-6" /></svg>
+        <I.chevron size={12} stroke={2.4} style={{ color: "var(--faint)" }} />
       </button>
       {open && (
         <div className="menu menu-pop" role="menu" style={{ position: "absolute", top: "calc(100% + 6px)", right: 0, minWidth: 200, zIndex: 40 }}>

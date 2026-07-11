@@ -68,6 +68,7 @@ const I = {
   spinner: (p) => <Icon {...p} d="M12 3a9 9 0 1 0 9 9" />,
   download: (p) => <Icon {...p} d={<><path d="M12 3v12M7 10l5 5 5-5" /><path d="M5 21h14" /></>} />,
   calendar: (p) => <Icon {...p} d={<><rect x="3.5" y="5" width="17" height="15" rx="2" /><path d="M3.5 9.5h17M8 3v4M16 3v4" /></>} />,
+  chevron: (p) => <Icon {...p} d="M6 9l6 6 6-6" />,   // каретка триггеров меню (W6-ревью: было 4 инлайн-копии SVG)
   gear: (p) => <Icon {...p} d={<><circle cx="12" cy="12" r="3.2" /><path d="M12 3.5v2.4M12 18.1v2.4M20.5 12h-2.4M5.9 12H3.5M17.8 6.2l-1.7 1.7M7.9 16.1l-1.7 1.7M17.8 17.8l-1.7-1.7M7.9 7.9 6.2 6.2" /></>} />,
 };
 
@@ -484,11 +485,25 @@ function SegTabs({ items, value, onChange, ariaLabel, className = "pd-seg", cap,
   );
 }
 
+/* Контейнер выпадающего меню по канону §5.6 (W6-ревью) — позиционирование, слой и
+   anchor в одном месте вместо копий по файлам. Триггер и пункты — у вызывающего;
+   открытие/Esc/клик-мимо — useMenu там же. Старые меню (RoomJumpMenu, LoopStatusChip,
+   AccountMenu, кебаб карточки) переводятся сюда следующей полировкой — см. журнал W6. */
+function MenuPop({ open, label, minWidth = 210, style, children }) {
+  if (!open) return null;
+  return (
+    <div className="menu menu-pop" role="menu" aria-label={label}
+      style={{ position: "absolute", top: "calc(100% + 6px)", left: 0, minWidth, zIndex: 60, transformOrigin: "top left", ...style }}>
+      {children}
+    </div>
+  );
+}
+
 /* шапка оверлея проекта/сметы: назад + крошки + заголовок + бюджет-чип/правый слот.
    Не PageHead — это имя занято шапкой раздела админки (admin.jsx).
    Д2 (W6): crumbMenu — переключатель под-вьюх проекта прямо в крошке (паттерн Programa
    «Files > Project Schedule ▾»): каретка за последней крошкой, меню по канону §5.6.
-   Форма: { items: [{ id, label, on, onPick }] }. */
+   Форма: массив [{ id, label, on, onPick }]. */
 function OverlayHead({ onBack, crumbs, title, sub, budget, right, crumbMenu }) {
   const [menuOpen, setMenuOpen] = useState(false);
   useMenu(menuOpen, () => setMenuOpen(false), "pd-crumb-switch");
@@ -505,25 +520,22 @@ function OverlayHead({ onBack, crumbs, title, sub, budget, right, crumbMenu }) {
                 : <span aria-current={i === crumbs.length - 1 ? "page" : undefined}>{c.label}</span>}
             </React.Fragment>
           ))}
-          {crumbMenu && crumbMenu.items.length > 0 && (
+          {crumbMenu && crumbMenu.length > 0 && (
             <span className="pd-crumb-switch" style={{ position: "relative", display: "inline-flex", alignSelf: "center" }}>
               <button className="icon-btn xs" aria-haspopup="menu" aria-expanded={menuOpen}
                 aria-label="Разделы проекта" title="Разделы проекта" onClick={() => setMenuOpen((o) => !o)}>
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" aria-hidden="true"><path d="M6 9l6 6 6-6" /></svg>
+                <I.chevron size={12} stroke={2.4} />
               </button>
-              {menuOpen && (
-                <div className="menu menu-pop" role="menu" aria-label="Разделы проекта"
-                  style={{ position: "absolute", top: "calc(100% + 6px)", left: 0, minWidth: 210, zIndex: 60, transformOrigin: "top left" }}>
-                  {crumbMenu.items.map((it) => (
-                    <button key={it.id} role="menuitem" className="menu-item" aria-current={it.on ? "true" : undefined}
-                      onClick={() => { setMenuOpen(false); if (!it.on) it.onPick(); }}
-                      style={it.on ? { background: "var(--surface-2)" } : undefined}>
-                      <span style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{it.label}</span>
-                      {it.on && <I.check size={14} style={{ marginLeft: "auto", color: "var(--accent-2-ink)", flex: "none" }} />}
-                    </button>
-                  ))}
-                </div>
-              )}
+              <MenuPop open={menuOpen} label="Разделы проекта">
+                {crumbMenu.map((it) => (
+                  <button key={it.id} role="menuitem" className="menu-item" aria-current={it.on ? "true" : undefined}
+                    onClick={() => { setMenuOpen(false); if (!it.on) it.onPick(); }}
+                    style={it.on ? { background: "var(--surface-2)" } : undefined}>
+                    <span style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{it.label}</span>
+                    {it.on && <I.check size={14} style={{ marginLeft: "auto", color: "var(--accent-2-ink)", flex: "none" }} />}
+                  </button>
+                ))}
+              </MenuPop>
             </span>
           )}
         </nav>

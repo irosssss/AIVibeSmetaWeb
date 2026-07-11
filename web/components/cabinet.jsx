@@ -140,31 +140,18 @@ const WS_PROJ_ITEMS = [
 window.WS_PROJ_ITEMS = WS_PROJ_ITEMS;
 
 /* Д3 (W6): «Недавнее» для ⌘K (паттерн Programa «Recently visited» при пустом запросе).
-   Последние открытые проекты/разделы — в localStorage; пишет Cabinet при смене адреса,
-   читает CmdK. «Сегодня» не пишем — это дефолт-посадка, в недавнем она шум. */
-const RECENT_KEY = "aivibe_recent_visits";
-const RECENT_MAX = 6;
-const readRecents = () => {
-  try { const a = JSON.parse(localStorage.getItem(RECENT_KEY) || "[]"); return Array.isArray(a) ? a : []; }
-  catch (_) { return []; }
-};
-const pushRecent = (kind, id) => {
-  if (!id) return;
-  const rest = readRecents().filter((r) => !(r.kind === kind && r.id === id));
-  try { localStorage.setItem(RECENT_KEY, JSON.stringify([{ kind, id, at: Date.now() }, ...rest].slice(0, RECENT_MAX))); }
-  catch (_) { /* квота/приватный режим — «Недавнее» просто не пополнится */ }
-};
-// относительное время для «Недавнего»: минутная точность (fmtRelDays в ui.jsx — дневная)
+   История — за AIVibeAPI.recents (mock.js, конвенция «вся персистенция за сигнатурой API»);
+   пишет Cabinet при смене адреса, читает CmdK. Относительное время: свежее — минуты/часы,
+   старше сегодняшнего дня — календарный fmtRelDays из ui.jsx («вчера» по границе суток
+   честнее 24-часового окна; W6-ревью: Math.round давал «2 ч назад» на 90 минутах). */
 const fmtAgo = (ts) => {
-  const m = Math.round(Math.max(0, Date.now() - ts) / 60000);
+  const m = Math.floor(Math.max(0, Date.now() - ts) / 60000);
   if (m < 1) return "только что";
   if (m < 60) return m + " мин назад";
-  const h = Math.round(m / 60);
-  if (h < 24) return h + " ч назад";
-  const d = Math.round(h / 24);
-  if (d === 1) return "вчера";
-  if (d < 30) return d + " " + plural(d, ["день", "дня", "дней"]) + " назад";
-  return new Date(ts).toLocaleDateString("ru-RU", { day: "2-digit", month: "2-digit" });
+  const d = new Date(ts);
+  if (d.toDateString() === new Date().toDateString()) return Math.floor(m / 60) + " ч назад";
+  const pad = (n) => String(n).padStart(2, "0");
+  return window.fmtRelDays(d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate()));
 };
 
 function Cabinet({ user, onLogout, go }) {
@@ -232,10 +219,13 @@ function Cabinet({ user, onLogout, go }) {
     return () => window.removeEventListener("aivibe:project-renamed", onRenamed);
   }, [projId]);
 
-  // Д3 (W6): пишем «Недавнее» для ⌘K — открытый проект важнее вкладки-контейнера
+  // Д3 (W6): пишем «Недавнее» для ⌘K — открытый проект важнее вкладки-контейнера.
+  // «Сегодня» (дефолт-посадка) и «Проекты» (список-контейнер, всегда один клик из сайдбара)
+  // не пишем: при закрытии проекта переходное состояние projId=null/tab='projects'
+  // забивало бы слоты строкой «Проекты» поверх только что покинутого проекта (W6-ревью)
   useCE(() => {
-    if (projId) pushRecent("proj", projId);
-    else if (tab !== "today") pushRecent("tab", tab);
+    if (projId) AIVibeAPI.recents.push("proj", projId);
+    else if (tab !== "today" && tab !== "projects") AIVibeAPI.recents.push("tab", tab);
   }, [tab, projId]);
 
   const newProject = () => { setDrawer(false); changeTab("projects"); setTimeout(() => window.dispatchEvent(new CustomEvent("aivibe:new-project")), 0); };
@@ -379,24 +369,38 @@ function Workshop() {
 function CmdK({ onClose, onTab }) {
   const [q, setQ] = useC("");
   const [projects, setProjects] = useC(null);
+  const [recents, setRecents] = useC([]);   // Д3: история читается раз на открытие палитры
   const [idx, setIdx] = useC(0);
-  useCE(() => { AIVibeAPI.projects.list().then((l) => setProjects(l || [])); }, []);
+  const [here] = useC(() => parseRoute());  // текущее место — самоссылку в «Недавнем» не показываем
+  useCE(() => {
+    AIVibeAPI.projects.list().then((l) => {
+      const list = l || [];
+      setProjects(list);
+      // мёртвые id (удалённые проекты) чистятся из слотов истории по живому списку
+      AIVibeAPI.recents.prune(list.map((p) => p.id)).then(setRecents);
+    });
+  }, []);
   const qq = q.trim().toLowerCase();
   const match = (s) => !qq || (s.label + " " + (s.sub || "")).toLowerCase().includes(qq);
+  const curProj = (here.view === "cabinet" && here.tab === "projects" && here.sub) || null;
   // Д3 (W6): пустой запрос = «Недавнее» первым (паттерн Programa «Recently visited»);
   // ниже — полные списки без дублей недавнего. Поиск — по полным спискам, как раньше.
-  const recentRows = qq ? [] : readRecents().map((r) => {
+  // До загрузки проектов список пуст (только «Загрузка…») — иначе Enter в первый миг
+  // улетал бы в случайно выживший ряд (W6-ревью).
+  const recentRows = qq ? [] : recents.map((r) => {
     if (r.kind === "proj") {
-      const p = (projects || []).find((x) => x.id === r.id);   // удалённый проект — тихо выпадает
+      if (r.id === curProj) return null;
+      const p = (projects || []).find((x) => x.id === r.id);
       return p && { kind: "proj", id: p.id, label: p.name, sub: fmtAgo(r.at), group: "Недавнее" };
     }
-    const t = CAB_TABS.find(([id]) => id === r.id);
+    if (!curProj && r.id === here.tab) return null;
+    const t = CAB_TABS.find(([id]) => id === r.id);   // легаси-вкладка из старой истории — тихо выпадает
     return t && { kind: "tab", id: t[0], label: t[1], sub: fmtAgo(r.at), group: "Недавнее" };
   }).filter(Boolean);
   const inRecent = new Set(recentRows.map((r) => r.kind + ":" + r.id));
-  const results = [
+  const results = projects == null ? [] : [
     ...recentRows,
-    ...(projects || []).map((p) => ({ kind: "proj", id: p.id, label: p.name, sub: [p.status, p.style, p.room].filter(Boolean).join(" · ") }))
+    ...projects.map((p) => ({ kind: "proj", id: p.id, label: p.name, sub: [p.status, p.style, p.room].filter(Boolean).join(" · ") }))
       .filter(match).filter((r) => !inRecent.has("proj:" + r.id)),
     ...CAB_TABS.map(([id, label]) => ({ kind: "tab", id, label, sub: "Раздел кабинета" }))
       .filter(match).filter((r) => !inRecent.has("tab:" + r.id)),
