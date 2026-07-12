@@ -364,7 +364,8 @@
     const over = {
       title: f.title || "",
       price: f.price != null ? f.price : 0,
-      supplier: f.supplier || "",
+      // экстракция зовёт поле supplier, схема позиции — sup (канон, blankPosition)
+      sup: f.supplier || "",
       url: f.url || "",
       sku: f.sku || "",
       material: f.material || "",
@@ -382,7 +383,9 @@
      реально записаны (для честного отчёта в UI). Вынесено из React-компонента,
      чтобы покрыть тестами (раньше логика жила в applyExtract и не тестировалась). */
   const STRONG_SOURCES = new Set(["json-ld", "microdata", "og"]);
-  const FIELD_LABELS = [["title", "имя"], ["price", "цена"], ["supplier", "поставщик"], ["sku", "артикул"], ["material", "материал"], ["img", "фото"]];
+  // [ключ-позиции, подпись, ключ-источника?] — у поставщика ключ позиции `sup` (канон схемы),
+  // а sources из экстракции зовёт его `supplier`, поэтому 3-й элемент разводит их
+  const FIELD_LABELS = [["title", "имя"], ["price", "цена"], ["sup", "поставщик", "supplier"], ["sku", "артикул"], ["material", "материал"], ["img", "фото"]];
 
   function mergeIntoPosition(current, extracted) {
     const pos = mapToPosition(extracted);
@@ -390,11 +393,11 @@
     const next = { ...(current || {}), dims: { ...((current && current.dims) || {}) } };
     const filled = [];
     const blank = (v, k) => v === "" || v == null || (k === "price" && !Number(v));
-    const put = (k, label) => {
+    const put = (k, label, srcKey) => {
       if (!pos[k]) return;
-      if ((blank(next[k], k) || STRONG_SOURCES.has(src[k])) && String(next[k]) !== String(pos[k])) { next[k] = pos[k]; filled.push(label); }
+      if ((blank(next[k], k) || STRONG_SOURCES.has(src[srcKey || k])) && String(next[k]) !== String(pos[k])) { next[k] = pos[k]; filled.push(label); }
     };
-    FIELD_LABELS.forEach(([k, label]) => put(k, label));
+    FIELD_LABELS.forEach(([k, label, srcKey]) => put(k, label, srcKey));
     if (pos.cat && pos.cat !== "Прочее" && (next.cat === "" || next.cat == null || next.cat === "Прочее")) next.cat = pos.cat;
     if (pos.dims) ["w", "d", "h"].forEach((k) => { if (pos.dims[k] && (blank(next.dims[k]) || STRONG_SOURCES.has(src.dims))) next.dims[k] = pos.dims[k]; });
     if (!next.url) next.url = pos.url;

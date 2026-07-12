@@ -291,14 +291,14 @@ describe("mergeIntoPosition — слияние в форму (FIX-1 + FIX-2)", (
     const site = CL.extractFromHtml('<meta property="og:site_name" content="БольшойМаркет">', "https://x.ru");
     expect(site.sources.supplier).toBe("og-site");
     const { next } = CL.mergeIntoPosition(cur, site);
-    expect(next.supplier).toBe("Моя фабрика");
+    expect(next.sup).toBe("Моя фабрика");
   });
 
   it("og:brand (структурный) перезаписывает поставщик", () => {
     const cur = FFE.blankPosition({ supplier: "Моя фабрика" });
     const brand = CL.extractFromHtml('<meta property="og:brand" content="Дубрава">', "https://x.ru");
     expect(brand.sources.supplier).toBe("og");
-    expect(CL.mergeIntoPosition(cur, brand).next.supplier).toBe("Дубрава");
+    expect(CL.mergeIntoPosition(cur, brand).next.sup).toBe("Дубрава");
   });
 });
 
