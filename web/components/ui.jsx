@@ -344,6 +344,21 @@ function confirmDialog({ title, text, confirmLabel = "Удалить", cancelLab
 }
 window.confirmDialog = confirmDialog;
 
+/* подтверждение «уйти со сметы без сохранения» — общая формулировка для двух
+   независимых гвардов несохранённых правок (долг W2/W6): guardSmetaLeave
+   (cabinet.jsx — сайдбар/крошка-переключатель/⌘K/«Все проекты», через мост
+   window.pdSmetaDirty) и guardedClose (project-detail.jsx — «Проекты»-крошка/
+   стрелка назад/Esc внутри самой сметы, на локальном dirty). Один текст —
+   один источник, не расходится при будущей правке формулировки в одном месте. */
+function confirmLeaveSmeta() {
+  return confirmDialog({
+    title: "Уйти без сохранения?",
+    text: "В смете есть несохранённые правки — они пропадут. Сохранить перед уходом?",
+    confirmLabel: "Сохранить и уйти", cancelLabel: "Остаться",
+  });
+}
+window.confirmLeaveSmeta = confirmLeaveSmeta;
+
 /* ввод строки: await promptDialog({title, label, value}) → string | null */
 function promptDialog({ title, label, value = "", confirmLabel = "Сохранить", placeholder = "" }) {
   return new Promise((resolve) => {

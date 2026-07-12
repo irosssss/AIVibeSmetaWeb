@@ -53,22 +53,30 @@ function App() {
   // в Cabinet (cabinet.jsx: CAB_TAB_IDS.includes(t) ? t : "today"); здесь и в
   // onAuthed ниже НЕ дублируем этот выбор хардкодом — при пустом табе просто не
   // указываем его в адресе, и Cabinet сам подставит дефолт при монтировании
+  // guardSmetaLeave (cabinet.jsx) — go()/onLogout() меняют view/user ДО вызова
+  // setRoute (Logo/аккаунт-меню видны и при открытом проекте, cabinet.jsx WsSidebar
+  // ws-head), а setView сам по себе уже размонтирует Cabinet/RoomSpecOverlay —
+  // без guardSmetaLeave вокруг ВСЕГО тела спрошенный setRoute внутри опоздал бы
+  // (тот же класс бага, что был у closeProject/changeTab, долг W2/W6). applyRoute —
+  // не setRoute: guardSmetaLeave уже спросил/сохранил, повторный вопрос был бы гонкой.
   const go = (v) => {
-    if (v === "cabinet") {
-      if (user) { setView("cabinet"); setRoute("cabinet", parseRoute().tab); }
-      else { setView("auth"); setRoute("auth"); }
-      return;
-    }
-    if (v === "admin") {
-      if (!DEV_MODE) return;                       // эскалация в админку — только в dev
-      if (!user || user.role !== "admin") setUser(ADMIN);
-      setView("admin"); setRoute("admin"); return;
-    }
-    setView(v); setRoute(v);
+    guardSmetaLeave(() => {
+      if (v === "cabinet") {
+        if (user) { setView("cabinet"); applyRoute("cabinet", parseRoute().tab); }
+        else { setView("auth"); applyRoute("auth"); }
+        return;
+      }
+      if (v === "admin") {
+        if (!DEV_MODE) return;                       // эскалация в админку — только в dev
+        if (!user || user.role !== "admin") setUser(ADMIN);
+        setView("admin"); applyRoute("admin"); return;
+      }
+      setView(v); applyRoute(v);
+    });
   };
 
   const onAuthed = (u) => { setUser(u); setView("cabinet"); setRoute("cabinet"); };
-  const onLogout = () => { AIVibeAPI.auth.logout(); setUser(null); setView("site"); setRoute("site"); };
+  const onLogout = () => { guardSmetaLeave(() => { AIVibeAPI.auth.logout(); setUser(null); setView("site"); applyRoute("site"); }); };
 
   // ждём проверку сессии, если целимся в кабинет — чтобы не мигнуть промо/логином
   if (!ready && (initView === "cabinet" || initView === "auth")) {
