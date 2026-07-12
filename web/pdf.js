@@ -64,12 +64,16 @@
       const subClient = r.items.reduce((s, it) => s + lineClient(it), 0);
       content.push({ text: r.name + (r.area ? "   ·   " + r.area + " м²" : ""), style: "h2", margin: [0, 12, 0, 4] });
       content.push({
-        table: { headerRows: 0, widths: ["*", 60, 32, "auto"], body: r.items.map((it) => [
-          it.title,
+        table: { headerRows: 0, widths: ["*", 60, 32, "auto"], body: r.items.map((it) => {
+          // FF&E-детали (артикул/материал/габариты/срок) — подстрокой под названием, той же
+          // конвенцией, что в UI: артикул/срок только в рабочей версии (ffeMeta(client))
+          const meta = FFE && FFE.ffeMeta ? FFE.ffeMeta(it, { client: clientMode }) : "";
+          return [
+          meta ? { stack: [{ text: it.title }, { text: meta, fontSize: 8, color: PDF.muted, margin: [0, 1, 0, 0] }] } : it.title,
           { text: it.cat || "Прочее", color: PDF.muted, fontSize: 9 },
           { text: "×" + (it.qty || 1), alignment: "right", fontSize: 9, color: PDF.muted },
           { text: money(clientMode ? lineClient(it) : lineCost(it)), alignment: "right" },
-        ]) },
+        ]; }) },
         layout: { hLineWidth: () => 0.5, hLineColor: () => "#EFEAE4", vLineWidth: () => 0, paddingTop: () => 3.5, paddingBottom: () => 3.5 },
       });
       content.push({ columns: [ { text: "", width: "*" }, { text: "Итого по комнате: " + money(clientMode ? subClient : sub), alignment: "right", bold: true, fontSize: 10.5, margin: [0, 4, 0, 0] } ] });
@@ -152,6 +156,9 @@
           // подстроки под названием: давность цены + трек-номер (волна C3, кликабельно —
           // pdfMake печатает ссылку как аннотацию поверх текста, курсор-палец в вьюере)
           const subLines = [];
+          // FF&E-детали для поставщика (артикул/материал/габариты/срок) — что именно заказывать
+          const meta = FFE && FFE.ffeMeta ? FFE.ffeMeta(x.it, {}) : "";
+          if (meta) subLines.push({ text: meta, fontSize: 8, color: PDF.muted, margin: [0, 1, 0, 0] });
           if (x.it.priceDate) subLines.push({ text: "цена от " + fmtD(x.it.priceDate), fontSize: 8, color: stale(x.it.priceDate) ? PDF.warn : PDF.muted, margin: [0, 1, 0, 0] });
           if (x.it.track && x.it.track.number) subLines.push(x.it.track.url
             ? { text: "трек №" + x.it.track.number, fontSize: 8, color: PDF.info || PDF.muted, link: x.it.track.url, decoration: "underline", margin: [0, 1, 0, 0] }
