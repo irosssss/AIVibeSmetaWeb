@@ -734,24 +734,34 @@ function RoomSpecOverlay({ data, nav, onClose }) {
      аналога (url/sku/габариты/фото старого товара стали бы враньём), план закупки
      (стадия/даты/платежи/трек) и переписку сохраняем — меняется товар, не слот.
      Решение клиента сбрасываем: новый товар ждёт нового решения. */
-  const replaceFromAlternative = (roomName, title, product) => {
+  const replaceFromAlternative = (roomName, title, product, ordinal) => {
     const p = product || {};
-    const ri = rooms.findIndex((r) => r.name === roomName && (r.items || []).some((it) => it.title === title));
+    const nth = Math.max(1, +ordinal || 1);   // какое по счёту вхождение title в комнате менять (дубли названий штатны)
+    let ri = -1, ii = -1;
+    rooms.some((r, i) => {
+      if (r.name !== roomName) return false;
+      let seen = 0;
+      const j = (r.items || []).findIndex((it) => it.title === title && ++seen === nth);
+      if (j < 0) return false;
+      ri = i; ii = j; return true;
+    });
     if (ri < 0) {
       toast("Позиция «" + title + "» не найдена в текущей смете — возможно, уже заменена или переименована.", "warn", 6000);
       return false;
     }
-    const ii = rooms[ri].items.findIndex((it) => it.title === title);
     setRooms((prev) => prev.map((r, i) => i !== ri ? r : {
       ...r,
       items: r.items.map((it, j) => {
         if (j !== ii) return it;
-        const rep = { ...it,
+        return { ...it,
           title: p.title || it.title,
           cat: p.cat || it.cat,
-          unit: p.unit || it.unit,
+          // unit НЕ берём у товара: blankProduct дефолтит "шт", и слот «12 м²» превращался бы
+          // в «12 шт» с ценой за штуку — объём закупки принадлежит слоту, не товару
           price: Math.max(0, Math.round(+p.price || 0)),
-          supplier: p.sup || p.supplier || "",
+          // рабочая смета/закупка/PDF/Excel читают it.sup (supOf, setSup, группировка листов) —
+          // НЕ blankPosition.supplier: та схема в живых позициях не используется
+          sup: p.sup || p.supplier || "",
           sku: p.article || p.sku || "",
           url: p.url || "",
           material: "", img: "",
@@ -759,7 +769,6 @@ function RoomSpecOverlay({ data, nav, onClose }) {
           priceDate: p.priceDate || FFE.today(),
           approve: "", approveAt: "",
         };
-        return rep;
       }),
     }));
     // индексы не сдвигаются (тот же слот) — черновик editPos гасим только если он ровно на заменяемой строке (урок W6: чужие черновики не терять)
@@ -1396,6 +1405,15 @@ function AlternativesModal({ rejected, projectId, onReplace, onClose }) {
     });
     return () => { alive = false; };
   }, []);
+  // скоринг всей выдачи один раз на загрузку кандидатов: пул большой (библиотека + все
+  // прошлые проекты), а клик «Заменить» (setDone) выдачу не меняет — без memo каждый клик
+  // перегонял бы полный O(отклонённые × кандидаты) проход заново
+  const scored = React.useMemo(() => {
+    if (!cands) return {};
+    const out = {};
+    rejected.forEach((rj) => { out[rj.room + "¶" + rj.title + "¶" + rj.ordinal] = FFE.suggestAlternatives(rj, cands, 4); });
+    return out;
+  }, [cands, rejected]);
   return (
     <Modal onClose={onClose} label="Замены по ответу клиента" maxWidth={680}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, padding: "20px 24px", borderBottom: "1px solid var(--hairline)" }}>
@@ -1408,9 +1426,10 @@ function AlternativesModal({ rejected, projectId, onReplace, onClose }) {
       <div style={{ padding: "16px 24px 20px", display: "flex", flexDirection: "column", gap: 14, maxHeight: "62vh", overflow: "auto" }}>
         {!cands && <div className="glass skel" style={{ borderRadius: "var(--r-lg)", height: 120 }} />}
         {cands && rejected.map((rj) => {
-          const key = rj.room + "¶" + rj.title;
+          // ordinal в ключе: две отклонённые позиции с одним названием в комнате — разные карточки
+          const key = rj.room + "¶" + rj.title + "¶" + rj.ordinal;
           const am = FFE.approveMeta(rj.approve);
-          const sugg = FFE.suggestAlternatives(rj, cands, 4);
+          const sugg = scored[key] || [];
           return (
             <div key={key} className="glass" style={{ borderRadius: "var(--r-lg)", padding: "13px 15px" }}>
               <div style={{ display: "flex", alignItems: "baseline", gap: 10, flexWrap: "wrap" }}>
@@ -1450,7 +1469,7 @@ function AlternativesModal({ rejected, projectId, onReplace, onClose }) {
                       )}
                       <span className="mono" style={{ fontSize: "var(--fs-13)", fontWeight: 600, flex: "none", whiteSpace: "nowrap" }}>{fmtMoney(s.product.price)}</span>
                       <button className="btn btn-ghost" style={{ padding: "6px 12px", fontSize: "var(--fs-12)", flex: "none" }}
-                        onClick={() => { if (onReplace(rj.room, rj.title, s.product)) setDone((d) => ({ ...d, [key]: s.product.title })); }}>
+                        onClick={() => { if (onReplace(rj.room, rj.title, s.product, rj.ordinal)) setDone((d) => ({ ...d, [key]: s.product.title })); }}>
                         Заменить
                       </button>
                     </div>
@@ -1477,15 +1496,21 @@ function VersionsModal({ versions, current, onSave, onRestore, onSetStatus, onPa
     ? sh.snapshot.rooms.reduce((s, r) => s + (r.items || []).reduce((x, it) => x + ((it.comments || []).length), 0), 0) : 0);
   // Ч2: отклонённые/на пересмотр позиции снимка шары — кандидаты на замену аналогом.
   // Последний комментарий клиента едет рядом: он объясняет, ЧТО не понравилось.
+  // ordinal — номер вхождения названия в комнате (дубли названий здесь штатны, см. agg):
+  // различает две отклонённые «Кресло» и адресует замену в правильный слот, а не в первый
   const rejectedOf = (sh) => {
     const out = [];
     if (!sh || !sh.snapshot) return out;
-    (sh.snapshot.rooms || []).forEach((r) => (r.items || []).forEach((it) => {
-      if (it.approve !== "rejected" && it.approve !== "revise") return;
-      const lastClient = (it.comments || []).filter((c) => c.author === "client").slice(-1)[0];
-      out.push({ room: r.name, title: it.title, price: it.price || 0, cat: it.cat || "", qty: it.qty || 1,
-        approve: it.approve, comment: lastClient ? lastClient.text : "" });
-    }));
+    (sh.snapshot.rooms || []).forEach((r) => {
+      const seen = {};
+      (r.items || []).forEach((it) => {
+        const ord = (seen[it.title] = (seen[it.title] || 0) + 1);
+        if (it.approve !== "rejected" && it.approve !== "revise") return;
+        const lastClient = (it.comments || []).filter((c) => c.author === "client").slice(-1)[0];
+        out.push({ room: r.name, title: it.title, ordinal: ord, price: it.price || 0, cat: it.cat || "",
+          approve: it.approve, comment: lastClient ? lastClient.text : "" });
+      });
+    });
     return out;
   };
 

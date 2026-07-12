@@ -180,22 +180,31 @@ function loadUrgentQueue(projects) {
     .then((full) => buildUrgentQueue(full.filter((d) => d && d.rooms)));
 }
 
-/* строка очереди срочности (дата · точка-цвет · заголовок+контекст · подпись) — общая
-   для TodayWidget (топ-8, компактная) и ProcureHub (полный список, волна W3.2), чтобы
-   исправление разметки/a11y не приходилось повторять в двух местах */
+/* каркас строки-события (точка-цвет · mono-дата · контент с ellipsis · подпись справа) —
+   ОДНО место разметки/a11y для очереди срочности (UrgencyRow) и пульса портала
+   (ClientPulseWidget): фикс фокуса/переноса/выравнивания не должен чиниться дважды
+   (тот же мотив, по которому UrgencyRow в своё время выделили из TodayWidget/ProcureHub) */
+function FeedRow({ color, date, right, onClick, first, compact, children }) {
+  return (
+    <button onClick={onClick}
+      style={{ display: "flex", alignItems: "baseline", gap: compact ? 10 : 12, padding: compact ? "7px 0" : "12px 0", borderTop: first ? "none" : "1px solid var(--hairline-2)", fontSize: compact ? "var(--fs-13)" : "var(--fs-14)", textAlign: "left", width: "100%" }}>
+      <span aria-hidden="true" style={{ width: compact ? 7 : 8, height: compact ? 7 : 8, borderRadius: "50%", background: color, flex: "none", alignSelf: "center" }} />
+      <span className="mono" style={{ fontSize: compact ? "var(--fs-11)" : "var(--fs-12)", color: "var(--muted)", flex: "none", width: compact ? 40 : 44 }}>{date}</span>
+      <span style={{ flex: 1, minWidth: 0, color: "var(--text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{children}</span>
+      {right != null && <span style={{ color: "var(--spec-meta)", fontSize: compact ? "var(--fs-12)" : "var(--fs-13)", flex: "none", whiteSpace: "nowrap" }}>{right}</span>}
+    </button>
+  );
+}
+
+/* строка очереди срочности — общая для TodayWidget (топ-8, компактная) и ProcureHub
+   (полный список, волна W3.2) */
 function UrgencyRow({ r, onOpen, first, compact }) {
   const FFE = window.AIVibeFFE;
   const b = FFE.URGENCY_BY_ID[r.bucket];
   return (
-    <button onClick={() => onOpen(r.projectId)}
-      style={{ display: "flex", alignItems: "baseline", gap: compact ? 10 : 12, padding: compact ? "7px 0" : "12px 0", borderTop: first ? "none" : "1px solid var(--hairline-2)", fontSize: compact ? "var(--fs-13)" : "var(--fs-14)", textAlign: "left", width: "100%" }}>
-      <span aria-hidden="true" style={{ width: compact ? 7 : 8, height: compact ? 7 : 8, borderRadius: "50%", background: b.color, flex: "none", alignSelf: "center" }} />
-      <span className="mono" style={{ fontSize: compact ? "var(--fs-11)" : "var(--fs-12)", color: "var(--muted)", flex: "none", width: compact ? 40 : 44 }}>{fmtDCV(r.date)}</span>
-      <span style={{ flex: 1, minWidth: 0, color: "var(--text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-        {r.title} <span style={{ color: "var(--spec-meta)" }}>· {r.projectName} · {r.room}{r.sup ? " · " + r.sup : ""}</span>
-      </span>
-      <span style={{ color: "var(--spec-meta)", fontSize: compact ? "var(--fs-12)" : "var(--fs-13)", flex: "none", whiteSpace: "nowrap" }}>{r.label}</span>
-    </button>
+    <FeedRow color={b.color} date={fmtDCV(r.date)} right={r.label} onClick={() => onOpen(r.projectId)} first={first} compact={compact}>
+      {r.title} <span style={{ color: "var(--spec-meta)" }}>· {r.projectName} · {r.room}{r.sup ? " · " + r.sup : ""}</span>
+    </FeedRow>
   );
 }
 
@@ -252,7 +261,9 @@ function buildClientPulse(projects, fullProjects) {
   });
   // approveAt — дата (YYYY-MM-DD), комментарии — ISO: обе сортируются лексикографически
   events.sort((a, b) => String(b.at).localeCompare(String(a.at)));
+  // архив — не «пробел»: сданный проект не требует действия, иначе виджет вечно шумит
   const gaps = (fullProjects || [])
+    .filter((p) => p.status !== "Архив")
     .map((p) => ({ projectId: p.id, projectName: p.name, ...FFE.collectGaps(p.rooms) }))
     .filter((g) => g.noSup > 0 || g.noDates > 0);
   return { events, gaps };
@@ -261,7 +272,8 @@ function buildClientPulse(projects, fullProjects) {
 function ClientPulseWidget({ pulse, onOpenVersions, onOpenProcure }) {
   const FFE = window.AIVibeFFE;
   if (!FFE || !pulse || (!pulse.events.length && !pulse.gaps.length)) return null;
-  const evMeta = (t) => (t === "comment" ? { label: "Комментарий", color: "var(--info)" } : { label: FFE.approveMeta(t).label, color: FFE.approveMeta(t).color });
+  // approveMeta уже возвращает {label, color} — не пересобираем (дрейф формы)
+  const evMeta = (t) => (t === "comment" ? { label: "Комментарий", color: "var(--info)" } : FFE.approveMeta(t));
   const shown = pulse.events.slice(0, 6);
   const gapsShown = pulse.gaps.slice(0, 4);
   return (
@@ -275,16 +287,11 @@ function ClientPulseWidget({ pulse, onOpenVersions, onOpenProcure }) {
           {shown.map((e, i) => {
             const m = evMeta(e.type);
             return (
-              <button key={i} onClick={() => onOpenVersions(e.projectId)}
-                style={{ display: "flex", alignItems: "baseline", gap: 10, padding: "7px 0", borderTop: i ? "1px solid var(--hairline-2)" : "none", fontSize: "var(--fs-13)", textAlign: "left", width: "100%" }}>
-                <span aria-hidden="true" style={{ width: 7, height: 7, borderRadius: "50%", background: m.color, flex: "none", alignSelf: "center" }} />
-                <span className="mono" style={{ fontSize: "var(--fs-11)", color: "var(--muted)", flex: "none", width: 40 }}>{fmtDCV(String(e.at).slice(0, 10))}</span>
-                <span style={{ flex: 1, minWidth: 0, color: "var(--text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                  <b style={{ fontWeight: 700 }}>{m.label}:</b> {e.title}
-                  {e.type === "comment" && e.text ? <span style={{ color: "var(--muted)" }}> «{e.text}»</span> : ""}
-                  <span style={{ color: "var(--spec-meta)" }}> · {e.projectName}</span>
-                </span>
-              </button>
+              <FeedRow key={i} color={m.color} date={fmtDCV(String(e.at).slice(0, 10))} onClick={() => onOpenVersions(e.projectId)} first={i === 0} compact>
+                <b style={{ fontWeight: 700 }}>{m.label}:</b> {e.title}
+                {e.type === "comment" && e.text ? <span style={{ color: "var(--muted)" }}> «{e.text}»</span> : ""}
+                <span style={{ color: "var(--spec-meta)" }}> · {e.projectName}</span>
+              </FeedRow>
             );
           })}
         </div>

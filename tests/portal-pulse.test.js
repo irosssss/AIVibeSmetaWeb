@@ -47,6 +47,18 @@ describe("suggestAlternatives — скоринг замен (Ч2)", () => {
     const out = FFE.suggestAlternatives(target, [c, { ...c }, { title: "Кресло лён", cat: "Мебель", price: 91000 }], 1);
     expect(out.length).toBe(1);
   });
+  it("дефолтный раздел «Прочее» — не сигнал: пустой title + Прочее не тянет случайные товары", () => {
+    // ревью-находка: «Прочее»≡«Прочее» давало +3 почти всем неразмеченным товарам,
+    // и позиция с пустым/односложным названием собирала мусорную выдачу
+    const out = FFE.suggestAlternatives({ title: "", cat: "Прочее", price: 10000 }, [
+      { title: "Ваза", cat: "Прочее", price: 9000 },
+      { title: "Крючок", cat: "Прочее", price: 11000 },
+    ], 4);
+    expect(out).toEqual([]);
+    // содержательный раздел при этом работает как раньше
+    const ok = FFE.suggestAlternatives({ title: "", cat: "Мебель", price: 10000 }, [{ title: "Пуф", cat: "Мебель", price: 9000 }], 4);
+    expect(ok.length).toBe(1);
+  });
   it("пустые кандидаты/цель без цены не роняют", () => {
     expect(FFE.suggestAlternatives({ title: "Кресло" }, null, 3)).toEqual([]);
     const out = FFE.suggestAlternatives({ title: "Кресло", cat: "Мебель" }, [{ title: "Кресло мини", cat: "Мебель", price: 5000 }], 3);
