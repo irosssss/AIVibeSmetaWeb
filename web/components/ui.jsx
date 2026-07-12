@@ -634,6 +634,38 @@ const fmtCommentAt = (iso) => {
     return d.toLocaleString("ru-RU", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
   } catch (e) { return ""; }
 };
+/* автолинки URL в комментариях (Ч5, PROGRAMA_CHANGELOG_2026-07-12 §2.6):
+   переписка клиент↔студия постоянно содержит ссылки на карточки товаров
+   («а можно вот такой?» + URL) — кликабельность вместо копипасты. Чистый
+   разбор вынесен наружу для юнит-тестов (образец NORMS_LOGIC).
+   Ловим только явные http(s):// и www. — «голые» домены (divan.ru) не
+   трогаем: слишком много ложных срабатываний на сокращениях с точкой.
+   Схема href всегда из этих двух форм, javascript: сюда не пролезает. */
+const splitCommentLinks = (text) => {
+  const parts = [];
+  const re = /(?:https?:\/\/|www\.)[^\s<>]+/gi;
+  let last = 0, m;
+  while ((m = re.exec(String(text || "")))) {
+    let url = m[0];
+    // хвостовая пунктуация предложения — не часть ссылки («смотри example.com/x.»);
+    // закрывающую скобку оставляем, только если внутри URL есть парная открывающая
+    while (/[.,;:!?»)"'”]$/.test(url)) {
+      if (url.endsWith(")") && (url.match(/\(/g) || []).length >= (url.match(/\)/g) || []).length) break;
+      url = url.slice(0, -1);
+    }
+    // «www.» без хоста после обрезки — не ссылка (голое «www.» в тексте)
+    if (!/^(?:https?:\/\/|www\.)[^\s]*[\w/]/i.test(url)) { re.lastIndex = m.index + m[0].length; continue; }
+    if (m.index > last) parts.push({ text: text.slice(last, m.index) });
+    parts.push({ text: url, href: /^www\./i.test(url) ? "https://" + url : url });
+    last = m.index + url.length;
+    re.lastIndex = last;   // после обрезки хвоста — продолжить с реального конца ссылки
+  }
+  const s = String(text || "");
+  if (last < s.length) parts.push({ text: s.slice(last) });
+  return parts;
+};
+window.LedgerLinkify = { splitCommentLinks };   // наружу — для юнит-тестов
+
 /* пузырь одного сообщения в треде. isMine — сообщение «твоей» стороны
    (на портале это клиент, в кабинете — дизайнер): заливка олива, без рамки.
    theirBg — фон «чужого» пузыря; по умолчанию --glass-2, но кабинет передаёт
@@ -647,7 +679,10 @@ function CommentBubble({ comment, isMine, authorLabel, theirBg = "var(--glass-2)
       color: isMine ? "var(--on-accent)" : "var(--text)",
       border: isMine ? "none" : "1px solid var(--hairline)",
     }}>
-      <div>{comment.text}</div>
+      <div>{splitCommentLinks(comment.text).map((p, i) => p.href
+        // color inherit: в «моём» пузыре текст --on-accent на оливе — дефолтно-синяя ссылка нечитаема
+        ? <a key={i} href={p.href} target="_blank" rel="noopener noreferrer" style={{ color: "inherit", textDecoration: "underline", textUnderlineOffset: 2, wordBreak: "break-all" }}>{p.text}</a>
+        : <React.Fragment key={i}>{p.text}</React.Fragment>)}</div>
       <div style={{ fontSize: "var(--fs-10)", opacity: .75, marginTop: 3 }}>{authorLabel} · {fmtCommentAt(comment.at)}</div>
     </div>
   );
