@@ -60,6 +60,9 @@ function ClientPortal({ shareId }) {
   const F = window.AIVibeFFE || null;
   const [rec, setRec] = useP(() => (F ? F.loadPortalShare(shareId) : null));
   usePE(() => { document.title = "Design Ledger · Смета на согласование"; }, []);
+  // Ч4 «клиент открыл» (адаптация ченджлога Programa): каждый заход по ссылке — визит;
+  // rec в стейт не переливаем — счётчик клиенту не показывается, лишний ререндер не нужен
+  usePE(() => { if (F && rec) F.notePortalVisit(shareId); }, [shareId]);
 
   if (!F || !rec) {
     return (

@@ -180,22 +180,31 @@ function loadUrgentQueue(projects) {
     .then((full) => buildUrgentQueue(full.filter((d) => d && d.rooms)));
 }
 
-/* строка очереди срочности (дата · точка-цвет · заголовок+контекст · подпись) — общая
-   для TodayWidget (топ-8, компактная) и ProcureHub (полный список, волна W3.2), чтобы
-   исправление разметки/a11y не приходилось повторять в двух местах */
+/* каркас строки-события (точка-цвет · mono-дата · контент с ellipsis · подпись справа) —
+   ОДНО место разметки/a11y для очереди срочности (UrgencyRow) и пульса портала
+   (ClientPulseWidget): фикс фокуса/переноса/выравнивания не должен чиниться дважды
+   (тот же мотив, по которому UrgencyRow в своё время выделили из TodayWidget/ProcureHub) */
+function FeedRow({ color, date, right, onClick, first, compact, children }) {
+  return (
+    <button onClick={onClick}
+      style={{ display: "flex", alignItems: "baseline", gap: compact ? 10 : 12, padding: compact ? "7px 0" : "12px 0", borderTop: first ? "none" : "1px solid var(--hairline-2)", fontSize: compact ? "var(--fs-13)" : "var(--fs-14)", textAlign: "left", width: "100%" }}>
+      <span aria-hidden="true" style={{ width: compact ? 7 : 8, height: compact ? 7 : 8, borderRadius: "50%", background: color, flex: "none", alignSelf: "center" }} />
+      <span className="mono" style={{ fontSize: compact ? "var(--fs-11)" : "var(--fs-12)", color: "var(--muted)", flex: "none", width: compact ? 40 : 44 }}>{date}</span>
+      <span style={{ flex: 1, minWidth: 0, color: "var(--text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{children}</span>
+      {right != null && <span style={{ color: "var(--spec-meta)", fontSize: compact ? "var(--fs-12)" : "var(--fs-13)", flex: "none", whiteSpace: "nowrap" }}>{right}</span>}
+    </button>
+  );
+}
+
+/* строка очереди срочности — общая для TodayWidget (топ-8, компактная) и ProcureHub
+   (полный список, волна W3.2) */
 function UrgencyRow({ r, onOpen, first, compact }) {
   const FFE = window.AIVibeFFE;
   const b = FFE.URGENCY_BY_ID[r.bucket];
   return (
-    <button onClick={() => onOpen(r.projectId)}
-      style={{ display: "flex", alignItems: "baseline", gap: compact ? 10 : 12, padding: compact ? "7px 0" : "12px 0", borderTop: first ? "none" : "1px solid var(--hairline-2)", fontSize: compact ? "var(--fs-13)" : "var(--fs-14)", textAlign: "left", width: "100%" }}>
-      <span aria-hidden="true" style={{ width: compact ? 7 : 8, height: compact ? 7 : 8, borderRadius: "50%", background: b.color, flex: "none", alignSelf: "center" }} />
-      <span className="mono" style={{ fontSize: compact ? "var(--fs-11)" : "var(--fs-12)", color: "var(--muted)", flex: "none", width: compact ? 40 : 44 }}>{fmtDCV(r.date)}</span>
-      <span style={{ flex: 1, minWidth: 0, color: "var(--text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-        {r.title} <span style={{ color: "var(--spec-meta)" }}>· {r.projectName} · {r.room}{r.sup ? " · " + r.sup : ""}</span>
-      </span>
-      <span style={{ color: "var(--spec-meta)", fontSize: compact ? "var(--fs-12)" : "var(--fs-13)", flex: "none", whiteSpace: "nowrap" }}>{r.label}</span>
-    </button>
+    <FeedRow color={b.color} date={fmtDCV(r.date)} right={r.label} onClick={() => onOpen(r.projectId)} first={first} compact={compact}>
+      {r.title} <span style={{ color: "var(--spec-meta)" }}>· {r.projectName} · {r.room}{r.sup ? " · " + r.sup : ""}</span>
+    </FeedRow>
   );
 }
 
@@ -228,6 +237,82 @@ function TodayWidget({ rows, onOpen }) {
             {actionable.map((r, i) => <UrgencyRow key={i} r={r} onOpen={onOpen} first={i === 0} compact />)}
           </div>
         )}
+    </div>
+  );
+}
+
+/* ---------------- «РЕШЕНИЯ КЛИЕНТА» + «ПРОБЕЛЫ» (Ч3, адаптация ченджлога Programa 12.07) ----------------
+   Их Pulse: лента «что требует действия» — решения клиента live + карточки
+   «Products missing suppliers / lead time». Наша версия поверх волны C:
+   события порталов всех проектов (решения approve + комментарии клиента,
+   AIVibeFFE.portalEventsFromShare) и пробелы комплектации (collectGaps).
+   Чистые функции от уже загруженных проектов — фетчит вызывающий (Today). */
+function buildClientPulse(projects, fullProjects) {
+  const FFE = window.AIVibeFFE;
+  if (!FFE || !FFE.portalEventsFromShare) return { events: [], gaps: [] };
+  const events = [];
+  (projects || []).forEach((p) => {
+    FFE.loadVersions(p.id).forEach((v) => {
+      if (!v.shareId) return;
+      const sh = FFE.loadPortalShare(v.shareId);
+      if (!sh) return;
+      FFE.portalEventsFromShare(sh).forEach((e) => events.push({ ...e, projectId: p.id, projectName: p.name }));
+    });
+  });
+  // approveAt — дата (YYYY-MM-DD), комментарии — ISO: обе сортируются лексикографически
+  events.sort((a, b) => String(b.at).localeCompare(String(a.at)));
+  // архив — не «пробел»: сданный проект не требует действия, иначе виджет вечно шумит
+  const gaps = (fullProjects || [])
+    .filter((p) => p.status !== "Архив")
+    .map((p) => ({ projectId: p.id, projectName: p.name, ...FFE.collectGaps(p.rooms) }))
+    .filter((g) => g.noSup > 0 || g.noDates > 0);
+  return { events, gaps };
+}
+
+function ClientPulseWidget({ pulse, onOpenVersions, onOpenProcure }) {
+  const FFE = window.AIVibeFFE;
+  if (!FFE || !pulse || (!pulse.events.length && !pulse.gaps.length)) return null;
+  // approveMeta уже возвращает {label, color} — не пересобираем (дрейф формы)
+  const evMeta = (t) => (t === "comment" ? { label: "Комментарий", color: "var(--info)" } : FFE.approveMeta(t));
+  const shown = pulse.events.slice(0, 6);
+  const gapsShown = pulse.gaps.slice(0, 4);
+  return (
+    <div className="glass" style={{ borderRadius: "var(--r-lg)", padding: "16px 18px", marginBottom: 16 }}>
+      <div style={{ display: "flex", alignItems: "baseline", gap: 9, marginBottom: shown.length || gapsShown.length ? 10 : 0 }}>
+        <I.chat size={16} style={{ color: "var(--accent-2)", position: "relative", top: 1 }} />
+        <span style={{ fontWeight: 800, fontFamily: "var(--font-display)", fontSize: "var(--fs-16)" }}>Решения клиента</span>
+      </div>
+      {shown.length > 0 && (
+        <div style={{ display: "flex", flexDirection: "column" }}>
+          {shown.map((e, i) => {
+            const m = evMeta(e.type);
+            return (
+              <FeedRow key={i} color={m.color} date={fmtDCV(String(e.at).slice(0, 10))} onClick={() => onOpenVersions(e.projectId)} first={i === 0} compact>
+                <b style={{ fontWeight: 700 }}>{m.label}:</b> {e.title}
+                {e.type === "comment" && e.text ? <span style={{ color: "var(--muted)" }}> «{e.text}»</span> : ""}
+                <span style={{ color: "var(--spec-meta)" }}> · {e.projectName}</span>
+              </FeedRow>
+            );
+          })}
+        </div>
+      )}
+      {gapsShown.length > 0 && (
+        <div style={{ marginTop: shown.length ? 12 : 0, paddingTop: shown.length ? 10 : 0, borderTop: shown.length ? "1px solid var(--hairline-2)" : "none" }}>
+          <div className="mono" style={{ fontSize: "var(--fs-11)", fontWeight: 700, letterSpacing: ".06em", textTransform: "uppercase", color: "var(--spec-meta)", marginBottom: 6 }}>Пробелы комплектации</div>
+          <div style={{ display: "flex", flexDirection: "column" }}>
+            {gapsShown.map((g, i) => (
+              <button key={g.projectId} onClick={() => onOpenProcure(g.projectId)}
+                style={{ display: "flex", alignItems: "baseline", gap: "4px 10px", flexWrap: "wrap", padding: "6px 0", borderTop: i ? "1px solid var(--hairline-2)" : "none", fontSize: "var(--fs-13)", textAlign: "left", width: "100%" }}>
+                {/* wrap, не ellipsis: на 375px имя проекта сжималось до одной буквы — счётчики уходят на вторую строку */}
+                <span style={{ flex: "1 1 120px", minWidth: 0 }}>{g.projectName}</span>
+                <span className="mono" style={{ flex: "none", fontSize: "var(--fs-12)", color: "var(--muted)", whiteSpace: "nowrap" }}>
+                  {[g.noSup ? g.noSup + " без поставщика" : "", g.noDates ? g.noDates + " без дат закупки" : ""].filter(Boolean).join(" · ")}
+                </span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -292,7 +377,19 @@ function OnboardChecklist({ onNewProject, onOpenProjects, hasProjects }) {
 function Today({ user, onNewProject, onOpenProjects }) {
   const [rows, setRows] = useCV(null);
   const [urgent, setUrgent] = useCV([]);
-  useCVE(() => { AIVibeAPI.projects.list().then((list) => { setRows(list); loadUrgentQueue(list).then(setUrgent); }); }, []);
+  const [pulse, setPulse] = useCV(null);   // Ч3: {events, gaps} | null пока грузится
+  useCVE(() => {
+    AIVibeAPI.projects.list().then((list) => {
+      setRows(list);
+      // полные карточки тянем ОДИН раз на оба виджета (очередь срочности + пульс портала),
+      // не через loadUrgentQueue — иначе 2×N запросов за одними и теми же проектами
+      Promise.all(list.map((p) => AIVibeAPI.projects.get(p.id).catch(() => null))).then((full) => {
+        const fp = full.filter((d) => d && d.rooms);
+        setUrgent(buildUrgentQueue(fp));
+        setPulse(buildClientPulse(list, fp));
+      });
+    });
+  }, []);
   const dateStr = new Date().toLocaleDateString("ru-RU", { weekday: "long", day: "numeric", month: "long" });
   return (
     <div className="reveal in" ref={useReveal()}>
@@ -305,6 +402,11 @@ function Today({ user, onNewProject, onOpenProjects }) {
       <OnboardChecklist onNewProject={onNewProject} onOpenProjects={onOpenProjects} hasProjects={!!(rows && rows.length > 0)} />
       {!rows && <div className="glass skel" style={{ borderRadius: "var(--r-lg)", height: 140 }} />}
       {rows && rows.length > 0 && <TodayWidget rows={urgent} onOpen={(id) => setRoute("cabinet", "projects", id)} />}
+      {rows && rows.length > 0 && (
+        <ClientPulseWidget pulse={pulse}
+          onOpenVersions={(id) => setRoute("cabinet", "projects", id, "versions")}
+          onOpenProcure={(id) => setRoute("cabinet", "projects", id, "procure")} />
+      )}
       {rows && rows.length === 0 && (
         <EmptyState icon="layers" title="Пока нет проектов"
           text="Создайте первый проект — задайте комнату и бюджет, дальше Design Ledger соберёт смету и проверит эргономику."

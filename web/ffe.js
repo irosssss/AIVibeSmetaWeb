@@ -579,6 +579,91 @@
     return rec;
   }
 
+  /* ----------------------------- ПУЛЬС ПОРТАЛА (адаптация ченджлога Programa 12.07) -----------------------------
+     Ч4 «клиент открыл»: счётчик визитов на портал-шаре — ClientPortal зовёт notePortalVisit
+     при каждом открытии ссылки; дизайнер видит «портал открыт N раз · последний DD.MM».
+     Честно: считаются ВСЕ открытия ссылки (в т.ч. самим дизайнером через «Открыть портал») —
+     на моке отличить некого, с Worker+KV появится куки-сессия клиента.
+     Ч3 «лента действий»: portalEventsFromShare разворачивает снимок шары в плоский список
+     событий клиента (решения approve + комментарии) — чистая функция, кабинет собирает
+     ленту по всем проектам из этих событий. */
+  function notePortalVisit(shareId) {
+    const rec = loadPortalShare(shareId);
+    if (!rec) return null;
+    const v = rec.visits || { count: 0, lastAt: "" };
+    rec.visits = { count: (v.count || 0) + 1, lastAt: new Date().toISOString() };
+    try { localStorage.setItem(PKEY(shareId), JSON.stringify(rec)); } catch {}
+    return rec;
+  }
+  // события клиента из снимка шары: [{at(ISO|date), type: ok|revise|rejected|comment, title, text?, ri, ii}]
+  // решения без даты (легаси-шары до approveAt) не выдумываем — пропускаем
+  function portalEventsFromShare(rec) {
+    const out = [];
+    if (!rec || !rec.snapshot || !Array.isArray(rec.snapshot.rooms)) return out;
+    rec.snapshot.rooms.forEach((r, ri) => (r.items || []).forEach((it, ii) => {
+      if (it.approve && APPROVE_BY_ID[it.approve] && it.approveAt)
+        out.push({ at: it.approveAt, type: it.approve, title: str(it.title), ri, ii });
+      (it.comments || []).forEach((c) => {
+        if (c && c.author === "client" && c.at)
+          out.push({ at: c.at, type: "comment", title: str(it.title), text: str(c.text), ri, ii });
+      });
+    }));
+    return out;
+  }
+
+  /* Ч2 «клиент отклонил → аналоги»: подбор замен из уже собранного (библиотека студии +
+     позиции прошлых проектов), БЕЗ каталога фабрик — версия из своего; фид подключится
+     тем же интерфейсом (роадмап §2 «Аналоги в один клик»). Чистый скоринг:
+     совпадение раздела (+3) > пересечение слов названия (+1 за слово, максимум 2) >
+     цена в коридоре ±40% (+1). Кандидаты без пересечений отбрасываются; сам товар
+     (одинаковое название) исключён. Возврат: топ-n с дельтой цены в процентах. */
+  const altWords = (s) => str(s).toLowerCase().split(/[^a-zа-яё0-9]+/).filter((w) => w.length > 2);
+  function suggestAlternatives(target, candidates, n) {
+    const t = target || {};
+    const tw = altWords(t.title);
+    const tPrice = Math.max(0, num(t.price, 0));
+    const seen = new Set();
+    const scored = [];
+    (candidates || []).forEach((c) => {
+      if (!c || !str(c.title)) return;
+      const key = str(c.title).toLowerCase() + "¶" + num(c.price, 0);
+      if (seen.has(key)) return;                     // дубли (товар и в библиотеке, и в проекте)
+      if (str(c.title).toLowerCase() === str(t.title).toLowerCase()) return; // сам отклонённый товар
+      // квалификация — только содержательное сходство (раздел/слова); цена — бонус
+      // к рангу, НЕ пропуск: иначе любой случайный товар «в коридоре ±40%» лез в выдачу.
+      // Дефолтный раздел «Прочее» сигналом не считается: «Прочее»≡«Прочее» совпадает
+      // почти у всего неразмеченного и забивал бы выдачу случайными товарами
+      let score = 0;
+      if (str(c.cat) && str(c.cat) !== "Прочее" && str(c.cat) === str(t.cat)) score += 3;
+      const cw = altWords(c.title);
+      score += Math.min(2, cw.filter((w) => tw.includes(w)).length);
+      if (score <= 0) return;
+      const cPrice = Math.max(0, num(c.price, 0));
+      if (tPrice > 0 && cPrice > 0 && Math.abs(cPrice - tPrice) / tPrice <= 0.4) score += 1;
+      seen.add(key);
+      const priceDeltaPct = tPrice > 0 && cPrice > 0 ? Math.round(((cPrice - tPrice) / tPrice) * 100) : null;
+      scored.push({ product: c, score, priceDeltaPct });
+    });
+    return scored
+      .sort((a, b) => b.score - a.score || num(a.product.price, 0) - num(b.product.price, 0))
+      .slice(0, Math.max(1, n || 4));
+  }
+
+  /* Пробелы комплектации (их Pulse-карточки «Products missing suppliers / lead time»):
+     позиции без поставщика и позиции без единой даты закупки (ни eta, ни платежей). */
+  function collectGaps(rooms) {
+    let noSup = 0, noDates = 0;
+    (Array.isArray(rooms) ? rooms : []).forEach((r) => (r.items || []).forEach((it) => {
+      if (!str(it.sup || it.supplier)) noSup++;   // обе схемы имени поля (см. productFromPosition)
+      // «без дат закупки» = ни eta, ни одной платёжной даты (в т.ч. уже оплаченной —
+      // погашенный платёж не «пробел», поэтому НЕ через itemDueItems, он гасит paid)
+      const pay = it.payments || {};
+      const anyPayDate = PAYMENT_KINDS.some((k) => pay[k.id] && str(pay[k.id].date));
+      if (!str(it.eta) && !anyPayDate) noDates++;
+    }));
+    return { noSup, noDates };
+  }
+
   /* ----------------------------- СТАДИИ ПЕТЛИ КОМПЛЕКТАТОРА (статус ПРОЕКТА) -----------------------------
      Не путать со статусом ПОЗИЦИИ (FFE_STATUSES) — это стадия всего проекта:
      «собрал → согласовал → закупил → сдал» (+ Архив). Цвета — язык темы; STAGE_NEXT —
@@ -609,5 +694,6 @@
     loadEstimate, saveEstimate, clearEstimate,
     VERSION_STATUSES, vStatusMeta, loadVersions, saveVersions, clearVersions, makeSnapshot,
     clientPricing, createPortalShare, loadPortalShare, setPortalApprove, addPortalComment,
+    notePortalVisit, portalEventsFromShare, suggestAlternatives, collectGaps,
   };
 })();

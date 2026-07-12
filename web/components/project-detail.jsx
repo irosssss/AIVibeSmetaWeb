@@ -728,6 +728,55 @@ function RoomSpecOverlay({ data, nav, onClose }) {
     const ok = await confirmDialog({ title: "Удалить версию?", text: "«" + v.label + "» исчезнет из истории. Рабочую смету это не меняет.", confirmLabel: "Удалить версию" });
     if (ok) setVersions((prev) => prev.filter((x) => x.id !== v.id));
   };
+  /* Ч2 «клиент отклонил → аналоги» (адаптация ченджлога Programa 12.07): замена позиции
+     рабочей сметы товаром-аналогом. Позицию ищем по комнате+названию (как diff версий —
+     у позиций снимка нет общих id с рабочей сметой); поля старого товара затираем полями
+     аналога (url/sku/габариты/фото старого товара стали бы враньём), план закупки
+     (стадия/даты/платежи/трек) и переписку сохраняем — меняется товар, не слот.
+     Решение клиента сбрасываем: новый товар ждёт нового решения. */
+  const replaceFromAlternative = (roomName, title, product, ordinal) => {
+    const p = product || {};
+    const nth = Math.max(1, +ordinal || 1);   // какое по счёту вхождение title в комнате менять (дубли названий штатны)
+    let ri = -1, ii = -1;
+    rooms.some((r, i) => {
+      if (r.name !== roomName) return false;
+      let seen = 0;
+      const j = (r.items || []).findIndex((it) => it.title === title && ++seen === nth);
+      if (j < 0) return false;
+      ri = i; ii = j; return true;
+    });
+    if (ri < 0) {
+      toast("Позиция «" + title + "» не найдена в текущей смете — возможно, уже заменена или переименована.", "warn", 6000);
+      return false;
+    }
+    setRooms((prev) => prev.map((r, i) => i !== ri ? r : {
+      ...r,
+      items: r.items.map((it, j) => {
+        if (j !== ii) return it;
+        return { ...it,
+          title: p.title || it.title,
+          cat: p.cat || it.cat,
+          // unit НЕ берём у товара: blankProduct дефолтит "шт", и слот «12 м²» превращался бы
+          // в «12 шт» с ценой за штуку — объём закупки принадлежит слоту, не товару
+          price: Math.max(0, Math.round(+p.price || 0)),
+          // рабочая смета/закупка/PDF/Excel читают it.sup (supOf, setSup, группировка листов) —
+          // НЕ blankPosition.supplier: та схема в живых позициях не используется
+          sup: p.sup || p.supplier || "",
+          sku: p.article || p.sku || "",
+          url: p.url || "",
+          material: "", img: "",
+          dims: p.dims && (p.dims.w || p.dims.d || p.dims.h) ? { ...p.dims } : { w: "", d: "", h: "" },
+          priceDate: p.priceDate || FFE.today(),
+          approve: "", approveAt: "",
+        };
+      }),
+    }));
+    // индексы не сдвигаются (тот же слот) — черновик editPos гасим только если он ровно на заменяемой строке (урок W6: чужие черновики не терять)
+    setEditPos((e) => (e && e.ri === ri && e.ii === ii ? null : e));
+    toast("Позиция заменена: «" + (p.title || "") + "». Не забудьте сохранить смету и отправить клиенту новую версию.");
+    return true;
+  };
+
   // «Ссылка для клиента» (волна A2): опубликовать снимок версии в портал и показать ссылку.
   // Ссылка на версию переиспользуется (снимок неизменен); первая выдача метит версию «Отправлена».
   const shareVersion = (v) => {
@@ -1313,7 +1362,8 @@ function RoomSpecOverlay({ data, nav, onClose }) {
       {versionsOpen && (
         <VersionsModal versions={versions} current={{ project: data.name, studioName, studioContact, rooms, grand, totalClient, itemsCount }}
           onSave={saveVersion} onRestore={restoreVersion} onSetStatus={setVersionStatus}
-          onPatch={patchVersion} onRemove={removeVersion} onShare={shareVersion} onClose={closeVersions} />
+          onPatch={patchVersion} onRemove={removeVersion} onShare={shareVersion} onClose={closeVersions}
+          projectId={savedId} onReplacePos={replaceFromAlternative} />
       )}
       {shareModal && <ShareLinkModal share={shareModal} onClose={() => setShareModal(null)} />}
       {pickerRoom != null && rooms[pickerRoom] && (
@@ -1329,15 +1379,140 @@ function RoomSpecOverlay({ data, nav, onClose }) {
    (Δ итога клиенту, +добавлено/−удалено/~изменено), статус согласования с датой
    и комментарий клиента. Фундамент клиентского портала (роадмап #9).
    Позиции без id — диф по ключу «комната + название» с агрегацией дублей. */
-function VersionsModal({ versions, current, onSave, onRestore, onSetStatus, onPatch, onRemove, onShare, onClose }) {
+/* ---------------- Ч2: ЗАМЕНЫ ПО ОТВЕТУ КЛИЕНТА (адаптация ченджлога Programa 12.07) ----------------
+   Клиент отклонил / отправил на пересмотр позицию в портале → подбираем аналоги из УЖЕ
+   собранного дизайнером: библиотека товаров + позиции прошлых проектов (скоринг —
+   AIVibeFFE.suggestAlternatives; фид фабрик подключится тем же интерфейсом, роадмап §2).
+   «Заменить» правит рабочую смету через onReplace (RoomSpecOverlay.replaceFromAlternative);
+   снимок отправленной версии не трогаем — он исторический документ. */
+function AlternativesModal({ rejected, projectId, onReplace, onClose }) {
+  const FFE = window.AIVibeFFE;
+  const [cands, setCands] = usePD(null);   // null = грузим; [] = источники пусты
+  const [done, setDone] = usePD({});       // room¶title → название замены (в этой сессии)
+  usePDE(() => {
+    let alive = true;
+    Promise.all([
+      AIVibeAPI.library.list().catch(() => []),
+      AIVibeAPI.projects.list()
+        .then((list) => Promise.all(list.filter((p) => p.id !== projectId).map((p) => AIVibeAPI.projects.get(p.id).catch(() => null))))
+        .catch(() => []),
+    ]).then(([lib, projs]) => {
+      if (!alive) return;
+      const fromLib = (lib || []).map((x) => ({ ...x, _src: "библиотека" }));
+      const fromProjects = (projs || []).filter((p) => p && p.rooms).flatMap((p) =>
+        (p.rooms || []).flatMap((r) => (r.items || []).map((it) => ({ ...FFE.productFromPosition(it), _src: p.name }))));
+      setCands([...fromLib, ...fromProjects]);
+    });
+    return () => { alive = false; };
+  }, []);
+  // скоринг всей выдачи один раз на загрузку кандидатов: пул большой (библиотека + все
+  // прошлые проекты), а клик «Заменить» (setDone) выдачу не меняет — без memo каждый клик
+  // перегонял бы полный O(отклонённые × кандидаты) проход заново
+  const scored = React.useMemo(() => {
+    if (!cands) return {};
+    const out = {};
+    rejected.forEach((rj) => { out[rj.room + "¶" + rj.title + "¶" + rj.ordinal] = FFE.suggestAlternatives(rj, cands, 4); });
+    return out;
+  }, [cands, rejected]);
+  return (
+    <Modal onClose={onClose} label="Замены по ответу клиента" maxWidth={680}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, padding: "20px 24px", borderBottom: "1px solid var(--hairline)" }}>
+        <div>
+          <h3 className="display" style={{ fontSize: "var(--fs-21)" }}>Замены по ответу клиента</h3>
+          <div style={{ fontSize: "var(--fs-13)", color: "var(--muted)", marginTop: 3 }}>Аналоги из вашей библиотеки и прошлых проектов — замена правит рабочую смету</div>
+        </div>
+        <button className="icon-btn" onClick={onClose} aria-label="Закрыть"><I.close size={18} /></button>
+      </div>
+      <div style={{ padding: "16px 24px 20px", display: "flex", flexDirection: "column", gap: 14, maxHeight: "62vh", overflow: "auto" }}>
+        {!cands && <div className="glass skel" style={{ borderRadius: "var(--r-lg)", height: 120 }} />}
+        {cands && rejected.map((rj) => {
+          // ordinal в ключе: две отклонённые позиции с одним названием в комнате — разные карточки
+          const key = rj.room + "¶" + rj.title + "¶" + rj.ordinal;
+          const am = FFE.approveMeta(rj.approve);
+          const sugg = scored[key] || [];
+          return (
+            <div key={key} className="glass" style={{ borderRadius: "var(--r-lg)", padding: "13px 15px" }}>
+              <div style={{ display: "flex", alignItems: "baseline", gap: 10, flexWrap: "wrap" }}>
+                <span style={{ fontWeight: 700, fontSize: "var(--fs-14)", flex: 1, minWidth: 160 }}>{rj.title}</span>
+                <span style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: "var(--fs-11)", fontWeight: 700, color: am.color, whiteSpace: "nowrap" }}>
+                  <span aria-hidden="true" style={{ width: 6, height: 6, borderRadius: "50%", background: am.color, flex: "none" }} />{am.label}
+                </span>
+              </div>
+              <div className="mono" style={{ fontSize: "var(--fs-11)", color: "var(--spec-meta)", marginTop: 3 }}>
+                {rj.room}{rj.cat ? " · " + rj.cat : ""} · {fmtMoney(rj.price)}
+              </div>
+              {rj.comment && (
+                <div style={{ fontSize: "var(--fs-12)", color: "var(--muted)", fontStyle: "italic", marginTop: 6 }}>Клиент: «{rj.comment}»</div>
+              )}
+              {done[key] ? (
+                <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 10, fontSize: "var(--fs-13)", fontWeight: 600, color: "var(--accent-2-ink)" }}>
+                  <I.check size={15} style={{ flex: "none" }} />Заменено на «{done[key]}» — сохраните смету и отправьте клиенту новую версию
+                </div>
+              ) : sugg.length === 0 ? (
+                <div style={{ fontSize: "var(--fs-13)", color: "var(--muted)", marginTop: 10 }}>
+                  Похожего в библиотеке и прошлых проектах не нашлось. Добавьте аналог по ссылке на товар — клиппер затянет карточку.
+                </div>
+              ) : (
+                <div style={{ display: "flex", flexDirection: "column", marginTop: 8 }}>
+                  {sugg.map((s, i) => (
+                    <div key={i} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 0", borderTop: i ? "1px solid var(--hairline-2)" : "none" }}>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: "var(--fs-13)", fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{s.product.title}</div>
+                        <div className="mono" style={{ fontSize: "var(--fs-11)", color: "var(--spec-meta)", marginTop: 2 }}>
+                          {s.product._src}{s.product.sup ? " · " + s.product.sup : ""}
+                        </div>
+                      </div>
+                      {s.priceDeltaPct != null && s.priceDeltaPct !== 0 && (
+                        <span className="mono" style={{ fontSize: "var(--fs-11)", fontWeight: 700, flex: "none", color: s.priceDeltaPct < 0 ? "var(--accent-2-ink)" : "var(--accent-ink)" }}>
+                          {s.priceDeltaPct < 0 ? "−" : "+"}{Math.abs(s.priceDeltaPct)}%
+                        </span>
+                      )}
+                      <span className="mono" style={{ fontSize: "var(--fs-13)", fontWeight: 600, flex: "none", whiteSpace: "nowrap" }}>{fmtMoney(s.product.price)}</span>
+                      <button className="btn btn-ghost" style={{ padding: "6px 12px", fontSize: "var(--fs-12)", flex: "none" }}
+                        onClick={() => { if (onReplace(rj.room, rj.title, s.product, rj.ordinal)) setDone((d) => ({ ...d, [key]: s.product.title })); }}>
+                        Заменить
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </Modal>
+  );
+}
+
+function VersionsModal({ versions, current, onSave, onRestore, onSetStatus, onPatch, onRemove, onShare, onClose, projectId, onReplacePos }) {
   const FFE = window.AIVibeFFE;
   const [label, setLabel] = usePD("");
   const [compareId, setCompareId] = usePD(null);
   const [cmtOpenId, setCmtOpenId] = usePD(null);   // id версии, у которой раскрыты комментарии-треды
   const [cmtTick, setCmtTick] = usePD(0);          // бампается после ответа студии — форсирует перечитать shareId из хранилища
+  const [altList, setAltList] = usePD(null);       // Ч2: отклонённые позиции версии для модалки аналогов | null
   const fmtDT = (iso) => (iso && iso.length >= 10 ? iso.slice(8, 10) + "." + iso.slice(5, 7) + "." + iso.slice(0, 4) : "");
   const commentsCount = (sh) => (sh && sh.snapshot && Array.isArray(sh.snapshot.rooms)
     ? sh.snapshot.rooms.reduce((s, r) => s + (r.items || []).reduce((x, it) => x + ((it.comments || []).length), 0), 0) : 0);
+  // Ч2: отклонённые/на пересмотр позиции снимка шары — кандидаты на замену аналогом.
+  // Последний комментарий клиента едет рядом: он объясняет, ЧТО не понравилось.
+  // ordinal — номер вхождения названия в комнате (дубли названий здесь штатны, см. agg):
+  // различает две отклонённые «Кресло» и адресует замену в правильный слот, а не в первый
+  const rejectedOf = (sh) => {
+    const out = [];
+    if (!sh || !sh.snapshot) return out;
+    (sh.snapshot.rooms || []).forEach((r) => {
+      const seen = {};
+      (r.items || []).forEach((it) => {
+        const ord = (seen[it.title] = (seen[it.title] || 0) + 1);
+        if (it.approve !== "rejected" && it.approve !== "revise") return;
+        const lastClient = (it.comments || []).filter((c) => c.author === "client").slice(-1)[0];
+        out.push({ room: r.name, title: it.title, ordinal: ord, price: it.price || 0, cat: it.cat || "",
+          approve: it.approve, comment: lastClient ? lastClient.text : "" });
+      });
+    });
+    return out;
+  };
 
   // комната + название → {qty, себестоимость}; дубликаты строк складываются
   const agg = (rooms) => {
@@ -1394,6 +1569,7 @@ function VersionsModal({ versions, current, onSave, onRestore, onSetStatus, onPa
           const sh = v.shareId && FFE.loadPortalShare ? FFE.loadPortalShare(v.shareId) : null;
           const shOk = sh && sh.snapshot ? (sh.snapshot.rooms || []).reduce((s, r) => s + (r.items || []).filter((it) => it.approve === "ok").length, 0) : 0;
           const cmCount = commentsCount(sh);
+          const rejected = sh ? rejectedOf(sh) : [];
           return (
             <div key={v.id} className="glass" style={{ borderRadius: "var(--r-lg)", padding: "13px 15px" }}>
               <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
@@ -1404,6 +1580,8 @@ function VersionsModal({ versions, current, onSave, onRestore, onSetStatus, onPa
               </div>
               <div className="mono" style={{ fontSize: "var(--fs-11)", color: "var(--spec-meta)", margin: "7px 0 10px" }}>
                 {fmtDT(v.createdAt)} · себест. {fmtMoney(v.total)} · клиенту {fmtMoney(v.clientTotal)} · {v.positions} поз.
+                {/* Ч4 «клиент открыл» — визиты по ссылке портала (считаются все открытия, вкл. предпросмотр дизайнера) */}
+                {sh && sh.visits && sh.visits.count > 0 ? " · портал открыт " + sh.visits.count + " " + plural(sh.visits.count, ["раз", "раза", "раз"]) + (sh.visits.lastAt ? " · посл. " + fmtDT(sh.visits.lastAt) : "") : ""}
                 {sh && sh.respondedAt ? <span style={{ color: "var(--accent-2-ink)", fontWeight: 700 }}>{" · клиент ответил" + (shOk ? " · " + shOk + " ✓" : "")}</span> : ""}
               </div>
               <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
@@ -1424,6 +1602,14 @@ function VersionsModal({ versions, current, onSave, onRestore, onSetStatus, onPa
                     onClick={() => setCmtOpenId(cmtOpenId === v.id ? null : v.id)} aria-expanded={cmtOpenId === v.id}
                     title="Комментарии клиента к позициям и ответы студии">
                     <I.chat size={14} />{cmtOpenId === v.id ? "Скрыть комментарии" : "Комментарии" + (cmCount ? " · " + cmCount : "")}
+                  </button>
+                )}
+                {/* Ч2: клиент отклонил/на пересмотр → подбор замен из библиотеки и прошлых проектов */}
+                {rejected.length > 0 && (
+                  <button className="btn btn-ghost" style={{ padding: "7px 12px", fontSize: "var(--fs-12)", color: "var(--accent-ink)" }}
+                    onClick={() => setAltList(rejected)}
+                    title="Клиент отклонил или отправил на пересмотр — подобрать замены из библиотеки и прошлых проектов">
+                    <I.spark size={14} />Подобрать замены · {rejected.length}
                   </button>
                 )}
                 <button className="btn btn-ghost" style={{ padding: "7px 12px", fontSize: "var(--fs-12)" }}
@@ -1471,6 +1657,7 @@ function VersionsModal({ versions, current, onSave, onRestore, onSetStatus, onPa
           );
         })}
       </div>
+      {altList && <AlternativesModal rejected={altList} projectId={projectId} onReplace={onReplacePos} onClose={() => setAltList(null)} />}
     </Modal>
   );
 }
