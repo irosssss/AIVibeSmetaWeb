@@ -142,11 +142,15 @@ function ClientPortal({ shareId }) {
               {(r.items || []).map((it, ii) => {
                 const cur = apOf(it);
                 const qty = it.qty || 1;
+                // FF&E-детали для клиента (материал/габариты; артикул/срок — закупочная
+                // кухня, ffeMeta(client) их не отдаёт) — конвенция та же, что UI/PDF/Excel
+                const ffe = F && F.ffeMeta ? F.ffeMeta(it, { client: true }) : "";
                 return (
                   <div key={ii} style={{ padding: "12px 0", borderTop: ii ? "1px solid var(--hairline-2)" : "none" }}>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 12 }}>
                       <div style={{ minWidth: 0 }}>
                         <div style={{ fontSize: "var(--fs-14)", fontWeight: 600 }}>{it.title}</div>
+                        {ffe && <div className="mono" style={{ fontSize: "var(--fs-11)", color: "var(--spec-meta)", marginTop: 2, overflowWrap: "anywhere" }}>{ffe}</div>}
                         <div className="mono" style={{ fontSize: "var(--fs-12)", color: "var(--spec-meta)", marginTop: 2 }}>
                           {qty} × {fmtMoney(cp.unitClient(it))}{it.cat ? " · " + it.cat : ""}
                         </div>
