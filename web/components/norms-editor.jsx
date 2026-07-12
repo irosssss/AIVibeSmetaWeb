@@ -56,6 +56,40 @@ const nEq = (a, b) => JSON.stringify(a) === JSON.stringify(b);
 const disp = (key, v) => key === "occupancyWarn" ? Math.round(v * 100) : v;                 // engine → экран
 const store = (key, x) => key === "occupancyWarn" ? Math.round(x) / 100 : Math.round(x);    // экран → engine
 
+/* Чистая логика слоя правок (без React) — её использует компонент ниже, её же
+   покрывают юнит-тесты (tests/norms-editor.test.js).
+   Контракты счётчиков:
+   • modCount — только правки ЗНАЧЕНИЙ (им предупреждает applyPreset — пресеты
+     тумблеры не трогают);
+   • changedCount — строки, где правка значения ИЛИ выключен тумблер: ровно те же
+     строки, что показывает фильтр «Только изменённые». Норма, у которой и правлено
+     значение, и выключен тумблер — одна строка, не две. */
+const NORMS_LOGIC = {
+  // правка значения со связкой walkwayMin ≤ walkwayComfort (мягкий зажим + сноска)
+  setKey(override, key, val, canon = N_CANON) {
+    const n = { ...override, [key]: val };
+    let note = "";
+    const minV = key === "walkwayMin" ? val : (("walkwayMin" in n) ? n.walkwayMin : canon.walkwayMin);
+    const comfV = key === "walkwayComfort" ? val : (("walkwayComfort" in n) ? n.walkwayComfort : canon.walkwayComfort);
+    if (minV > comfV) {
+      // зажимаем ТОЛЬКО при правке одной из walkway-норм: если нарушенная пара уже
+      // лежала в сторе (сброс комфорта при поднятом минимуме), правка НЕСВЯЗАННОЙ
+      // нормы не должна молча переписывать чужой порог (находка код-ревью 12.07)
+      if (key === "walkwayMin") { n.walkwayComfort = minV; note = "Комфортный проход подтянут до " + minV + " см — он не бывает меньше минимального."; }
+      else if (key === "walkwayComfort") { n.walkwayMin = comfV; note = "Минимальный проход опущен до " + comfV + " см — он не бывает больше комфортного."; }
+    }
+    return { override: n, note };
+  },
+  resetKey(override, key) { const n = { ...override }; delete n[key]; return n; },
+  toggleKey(enabled, key) { return { ...enabled, [key]: enabled[key] === false ? true : false }; },
+  resetAll() { return { override: {}, enabled: {}, baseKey: "canon" }; },
+  // только реальные нормы: мусорный/устаревший ключ в сохранённом override не должен
+  // расщеплять счётчики (confirm пресета видит «1 изменённый», а футер — «всё по канону»)
+  modCount: (override) => NORM_DEFS.filter((d) => d.key in override).length,
+  changedCount: (override, enabled) => NORM_DEFS.filter((d) => (d.key in override) || enabled[d.key] === false).length,
+};
+window.AIVibeNormsLogic = NORMS_LOGIC;   // наружу — для юнит-тестов
+
 function NormsSettings() {
   const [loaded, setLoaded] = useN(false);
   const [override, setOverride] = useN({});
@@ -82,22 +116,17 @@ function NormsSettings() {
 
   const setKey = (key, val) => {
     setOverride((o) => {
-      const n = { ...o, [key]: val };
-      // связанная пара: минимальный проход не может превышать комфортный — мягкий зажим + сноска
-      const minV = key === "walkwayMin" ? val : (("walkwayMin" in n) ? n.walkwayMin : N_CANON.walkwayMin);
-      const comfV = key === "walkwayComfort" ? val : (("walkwayComfort" in n) ? n.walkwayComfort : N_CANON.walkwayComfort);
-      if (minV > comfV) {
-        if (key === "walkwayMin") { n.walkwayComfort = minV; setLinkNote("Комфортный проход подтянут до " + minV + " см — он не бывает меньше минимального."); }
-        else { n.walkwayMin = comfV; setLinkNote("Минимальный проход опущен до " + comfV + " см — он не бывает больше комфортного."); }
-      }
-      return n;
+      // связанная пара walkwayMin ≤ walkwayComfort — мягкий зажим + сноска (NORMS_LOGIC)
+      const r = NORMS_LOGIC.setKey(o, key, val);
+      if (r.note) setLinkNote(r.note);
+      return r.override;
     });
     setSaved(false);
   };
   useNE(() => { if (!linkNote) return; const t = setTimeout(() => setLinkNote(""), 4200); return () => clearTimeout(t); }, [linkNote]);
-  const resetKey = (key) => { setOverride((o) => { const n = { ...o }; delete n[key]; return n; }); setSaved(false); };
-  const toggleKey = (key) => { setEnabled((e) => ({ ...e, [key]: e[key] === false ? true : false })); setSaved(false); };
-  const resetAll = () => { setOverride({}); setEnabled({}); setBaseKey("canon"); setSaved(false); };
+  const resetKey = (key) => { setOverride((o) => NORMS_LOGIC.resetKey(o, key)); setSaved(false); };
+  const toggleKey = (key) => { setEnabled((e) => NORMS_LOGIC.toggleKey(e, key)); setSaved(false); };
+  const resetAll = () => { const r = NORMS_LOGIC.resetAll(); setOverride(r.override); setEnabled(r.enabled); setBaseKey(r.baseKey); setSaved(false); };
   const applyPreset = async (key) => {
     // не затираем ручные правки молча — подтверждение (ошибка объясняет последствие)
     if (modCount > 0 && key !== baseKey) {
@@ -121,11 +150,8 @@ function NormsSettings() {
     });
   };
 
-  const modCount = Object.keys(override).length;    // только правки значений — этим предупреждает применение пресета (пресеты тумблеры не трогают)
-  // «изменено относительно канона» для бейджа/пустого состояния/«Сбросить всё» — те же строки,
-  // что показывает фильтр «Только изменённые» (isMod || выключено), а не сумма двух счётчиков:
-  // норма, у которой И правлено значение, И выключен тумблер — это одна строка, не две
-  const changedCount = NORM_DEFS.filter((d) => isMod(d.key) || !on(d.key)).length;
+  const modCount = NORMS_LOGIC.modCount(override);                 // контракты счётчиков — см. NORMS_LOGIC
+  const changedCount = NORMS_LOGIC.changedCount(override, enabled);
   const effNorms = { ...override, enabled };
   const check = (window.AIVibeEngine && loaded) ? AIVibeEngine.checkErgonomics({ plan: N_PLAN }, N_ROOM, effNorms) : { findings: [], warns: 0, ok: true };
   const okN = check.findings.filter((f) => f.kind === "plus").length;

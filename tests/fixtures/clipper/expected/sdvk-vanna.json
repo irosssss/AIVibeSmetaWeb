@@ -1,0 +1,13 @@
+{
+  "url": "https://www.sdvk.ru/Vanni/riho-lima-190x90-bez-gidromassazha-product/",
+  "title": "Акриловая ванна Riho Lima 190x90 B053001005",
+  "price": 95100,
+  "currency": "RUB",
+  "dims": { "w": 190, "d": 90 },
+  "sku": "B053001005",
+  "brand": "Riho",
+  "material": "акрил",
+  "img": "https://i.sdvk.ru/i/Riho/Lima-190x90-bez-gidromassazha-3492/545290.jpg",
+  "traps": ["no-schema", "combined-dims-string", "unit-in-property-name", "empty-spec-value"],
+  "notes": "Нет JSON-LD Product — itemprop-микроразметка. Габариты одним свойством «Размер, см — 190x90» (единица в ИМЕНИ свойства + комбинированная строка): длина 190 × ширина 90, высоты нет — размечаем только w/d. dd «Материал» на странице ПУСТОЕ — материал «акрил» есть только в самом названии («Акриловая ванна»). Производитель Riho (Чехия) в характеристиках."
+}

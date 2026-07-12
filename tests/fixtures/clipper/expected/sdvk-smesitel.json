@@ -1,0 +1,13 @@
+{
+  "url": "https://www.sdvk.ru/Smesiteli/smesitel/damixa-101000000-product/",
+  "title": "Смеситель для ванны и душа Damixa 101000000",
+  "price": 12890,
+  "currency": "RUB",
+  "dims": null,
+  "sku": "101000000",
+  "brand": "Damixa",
+  "material": "латунь",
+  "img": "https://i.sdvk.ru/i/Damixa/101000000-473/406968.jpg",
+  "traps": ["no-schema", "title-with-price-suffix", "promo-price-nearby"],
+  "notes": "Нет JSON-LD Product — только itemprop-микроразметка (name/price/image). og:title с хвостом «купить | Низкая цена 12890 руб | Доставка по Москве» — эталон только чистое имя из h1. Рядом блоки сопутствующих товаров с ценами 3150/3500/14429/16975 ₽ — не путать с ценой позиции. Габаритов w/d/h нет («Длина излива, мм — 169» — не габарит изделия), dims честно null. Бренд Damixa и материал «латунь» — в dl-характеристиках."
+}

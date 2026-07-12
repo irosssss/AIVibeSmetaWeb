@@ -57,6 +57,11 @@ const numOk = (got, exp, tol = 0) => got != null && exp != null && Math.abs(Numb
 function dimsOk(got, exp) {
   if (!exp) return got == null;                       // эталон «нет габаритов» → и мы не выдумали
   if (!got) return false;
+  // ЧАСТИЧНЫЙ эталон ({h:60} без w/d) — осознанный контракт: оси вне эталона не
+  // оцениваются вовсе (n/a), потому что их правда недоступна из фикстуры (значение в
+  // JS-переменной, либо сайт сам себе противоречит — см. divine-light/triya notes).
+  // Лишняя ось в ответе НЕ наказывается и НЕ награждается — «симметрия» с imgOk
+  // касается только полностью null-эталона.
   const axes = ["w", "d", "h"].filter((a) => exp[a] != null);
   if (!axes.length) return true;
   return axes.every((a) => numOk(got[a], exp[a], 1)); // ±1 см (округления текст vs JSON-LD)
