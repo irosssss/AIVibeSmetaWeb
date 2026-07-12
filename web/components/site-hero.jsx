@@ -23,6 +23,28 @@ const PHOTOS = {
 window.PHOTOS = PHOTOS;
 
 /* --------------------------------------------------------------
+   ЕДИНЫЙ ПОРЯДОК СЕКЦИЙ — один источник правды для трёх мест, которые
+   раньше держались в синхроне только комментарием: ссылки навбара,
+   колонка «Продукт» футера и порядок скролла SitePage. Порядок здесь =
+   порядок секций в <main> (site-github.jsx). nav/foot — подписи там,
+   где секция попадает в навбар / футер (пусто = не попадает).
+   Навбар и футер выводятся отсюда фильтром — рассинхрону взяться неоткуда.
+   При добавлении/переносе секции правим ЭТОТ список (и JSX SitePage). */
+const LANDING_SECTIONS = [
+  { id: "features",     nav: "Возможности",  foot: "Возможности" },
+  { id: "how",          nav: "Как работает", foot: "Как работает" },
+  { id: "clientportal",                      foot: "Клиентский портал" },
+  { id: "whofor",                            foot: "Для кого" },
+  { id: "payoff",                            foot: "Окупаемость" },
+  { id: "pricing",      nav: "Тарифы",       foot: "Тарифы" },
+  { id: "news",         nav: "Журнал",       foot: "Новости" },
+];
+window.LANDING_SECTIONS = LANDING_SECTIONS;
+const navLinksFrom = (secs) => secs.filter((s) => s.nav).map((s) => [s.nav, "#" + s.id]);
+const footLinksFrom = (secs) => secs.filter((s) => s.foot).map((s) => [s.foot, "#" + s.id]);
+window.footLinksFrom = footLinksFrom;
+
+/* --------------------------------------------------------------
    NAV — бумажная панель (без тёмного стекла)
 -------------------------------------------------------------- */
 function SiteNav({ go }) {
@@ -37,8 +59,7 @@ function SiteNav({ go }) {
     document.body.style.overflow = open ? "hidden" : "";
     return () => { document.body.style.overflow = ""; };
   }, [open]);
-  {/* порядок — по факту скролла страницы (SitePage, site-github.jsx), не по важности */}
-  const links = [["Возможности", "#features"], ["Как работает", "#how"], ["Тарифы", "#pricing"], ["Журнал", "#news"]];
+  const links = navLinksFrom(LANDING_SECTIONS);   // единый источник порядка (см. LANDING_SECTIONS выше)
   const jump = (h) => { setOpen(false); document.querySelector(h)?.scrollIntoView({ behavior: motionOK() ? "smooth" : "auto" }); };
   const lit = solid || open;
   return (
@@ -98,39 +119,52 @@ function SiteNav({ go }) {
 -------------------------------------------------------------- */
 /* артефакты: контент = реальные сущности продукта, стиль = бумажные
    мини-карточки; позиция/поворот — в CSS (.fc1….fc6), бобинг — .fc-bob */
+/* [позиция-класс .fcN, стиль вкладыша, содержимое] — контент карточек
+   разнородный (у каждой своя сущность продукта), но обёртку .fc/.fc-bob
+   гоним одним .map(), как STEPS/CATS/CARDS в остальном коде */
+const HERO_FLEET = [
+  ["fc1", { width: 158 }, (         // карточка товара из библиотеки
+    <React.Fragment>
+      <div style={{ height: 62, borderRadius: 8, background: "linear-gradient(135deg, #C4886B, #8F5B41)" }} />
+      <div style={{ fontWeight: 600, fontSize: "var(--fs-13)", marginTop: 9, lineHeight: 1.3 }}>Диван «Милано»</div>
+      <div className="mono" style={{ fontSize: "var(--fs-11)", color: "var(--spec-meta)", marginTop: 3 }}>128 000 ₽ · MIL-3</div>
+    </React.Fragment>
+  )],
+  ["fc2", { width: 190 }, (         // клиппер: ссылка стала позицией
+    <React.Fragment>
+      <div className="mono" style={{ fontSize: "var(--fs-11)", color: "var(--muted)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>divan.ru/product/milano-3</div>
+      <div className="mono" style={{ fontSize: "var(--fs-11)", color: "var(--accent-2-ink)", marginTop: 6, display: "flex", alignItems: "center", gap: 6 }}><I.check size={13} /> позиция в смете</div>
+    </React.Fragment>
+  )],
+  ["fc3", { display: "flex", gap: 7, alignItems: "center" }, (   // выгрузка клиенту
+    <React.Fragment>
+      <span className="fc-pill">PDF</span><span className="fc-pill">Excel</span>
+      <span style={{ fontSize: "var(--fs-11)", color: "var(--muted)" }}>клиенту</span>
+    </React.Fragment>
+  )],
+  ["fc4", { width: 168 }, (         // согласование в портале
+    <React.Fragment>
+      <div style={{ fontSize: "var(--fs-12)", fontWeight: 600, lineHeight: 1.3 }}>Кресло лаунж, букле</div>
+      <span className="mono" style={{ display: "inline-block", marginTop: 7, fontSize: "var(--fs-10)", fontWeight: 700, letterSpacing: ".05em", textTransform: "uppercase", color: "var(--accent-2-ink)", background: "var(--accent-2-tint)", padding: "3px 9px", borderRadius: 99 }}>Согласовано</span>
+    </React.Fragment>
+  )],
+  ["fc5", { width: 172 }, (         // наценка — живая математика продукта
+    <React.Fragment>
+      <div className="mono" style={{ fontSize: "var(--fs-11)", color: "var(--spec-meta)" }}>наценка <b style={{ color: "var(--text)" }}>+32%</b></div>
+      <div className="mono" style={{ fontSize: "var(--fs-12)", color: "var(--accent-2-ink)", fontWeight: 700, marginTop: 5 }}>прибыль +212 400 ₽</div>
+    </React.Fragment>
+  )],
+  ["fc6", { width: 178, borderRadius: "14px 14px 14px 4px", background: "rgba(183,80,44,.07)", borderColor: "rgba(183,80,44,.3)" }, (  // реплика клиента
+    <div style={{ fontSize: "var(--fs-12)", lineHeight: 1.45 }}>Можно светлее обивку? Остальное нравится.</div>
+  )],
+];
+
 function HeroFleet() {
   return (
     <div aria-hidden="true">
-      {/* карточка товара из библиотеки */}
-      <div className="fc fc1"><div className="fc-bob fc-card" style={{ width: 158 }}>
-        <div style={{ height: 62, borderRadius: 8, background: "linear-gradient(135deg, #C4886B, #8F5B41)" }} />
-        <div style={{ fontWeight: 600, fontSize: "var(--fs-13)", marginTop: 9, lineHeight: 1.3 }}>Диван «Милано»</div>
-        <div className="mono" style={{ fontSize: "var(--fs-11)", color: "var(--spec-meta)", marginTop: 3 }}>128 000 ₽ · MIL-3</div>
-      </div></div>
-      {/* клиппер: ссылка стала позицией */}
-      <div className="fc fc2"><div className="fc-bob fc-card" style={{ width: 190 }}>
-        <div className="mono" style={{ fontSize: "var(--fs-11)", color: "var(--muted)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>divan.ru/product/milano-3</div>
-        <div className="mono" style={{ fontSize: "var(--fs-11)", color: "var(--accent-2-ink)", marginTop: 6, display: "flex", alignItems: "center", gap: 6 }}><I.check size={13} /> позиция в смете</div>
-      </div></div>
-      {/* выгрузка клиенту */}
-      <div className="fc fc3"><div className="fc-bob fc-card" style={{ display: "flex", gap: 7, alignItems: "center" }}>
-        <span className="fc-pill">PDF</span><span className="fc-pill">Excel</span>
-        <span style={{ fontSize: "var(--fs-11)", color: "var(--muted)" }}>клиенту</span>
-      </div></div>
-      {/* согласование в портале */}
-      <div className="fc fc4"><div className="fc-bob fc-card" style={{ width: 168 }}>
-        <div style={{ fontSize: "var(--fs-12)", fontWeight: 600, lineHeight: 1.3 }}>Кресло лаунж, букле</div>
-        <span className="mono" style={{ display: "inline-block", marginTop: 7, fontSize: "var(--fs-10)", fontWeight: 700, letterSpacing: ".05em", textTransform: "uppercase", color: "var(--accent-2-ink)", background: "var(--accent-2-tint)", padding: "3px 9px", borderRadius: 99 }}>Согласовано</span>
-      </div></div>
-      {/* наценка — живая математика продукта */}
-      <div className="fc fc5"><div className="fc-bob fc-card" style={{ width: 172 }}>
-        <div className="mono" style={{ fontSize: "var(--fs-11)", color: "var(--spec-meta)" }}>наценка <b style={{ color: "var(--text)" }}>+32%</b></div>
-        <div className="mono" style={{ fontSize: "var(--fs-12)", color: "var(--accent-2-ink)", fontWeight: 700, marginTop: 5 }}>прибыль +212 400 ₽</div>
-      </div></div>
-      {/* реплика клиента из портала */}
-      <div className="fc fc6"><div className="fc-bob fc-card" style={{ width: 178, borderRadius: "14px 14px 14px 4px", background: "rgba(183,80,44,.07)", borderColor: "rgba(183,80,44,.3)" }}>
-        <div style={{ fontSize: "var(--fs-12)", lineHeight: 1.45 }}>Можно светлее обивку? Остальное нравится.</div>
-      </div></div>
+      {HERO_FLEET.map(([cls, style, content]) => (
+        <div className={"fc " + cls} key={cls}><div className="fc-bob fc-card" style={style}>{content}</div></div>
+      ))}
     </div>
   );
 }
@@ -143,7 +177,7 @@ function Hero({ go }) {
         <button type="button" className="hero-announce mono" onClick={() => go("changelog")}>
           <i /> Новое: клиент согласует смету по ссылке <I.arrow size={13} />
         </button>
-        <h1 className="display hero-h1" style={{ fontSize: "clamp(40px, 6.4vw, 86px)", lineHeight: 1.0, letterSpacing: "-0.03em", marginTop: 26 }}>
+        <h1 className="display" style={{ fontSize: "clamp(40px, 6.4vw, 86px)", lineHeight: 1.0, letterSpacing: "-0.03em", marginTop: 26 }}>
           <span style={{ display: "block" }}>Смета клиенту —</span>
           <span style={{ display: "block" }}>а не вечер в <span style={{ color: "var(--accent-ink)", fontStyle: "italic" }}>Excel</span></span>
         </h1>

@@ -543,7 +543,6 @@ const fvMono = (extra) => ({ fontFamily: "var(--font-mono)", fontSize: "var(--fs
 const fvChip = { fontFamily: "var(--font-mono)", fontSize: "var(--fs-10)", fontWeight: 700, letterSpacing: ".05em", textTransform: "uppercase", color: "var(--accent-2-ink)", padding: "3px 9px", borderRadius: 99, background: "var(--accent-2-tint)" };
 
 function FvPrice() {
-  const fmtR = (n) => new Intl.NumberFormat("ru-RU").format(n) + " ₽";
   const ROWS = [["Диван «Милано»", 128000, 169000], ["Кресло лаунж", 73000, 96400]];
   return (
     <div style={{ ...fvCard, width: "min(300px,100%)", padding: 14, display: "flex", flexDirection: "column", gap: 9 }}>
@@ -553,8 +552,8 @@ function FvPrice() {
       {ROWS.map(([n, c, cli]) => (
         <div key={n} style={{ display: "grid", gridTemplateColumns: "1fr auto auto", gap: 10, fontSize: "var(--fs-12)", alignItems: "center" }}>
           <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{n}</span>
-          <span style={fvMono({ color: "var(--muted)" })}>{fmtR(c)}</span>
-          <span style={fvMono({ fontWeight: 700 })}>{fmtR(cli)}</span>
+          <span style={fvMono({ color: "var(--muted)" })}>{fmtMoney(c)}</span>
+          <span style={fvMono({ fontWeight: 700 })}>{fmtMoney(cli)}</span>
         </div>
       ))}
       <div style={{ display: "flex", alignItems: "center", gap: 8, paddingTop: 9, borderTop: "1px solid var(--hairline)" }}>
@@ -696,8 +695,9 @@ function FeatureGrid({ go }) {
 
 /* --------------------------------------------------------------
    БЛОК-ЦИТАТА на фото (аналог видео-цитаты Programa «For those of
-   you still using spreadsheets…»). Голос — из QUOTES SocialProof;
-   честная пометка «пример» — канон 09.07.
+   you still using spreadsheets…»). Отдельный голос — НЕ дублирует
+   ни одну реплику из QUOTES SocialProof (иначе одна и та же цитата
+   дважды на странице); честная пометка «пример» — канон 09.07.
 -------------------------------------------------------------- */
 function QuoteBand() {
   const ref = useReveal();
@@ -708,9 +708,9 @@ function QuoteBand() {
           <Img src={PHOTOS.warm} label="" style={{ position: "absolute", inset: 0 }} />
           <div className="qshade" />
           <div style={{ position: "relative", zIndex: 2 }}>
-            <blockquote>«Раньше — вечер в Excel после каждого замера. Теперь смета уходит клиенту в тот же день.»</blockquote>
+            <blockquote>«Клиент сам отмечает по позициям, что берёт. Больше никаких “скиньте ещё раз в вотсап”.»</blockquote>
             <figcaption className="mono" style={{ fontSize: "var(--fs-12)", letterSpacing: ".06em" }}>
-              Марина К. · дизайнер интерьера · Казань <span style={{ opacity: .6 }}>· пример</span>
+              Пётр Н. · дизайнер-декоратор · Нижний Новгород <span style={{ opacity: .6 }}>· пример</span>
             </figcaption>
           </div>
         </figure>
