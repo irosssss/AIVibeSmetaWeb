@@ -10,8 +10,8 @@ import { describe, it, expect, beforeAll } from "vitest";
 import * as XLSXNS from "xlsx";
 
 const XLSXReal = XLSXNS.default || XLSXNS;
-let X;                 // window.AIVibeXLSX
-let FFE;               // window.AIVibeFFE — боевая клиентская матша для подготовки входов
+let X;                 // window.LedgerXLSX
+let FFE;               // window.LedgerFFE — боевая клиентская матша для подготовки входов
 let captured = null;   // {wb, name} — что exportRoomSpec «записал в файл»
 
 class FileReaderShim {
@@ -31,8 +31,8 @@ beforeAll(async () => {
   globalThis.window.XLSX = shim;   // и проверяет window.XLSX перед работой
   globalThis.FileReader = FileReaderShim;
   await import("../web/xlsx.js");
-  X = globalThis.window.AIVibeXLSX;
-  FFE = globalThis.window.AIVibeFFE;
+  X = globalThis.window.LedgerXLSX;
+  FFE = globalThis.window.LedgerFFE;
 });
 
 /* согласованные входы exportRoomSpec: clientTotal — БОЕВОЙ формулой FFE.clientPricing

@@ -93,9 +93,9 @@ function Lottie({ name, loop, intro, playOnView = true, staticFrame, style, clas
   const host = useRef(null);
   const [loaded, setLoaded] = useState(false);
   useEffect(() => {
-    const data = window.AIVibeLottie && window.AIVibeLottie[name];
+    const data = window.LedgerLottie && window.LedgerLottie[name];
     if (!data) return;                                   // нет ассета → остаётся fallback
-    const meta = (window.AIVibeLottieMeta && window.AIVibeLottieMeta[name]) || {};
+    const meta = (window.LedgerLottieMeta && window.LedgerLottieMeta[name]) || {};
     const reduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     const introOut = intro != null ? intro : meta.introOut;
     const wantLoop = loop != null ? loop : (meta.loop !== false);
@@ -767,7 +767,7 @@ function ChartCard({ title, source, accent, children, style }) {
 function ChartSkel({ h = 150 }) { return <div className="skel" style={{ height: h, borderRadius: 12 }} />; }
 
 /* ============================================================
-   AIVibeLibs — ленивые тяжёлые библиотеки (не грузим на промо):
+   LedgerLibs — ленивые тяжёлые библиотеки (не грузим на промо):
    pdfmake ~2 МБ и SheetJS ~800 КБ подтягиваются при первом экспорте.
    ============================================================ */
 const _libCache = {};
@@ -781,19 +781,19 @@ function loadScript(src) {
   });
   return _libCache[src];
 }
-window.AIVibeLibs = {
-  // pdfmake + шрифтовой vfs: npm-чанки Vite (AIVibeLoad, vendor-globals.js);
+window.LedgerLibs = {
+  // pdfmake + шрифтовой vfs: npm-чанки Vite (LedgerLoad, vendor-globals.js);
   // CDN — фолбэк для окружений без сборки (standalone-прототипы)
   pdf: () => window.pdfMake && window.pdfMake.vfs
     ? Promise.resolve()
-    : window.AIVibeLoad
-      ? AIVibeLoad.pdf()
+    : window.LedgerLoad
+      ? LedgerLoad.pdf()
       : loadScript("https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.10/pdfmake.min.js")
           .then(() => loadScript("https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.10/vfs_fonts.js")),
   xlsx: () => window.XLSX
     ? Promise.resolve()
-    : window.AIVibeLoad
-      ? AIVibeLoad.xlsx()
+    : window.LedgerLoad
+      ? LedgerLoad.xlsx()
       : loadScript("https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"),
 };
 /* обёртка: тост «готовим…» только если реально грузим.
@@ -802,7 +802,7 @@ function withLib(kind, run) {
   const label = kind === "pdf" ? "PDF" : "Excel";
   const loaded = kind === "pdf" ? (window.pdfMake && window.pdfMake.vfs) : window.XLSX;
   if (!loaded) toast("Готовим модуль " + label + "…", "info", 1800);
-  return AIVibeLibs[kind]().then(
+  return LedgerLibs[kind]().then(
     () => Promise.resolve().then(run).catch((e) => {
       console.error("[Design Ledger] " + label + "-экспорт упал:", e);
       toast("Не удалось выполнить экспорт " + label + " — попробуйте ещё раз.", "warn", 5000);
@@ -846,7 +846,7 @@ window.useMenu = useMenu;
    чтобы не было копипаста двух дропдаунов. Словарь — из ffe.js. onPick(status)
    получает выбор (вызывающий сам решает закрыть меню / вернуть фокус). */
 function StatusMenuItems({ current, onPick }) {
-  const F = window.AIVibeFFE || {};
+  const F = window.LedgerFFE || {};
   const statuses = F.PROJ_STATUSES || [], colors = F.PROJ_STATUS_COLOR || {};
   return statuses.map((s) => (
     <button key={s} role="menuitem" className="menu-item" onClick={(e) => { e.stopPropagation(); onPick(s); }}

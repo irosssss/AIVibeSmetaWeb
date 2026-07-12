@@ -358,7 +358,7 @@
   // Только http/https-картинки попадают в позицию (отсекаем data:/blob:/относительные).
   const safeImg = (u) => (/^https?:\/\//i.test(u || "") ? u : "");
 
-  // Извлечённые поля → объект для AIVibeFFE.blankPosition (наш единый словарь).
+  // Извлечённые поля → объект для LedgerFFE.blankPosition (наш единый словарь).
   function mapToPosition(extracted) {
     const f = (extracted && extracted.fields) || {};
     const over = {
@@ -373,7 +373,7 @@
     };
     if (f.dims) over.dims = f.dims;
     if (f._category) over.cat = f._category;
-    return window.AIVibeFFE ? window.AIVibeFFE.blankPosition(over) : over;
+    return window.LedgerFFE ? window.LedgerFFE.blankPosition(over) : over;
   }
 
   /* ----------------------------- СЛИЯНИЕ В ФОРМУ (чистая, тестируемая) -----------------------------
@@ -572,7 +572,7 @@
     }
   }
 
-  window.AIVibeClipper = {
+  window.LedgerClipper = {
     extractFromHtml, extractWithFallback, htmlToText, mapToPosition, mergeIntoPosition, clip, fetchHtml,
     STRONG_SOURCES,
     // экспорт внутренностей для тестов и переиспользования

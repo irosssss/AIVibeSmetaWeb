@@ -1,5 +1,5 @@
 /* Юнит-тесты чистой логики редактора норм (web/components/norms-editor.jsx,
-   NORMS_LOGIC → window.AIVibeNormsLogic). Тест-долг PR #6: счётчики
+   NORMS_LOGIC → window.LedgerNormsLogic). Тест-долг PR #6: счётчики
    modCount/changedCount и resetAll на 4 угловых случаях — правка значения /
    выключение тумблера / оба вместе / ничего. Компонент — React/JSX, но логика
    вынесена в чистый объект; для импорта модуля хватает глобального React. */
@@ -11,7 +11,7 @@ beforeAll(async () => {
   globalThis.React = React;                      // top-level `const { useState } = React`
   globalThis.window = globalThis.window || {};   // модуль пишет в window.*
   await import("../web/components/norms-editor.jsx");
-  L = globalThis.window.AIVibeNormsLogic;
+  L = globalThis.window.LedgerNormsLogic;
 });
 
 describe("счётчики: 4 угловых случая (правка / тумблер / оба / ничего)", () => {

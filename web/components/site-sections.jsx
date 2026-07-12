@@ -6,7 +6,7 @@
 const { useState: useS2, useEffect: useE2 } = React;
 
 // единая точка канона наценки (web/ffe.js) — не дублировать литерал 25 по файлам
-const S2_DEFAULT_MARKUP = (window.AIVibeFFE && window.AIVibeFFE.DEFAULT_MARKUP_PCT) || 25;
+const S2_DEFAULT_MARKUP = (window.LedgerFFE && window.LedgerFFE.DEFAULT_MARKUP_PCT) || 25;
 
 /* --------------------------------------------------------------
    HOW IT WORKS — статичная сетка 7 шагов (реш. владельца 12.07:
@@ -78,7 +78,7 @@ function HowItWorks({ go }) {
    себестоимостью и ценой клиенту (две цены на каждую категорию).
 -------------------------------------------------------------- */
 // лид-магнит (роадмап п.12): пустой шаблон в НАШЕМ реальном формате — теми же
-// листами/заголовками, что и боевой экспорт AIVibeXLSX.exportRoomSpec, поэтому
+// листами/заголовками, что и боевой экспорт LedgerXLSX.exportRoomSpec, поэтому
 // designer может тут же скачать обратно через «Импорт из Excel» без переделок.
 function downloadSpecTemplate() {
   const markupPct = S2_DEFAULT_MARKUP;
@@ -93,11 +93,11 @@ function downloadSpecTemplate() {
       { title: "Прикроватная тумба", cat: "Мебель", price: 12000, qty: 2 },
     ] },
   ];
-  // клиентская сторона — через тот же canonical-расчёт, что портал/деталь проекта (AIVibeFFE.clientPricing);
+  // клиентская сторона — через тот же canonical-расчёт, что портал/деталь проекта (LedgerFFE.clientPricing);
   // себестоимость он не считает (не его забота), поэтому подытог — по факту той же формулой lineCost
   const grand = rooms.reduce((s, r) => s + r.items.reduce((a, it) => a + it.price * it.qty, 0), 0);
-  const clientTotal = window.AIVibeFFE.clientPricing({ rooms, markup: markupPct }).client;
-  withLib("xlsx", () => AIVibeXLSX.exportRoomSpec({ project: "Шаблон сметы", area: "", rooms, grand, markupPct, catMarkupPct: {}, clientTotal, discountPct: 0, deliveryCost: 0, installCost: 0, budget: 300000, mode: "work" }));
+  const clientTotal = window.LedgerFFE.clientPricing({ rooms, markup: markupPct }).client;
+  withLib("xlsx", () => LedgerXLSX.exportRoomSpec({ project: "Шаблон сметы", area: "", rooms, grand, markupPct, catMarkupPct: {}, clientTotal, discountPct: 0, deliveryCost: 0, installCost: 0, budget: 300000, mode: "work" }));
 }
 
 function SpecCategories() {
@@ -526,7 +526,7 @@ function ClientPortalPromo() {
 function NewsFeed() {
   const ref = useReveal();
   const [rows, setRows] = useS2(null);
-  useE2(() => { AIVibeAPI.news.list({ status: "published" }).then((r) => setRows(r.slice(0, 4))); }, []);
+  useE2(() => { LedgerAPI.news.list({ status: "published" }).then((r) => setRows(r.slice(0, 4))); }, []);
   return (
     <section id="news" style={{ paddingBlock: "clamp(60px,9vh,110px)" }} ref={ref}>
       <div className="container">
@@ -570,7 +570,7 @@ function NewsFeed() {
 -------------------------------------------------------------- */
 function BudgetCalc({ go }) {
   const ref = useReveal();
-  const F = window.AIVibeFFE;
+  const F = window.LedgerFFE;
   const [area, setArea] = useS2(70);
   const [seg, setSeg] = useS2("mid");
   if (!F) return null;   // модуль не загрузился — секция честно отсутствует

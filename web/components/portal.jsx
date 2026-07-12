@@ -4,8 +4,8 @@
    Отдельная клиент-facing страница по ссылке #portal/{shareId}: клиент
    видит смету в режиме «для клиента» (цены с наценкой, без себестоимости,
    только чтение) и отвечает по позициям — то же поле approve словаря A1
-   (AIVibeFFE.APPROVE_STATUSES). Данные — снимок версии из localStorage
-   (AIVibeFFE.loadPortalShare); ответы персистятся туда же. Живой доступ
+   (LedgerFFE.APPROVE_STATUSES). Данные — снимок версии из localStorage
+   (LedgerFFE.loadPortalShare); ответы персистятся туда же. Живой доступ
    с другого устройства подключится с Worker+KV/доменом БЕЗ переписывания UI.
    Имена top-level уникальны — общая глобальная область (как остальные файлы).
    ============================================================ */
@@ -57,7 +57,7 @@ function PortalWrap({ children }) {
 }
 
 function ClientPortal({ shareId }) {
-  const F = window.AIVibeFFE || null;
+  const F = window.LedgerFFE || null;
   const [rec, setRec] = useP(() => (F ? F.loadPortalShare(shareId) : null));
   usePE(() => { document.title = "Design Ledger · Смета на согласование"; }, []);
   // Ч4 «клиент открыл» (адаптация ченджлога Programa): каждый заход по ссылке — визит;

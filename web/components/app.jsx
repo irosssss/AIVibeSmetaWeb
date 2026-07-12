@@ -31,7 +31,7 @@ function App() {
 
   // регидратация сессии: без неё F5 всегда выкидывал на промо
   useAppE(() => {
-    AIVibeAPI.auth.getSession().then((s) => { if (s && s.user) setUser(s.user); }).finally(() => setReady(true));
+    LedgerAPI.auth.getSession().then((s) => { if (s && s.user) setUser(s.user); }).finally(() => setReady(true));
   }, []);
 
   // back/forward и ручная правка адреса
@@ -76,7 +76,7 @@ function App() {
   };
 
   const onAuthed = (u) => { setUser(u); setView("cabinet"); setRoute("cabinet"); };
-  const onLogout = () => { guardSmetaLeave(() => { AIVibeAPI.auth.logout(); setUser(null); setView("site"); applyRoute("site"); }); };
+  const onLogout = () => { guardSmetaLeave(() => { LedgerAPI.auth.logout(); setUser(null); setView("site"); applyRoute("site"); }); };
 
   // ждём проверку сессии, если целимся в кабинет — чтобы не мигнуть промо/логином
   if (!ready && (initView === "cabinet" || initView === "auth")) {

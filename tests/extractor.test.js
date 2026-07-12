@@ -14,7 +14,7 @@ beforeAll(async () => {
   globalThis.window = globalThis.window || {};
   await import("../web/ffe.js");
   await import("../web/clipper.js");
-  CL = globalThis.window.AIVibeClipper;
+  CL = globalThis.window.LedgerClipper;
 });
 
 describe("htmlToText — видимый текст для LLM", () => {

@@ -1,12 +1,12 @@
 /* Юнит-тесты схемы позиции FF&E (web/ffe.js) — согласование с клиентом по позициям
-   (волна A1 бенчмарка Programa). ffe.js — IIFE, пишет API в window.AIVibeFFE. */
+   (волна A1 бенчмарка Programa). ffe.js — IIFE, пишет API в window.LedgerFFE. */
 import { describe, it, expect, beforeAll } from "vitest";
 
 let FFE;
 beforeAll(async () => {
   globalThis.window = globalThis.window || {};
   await import("../web/ffe.js");
-  FFE = globalThis.window.AIVibeFFE;
+  FFE = globalThis.window.LedgerFFE;
 });
 
 describe("APPROVE_STATUSES — словарь решений клиента", () => {

@@ -2,8 +2,8 @@
    Design Ledger — БИБЛИОТЕКА ТОВАРОВ СТУДИИ (волна B1, бенчмарк Programa)
    ------------------------------------------------------------
    Мастер-записи товаров, которые дизайнер подбирает снова и снова
-   (диван, смеситель, люстра). Реестр AIVibeAPI.library (localStorage),
-   схема — AIVibeFFE.blankProduct. Товар втекает в смету: по названию
+   (диван, смеситель, люстра). Реестр LedgerAPI.library (localStorage),
+   схема — LedgerFFE.blankProduct. Товар втекает в смету: по названию
    (автоподстановка в PosEditor) и через пикер-каталог в комнате;
    собирается обратно из позиции кнопкой «В библиотеку». Системных
    пресетов нет — всё своё. Имена top-level уникальны: файлы делят
@@ -25,7 +25,7 @@ function ProductsLibrary() {
   const [rows, setRows] = useL(null);
   const [edit, setEdit] = useL(null);   // редактируемый/создаваемый товар (draft) | null
   const [q, setQ] = useL("");
-  const reload = () => AIVibeAPI.library.list().then(setRows);
+  const reload = () => LedgerAPI.library.list().then(setRows);
   useLE(() => { reload(); }, []);
 
   const createNew = () => setEdit(libBlankDraft());
@@ -33,7 +33,7 @@ function ProductsLibrary() {
     const p = (rows || []).find((x) => x.id === id);
     const ok = await confirmDialog({ title: "Удалить товар?", text: "«" + ((p && p.title) || "Товар") + "» исчезнет из библиотеки. В уже собранных сметах позиции останутся — они независимые копии.", confirmLabel: "Удалить товар" });
     if (!ok) return;
-    await AIVibeAPI.library.remove(id); reload(); toast("Товар удалён из библиотеки");
+    await LedgerAPI.library.remove(id); reload(); toast("Товар удалён из библиотеки");
   };
 
   const norm = (s) => (s || "").toLowerCase();
@@ -75,7 +75,7 @@ function ProductsLibrary() {
 }
 
 function ProductCard({ p, onEdit, onRemove }) {
-  const F = window.AIVibeFFE;
+  const F = window.LedgerFFE;
   const dims = F && F.dimsLabel ? F.dimsLabel(p.dims) : "";
   const meta = libMeta(p);
   return (
@@ -127,7 +127,7 @@ function ProductEditor({ draft, onClose, onSaved }) {
   const [nameErr, setNameErr] = useL("");
   const set = (patch) => setD((x) => ({ ...x, ...patch }));
   const setDim = (k, v) => setD((x) => ({ ...x, dims: { ...x.dims, [k]: v } }));
-  const F = window.AIVibeFFE;
+  const F = window.LedgerFFE;
   const cats = (F && F.FFE_CATEGORIES) || [];
   const units = (F && F.FFE_UNITS) || ["шт"];
 
@@ -135,15 +135,15 @@ function ProductEditor({ draft, onClose, onSaved }) {
     if (busy) return;
     const title = (d.title || "").trim();
     if (!title) { setNameErr("Дайте товару название — по нему он ищется в библиотеке и подставляется в смету."); return; }
-    const all = await AIVibeAPI.library.list();
+    const all = await LedgerAPI.library.list();
     if (all.some((p) => p.id !== d.id && (p.title || "").trim().toLowerCase() === title.toLowerCase())) {
       setNameErr("Товар «" + title + "» уже есть в библиотеке — назовите этот иначе или отредактируйте существующий.");
       return;
     }
     const payload = { title, cat: d.cat, unit: d.unit, price: d.price, sup: d.sup, article: d.article, url: d.url, note: d.note, feedSku: d.feedSku, dims: d.dims };
     setBusy(true);
-    if (d.__new) await AIVibeAPI.library.create(payload);
-    else await AIVibeAPI.library.update(d.id, payload);
+    if (d.__new) await LedgerAPI.library.create(payload);
+    else await LedgerAPI.library.update(d.id, payload);
     setBusy(false); setDone(true);
     setTimeout(onSaved, 650);
   };
@@ -231,12 +231,12 @@ function ProductEditor({ draft, onClose, onSaved }) {
 
 /* ---------------- ПИКЕР-КАТАЛОГ ДЛЯ КОМНАТЫ ----------------
    Открывается из строки комнаты в смете: поиск + мультивыбор → onAdd(товары[]).
-   Вызывающий сам маппит записи в позиции (AIVibeFFE.positionFromProduct). */
+   Вызывающий сам маппит записи в позиции (LedgerFFE.positionFromProduct). */
 function LibraryPickerModal({ roomName, onClose, onAdd }) {
   const [rows, setRows] = useL(null);
   const [q, setQ] = useL("");
   const [sel, setSel] = useL({});   // { id: true }
-  useLE(() => { AIVibeAPI.library.list().then(setRows); }, []);
+  useLE(() => { LedgerAPI.library.list().then(setRows); }, []);
 
   const norm = (s) => (s || "").toLowerCase();
   const all = (rows || []).slice().sort((a, b) => (a.title || "").localeCompare(b.title || "", "ru"));

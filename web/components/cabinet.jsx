@@ -90,7 +90,7 @@ function AuthScreen({ onAuthed, go }) {
 
   const login = async (provider) => {
     setLoading(provider);
-    const ses = await (provider === "yandex" ? AIVibeAPI.auth.loginWithYandex() : AIVibeAPI.auth.loginWithVK());
+    const ses = await (provider === "yandex" ? LedgerAPI.auth.loginWithYandex() : LedgerAPI.auth.loginWithVK());
     setLoading(null);
     onAuthed(ses.user);
   };
@@ -169,7 +169,7 @@ const WS_PROJ_ITEMS = [
 window.WS_PROJ_ITEMS = WS_PROJ_ITEMS;
 
 /* Д3 (W6): «Недавнее» для ⌘K (паттерн Programa «Recently visited» при пустом запросе).
-   История — за AIVibeAPI.recents (mock.js, конвенция «вся персистенция за сигнатурой API»);
+   История — за LedgerAPI.recents (mock.js, конвенция «вся персистенция за сигнатурой API»);
    пишет Cabinet при смене адреса, читает CmdK. Относительное время: свежее — минуты/часы,
    старше сегодняшнего дня — календарный fmtRelDays из ui.jsx («вчера» по границе суток
    честнее 24-часового окна; W6-ревью: Math.round давал «2 ч назад» на 90 минутах). */
@@ -241,7 +241,7 @@ function Cabinet({ user, onLogout, go }) {
   useCE(() => {
     if (!projId) { setProj(null); return; }
     let alive = true;
-    AIVibeAPI.projects.get(projId).then((d) => { if (alive) setProj(d && d.id ? { id: d.id, name: d.name, rooms: !!d.rooms } : null); });
+    LedgerAPI.projects.get(projId).then((d) => { if (alive) setProj(d && d.id ? { id: d.id, name: d.name, rooms: !!d.rooms } : null); });
     return () => { alive = false; };
   }, [projId]);
   // «Настройки» проекта (волна W4.2) переименовывают, пока сайдбар уже держит своё имя
@@ -258,8 +258,8 @@ function Cabinet({ user, onLogout, go }) {
   // не пишем: при закрытии проекта переходное состояние projId=null/tab='projects'
   // забивало бы слоты строкой «Проекты» поверх только что покинутого проекта (W6-ревью)
   useCE(() => {
-    if (projId) AIVibeAPI.recents.push("proj", projId);
-    else if (tab !== "today" && tab !== "projects") AIVibeAPI.recents.push("tab", tab);
+    if (projId) LedgerAPI.recents.push("proj", projId);
+    else if (tab !== "today" && tab !== "projects") LedgerAPI.recents.push("tab", tab);
   }, [tab, projId]);
 
   const newProject = () => { setDrawer(false); changeTab("projects"); setTimeout(() => window.dispatchEvent(new CustomEvent("aivibe:new-project")), 0); };
@@ -407,12 +407,12 @@ function CmdK({ onClose, onTab }) {
   const [idx, setIdx] = useC(0);
   const [here] = useC(() => parseRoute());  // текущее место — самоссылку в «Недавнем» не показываем
   useCE(() => {
-    AIVibeAPI.projects.list().then((l) => {
+    LedgerAPI.projects.list().then((l) => {
       const list = l || [];
       // мёртвые id (удалённые проекты) чистятся из слотов истории по живому списку.
       // Оба setState — в ОДНОМ колбэке (батч React 18): иначе список успевал кадр
       // отрисоваться без «Недавнего» и строки съезжали под Enter/курсором (ревью р.2)
-      AIVibeAPI.recents.prune(list.map((p) => p.id)).then((keep) => { setRecents(keep); setProjects(list); });
+      LedgerAPI.recents.prune(list.map((p) => p.id)).then((keep) => { setRecents(keep); setProjects(list); });
     });
   }, []);
   const qq = q.trim().toLowerCase();
@@ -492,7 +492,7 @@ function CmdK({ onClose, onTab }) {
 function AccountMenu({ user, onLogout, onTab, up }) {
   const [open, setOpen] = useC(false);
   useMenu(open, () => setOpen(false), "acc-menu");   // Esc/стрелки/click-outside — единый паттерн меню
-  const billing = () => { setOpen(false); AIVibeAPI.billing.createPayment({ plan: "pro_month" }).then((r) => toast(r.message || "Оплата подключится позже.", "info", 5000)); };
+  const billing = () => { setOpen(false); LedgerAPI.billing.createPayment({ plan: "pro_month" }).then((r) => toast(r.message || "Оплата подключится позже.", "info", 5000)); };
   const item = (label, Ico, onClick, danger) => (
     <button role="menuitem" className="menu-item" onClick={onClick} style={danger ? { color: "var(--accent-ink)" } : undefined}>
       <Ico size={16} style={{ color: danger ? "var(--accent)" : "var(--muted)", flex: "none" }} />{label}

@@ -9,23 +9,23 @@ function NewsAdmin() {
   const [editing, setEditing] = useAV(null);   // объект новости | null
   const [busy, setBusy] = useAV(false);
 
-  const load = () => AIVibeAPI.news.list().then(setRows);
+  const load = () => LedgerAPI.news.list().then(setRows);
   useAVE(() => { load(); }, []);
 
   const save = async (form) => {
     setBusy(true);
-    if (form.id) await AIVibeAPI.news.update(form.id, form);
-    else await AIVibeAPI.news.create(form);
+    if (form.id) await LedgerAPI.news.update(form.id, form);
+    else await LedgerAPI.news.create(form);
     await load();
     setBusy(false); setEditing(null);
   };
   const remove = async (id) => {
     const ok = await confirmDialog({ title: "Удалить новость?", text: "Материал исчезнет из журнала. Действие необратимо.", confirmLabel: "Удалить" });
     if (!ok) return;
-    await AIVibeAPI.news.remove(id); load(); toast("Новость удалена");
+    await LedgerAPI.news.remove(id); load(); toast("Новость удалена");
   };
   const toggleStatus = async (n) => {
-    await AIVibeAPI.news.update(n.id, { status: n.status === "published" ? "draft" : "published" });
+    await LedgerAPI.news.update(n.id, { status: n.status === "published" ? "draft" : "published" });
     load();
   };
 
@@ -116,10 +116,10 @@ function NewsModal({ initial, onClose, onSave, busy }) {
 function UsersAdmin() {
   const [rows, setRows] = useAV(null);
   const [q, setQ] = useAV("");
-  const load = () => AIVibeAPI.users.list().then(setRows);
+  const load = () => LedgerAPI.users.list().then(setRows);
   useAVE(() => { load(); }, []);
 
-  const toggle = async (u) => { await AIVibeAPI.users.setStatus(u.id, u.status === "active" ? "blocked" : "active"); load(); };
+  const toggle = async (u) => { await LedgerAPI.users.setStatus(u.id, u.status === "active" ? "blocked" : "active"); load(); };
   const filtered = rows ? rows.filter((u) => (u.name + u.email).toLowerCase().includes(q.toLowerCase())) : null;
 
   return (

@@ -13,10 +13,10 @@
    статически. pdfmake (+ кириллические шрифты Roboto) и SheetJS
    нужны ТОЛЬКО при выгрузке/импорте сметы — грузим их лениво через
    динамический import(): они уходят в отдельные чанки и не
-   раздувают стартовый бандл. Доступ — window.AIVibeLoad.pdf()/.xlsx()
+   раздувают стартовый бандл. Доступ — window.LedgerLoad.pdf()/.xlsx()
    (мемоизированный Promise; результат попутно кладётся в
    window.pdfMake / window.XLSX — старый код на глобалах работает
-   без правок; AIVibeLibs в ui.jsx использует AIVibeLoad вместо CDN).
+   без правок; LedgerLibs в ui.jsx использует LedgerLoad вместо CDN).
    ============================================================ */
 import React from "react";
 import ReactDOM from "react-dom/client";
@@ -66,7 +66,7 @@ function loadXlsx() {
   return xlsxPromise;
 }
 
-window.AIVibeLoad = { pdf: loadPdf, xlsx: loadXlsx };
+window.LedgerLoad = { pdf: loadPdf, xlsx: loadXlsx };
 
 // Прогрев в простое: после первого кадра тихо подтягиваем тяжёлые чанки,
 // чтобы первая выгрузка шла без задержки. Не блокирует старт; ошибки
