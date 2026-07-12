@@ -33,6 +33,14 @@ describe("blankPosition/normalizePosition — поля согласования"
     expect(p.approve).toBe("rejected");
     expect(p.status).toBe("ordered");
   });
+  it("поставщик — канон sup; supplier принимается как legacy-алиас входа, но не эмитится", () => {
+    // защита от повторного разъезда sup/supplier (ревью волны Ч2/Ч3/Ч4):
+    // весь живой путь (сид, редактор, PDF, xlsx, портал) читает it.sup
+    expect(FFE.blankPosition({ sup: "Фабрика А" }).sup).toBe("Фабрика А");
+    expect(FFE.blankPosition({ supplier: "Фабрика Б" }).sup).toBe("Фабрика Б"); // алиас входа
+    expect(FFE.blankPosition({ sup: "Приоритет", supplier: "Игнор" }).sup).toBe("Приоритет"); // sup важнее
+    expect("supplier" in FFE.blankPosition({ sup: "X" })).toBe(false); // выхода supplier больше нет
+  });
 });
 
 describe("blankProduct — мастер-запись товара студии (волна B1)", () => {
