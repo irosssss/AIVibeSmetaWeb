@@ -1,0 +1,13 @@
+{
+  "url": "https://kover.ru/product/4492911/",
+  "title": "Индийский ковер из арт-шёлка и шерсти «ART DE VIVRE KIDS» Kids rugs Cod.13",
+  "price": null,
+  "currency": "RUB",
+  "dims": null,
+  "sku": null,
+  "brand": "ART DE VIVRE",
+  "material": "арт-шёлк и шерсть",
+  "img": "https://cdn.kover.ru/upload/resize_cache/iblock/aa1/1005_687_1/aa1bffece33f47faf63b6f3bead06cc4.jpg",
+  "traps": ["no-schema", "js-only-price"],
+  "notes": "Next.js-страница: JSON-LD есть, но только Organization/BreadcrumbList/WebSite — Product-разметки нет. В SSR-стейте «price\\\":0» — реальная цена догружается API (js-only-price, прецедент mnogomebeli: честный null, не выдумывать). Размер ковра вариантный (фасет «по размерам»), конкретного в статике нет. Бренд/коллекция ART DE VIVRE и материал «арт-шёлк и шерсть» — в h1. og:image живой (cdn.kover.ru)."
+}

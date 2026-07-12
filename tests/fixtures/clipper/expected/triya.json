@@ -1,0 +1,13 @@
+{
+  "url": "https://www.triya.ru/catalog/kukhonnye_ugolki_s_yashchikami/divan_uglovoj/?model=422553",
+  "title": "Диван угловой «Каир» ГН №2 Исп.2 Велюр Camaro 05 (мокко)",
+  "price": 47297,
+  "currency": "RUB",
+  "dims": { "d": 64, "h": 83 },
+  "sku": null,
+  "brand": "ТриЯ",
+  "material": "велюр",
+  "img": "https://www.triya.ru/_t/404/404757/product.jpeg",
+  "traps": ["no-schema", "text-only-price", "dims-in-js-state", "unit-in-property-name"],
+  "notes": "Nuxt-страница фабрики без какой-либо разметки Product. Цена 47 297 руб есть в видимом тексте и в <title>, но НЕ в meta/microdata (text-only-price). Характеристики в минифицированном Nuxt-стейте, секция «Размеры (мм)»: высота 830 и глубина 640 — литералами (83/64 см), а длина/ширина — ССЫЛКОЙ на JS-переменную (value:R), в статике значения нет — w честно не размечаем. sku нет (model=422553 только в URL). Бренд ТриЯ — кириллицей, домен латиницей (классический brand-кейс). Фото галереи — первый product.jpeg."
+}

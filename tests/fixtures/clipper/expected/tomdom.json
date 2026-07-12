@@ -1,0 +1,13 @@
+{
+  "url": "https://tomdom.ru/catalog/komplekti-shtor/anadil.html",
+  "title": "Комплект штор «Анадиль»",
+  "price": 2820,
+  "currency": "RUB",
+  "dims": null,
+  "sku": "527001",
+  "brand": null,
+  "material": "полиэстер",
+  "img": "https://tomdom.ru/upload/products_photos/itemmedium/19478_14798910707.jpg",
+  "traps": ["price-mismatch-meta-vs-actual", "broken-entity-in-title", "no-schema"],
+  "notes": "Микроразметка Offer (без Product-обёртки в JSON-LD). Актуальная цена дефолтного варианта — 2 820 ₽ (itemprop=price и видимый #resprice), а в <title>/SEO-тексте застряло «по цене 3130 руб.» — расхождение мета против факта (прецедент divan-ru). В h1 битая HTML-сущность: «&laquo;Анадиль&raquo» без точки с запятой — эталон с нормальными кавычками. Состав: 100% полиэстер (вуаль). Размеры вариантные (высота/ширина выбираются) — dims null. brand null: Томдом — магазин-пошив, отдельного бренда производителя на странице нет. Фото — meta itemprop=image (относительный путь)."
+}
