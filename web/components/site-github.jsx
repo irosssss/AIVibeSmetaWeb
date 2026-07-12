@@ -121,19 +121,63 @@ function SitePage({ go }) {
    здесь только наши собственные релизы простым языком, без
    внутреннего жаргона роадмапа/номеров PR/код-ревью.
 -------------------------------------------------------------- */
-const CHANGELOG = [
-  { date: "2026-07-09", tag: "Закупка", title: "Платёжные даты и трек-номера", text: "На каждой позиции — даты авансов и остатков клиенту и поставщику, трек-номер отправления с кликабельной ссылкой. Виджет «Сегодня в работе» собирает просроченные и ближайшие платежи по всем проектам сразу." },
-  { date: "2026-07-09", tag: "Наценка", title: "Свои профили наценки", text: "Сохраните наценку и скидки как «свой стандарт» и применяйте к любому проекту одним кликом." },
-  { date: "2026-07-09", tag: "Смета", title: "Паспорт свежести цен", text: "В смете и во всех выгрузках видно, на какую дату проверены цены — если давно, документ честно предупредит об этом." },
-  { date: "2026-07-09", tag: "Лендинг", title: "Бесплатный шаблон сметы в Excel", text: "Пустой шаблон в нашем формате — без регистрации. Заполните и сразу импортируйте обратно в кабинет." },
-  { date: "2026-07-08", tag: "Портал", title: "Клиентский портал: согласование по ссылке", text: "Клиент открывает смету по ссылке без входа, согласовывает позиции и пишет комментарии — без вотсапа и созвонов." },
-  { date: "2026-07-08", tag: "Портал", title: "Протокол согласования в PDF", text: "Все статусы и комментарии клиента с датами — одним документом прямо из версии сметы." },
-  { date: "2026-07-08", tag: "Библиотека", title: "Библиотека товаров студии", text: "Сохраняйте проверенные позиции с артикулом, поставщиком и ценой — добавляйте их в новые сметы одним кликом." },
-  { date: "2026-07-07", tag: "Закупка", title: "Закупочный лист по поставщикам", text: "Позиции сметы группируются по поставщикам — отдельный лист на каждого в Excel и PDF, готовый к отправке." },
-  { date: "2026-07-07", tag: "Смета", title: "Из прошлого проекта и готовые шаблоны", text: "Копируйте комнаты и позиции из своих прошлых смет или начните с готовой комплектации — санузел, спальня, прихожая, кухня." },
-  { date: "2026-07-06", tag: "Эргономика", title: "Проверка норм и стадии работы", text: "Смета проверяет проходы и расстановку по нормам NKBA/Neufert. Проект теперь идёт по стадиям: Сбор → Согласование → Закупка → Сдача." },
-  { date: "2026-07-01", tag: "Смета", title: "Две цены и живая наценка", text: "В каждой строке — себестоимость и цена клиенту, наценка пересчитывается на лету. Клиент видит только свою цену." },
-  { date: "2026-06-29", tag: "Экспорт", title: "Импорт из Excel и два режима выгрузки", text: "Загружайте готовую комплектацию из Excel-файла. Выгрузка бывает рабочей (с себестоимостью) и для клиента (только его цена)." },
+/* Два калибра записей (образец Programa §1.4): крупные релизы — лонгрид с
+   hero-иллюстрацией (наш React-мокап, не скриншот — не устаревает по стилю),
+   подзаголовками-фичами и секцией «Где найти»; остальное — плоский список
+   «Недавно добавили». Плюс анонс «Скоро» (бейдж, §1.5) — честно помечен как
+   ещё не релиз (канон «пример, не факт»). Мокапы-иллюстрации ниже (Clip*). */
+
+// Анонс до релиза — тизер роадмапа (клиппер, роадмап п.8). Бейдж «Скоро».
+const CHANGELOG_SOON = {
+  hero: "clip",
+  tag: "Клиппер", title: "Смета из ссылки на магазин",
+  text: "Вставьте ссылку на карточку товара — сервис сам достанет название, артикул, цену и бренд и добавит позицию в смету. Первым появится клиппер по ссылке, следом — заливка PDF-коммерческих предложений фабрик и салонов.",
+  where: "В редакторе сметы — кнопкой «Добавить по ссылке» между комнатами (сама кнопка уже стоит, включаем извлечение).",
+};
+
+// Крупные релизы — по одному лонгриду с иллюстрацией.
+const CHANGELOG_BIG = [
+  {
+    date: "2026-07-08", hero: "portal", tag: "Портал",
+    title: "Клиент согласует смету по ссылке — без вашего Excel и созвонов",
+    text: "Отправьте ссылку на портал вместо PDF в переписке. Клиент открывает смету в браузере без пароля, видит только свою цену и решает по каждой позиции.",
+    feats: [
+      "Комментарий и статус на каждой позиции: согласовано / обсуждается / на рассмотрении",
+      "Протокол согласования — один PDF со всеми решениями клиента и датами",
+    ],
+    where: "Версии сметы → «Ссылка для клиента». В настройках студии добавьте лого и реквизиты — они попадут в шапку портала.",
+  },
+  {
+    date: "2026-07-01", hero: "price", tag: "Смета",
+    title: "Две цены в одной смете — себестоимость для вас, цена для клиента",
+    text: "В каждой строке рядом стоят закупочная цена и цена клиенту. Наценка пересчитывается на лету, а в клиентской выгрузке себестоимость и процент не показываются.",
+    feats: [
+      "Свой процент наценки по разделам, а не одна цифра на всю смету",
+      "Профили «Мои стандарты» — сохранённая наценка со скидками применяется к проекту одним кликом",
+    ],
+    where: "Карточка наценки в смете: ползунок процента и панель «Мои стандарты».",
+  },
+  {
+    date: "2026-07-09", hero: "today", tag: "Закупка",
+    title: "Аванс просрочен? Поставка едет три недели? Всё видно на одном экране",
+    text: "У каждой позиции закупки — даты авансов и остатков клиенту и поставщику и трек-номер отправления кликабельной ссылкой. Виджет «Сегодня в работе» собирает просроченные и ближайшие платежи по всем проектам сразу.",
+    feats: [
+      "Отдельные даты аванса и остатка для клиента и для поставщика",
+      "Трек-номер с прямой ссылкой на отслеживание",
+    ],
+    where: "Кабинет → «Сегодня». Даты и трек заводятся в стадии закупки на карточке позиции.",
+  },
+];
+
+// Мелочи — плоский список «Недавно добавили» (Programa §1.4).
+const CHANGELOG_RECENT = [
+  { date: "2026-07-09", tag: "Смета", title: "Паспорт свежести цен", text: "Во всех выгрузках видно, на какую дату проверены цены — если давно, документ честно предупредит." },
+  { date: "2026-07-09", tag: "Лендинг", title: "Бесплатный шаблон сметы в Excel", text: "Пустой шаблон в нашем формате без регистрации — заполните и сразу импортируйте обратно." },
+  { date: "2026-07-08", tag: "Библиотека", title: "Библиотека товаров студии", text: "Сохраняйте проверенные позиции с артикулом, поставщиком и ценой — добавляйте в новые сметы одним кликом." },
+  { date: "2026-07-07", tag: "Закупка", title: "Закупочный лист по поставщикам", text: "Позиции группируются по поставщикам — отдельный лист на каждого в Excel и PDF, готовый к отправке." },
+  { date: "2026-07-07", tag: "Смета", title: "Из прошлого проекта и готовые шаблоны", text: "Копируйте комнаты и позиции из прошлых смет или начните с готовой комплектации — санузел, спальня, прихожая, кухня." },
+  { date: "2026-07-06", tag: "Эргономика", title: "Проверка норм и стадии работы", text: "Смета проверяет проходы и расстановку по нормам NKBA/Neufert. Проект идёт по стадиям: Сбор → Согласование → Закупка → Сдача." },
+  { date: "2026-06-29", tag: "Экспорт", title: "Импорт из Excel и два режима выгрузки", text: "Загружайте готовую комплектацию из Excel. Выгрузка бывает рабочей (с себестоимостью) и для клиента (только его цена)." },
 ];
 
 function groupChangelogByDate(list) {
@@ -144,9 +188,149 @@ function groupChangelogByDate(list) {
   });
   return Array.from(byDate.values());
 }
-const CHANGELOG_GROUPS = groupChangelogByDate(CHANGELOG); // CHANGELOG не меняется — считаем один раз, как CAB_TAB_IDS в cabinet.jsx
+const CHANGELOG_RECENT_GROUPS = groupChangelogByDate(CHANGELOG_RECENT); // список не меняется — считаем один раз
 
-function ChangelogPage({ go }) {
+const fmtLongDate = (d) => new Date(d + "T00:00:00").toLocaleDateString("ru-RU", { day: "numeric", month: "long", year: "numeric" });
+
+/* --- hero-иллюстрации записей: стилизованные мокапы фичи, не скриншоты --- */
+function ClipHero({ kind }) {
+  return (
+    <div style={{ borderRadius: "var(--r-lg)", padding: "clamp(20px,4vw,30px)", background: "var(--surface-glass, rgba(255,255,255,.4))", border: "1px solid var(--hairline)", display: "grid", placeItems: "center", minHeight: 168 }}>
+      {kind === "clip" && <ClipMockClipper />}
+      {kind === "portal" && <ClipMockPortal />}
+      {kind === "price" && <ClipMockPrice />}
+      {kind === "today" && <ClipMockToday />}
+    </div>
+  );
+}
+
+const clipCardCss = { background: "var(--bg-base, #fff)", border: "1px solid var(--hairline)", borderRadius: "var(--r-md, 12px)", boxShadow: "var(--shadow-card)" };
+const clipMono = (extra) => ({ fontFamily: "var(--font-mono)", fontSize: "var(--fs-11)", ...extra });
+const clipTag = { fontFamily: "var(--font-mono)", fontSize: "var(--fs-10)", fontWeight: 700, letterSpacing: ".06em", textTransform: "uppercase", color: "var(--accent-2-ink)", padding: "3px 9px", borderRadius: 99, background: "var(--accent-2-tint)" };
+
+function ClipMockClipper() {
+  return (
+    <div style={{ width: "min(340px,100%)", display: "flex", flexDirection: "column", gap: 12 }}>
+      <div style={{ ...clipCardCss, display: "flex", alignItems: "center", gap: 8, padding: "10px 12px" }}>
+        <I.scan size={15} style={{ color: "var(--spec-meta)", flex: "none" }} />
+        <span style={clipMono({ color: "var(--muted)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" })}>divan.ru/product/sofa-milano-3</span>
+      </div>
+      <div style={{ display: "flex", justifyContent: "center", color: "var(--spec-meta)" }}><I.arrow size={16} style={{ transform: "rotate(90deg)" }} /></div>
+      <div style={{ ...clipCardCss, padding: "12px 14px", display: "flex", flexDirection: "column", gap: 6 }}>
+        <div style={{ fontWeight: 700, fontSize: "var(--fs-14)", fontFamily: "var(--font-display)" }}>Диван «Милано», 3-местный</div>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <span style={clipMono({ color: "var(--spec-meta)" })}>арт. MIL-3 · Divan.ru</span>
+          <span style={clipMono({ fontWeight: 700, color: "var(--text)" })}>128 000 ₽</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ClipMockPortal() {
+  return (
+    <div style={{ width: "min(340px,100%)", ...clipCardCss, padding: 16, display: "flex", flexDirection: "column", gap: 12 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <span style={{ fontWeight: 700, fontSize: "var(--fs-13)" }}>Кресло лаунж, дуб/букле</span>
+        <span style={clipMono({ fontWeight: 600, padding: "3px 9px", borderRadius: 99, background: "rgba(94,107,91,.14)", color: "var(--accent-2-ink)" })}>Согласовано</span>
+      </div>
+      <div style={{ alignSelf: "flex-start", maxWidth: "90%", padding: "9px 12px", borderRadius: "12px 12px 12px 3px", fontSize: "var(--fs-12)", background: "rgba(183,80,44,.08)", border: "1px solid rgba(183,80,44,.28)", lineHeight: 1.45 }}>
+        Можно светлее обивку? Остальное нравится.
+      </div>
+      <div style={{ alignSelf: "flex-end", maxWidth: "90%", padding: "9px 12px", borderRadius: "12px 12px 3px 12px", fontSize: "var(--fs-12)", ...clipCardCss, boxShadow: "none", lineHeight: 1.45 }}>
+        Заменю на бежевый букле, пришлю фото сегодня
+      </div>
+    </div>
+  );
+}
+
+function ClipMockPrice() {
+  const ROWS = [["Диван «Милано», 3-местный", 128000, 173000], ["Кресло лаунж, дуб/букле", 73000, 98600]];
+  const fmt = (n) => new Intl.NumberFormat("ru-RU").format(n) + " ₽";
+  return (
+    <div style={{ width: "min(340px,100%)", ...clipCardCss, padding: 14, display: "flex", flexDirection: "column", gap: 10 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr auto auto", gap: 10, ...clipMono({ color: "var(--spec-meta)", fontWeight: 700, letterSpacing: ".04em", textTransform: "uppercase" }) }}>
+        <span>Позиция</span><span style={{ textAlign: "right" }}>Себест.</span><span style={{ textAlign: "right" }}>Клиенту</span>
+      </div>
+      {ROWS.map(([n, c, cli]) => (
+        <div key={n} style={{ display: "grid", gridTemplateColumns: "1fr auto auto", gap: 10, alignItems: "center", fontSize: "var(--fs-12)" }}>
+          <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{n}</span>
+          <span style={clipMono({ color: "var(--muted)", textAlign: "right" })}>{fmt(c)}</span>
+          <span style={clipMono({ color: "var(--text)", fontWeight: 700, textAlign: "right" })}>{fmt(cli)}</span>
+        </div>
+      ))}
+      <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 2, paddingTop: 10, borderTop: "1px solid var(--hairline)" }}>
+        <span style={clipTag}>наценка +35%</span>
+        <span style={clipMono({ color: "var(--accent-2-ink)", fontWeight: 700, marginLeft: "auto" })}>прибыль +70 600 ₽</span>
+      </div>
+    </div>
+  );
+}
+
+function ClipMockToday() {
+  const ROWS = [
+    ["Аванс поставщику · «Милано»", "просрочен 2 дня", true],
+    ["Остаток клиенту · кресло", "до 15 июля", false],
+  ];
+  return (
+    <div style={{ width: "min(340px,100%)", ...clipCardCss, padding: 16, display: "flex", flexDirection: "column", gap: 12 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        <I.calendar size={15} style={{ color: "var(--accent-2-ink)" }} />
+        <span style={{ fontWeight: 700, fontSize: "var(--fs-13)" }}>Сегодня в работе</span>
+      </div>
+      {ROWS.map(([n, when, late]) => (
+        <div key={n} style={{ display: "flex", alignItems: "center", gap: 10, justifyContent: "space-between" }}>
+          <span style={{ fontSize: "var(--fs-12)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{n}</span>
+          <span style={clipMono({ fontWeight: 600, flex: "none", padding: "3px 9px", borderRadius: 99, color: late ? "var(--accent-ink)" : "var(--spec-meta)", background: late ? "var(--accent-tint)" : "var(--hairline)" })}>{when}</span>
+        </div>
+      ))}
+      <div style={{ display: "flex", alignItems: "center", gap: 7, paddingTop: 10, borderTop: "1px solid var(--hairline)" }}>
+        <I.truck size={14} style={{ color: "var(--spec-meta)", flex: "none" }} />
+        <span style={clipMono({ color: "var(--muted)" })}>трек RU284…19 · в пути</span>
+      </div>
+    </div>
+  );
+}
+
+/* --- крупная запись: иллюстрация + стори + фичи + «Где найти» --- */
+function ClipBigEntry({ item, soon }) {
+  return (
+    <article className="glass" style={{ borderRadius: "var(--r-xl)", overflow: "hidden", boxShadow: "var(--shadow-card)" }}>
+      <div style={{ position: "relative", padding: "clamp(18px,3vw,26px)", paddingBottom: 0 }}>
+        {soon && <span className="mono" style={{ position: "absolute", top: "clamp(28px,4vw,38px)", right: "clamp(28px,4vw,38px)", zIndex: 1, fontSize: "var(--fs-10)", fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", color: "#FCF6EE", background: "var(--accent-2-ink)", padding: "5px 11px", borderRadius: 99 }}>Скоро</span>}
+        <ClipHero kind={item.hero} />
+      </div>
+      <div style={{ padding: "clamp(20px,3.4vw,30px)" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12, flexWrap: "wrap" }}>
+          <span className="mono" style={clipTag}>{item.tag}</span>
+          <span className="mono" style={{ fontSize: "var(--fs-12)", color: "var(--spec-meta)", fontWeight: 600 }}>
+            {soon ? "в планах" : fmtLongDate(item.date)}
+          </span>
+        </div>
+        <h2 className="display" style={{ fontSize: "clamp(21px,2.6vw,30px)", lineHeight: 1.15, letterSpacing: "-0.01em" }}>{item.title}</h2>
+        <p style={{ color: "var(--muted)", fontSize: "var(--fs-15)", marginTop: 12, lineHeight: 1.65, maxWidth: 620 }}>{item.text}</p>
+        {item.feats && (
+          <ul role="list" style={{ listStyle: "none", margin: "18px 0 0", padding: 0, display: "flex", flexDirection: "column", gap: 11 }}>
+            {item.feats.map((f) => (
+              <li key={f} style={{ display: "flex", gap: 10, alignItems: "flex-start", fontSize: "var(--fs-14)", color: "var(--text)", lineHeight: 1.5 }}>
+                <I.check size={16} style={{ color: "var(--accent-2-ink)", flex: "none", marginTop: 2 }} />{f}
+              </li>
+            ))}
+          </ul>
+        )}
+        <div style={{ marginTop: 20, paddingTop: 16, borderTop: "1px solid var(--hairline)", display: "flex", gap: 9, alignItems: "flex-start" }}>
+          <I.info size={15} style={{ color: "var(--spec-meta)", flex: "none", marginTop: 2 }} />
+          <div>
+            <span className="mono" style={{ fontSize: "var(--fs-11)", fontWeight: 700, letterSpacing: ".05em", textTransform: "uppercase", color: "var(--spec-meta)" }}>Где найти</span>
+            <p style={{ color: "var(--muted)", fontSize: "var(--fs-13)", marginTop: 5, lineHeight: 1.55 }}>{item.where}</p>
+          </div>
+        </div>
+      </div>
+    </article>
+  );
+}
+
+function ChangelogPage({ go, user }) {
   useE3(() => { window.scrollTo({ top: 0 }); }, []);
   return (
     <React.Fragment>
@@ -154,8 +338,12 @@ function ChangelogPage({ go }) {
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, marginBottom: 40, flexWrap: "wrap" }}>
           <Logo size={25} onClick={() => go("site")} />
           <div style={{ display: "flex", gap: 10 }}>
-            <button className="btn btn-ghost" style={{ padding: "9px 16px", fontSize: "var(--fs-13)" }} onClick={() => go("site")}>На главную</button>
-            <button className="btn btn-primary" style={{ padding: "9px 16px", fontSize: "var(--fs-13)" }} onClick={() => go("auth")}>Войти</button>
+            {user
+              ? <button className="btn btn-ghost" style={{ padding: "9px 16px", fontSize: "var(--fs-13)" }} onClick={() => go("cabinet")}><I.arrow size={15} style={{ transform: "rotate(180deg)" }} /> В кабинет</button>
+              : <React.Fragment>
+                  <button className="btn btn-ghost" style={{ padding: "9px 16px", fontSize: "var(--fs-13)" }} onClick={() => go("site")}>На главную</button>
+                  <button className="btn btn-primary" style={{ padding: "9px 16px", fontSize: "var(--fs-13)" }} onClick={() => go("auth")}>Войти</button>
+                </React.Fragment>}
           </div>
         </div>
 
@@ -165,8 +353,16 @@ function ChangelogPage({ go }) {
           Что добавили и починили — по датам, без маркетинга. Ведём открыто с первого дня прототипа.
         </p>
 
-        <div style={{ marginTop: 44, display: "flex", flexDirection: "column", gap: 32 }}>
-          {CHANGELOG_GROUPS.map((g) => (
+        {/* Анонс «Скоро» + крупные релизы */}
+        <div style={{ marginTop: 44, display: "flex", flexDirection: "column", gap: 22 }}>
+          <ClipBigEntry item={CHANGELOG_SOON} soon />
+          {CHANGELOG_BIG.map((item) => <ClipBigEntry key={item.title} item={item} />)}
+        </div>
+
+        {/* Недавно добавили — плоский список мелочей */}
+        <h2 className="display" style={{ fontSize: "var(--fs-21)", marginTop: 52, marginBottom: 4 }}>Недавно добавили</h2>
+        <div style={{ marginTop: 24, display: "flex", flexDirection: "column", gap: 28 }}>
+          {CHANGELOG_RECENT_GROUPS.map((g) => (
             <div key={g.date} style={{ display: "grid", gridTemplateColumns: "clamp(72px,18vw,104px) 1fr", gap: 18 }}>
               <div className="mono" style={{ fontSize: "var(--fs-12)", fontWeight: 700, color: "var(--spec-meta)", paddingTop: 4 }}>
                 {new Date(g.date + "T00:00:00").toLocaleDateString("ru-RU", { day: "numeric", month: "long" })}
@@ -176,7 +372,7 @@ function ChangelogPage({ go }) {
                   <div key={i} className="glass" style={{ borderRadius: "var(--r-lg)", padding: "16px 20px" }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 9, marginBottom: 6, flexWrap: "wrap" }}>
                       <span className="mono" style={{ fontSize: "var(--fs-10)", fontWeight: 700, letterSpacing: ".06em", textTransform: "uppercase", color: "var(--accent-2-ink)", padding: "3px 9px", borderRadius: 99, background: "var(--accent-2-tint)" }}>{item.tag}</span>
-                      <h2 style={{ fontSize: "var(--fs-16)", fontWeight: 700, fontFamily: "var(--font-display)" }}>{item.title}</h2>
+                      <h3 style={{ fontSize: "var(--fs-16)", fontWeight: 700, fontFamily: "var(--font-display)" }}>{item.title}</h3>
                     </div>
                     <p style={{ color: "var(--muted)", fontSize: "var(--fs-14)", lineHeight: 1.6 }}>{item.text}</p>
                   </div>

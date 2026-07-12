@@ -93,7 +93,7 @@ function App() {
   let screen;
   // клиентский портал (волна A2): публичная страница-ссылка, без кабинет-хрома и авторизации
   if (view === "portal") screen = <ClientPortal shareId={parseRoute().tab} />;
-  else if (view === "changelog") screen = <ChangelogPage go={go} />;
+  else if (view === "changelog") screen = <ChangelogPage go={go} user={user} />;
   else if (view === "auth") screen = <AuthScreen onAuthed={onAuthed} go={go} />;
   else if (view === "cabinet") screen = user ? <Cabinet user={user} onLogout={onLogout} go={go} /> : <AuthScreen onAuthed={onAuthed} go={go} />;
   else if (view === "admin") screen = DEV_MODE ? <Admin user={user || ADMIN} onLogout={onLogout} go={go} /> : <SitePage go={go} />;
