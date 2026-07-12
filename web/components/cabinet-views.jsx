@@ -104,32 +104,32 @@ function Profile({ user }) {
         </p>
         <div style={{ display: "flex", flexDirection: "column", gap: 14, maxWidth: 480 }}>
           {[
-            ["studioName", "Название студии", "text", user.name],
-            ["studioCity", "Город", "text", "Напр. Москва"],
-          ].map(([k, label, type, ph]) => (
+            ["studioName", "Название студии", "text", user.name, "organization"],
+            ["studioCity", "Город", "text", "Напр. Москва", "address-level2"],
+          ].map(([k, label, type, ph, ac]) => (
             <label key={k} style={{ display: "block" }}>
               <span style={{ display: "block", fontSize: "var(--fs-13)", color: "var(--muted)", marginBottom: 6, fontWeight: 600 }}>{label}</span>
               <input className="fld" type={type} value={studio[k]} onChange={setStudioField(k)}
                 onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }}
-                onBlur={saveStudio} placeholder={ph} aria-label={label} />
+                onBlur={saveStudio} placeholder={ph} aria-label={label} autoComplete={ac} />
             </label>
           ))}
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
             <label style={{ display: "block" }}>
               <span style={{ display: "block", fontSize: "var(--fs-13)", color: "var(--muted)", marginBottom: 6, fontWeight: 600 }}>Телефон для клиента</span>
               <input className="fld" type="tel" value={studio.studioPhone} onChange={setStudioField("studioPhone")}
-                onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }} onBlur={saveStudio} placeholder="+7 900 000-00-00" aria-label="Телефон для клиента" />
+                onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }} onBlur={saveStudio} placeholder="+7 900 000-00-00" aria-label="Телефон для клиента" autoComplete="tel" />
             </label>
             <label style={{ display: "block" }}>
               <span style={{ display: "block", fontSize: "var(--fs-13)", color: "var(--muted)", marginBottom: 6, fontWeight: 600 }}>E-mail для клиента</span>
               <input className="fld" type="email" value={studio.studioEmail} onChange={setStudioField("studioEmail")}
-                onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }} onBlur={saveStudio} placeholder={user.email} aria-label="E-mail для клиента" />
+                onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }} onBlur={saveStudio} placeholder={user.email} aria-label="E-mail для клиента" autoComplete="email" />
             </label>
           </div>
           <label style={{ display: "block" }}>
             <span style={{ display: "block", fontSize: "var(--fs-13)", color: "var(--muted)", marginBottom: 6, fontWeight: 600 }}>ИНН <span style={{ color: "var(--faint)", fontWeight: 400 }}>(пригодится для счетов)</span></span>
             <input className="fld mono" value={studio.studioTaxId} onChange={setStudioField("studioTaxId")}
-              onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }} onBlur={saveStudio} placeholder="770000000000" aria-label="ИНН" />
+              onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }} onBlur={saveStudio} placeholder="770000000000" aria-label="ИНН" inputMode="numeric" autoComplete="off" />
           </label>
         </div>
       </div>
@@ -846,13 +846,13 @@ function Favorites() {
             {!shown && Array.from({ length: 4 }).map((_, i) => <div key={i} className="skel" style={{ height: 56, borderRadius: 10, marginBottom: 8 }} />)}
             {shown && shown.map((f, i) => (
               <div key={f.id} style={{ display: "flex", alignItems: "center", gap: 12, padding: "11px 0", borderBottom: i === shown.length - 1 ? "none" : "1px solid var(--hairline)" }}>
-                <div style={{ width: 46, height: 46, borderRadius: 9, overflow: "hidden", flex: "none" }}><Img src={f.img} label="" /></div>
+                <div style={{ width: 46, height: 46, borderRadius: 9, overflow: "hidden", flex: "none" }}><Img src={f.img} label={f.title} /></div>
                 <div style={{ minWidth: 0, flex: 1 }}>
                   <div style={{ fontSize: "var(--fs-13)", fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{f.title}</div>
                   <div style={{ fontSize: "var(--fs-12)", color: "var(--faint)", marginTop: 2 }}>{FAV_MP[f.mp]}</div>
                 </div>
                 <div className="mono" style={{ fontWeight: 600, fontSize: "var(--fs-13)", whiteSpace: "nowrap" }}>{fmtMoney(f.price)}</div>
-                <button className="icon-btn sm" title="Убрать" onClick={() => remove(f.id)} style={{ flex: "none" }}><I.close size={15} /></button>
+                <button className="icon-btn sm" title="Убрать" aria-label={"Убрать «" + f.title + "» из списка"} onClick={() => remove(f.id)} style={{ flex: "none" }}><I.close size={15} /></button>
               </div>
             ))}
           </div>
@@ -903,7 +903,7 @@ function FavTransferModal({ count, total, onClose, onDone }) {
           {rows && rows.map((p) => (
             <button key={p.id} onClick={() => pick(p)} disabled={busy} style={{ display: "flex", alignItems: "center", gap: 12, padding: 12, borderRadius: 12, border: "1px solid var(--hairline)", background: "var(--surface)", textAlign: "left" }}
               onMouseEnter={(e) => (e.currentTarget.style.borderColor = "var(--accent)")} onMouseLeave={(e) => (e.currentTarget.style.borderColor = "var(--hairline)")}>
-              <div style={{ width: 46, height: 46, borderRadius: 9, overflow: "hidden", flex: "none" }}><Img src={PHOTOS[p.cover] || PHOTOS.living} label="" /></div>
+              <div style={{ width: 46, height: 46, borderRadius: 9, overflow: "hidden", flex: "none" }}><Img src={PHOTOS[p.cover] || PHOTOS.living} label={"Проект «" + p.name + "»"} /></div>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontWeight: 700, fontSize: "var(--fs-14)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{p.name}</div>
                 <div style={{ fontSize: "var(--fs-12)", color: "var(--muted)" }}>{p.room} · {fmtMoney(p.budget)}</div>

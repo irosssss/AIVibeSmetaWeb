@@ -104,8 +104,8 @@ function StyleLibCard({ s, system, onEdit, onDuplicate, onRemove }) {
         <span style={{ fontSize: "var(--fs-12)", fontWeight: 700, color: delta > 0 ? "var(--accent)" : delta < 0 ? "var(--accent-2)" : "var(--faint)" }}>{factorDelta(s.factor)}</span>
         <div style={{ display: "flex", gap: 6 }}>
           <button className="btn btn-ghost" style={{ padding: "7px 12px", fontSize: "var(--fs-12)" }} onClick={onDuplicate} title="Дублировать в свой"><I.layers size={14} />Дублировать</button>
-          {!system && <button className="icon-btn sm" title="Редактировать" onClick={onEdit}><I.edit size={15} /></button>}
-          {!system && <button className="icon-btn sm" title="Удалить" onClick={onRemove}><I.trash size={15} /></button>}
+          {!system && <button className="icon-btn sm" title="Редактировать" aria-label="Редактировать" onClick={onEdit}><I.edit size={15} /></button>}
+          {!system && <button className="icon-btn sm" title="Удалить" aria-label="Удалить" onClick={onRemove}><I.trash size={15} /></button>}
         </div>
       </div>
     </div>

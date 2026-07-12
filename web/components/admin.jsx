@@ -33,7 +33,7 @@ function Admin({ user, onLogout, go }) {
               <div style={{ fontWeight: 700, fontSize: "var(--fs-13)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{user.name}</div>
               <div style={{ fontSize: "var(--fs-12)", color: "var(--accent)" }}>Администратор</div>
             </div>
-            <button className="icon-btn" title="Выйти" onClick={onLogout}><I.logout size={17} /></button>
+            <button className="icon-btn" title="Выйти" aria-label="Выйти" onClick={onLogout}><I.logout size={17} /></button>
           </div>
         </div>
       </aside>
