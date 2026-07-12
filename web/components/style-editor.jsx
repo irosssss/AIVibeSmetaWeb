@@ -71,7 +71,7 @@ function SectionLabel({ icon: Ico, text, sub }) {
     <div style={{ display: "flex", alignItems: "center", gap: 9, margin: "6px 2px 14px", flexWrap: "wrap" }}>
       <Ico size={17} style={{ color: "var(--accent)", flex: "none" }} />
       <h2 style={{ fontSize: "var(--fs-16)", fontWeight: 700 }}>{text}</h2>
-      {sub && <span style={{ fontSize: "var(--fs-12)", fontWeight: 700, letterSpacing: ".05em", textTransform: "uppercase", color: "var(--faint)" }}>· {sub}</span>}
+      {sub && <span style={{ fontSize: "var(--fs-12)", fontWeight: 700, letterSpacing: ".05em", textTransform: "uppercase", color: "var(--muted)" }}>· {sub}</span>}
     </div>
   );
 }
@@ -86,7 +86,7 @@ function StyleLibCard({ s, system, onEdit, onDuplicate, onRemove }) {
           <div style={{ fontSize: "var(--fs-12)", color: "var(--muted)", marginTop: 3 }}>{s.mood || DECOR_LABEL[s.decorLevel] || ""}</div>
         </div>
         {system
-          ? <span style={{ fontSize: "var(--fs-11)", fontWeight: 700, padding: "3px 9px", borderRadius: 99, background: "var(--surface-2)", color: "var(--faint)", flex: "none" }}>база</span>
+          ? <span style={{ fontSize: "var(--fs-11)", fontWeight: 700, padding: "3px 9px", borderRadius: 99, background: "var(--surface-2)", color: "var(--muted)", flex: "none" }}>база</span>
           : <span style={{ fontSize: "var(--fs-11)", fontWeight: 700, padding: "3px 9px", borderRadius: 99, background: "rgba(94,107,91,.14)", color: "var(--accent-2)", flex: "none" }}>мой</span>}
       </div>
 
@@ -101,11 +101,11 @@ function StyleLibCard({ s, system, onEdit, onDuplicate, onRemove }) {
       </div>
 
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, paddingTop: 12, marginTop: "auto", borderTop: "1px solid var(--hairline)" }}>
-        <span style={{ fontSize: "var(--fs-12)", fontWeight: 700, color: delta > 0 ? "var(--accent)" : delta < 0 ? "var(--accent-2)" : "var(--faint)" }}>{factorDelta(s.factor)}</span>
+        <span style={{ fontSize: "var(--fs-12)", fontWeight: 700, color: delta > 0 ? "var(--accent)" : delta < 0 ? "var(--accent-2)" : "var(--muted)" }}>{factorDelta(s.factor)}</span>
         <div style={{ display: "flex", gap: 6 }}>
           <button className="btn btn-ghost" style={{ padding: "7px 12px", fontSize: "var(--fs-12)" }} onClick={onDuplicate} title="Дублировать в свой"><I.layers size={14} />Дублировать</button>
-          {!system && <button className="icon-btn sm" title="Редактировать" onClick={onEdit}><I.edit size={15} /></button>}
-          {!system && <button className="icon-btn sm" title="Удалить" onClick={onRemove}><I.trash size={15} /></button>}
+          {!system && <button className="icon-btn sm" title="Редактировать" aria-label="Редактировать" onClick={onEdit}><I.edit size={15} /></button>}
+          {!system && <button className="icon-btn sm" title="Удалить" aria-label="Удалить" onClick={onRemove}><I.trash size={15} /></button>}
         </div>
       </div>
     </div>
@@ -207,7 +207,7 @@ function StyleEditor({ draft, onClose, onSaved }) {
           <div>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 6 }}>
               <FldLabel>Класс бюджета</FldLabel>
-              <span style={{ fontSize: "var(--fs-12)", fontWeight: 700, color: delta > 0 ? "var(--accent)" : delta < 0 ? "var(--accent-2)" : "var(--faint)" }}>{factorDelta(d.factor)}</span>
+              <span style={{ fontSize: "var(--fs-12)", fontWeight: 700, color: delta > 0 ? "var(--accent)" : delta < 0 ? "var(--accent-2)" : "var(--muted)" }}>{factorDelta(d.factor)}</span>
             </div>
             <input type="range" min="0.7" max="1.4" step="0.02" value={d.factor} onChange={(e) => set({ factor: +e.target.value })} style={{ width: "100%", accentColor: "var(--accent)", cursor: "pointer" }} />
             <div style={{ display: "flex", justifyContent: "space-between", fontSize: "var(--fs-11)", color: "var(--faint)", marginTop: 6 }}><span>−30% (эконом)</span><span>база</span><span>+40% (премиум)</span></div>

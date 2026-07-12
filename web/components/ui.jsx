@@ -15,7 +15,7 @@ function Logo({ size = 26, onClick }) {
         <circle cx="16" cy="6" r="2.4" fill="var(--accent)" />
       </svg>
       <span className="logo-word" style={{ fontFamily: "var(--font-display)", fontWeight: 800, fontSize: size * 0.72, letterSpacing: "-0.03em", whiteSpace: "nowrap" }}>
-        Design <span style={{ color: "var(--accent)" }}>Ledger</span>
+        Design <span style={{ color: "var(--accent-ink)" }}>Ledger</span>
       </span>
     </div>
   );
@@ -792,7 +792,7 @@ function ChartCard({ title, source, accent, children, style }) {
       {(title || source) && (
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 12, marginBottom: 18 }}>
           {title && <h3 style={{ fontSize: "var(--fs-16)", fontWeight: 700, minWidth: 0 }}>{title}</h3>}
-          {source && <span style={{ fontSize: "var(--fs-11)", fontWeight: 700, letterSpacing: ".06em", textTransform: "uppercase", color: accent || "var(--faint)", whiteSpace: "nowrap", flex: "none" }}>{source}</span>}
+          {source && <span style={{ fontSize: "var(--fs-11)", fontWeight: 700, letterSpacing: ".06em", textTransform: "uppercase", color: accent || "var(--muted)", whiteSpace: "nowrap", flex: "none" }}>{source}</span>}
         </div>
       )}
       {children}

@@ -42,7 +42,7 @@ function NewsAdmin() {
         {rows && rows.map((n) => (
           <div key={n.id} className="tbl-row news-cols">
             <div style={{ display: "flex", alignItems: "center", gap: 13, minWidth: 0 }}>
-              <div style={{ width: 46, height: 46, borderRadius: 10, overflow: "hidden", flex: "none" }}><Img src={PHOTOS[n.cover] || PHOTOS.warm} label="" /></div>
+              <div style={{ width: 46, height: 46, borderRadius: 10, overflow: "hidden", flex: "none" }}><Img src={PHOTOS[n.cover] || PHOTOS.warm} label={"Обложка: " + n.title} /></div>
               <div style={{ minWidth: 0 }}>
                 <div style={{ fontWeight: 600, fontSize: "var(--fs-14)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{n.title}</div>
                 <div style={{ fontSize: "var(--fs-12)", color: "var(--faint)" }}>{n.author}</div>
@@ -55,8 +55,8 @@ function NewsAdmin() {
             <span className="mono" style={{ fontSize: "var(--fs-13)", color: "var(--muted)", textAlign: "right" }}>{fmt(n.views)}</span>
             <span style={{ fontSize: "var(--fs-13)", color: "var(--muted)" }}>{new Date(n.date).toLocaleDateString("ru-RU", { day: "2-digit", month: "2-digit", year: "2-digit" })}</span>
             <div style={{ display: "flex", gap: 6, justifyContent: "flex-end" }}>
-              <button className="icon-btn sm" title="Редактировать" onClick={() => setEditing(n)}><I.edit size={16} /></button>
-              <button className="icon-btn sm danger" title="Удалить" onClick={() => remove(n.id)}><I.trash size={16} /></button>
+              <button className="icon-btn sm" title="Редактировать" aria-label="Редактировать" onClick={() => setEditing(n)}><I.edit size={16} /></button>
+              <button className="icon-btn sm danger" title="Удалить" aria-label="Удалить" onClick={() => remove(n.id)}><I.trash size={16} /></button>
             </div>
           </div>
         ))}
@@ -91,8 +91,8 @@ function NewsModal({ initial, onClose, onSave, busy }) {
           <span className="lbl">Обложка</span>
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
             {covers.map((c) => (
-              <button key={c} onClick={() => set("cover", c)} style={{ width: 70, height: 50, borderRadius: 10, overflow: "hidden", outline: form.cover === c ? "2px solid var(--accent)" : "1px solid var(--hairline)", outlineOffset: form.cover === c ? 1 : 0 }}>
-                <Img src={PHOTOS[c]} label="" />
+              <button key={c} onClick={() => set("cover", c)} aria-label={"Обложка: " + c} aria-pressed={form.cover === c} style={{ width: 70, height: 50, borderRadius: 10, overflow: "hidden", outline: form.cover === c ? "2px solid var(--accent)" : "1px solid var(--hairline)", outlineOffset: form.cover === c ? 1 : 0 }}>
+                <Img src={PHOTOS[c]} label={c} />
               </button>
             ))}
           </div>

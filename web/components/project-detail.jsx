@@ -780,7 +780,7 @@ function RoomSpecOverlay({ data, nav, onClose }) {
                 <div key={r.name} id={"rs-room-" + ri} className="glass" style={{ borderRadius: "var(--r-lg)", padding: "16px 18px", scrollMarginTop: 12 }}>
                   <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 12, marginBottom: 8, flexWrap: "wrap" }}>
                     <span style={{ display: "flex", alignItems: "baseline", gap: 6, minWidth: 0 }}>
-                      <span style={{ fontWeight: 800, fontFamily: "var(--font-display)", fontSize: "var(--fs-16)" }}>{r.name}{r.area ? <span style={{ color: "var(--faint)", fontWeight: 500, fontSize: "var(--fs-13)" }}> · {r.area} м²</span> : null}</span>
+                      <span style={{ fontWeight: 800, fontFamily: "var(--font-display)", fontSize: "var(--fs-16)" }}>{r.name}{r.area ? <span style={{ color: "var(--muted)", fontWeight: 500, fontSize: "var(--fs-13)" }}> · {r.area} м²</span> : null}</span>
                       {mode === "work" && (
                         <button className="icon-btn xs" aria-label={"Переименовать комнату «" + r.name + "»"} title="Переименовать комнату"
                           onClick={() => renameRoom(ri)} style={{ flex: "none", alignSelf: "center", color: "var(--spec-meta)" }}>
@@ -2020,7 +2020,7 @@ function AddPositionsModal({ excludeId, roomNames, initialTab, initialRoom, onCl
               <div key={ri} style={{ border: "1px solid var(--hairline)", borderRadius: 12, padding: "10px 14px" }}>
                 <label style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer", padding: "2px 0 6px" }}>
                   <input type="checkbox" checked={roomAll(ri)} onChange={() => toggleRoom(ri)} style={{ accentColor: "var(--accent-2)", width: 15, height: 15, flex: "none" }} />
-                  <span style={{ fontWeight: 700, fontSize: "var(--fs-14)", flex: 1 }}>{r.name}{r.area ? <span style={{ color: "var(--faint)", fontWeight: 500, fontSize: "var(--fs-12)" }}> · {r.area} м²</span> : null}</span>
+                  <span style={{ fontWeight: 700, fontSize: "var(--fs-14)", flex: 1 }}>{r.name}{r.area ? <span style={{ color: "var(--muted)", fontWeight: 500, fontSize: "var(--fs-12)" }}> · {r.area} м²</span> : null}</span>
                   <span className="mono" style={{ fontSize: "var(--fs-12)", color: "var(--spec-meta)", whiteSpace: "nowrap" }}>{fmtMoney(cost(r.items))}</span>
                 </label>
                 <div style={{ display: "flex", flexDirection: "column", borderTop: "1px solid var(--hairline-2)" }}>

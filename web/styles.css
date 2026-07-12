@@ -215,7 +215,7 @@ a { color: inherit; text-decoration: none; }
   gap: 12px;
 }
 .eyebrow::before { content: ""; flex: none; width: 26px; height: 1px; background: currentColor; }
-.eyebrow.jade { color: var(--accent-2); }
+.eyebrow.jade { color: var(--accent-2-ink); }
 .eyebrow.info { color: var(--info); }
 .eyebrow.wasabi { color: var(--chart-ink); }
 

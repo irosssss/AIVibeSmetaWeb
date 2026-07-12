@@ -51,7 +51,7 @@ function PortalCommentThread({ comments, onSend }) {
 function PortalWrap({ children }) {
   return (
     <div className="minh-screen" style={{ background: "var(--bg-base)" }}>
-      <div className="container" style={{ maxWidth: 760, paddingBlock: "clamp(24px,5vh,56px)" }}>{children}</div>
+      <main id="main" className="container" style={{ maxWidth: 760, paddingBlock: "clamp(24px,5vh,56px)" }}>{children}</main>
     </div>
   );
 }
@@ -101,7 +101,7 @@ function ClientPortal({ shareId }) {
       {/* шапка студии — брендинг портала (волна A5): имя студии дизайнера над платформенным лого */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, flexWrap: "wrap", marginBottom: 8 }}>
         <Logo size={24} />
-        <span style={{ fontSize: "var(--fs-12)", fontWeight: 700, letterSpacing: ".04em", textTransform: "uppercase", color: "var(--faint)" }}>Смета на согласование</span>
+        <span style={{ fontSize: "var(--fs-12)", fontWeight: 700, letterSpacing: ".04em", textTransform: "uppercase", color: "var(--muted)" }}>Смета на согласование</span>
       </div>
       {rec.studioName && <div style={{ fontSize: "var(--fs-13)", fontWeight: 700, color: "var(--accent-ink)", marginTop: 14 }}>{rec.studioName}</div>}
       {/* контакты студии (волна W4.1) — снимок на момент публикации ссылки, как и studioName */}
@@ -194,7 +194,7 @@ function ClientPortal({ shareId }) {
         </div>
       </div>
 
-      <p style={{ textAlign: "center", color: "var(--faint)", fontSize: "var(--fs-12)", marginTop: 22, lineHeight: 1.6 }}>
+      <p style={{ textAlign: "center", color: "var(--muted)", fontSize: "var(--fs-12)", marginTop: 22, lineHeight: 1.6 }}>
         {answered > 0 ? "Ваши решения сохранены (" + answered + " из " + itemsCount + "). " : ""}Дизайнер увидит ответы и свяжется с вами. · Design Ledger
       </p>
     </PortalWrap>
