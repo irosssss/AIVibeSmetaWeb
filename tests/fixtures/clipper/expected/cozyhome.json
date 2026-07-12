@@ -7,7 +7,7 @@
   "sku": "703386",
   "brand": null,
   "material": null,
-  "img": null,
+  "img": "https://cozyhome.ru/docs/image/134096.jpg",
   "traps": ["out-of-stock", "price-null"],
-  "notes": "Товар «Нет в наличии» — цена честно null и в dataLayer-JSON ({\"price\":null}), и визуально; плед 200×220см → w/d."
+  "notes": "Товар «Нет в наличии» — цена честно null и в dataLayer-JSON ({\"price\":null}), и визуально; плед 200×220см → w/d. img правлен ревью-раундом 2: в первой разметке ошибочно поставлен null (нет в наличии ≠ нет фото на странице)."
 }

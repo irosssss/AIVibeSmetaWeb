@@ -112,6 +112,23 @@ describe("extractFromHtml — JSON-LD (главный источник)", () => 
     })}</script>`;
     expect(CL.extractFromHtml(h, "https://x.ru").fields.dims.d).toBe(12);
   });
+
+  // Ревью раунда 1 (4 независимых находки): исходный фикс ловил только кириллицу «мм»
+  // с запятой/скобкой перед ней — латиница «mm» и другие разделители (двоеточие/пробел)
+  // проходили мимо и воспроизводили тот же 10-кратный баг.
+  it("additionalProperty: единица в имени латиницей и без запятой («Width, mm» / «Длина мм»)", () => {
+    const h1 = `<script type="application/ld+json">${JSON.stringify({
+      "@type": "Product", name: "Полка", offers: { price: 1000, priceCurrency: "RUB" },
+      additionalProperty: [{ "@type": "PropertyValue", name: "Width, mm", value: "300" }],
+    })}</script>`;
+    expect(CL.extractFromHtml(h1, "https://x.ru").fields.dims.w).toBe(30);
+
+    const h2 = `<script type="application/ld+json">${JSON.stringify({
+      "@type": "Product", name: "Полка", offers: { price: 1000, priceCurrency: "RUB" },
+      additionalProperty: [{ "@type": "PropertyValue", name: "Длина мм", value: "300" }],
+    })}</script>`;
+    expect(CL.extractFromHtml(h2, "https://x.ru").fields.dims.d).toBe(30);
+  });
 });
 
 describe("extractFromHtml — OpenGraph фолбэк", () => {

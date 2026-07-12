@@ -62,12 +62,15 @@ function dimsOk(got, exp) {
   return axes.every((a) => numOk(got[a], exp[a], 1)); // ±1 см (округления текст vs JSON-LD)
 }
 
-const imgOk = (got, exp) => {
-  if (!exp) return true;                              // эталон без фото — поле не оцениваем
+function imgOk(got, exp) {
+  // W6/E1-ревью: было `if (!exp) return true` — эталон img:null (реально «нет фото»,
+  // отличать от отсутствующего поля — см. v.img в judge()) маскировал выдуманное фото,
+  // если структурный слой всё же что-то нашёл. Симметрично dimsOk() ниже.
+  if (!exp) return !got;
   if (!got) return false;
   const tail = (u) => String(u).split("?")[0].split("/").pop();
   return got === exp || (tail(got) && tail(got) === tail(exp));
-};
+}
 
 /* Вердикт по полю: ok | wrong (извлекли, но не то) | miss (пусто, а эталон есть) | n/a */
 export function judge(fields, exp) {
