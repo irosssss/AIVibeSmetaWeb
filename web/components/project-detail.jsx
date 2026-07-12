@@ -285,6 +285,13 @@ function RoomSpecOverlay({ data, nav, onClose }) {
       const next = { ...base, title: d.title, qty: d.qty, price: d.price };
       if (d.cat) next.cat = d.cat; else delete next.cat;
       if (d.sup) next.sup = d.sup; else delete next.sup;
+      // FF&E-детали: пустые не храним (delete), чтобы позиция не таскала "" по схеме;
+      // d.* приходят из PosEditor.draft() (sku/url/material тримнуты, dims/leadWeeks — число или "")
+      if (d.sku) next.sku = d.sku; else delete next.sku;
+      if (d.url) next.url = d.url; else delete next.url;
+      if (d.material) next.material = d.material; else delete next.material;
+      if (d.leadWeeks !== "") next.leadWeeks = d.leadWeeks; else delete next.leadWeeks;
+      if (d.dims && (d.dims.w !== "" || d.dims.d !== "" || d.dims.h !== "")) next.dims = d.dims; else delete next.dims;
       // цену ввели/поменяли руками — значит проверили сейчас, пометка давности обнуляется
       if (ii === -1 || d.price !== base.price) next.priceDate = todayISO();
       // цена изменилась после решения клиента — решение больше не действует (иначе протокол согласования врал бы)
@@ -818,7 +825,21 @@ function RoomSpecOverlay({ data, nav, onClose }) {
                       <React.Fragment key={i}>
                       <div className={flashPos && flashPos.ri === ri && flashPos.ii === i ? "row-flash" : undefined}
                         style={{ display: "flex", alignItems: "baseline", gap: 10, padding: "7px 0", borderTop: i ? "1px solid var(--hairline-2)" : "none", fontSize: "var(--fs-13)" }}>
-                        <span style={{ flex: 1, color: "var(--text)", lineHeight: 1.4 }}>{it.title}{mode === "work" && it.priceDate && <React.Fragment>{" "}<PriceAgeChip d={it.priceDate} note={pastCopyNote(it.priceDate)} /></React.Fragment>}</span>
+                        <span style={{ flex: 1, minWidth: 0, color: "var(--text)", lineHeight: 1.4 }}>
+                          {it.title}{mode === "work" && it.priceDate && <React.Fragment>{" "}<PriceAgeChip d={it.priceDate} note={pastCopyNote(it.priceDate)} /></React.Fragment>}
+                          {(() => {
+                            // мета-строка FF&E-деталей под названием: материал/габариты видны и клиенту,
+                            // артикул/срок — только в рабочей (закупочная деталь). dimsLabel — общий хелпер ffe.js
+                            const dl = FFE && FFE.dimsLabel ? FFE.dimsLabel(it.dims) : "";
+                            const parts = [
+                              mode === "work" && it.sku ? "арт. " + it.sku : null,
+                              it.material || null,
+                              dl || null,
+                              mode === "work" && it.leadWeeks ? it.leadWeeks + " нед." : null,
+                            ].filter(Boolean);
+                            return parts.length ? <div className="mono" style={{ fontSize: "var(--fs-10)", color: "var(--spec-meta)", marginTop: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{parts.join(" · ")}</div> : null;
+                          })()}
+                        </span>
                         <span className="rs-cat" style={{ color: "var(--spec-meta)", whiteSpace: "nowrap", fontSize: "var(--fs-12)", width: 78, textAlign: "right", overflow: "hidden", textOverflow: "ellipsis" }}>{catOf(it)}</span>
                         <span className="mono" style={{ color: "var(--spec-meta)", whiteSpace: "nowrap", width: 34, textAlign: "right", fontSize: "var(--fs-12)" }}>×{qty}</span>
                         <span className="mono rs-unit" style={{ color: "var(--spec-meta)", whiteSpace: "nowrap", width: 88, textAlign: "right", fontSize: "var(--fs-12)" }}>{fmtMoney(mode === "client" ? unitClient(it) : it.price)}</span>
@@ -1557,22 +1578,42 @@ function CommentThreadCard({ group, onReply }) {
    (инвариант UI=PDF=Excel не трогаем). Enter — сохранить, Esc — закрыть
    редактор (не оверлей: stopPropagation до window-слушателя). */
 function PosEditor({ item, cats, sups, isNew, onSave, onDelete, onCancel, library, onToLibrary, posNav }) {
+  const dm = (item && item.dims) || {};
+  const s = (v) => (v == null || v === "" ? "" : String(v));
   const [d, setD] = usePD({
     title: item ? item.title : "",
     cat: (item && item.cat) || "",
     qty: String((item && item.qty) || 1),
     price: item ? String(item.price) : "",
     sup: (item && item.sup) || "",
+    // FF&E-поля (проф-уровень спецификации) — редактируются в блоке «Подробнее»
+    sku: (item && item.sku) || "",
+    url: (item && item.url) || "",
+    material: (item && item.material) || "",
+    dimW: s(dm.w), dimD: s(dm.d), dimH: s(dm.h),
+    leadWeeks: s(item && item.leadWeeks),
   });
+  // «Подробнее» раскрыт сразу, если у позиции уже есть FF&E-детали (правка — не прячем данные)
+  const hasFFE = !!(d.sku || d.url || d.material || d.dimW || d.dimD || d.dimH || d.leadWeeks);
+  const [more, setMore] = usePD(hasFFE);
   // кламп 1–999: реальный fat-finger из проверки — 350 000 «штук» гарнитура
   const qty = Math.max(1, Math.min(999, Math.round(+d.qty || 1)));
   const price = Math.round(+d.price || 0);
   const ok = !!d.title.trim() && price > 0;
-  const draft = () => ({ title: d.title.trim(), qty, price, cat: d.cat.trim(), sup: d.sup.trim() });
+  // габариты/срок: пустая строка → "" (не 0), число → округляем ≥0
+  const nOrEmpty = (v) => { const t = String(v).trim(); return t === "" ? "" : Math.max(0, Math.round(+t || 0)); };
+  const draft = () => ({
+    title: d.title.trim(), qty, price, cat: d.cat.trim(), sup: d.sup.trim(),
+    sku: d.sku.trim(), url: d.url.trim(), material: d.material.trim(),
+    dims: { w: nOrEmpty(d.dimW), d: nOrEmpty(d.dimD), h: nOrEmpty(d.dimH) },
+    leadWeeks: nOrEmpty(d.leadWeeks),
+  });
   const submit = () => { if (ok) onSave(draft()); };
   // W5.3: правил ли пользователь поля (для prev/next: изменённый валидный черновик сохраняем перед переходом)
   const dirty = !!item && (d.title.trim() !== item.title || qty !== (item.qty || 1) || price !== item.price
-    || d.cat.trim() !== (item.cat || "") || d.sup.trim() !== (item.sup || ""));
+    || d.cat.trim() !== (item.cat || "") || d.sup.trim() !== (item.sup || "")
+    || d.sku.trim() !== (item.sku || "") || d.url.trim() !== (item.url || "") || d.material.trim() !== (item.material || "")
+    || d.dimW !== s(dm.w) || d.dimD !== s(dm.d) || d.dimH !== s(dm.h) || d.leadWeeks !== s(item.leadWeeks));
   // dirty, но невалидно (например, стёрли название) — не топим правку молча: держим редактор
   // на месте, пусть починят или явно жмут «Отмена» (кнопки честно обещают «правки сохранятся»)
   const goNav = (j) => {
@@ -1641,6 +1682,44 @@ function PosEditor({ item, cats, sups, isNew, onSave, onDelete, onCancel, librar
           <input style={fld} list="pe-sup-list" value={d.sup} placeholder="точка закупки" onChange={(e) => setD((x) => ({ ...x, sup: e.target.value }))} />
         </label>
       </div>
+
+      {/* FF&E-детали спецификации (артикул/ссылка/материал/габариты/срок) — свёрнуто,
+         чтобы обычный ввод «название+цена» не перегружать; раскрыто, если поля уже есть */}
+      <button type="button" onClick={() => setMore((v) => !v)} aria-expanded={more}
+        style={{ alignSelf: "flex-start", display: "inline-flex", alignItems: "center", gap: 6, background: "none", border: "none", padding: "2px 0", cursor: "pointer", fontSize: "var(--fs-12)", color: "var(--muted)" }}>
+        <I.chevron size={12} stroke={2.2} style={{ transform: more ? "rotate(0deg)" : "rotate(-90deg)", transition: "transform .15s var(--ease-pop)" }} />
+        Подробнее — артикул, материал, габариты, срок
+      </button>
+      {more && (
+        <div className="view-enter" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          <div className="pe-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+            <label style={lab}>Артикул
+              <input style={fld} value={d.sku} placeholder="напр. MIL-3" onChange={(e) => setD((x) => ({ ...x, sku: e.target.value }))} />
+            </label>
+            <label style={lab}>Материал / отделка
+              <input style={fld} value={d.material} placeholder="дуб, велюр, латунь…" onChange={(e) => setD((x) => ({ ...x, material: e.target.value }))} />
+            </label>
+          </div>
+          <label style={lab}>Ссылка на товар
+            <input style={{ ...fld, fontFamily: "var(--font-mono)", fontSize: "var(--fs-12)" }} type="url" inputMode="url" value={d.url} placeholder="https://…" onChange={(e) => setD((x) => ({ ...x, url: e.target.value }))} />
+          </label>
+          <div className="pe-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 96px", gap: 10, alignItems: "end" }}>
+            <label style={lab}>Ширина, см
+              <input style={{ ...fld, fontFamily: "var(--font-mono)" }} type="number" min="0" step="1" inputMode="numeric" value={d.dimW} onChange={(e) => setD((x) => ({ ...x, dimW: e.target.value }))} />
+            </label>
+            <label style={lab}>Глубина, см
+              <input style={{ ...fld, fontFamily: "var(--font-mono)" }} type="number" min="0" step="1" inputMode="numeric" value={d.dimD} onChange={(e) => setD((x) => ({ ...x, dimD: e.target.value }))} />
+            </label>
+            <label style={lab}>Высота, см
+              <input style={{ ...fld, fontFamily: "var(--font-mono)" }} type="number" min="0" step="1" inputMode="numeric" value={d.dimH} onChange={(e) => setD((x) => ({ ...x, dimH: e.target.value }))} />
+            </label>
+            <label style={lab}>Срок, нед.
+              <input style={{ ...fld, fontFamily: "var(--font-mono)" }} type="number" min="0" step="1" inputMode="numeric" value={d.leadWeeks} onChange={(e) => setD((x) => ({ ...x, leadWeeks: e.target.value }))} />
+            </label>
+          </div>
+        </div>
+      )}
+
       <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
         <button className="btn btn-primary" style={{ padding: "8px 14px", fontSize: "var(--fs-13)" }} disabled={!ok} onClick={submit}><I.check size={14} />{isNew ? "Добавить" : "Готово"}</button>
         <button className="btn btn-ghost" style={{ padding: "8px 14px", fontSize: "var(--fs-13)" }} onClick={onCancel}>Отмена</button>
