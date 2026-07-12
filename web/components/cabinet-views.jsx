@@ -476,7 +476,6 @@ function Projects() {
   const [sum, setSum] = useCV(null);          // сводная аналитика
   const [openId, setOpenId] = useCV(() => parseRoute().sub || null);   // открытая деталь проекта (из hash — deep-link/F5)
   const [openNav, setOpenNav] = useCV(() => parseRoute().s2 || "");    // раздел проекта из сайдбара W1: '' | client | procure | versions
-  const [openStyle, setOpenStyle] = useCV(null); // стиль, с которым открыть проект (из квиза)
   const [newOpen, setNewOpen] = useCV(false); // модалка «Новый проект»
   const [quizOpen, setQuizOpen] = useCV(false);
   const [importData, setImportData] = useCV(null); // смета, загруженная из Excel
@@ -497,7 +496,7 @@ function Projects() {
   // терять, либо УЖЕ после подтверждения+сохранения через guardedClose
   // (project-detail.jsx) — повторный вопрос был бы гонкой с эффектом, снимающим
   // window.pdSmetaDirty (setRoomSaving/setRoomSaved ещё не отрисовались к этому тику)
-  const closeProject = () => { setOpenId(null); setOpenStyle(null); refresh(); applyRoute("cabinet", "projects"); };
+  const closeProject = () => { setOpenId(null); refresh(); applyRoute("cabinet", "projects"); };
 
   useCVE(() => {
     refresh();
@@ -513,14 +512,14 @@ function Projects() {
     const onNew = () => setNewOpen(true);   // кнопка «+ Новый проект» из топбара
     window.addEventListener("aivibe:new-project", onNew);
     // back/forward и ручная правка адреса — синхронизируем открытый проект;
-    // закрытие «назад» чистит и стиль квиза, и обновляет список (как closeProject)
+    // закрытие «назад» обновляет список (как closeProject)
     const onHash = () => {
       const r = parseRoute();
       if (r.view !== "cabinet" || r.tab !== "projects") return;
       const sub = r.sub || null;
       setOpenId(sub);
       setOpenNav(r.s2 || "");
-      if (!sub) { setOpenStyle(null); refresh(); }
+      if (!sub) refresh();
     };
     window.addEventListener("hashchange", onHash);
     return () => { window.removeEventListener("aivibe:new-project", onNew); window.removeEventListener("hashchange", onHash); };
@@ -536,7 +535,7 @@ function Projects() {
     const room = (extra && extra.room) || "Гостиная";
     const budget = (extra && extra.budget) || 420000;
     const styleName = QUIZ_STYLE_NAME[styleId] || "";
-    LedgerAPI.projects.create({ name: room + " · " + (styleName || "проект"), room, budget, style: styleName }).then((p) => { markOnboardStep("project"); refresh(); setOpenStyle(styleId); openProject(p.id); });
+    LedgerAPI.projects.create({ name: room + " · " + (styleName || "проект"), room, budget, style: styleName }).then((p) => { markOnboardStep("project"); refresh(); openProject(p.id); });
   };
 
   // импорт сметы из Excel → открываем в той же смете-комплектации (RoomSpecOverlay)
@@ -638,7 +637,7 @@ function Projects() {
         </div>
       )}
 
-      {openId && <ProjectDetail id={openId} nav={openNav} initialStyle={openStyle} onClose={closeProject} />}
+      {openId && <ProjectDetail id={openId} nav={openNav} onClose={closeProject} />}
       {importData && <RoomSpecOverlay data={importData} onClose={() => { setImportData(null); refresh(); }} />}
       {newOpen && <NewProjectModal onClose={() => setNewOpen(false)} onCreate={onCreated} onExample={() => { setNewOpen(false); openProject("p_1"); }} />}
       {quizOpen && <StyleQuiz onClose={() => { setQuizOpen(false); try { localStorage.setItem("aivibe_quiz_done", "1"); } catch (e) {} }} onDone={finishQuiz} />}
