@@ -1,0 +1,13 @@
+{
+  "url": "https://www.kuchenland.ru/product/salatnik-25kh10-sm-2-1-l-steklo-s-zolotistym-kantom-berg/",
+  "title": "Блюдо глубокое, 25х10 см, с золотистым кантом, Berg",
+  "price": 1990,
+  "currency": "RUB",
+  "dims": { "w": 25, "h": 10 },
+  "sku": "284032",
+  "brand": "Berg",
+  "material": "стекло",
+  "img": "/upload/iblock/b13/dgem7wafmp4o3ureuzv5a9x74koirrtw/3ed75b8e_77bc_11ed_a050_9440c9a6d57d_b571ea94_3c9a_11f1_85dc_00165d0a5906.jpg",
+  "traps": [],
+  "notes": "Чистый JSON-LD Product; габариты только в тексте названия «25х10 см» (диаметр×высота для круглого блюда) — структурный слой их не парсит (формат не ШxГxВ), но LLM должен вытащить из title. img правлен ревью-раундом 2: в первой разметке ошибочно поставлен null (фото на странице есть, путь относительный — это то, что реально отдаёт extractFromHtml(); отдельно вниз по цепочке mapToPosition()/safeImg() намеренно отсекает НЕ-абсолютные картинки — тут эталон не про это, он про сам экстрактор)."
+}

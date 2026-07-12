@@ -100,6 +100,35 @@ describe("extractFromHtml — JSON-LD (главный источник)", () => 
     expect(r.fields.title).toBe("Кресло");
     expect(r.fields.price).toBe(32900);
   });
+
+  // Ловушка из живой фикстуры iddis.ru (бенч клиппера, волна E1): единица измерения
+  // зашита в ИМЕНИ additionalProperty («Длина изделия, мм»), а не в значении («124,5»).
+  // Раньше toCm() видел только значение, принимал его за уже-сантиметры и завышал габарит
+  // в 10 раз (125см вместо 12,5).
+  it("additionalProperty: единица в имени поля («Длина изделия, мм»), не в значении", () => {
+    const h = `<script type="application/ld+json">${JSON.stringify({
+      "@type": "Product", name: "Смеситель", offers: { price: 6620, priceCurrency: "RUB" },
+      additionalProperty: [{ "@type": "PropertyValue", name: "Длина изделия, мм", value: "124,5" }],
+    })}</script>`;
+    expect(CL.extractFromHtml(h, "https://x.ru").fields.dims.d).toBe(12);
+  });
+
+  // Ревью раунда 1 (4 независимых находки): исходный фикс ловил только кириллицу «мм»
+  // с запятой/скобкой перед ней — латиница «mm» и другие разделители (двоеточие/пробел)
+  // проходили мимо и воспроизводили тот же 10-кратный баг.
+  it("additionalProperty: единица в имени латиницей и без запятой («Width, mm» / «Длина мм»)", () => {
+    const h1 = `<script type="application/ld+json">${JSON.stringify({
+      "@type": "Product", name: "Полка", offers: { price: 1000, priceCurrency: "RUB" },
+      additionalProperty: [{ "@type": "PropertyValue", name: "Width, mm", value: "300" }],
+    })}</script>`;
+    expect(CL.extractFromHtml(h1, "https://x.ru").fields.dims.w).toBe(30);
+
+    const h2 = `<script type="application/ld+json">${JSON.stringify({
+      "@type": "Product", name: "Полка", offers: { price: 1000, priceCurrency: "RUB" },
+      additionalProperty: [{ "@type": "PropertyValue", name: "Длина мм", value: "300" }],
+    })}</script>`;
+    expect(CL.extractFromHtml(h2, "https://x.ru").fields.dims.d).toBe(30);
+  });
 });
 
 describe("extractFromHtml — OpenGraph фолбэк", () => {
@@ -118,6 +147,17 @@ describe("extractFromHtml — OpenGraph фолбэк", () => {
     expect(r.fields.img).toBe("https://shop.ru/lustra.jpg");
     expect(r.fields.supplier).toBe("СветМаркет");
     expect(r.sources.price).toBe("og");
+  });
+
+  // Ревью раунда 2 (clipper-bench): og:image на citilux.ru пришёл HTML-энтити-кодированным
+  // («?a=1&amp;b=2»), regex-парсер meta-тегов не декодировал — «&amp;» буквально попадал в
+  // URL/заголовок (ломало ссылку на фото). decodeEntities() в metaTags()/titleFromHtml().
+  it("декодирует HTML-сущности в meta-атрибутах (&amp; и т.п.)", () => {
+    const h = `<meta property="og:title" content="Стол &amp; стул, набор &quot;Классика&quot;" />
+      <meta property="og:image" content="https://x.ru/img?a=1&amp;b=2" />`;
+    const r = CL.extractFromHtml(h, "https://x.ru");
+    expect(r.fields.title).toBe('Стол & стул, набор "Классика"');
+    expect(r.fields.img).toBe("https://x.ru/img?a=1&b=2");
   });
 });
 

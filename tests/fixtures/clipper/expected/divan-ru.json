@@ -1,0 +1,13 @@
+{
+  "url": "https://www.divan.ru/product/divan-pryamoj-kirmas-velyur-terrakotovyj",
+  "title": "Диван прямой Кирмас Велюр Терракотовый",
+  "price": 68990,
+  "currency": "RUB",
+  "dims": { "w": 103, "d": 60, "h": 90 },
+  "sku": "317220",
+  "brand": null,
+  "material": "Велюр",
+  "img": null,
+  "traps": ["price-mismatch-meta-vs-actual", "size-price-table", "no-schema"],
+  "notes": "meta og:title/description кэширует старую цену 65990₽, реально отрендеренный data-testid=\"price\" на странице — 68990₽ (взята как истина); рядом в JSON есть таблица габаритов/цен других модульных вариаций дивана — их не путать с базовым товаром (w/d/h взяты из первого блока «Габариты»)."
+}

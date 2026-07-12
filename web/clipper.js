@@ -51,6 +51,15 @@
   const clean = (v) => (v == null ? "" : String(v)).replace(/\s+/g, " ").trim();
   const firstStr = (...xs) => { for (const x of xs) { const s = clean(x); if (s) return s; } return ""; };
 
+  // HTML-сущности в атрибутах (найдено ревью раунда 2, clipper-bench: citilux.ru кладёт
+  // og:image как «...?fileId=108482&amp;productId=...» — атрибут по спецификации HTML
+  // энтити-кодирован, браузер/DOM декодирует его сам; наш regex-парсер meta-тегов — нет,
+  // и «&amp;» буквально попадал в URL/заголовок). Только частые сущности — не полный XML.
+  const decodeEntities = (s) => String(s || "")
+    .replace(/&(amp|lt|gt|quot|apos|nbsp);/g, (_, e) => ({ amp: "&", lt: "<", gt: ">", quot: '"', apos: "'", nbsp: " " }[e]))
+    .replace(/&#(\d+);/g, (_, n) => String.fromCharCode(+n))
+    .replace(/&#x([0-9a-f]+);/gi, (_, h) => String.fromCharCode(parseInt(h, 16)));
+
   // image может быть строкой, массивом, {url}/{contentUrl} или массивом таких
   function pickImage(img) {
     if (!img) return "";
@@ -181,15 +190,30 @@
       dims: { w: toCm(p.width), d: toCm(p.depth), h: toCm(p.height) },
       _category: clean(p.category),
     };
-    // additionalProperty → габариты/материал, если ещё пусто
+    // additionalProperty → габариты/материал, если ещё пусто.
+    // Ловушка (найдена бенчем клиппера, волна E1, iddis.ru): единица измерения иногда
+    // зашита в ИМЕНИ свойства («Длина изделия, мм» / «Length, mm» / «Ширина (mm)»), а не
+    // в значении («124,5») — toCm() смотрит только на значение и по умолчанию считает его
+    // сантиметрами, завышая габарит в 10 раз (кириллица/латиница, запятая/скобка/двоеточие/
+    // пробел перед единицей — все варианты, найденные ревью раунда 1). Если у значения
+    // своей единицы нет — передаём маркер через штатный объектный контракт toCm()
+    // {value, unitText} (тот же, что уже используют JSON-LD QuantitativeValue выше по
+    // файлу), а не строковой склейкой.
+    const UNIT_IN_NAME = /(?:^|[,:(]|\s)(мм|mm)\.?\)?\s*$/i;
+    const withUnit = (name, val) => {
+      if (typeof val !== "string" && typeof val !== "number") return val;
+      if (/мм|mm/i.test(String(val))) return val;          // маркер уже в самом значении
+      if (UNIT_IN_NAME.test(name)) return { value: val, unitText: "мм" };
+      return val;
+    };
     const props = [].concat(p.additionalProperty || []);
     props.forEach((pr) => {
       const name = (clean(pr.name)).toLowerCase();
-      const val = pr.value;
+      const val = withUnit(name, pr.value);
       if (/ширина|width/.test(name) && f.dims.w === "") f.dims.w = toCm(val);
       else if (/глубина|длина|depth|length/.test(name) && f.dims.d === "") f.dims.d = toCm(val);
       else if (/высота|height/.test(name) && f.dims.h === "") f.dims.h = toCm(val);
-      else if (/материал|material/.test(name) && !f.material) f.material = clean(val);
+      else if (/материал|material/.test(name) && !f.material) f.material = clean(pr.value);
     });
     return f;
   }
@@ -203,7 +227,7 @@
       const tag = m[0];
       const key = (tag.match(/\b(?:property|name|itemprop)\s*=\s*["']([^"']+)["']/i) || [])[1];
       const val = (tag.match(/\bcontent\s*=\s*["']([^"']*)["']/i) || [])[1];
-      if (key && val != null) tags[key.toLowerCase()] = val;
+      if (key && val != null) tags[key.toLowerCase()] = decodeEntities(val);
     }
     return tags;
   }
@@ -259,7 +283,7 @@
   function titleFromHtml(html) {
     const h1 = (html.match(/<h1[^>]*>([\s\S]*?)<\/h1>/i) || [])[1];
     const ti = (html.match(/<title[^>]*>([\s\S]*?)<\/title>/i) || [])[1];
-    return clean((h1 || ti || "").replace(/<[^>]+>/g, ""));
+    return clean(decodeEntities((h1 || ti || "").replace(/<[^>]+>/g, "")));
   }
 
   /* ----------------------------- СЛИЯНИЕ ИСТОЧНИКОВ ----------------------------- */

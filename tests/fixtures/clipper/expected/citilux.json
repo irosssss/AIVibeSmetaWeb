@@ -1,0 +1,13 @@
+{
+  "url": "https://citilux.ru/store/cl137151/",
+  "title": "Citilux Ямато CL137151 Люстра потолочная деревянная Чёрная",
+  "price": 12410,
+  "currency": "RUB",
+  "dims": { "w": 50, "h": 18 },
+  "sku": "CL137151",
+  "brand": "Citilux",
+  "material": "Стекло",
+  "img": "https://citilux.ru/api/image?fileId=108482&productId=14072&fieldName=detailPicture&w=558&h=558&format=webp&q=90",
+  "traps": ["no-schema"],
+  "notes": "Нет JSON-LD (только itemprop); диаметр 50см → w, высота 18см → h; материал плафонов — стекло (материал корпуса/арматуры отдельно не проверен). img правлен ревью-раундом 2 дважды: сперва найден null-баг разметки (фото на странице есть), затем найдено, что og:image энтити-кодирован («&amp;») — regex-парсер meta-тегов не декодировал, эталон случайно закреплял битую ссылку как «правильную»; добавлен decodeEntities() в metaTags(), эталон — декодированный URL."
+}
