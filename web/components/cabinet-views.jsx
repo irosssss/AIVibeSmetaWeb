@@ -232,6 +232,84 @@ function TodayWidget({ rows, onOpen }) {
   );
 }
 
+/* ---------------- «РЕШЕНИЯ КЛИЕНТА» + «ПРОБЕЛЫ» (Ч3, адаптация ченджлога Programa 12.07) ----------------
+   Их Pulse: лента «что требует действия» — решения клиента live + карточки
+   «Products missing suppliers / lead time». Наша версия поверх волны C:
+   события порталов всех проектов (решения approve + комментарии клиента,
+   AIVibeFFE.portalEventsFromShare) и пробелы комплектации (collectGaps).
+   Чистые функции от уже загруженных проектов — фетчит вызывающий (Today). */
+function buildClientPulse(projects, fullProjects) {
+  const FFE = window.AIVibeFFE;
+  if (!FFE || !FFE.portalEventsFromShare) return { events: [], gaps: [] };
+  const events = [];
+  (projects || []).forEach((p) => {
+    FFE.loadVersions(p.id).forEach((v) => {
+      if (!v.shareId) return;
+      const sh = FFE.loadPortalShare(v.shareId);
+      if (!sh) return;
+      FFE.portalEventsFromShare(sh).forEach((e) => events.push({ ...e, projectId: p.id, projectName: p.name }));
+    });
+  });
+  // approveAt — дата (YYYY-MM-DD), комментарии — ISO: обе сортируются лексикографически
+  events.sort((a, b) => String(b.at).localeCompare(String(a.at)));
+  const gaps = (fullProjects || [])
+    .map((p) => ({ projectId: p.id, projectName: p.name, ...FFE.collectGaps(p.rooms) }))
+    .filter((g) => g.noSup > 0 || g.noDates > 0);
+  return { events, gaps };
+}
+
+function ClientPulseWidget({ pulse, onOpenVersions, onOpenProcure }) {
+  const FFE = window.AIVibeFFE;
+  if (!FFE || !pulse || (!pulse.events.length && !pulse.gaps.length)) return null;
+  const evMeta = (t) => (t === "comment" ? { label: "Комментарий", color: "var(--info)" } : { label: FFE.approveMeta(t).label, color: FFE.approveMeta(t).color });
+  const shown = pulse.events.slice(0, 6);
+  const gapsShown = pulse.gaps.slice(0, 4);
+  return (
+    <div className="glass" style={{ borderRadius: "var(--r-lg)", padding: "16px 18px", marginBottom: 16 }}>
+      <div style={{ display: "flex", alignItems: "baseline", gap: 9, marginBottom: shown.length || gapsShown.length ? 10 : 0 }}>
+        <I.chat size={16} style={{ color: "var(--accent-2)", position: "relative", top: 1 }} />
+        <span style={{ fontWeight: 800, fontFamily: "var(--font-display)", fontSize: "var(--fs-16)" }}>Решения клиента</span>
+      </div>
+      {shown.length > 0 && (
+        <div style={{ display: "flex", flexDirection: "column" }}>
+          {shown.map((e, i) => {
+            const m = evMeta(e.type);
+            return (
+              <button key={i} onClick={() => onOpenVersions(e.projectId)}
+                style={{ display: "flex", alignItems: "baseline", gap: 10, padding: "7px 0", borderTop: i ? "1px solid var(--hairline-2)" : "none", fontSize: "var(--fs-13)", textAlign: "left", width: "100%" }}>
+                <span aria-hidden="true" style={{ width: 7, height: 7, borderRadius: "50%", background: m.color, flex: "none", alignSelf: "center" }} />
+                <span className="mono" style={{ fontSize: "var(--fs-11)", color: "var(--muted)", flex: "none", width: 40 }}>{fmtDCV(String(e.at).slice(0, 10))}</span>
+                <span style={{ flex: 1, minWidth: 0, color: "var(--text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  <b style={{ fontWeight: 700 }}>{m.label}:</b> {e.title}
+                  {e.type === "comment" && e.text ? <span style={{ color: "var(--muted)" }}> «{e.text}»</span> : ""}
+                  <span style={{ color: "var(--spec-meta)" }}> · {e.projectName}</span>
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      )}
+      {gapsShown.length > 0 && (
+        <div style={{ marginTop: shown.length ? 12 : 0, paddingTop: shown.length ? 10 : 0, borderTop: shown.length ? "1px solid var(--hairline-2)" : "none" }}>
+          <div className="mono" style={{ fontSize: "var(--fs-11)", fontWeight: 700, letterSpacing: ".06em", textTransform: "uppercase", color: "var(--spec-meta)", marginBottom: 6 }}>Пробелы комплектации</div>
+          <div style={{ display: "flex", flexDirection: "column" }}>
+            {gapsShown.map((g, i) => (
+              <button key={g.projectId} onClick={() => onOpenProcure(g.projectId)}
+                style={{ display: "flex", alignItems: "baseline", gap: "4px 10px", flexWrap: "wrap", padding: "6px 0", borderTop: i ? "1px solid var(--hairline-2)" : "none", fontSize: "var(--fs-13)", textAlign: "left", width: "100%" }}>
+                {/* wrap, не ellipsis: на 375px имя проекта сжималось до одной буквы — счётчики уходят на вторую строку */}
+                <span style={{ flex: "1 1 120px", minWidth: 0 }}>{g.projectName}</span>
+                <span className="mono" style={{ flex: "none", fontSize: "var(--fs-12)", color: "var(--muted)", whiteSpace: "nowrap" }}>
+                  {[g.noSup ? g.noSup + " без поставщика" : "", g.noDates ? g.noDates + " без дат закупки" : ""].filter(Boolean).join(" · ")}
+                </span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 /* ---------------- «СЕГОДНЯ» — домашний экран студийного уровня (волна W3.1) ----------------
    Паттерн Programa Pulse: дата+приветствие serif, чек-лист первых шагов, затем очередь
    срочности (TodayWidget переехал сюда с «Проектов» — новый пользователь видит путь,
@@ -292,7 +370,19 @@ function OnboardChecklist({ onNewProject, onOpenProjects, hasProjects }) {
 function Today({ user, onNewProject, onOpenProjects }) {
   const [rows, setRows] = useCV(null);
   const [urgent, setUrgent] = useCV([]);
-  useCVE(() => { AIVibeAPI.projects.list().then((list) => { setRows(list); loadUrgentQueue(list).then(setUrgent); }); }, []);
+  const [pulse, setPulse] = useCV(null);   // Ч3: {events, gaps} | null пока грузится
+  useCVE(() => {
+    AIVibeAPI.projects.list().then((list) => {
+      setRows(list);
+      // полные карточки тянем ОДИН раз на оба виджета (очередь срочности + пульс портала),
+      // не через loadUrgentQueue — иначе 2×N запросов за одними и теми же проектами
+      Promise.all(list.map((p) => AIVibeAPI.projects.get(p.id).catch(() => null))).then((full) => {
+        const fp = full.filter((d) => d && d.rooms);
+        setUrgent(buildUrgentQueue(fp));
+        setPulse(buildClientPulse(list, fp));
+      });
+    });
+  }, []);
   const dateStr = new Date().toLocaleDateString("ru-RU", { weekday: "long", day: "numeric", month: "long" });
   return (
     <div className="reveal in" ref={useReveal()}>
@@ -305,6 +395,11 @@ function Today({ user, onNewProject, onOpenProjects }) {
       <OnboardChecklist onNewProject={onNewProject} onOpenProjects={onOpenProjects} hasProjects={!!(rows && rows.length > 0)} />
       {!rows && <div className="glass skel" style={{ borderRadius: "var(--r-lg)", height: 140 }} />}
       {rows && rows.length > 0 && <TodayWidget rows={urgent} onOpen={(id) => setRoute("cabinet", "projects", id)} />}
+      {rows && rows.length > 0 && (
+        <ClientPulseWidget pulse={pulse}
+          onOpenVersions={(id) => setRoute("cabinet", "projects", id, "versions")}
+          onOpenProcure={(id) => setRoute("cabinet", "projects", id, "procure")} />
+      )}
       {rows && rows.length === 0 && (
         <EmptyState icon="layers" title="Пока нет проектов"
           text="Создайте первый проект — задайте комнату и бюджет, дальше Design Ledger соберёт смету и проверит эргономику."
