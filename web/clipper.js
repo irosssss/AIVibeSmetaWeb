@@ -51,6 +51,15 @@
   const clean = (v) => (v == null ? "" : String(v)).replace(/\s+/g, " ").trim();
   const firstStr = (...xs) => { for (const x of xs) { const s = clean(x); if (s) return s; } return ""; };
 
+  // HTML-сущности в атрибутах (найдено ревью раунда 2, clipper-bench: citilux.ru кладёт
+  // og:image как «...?fileId=108482&amp;productId=...» — атрибут по спецификации HTML
+  // энтити-кодирован, браузер/DOM декодирует его сам; наш regex-парсер meta-тегов — нет,
+  // и «&amp;» буквально попадал в URL/заголовок). Только частые сущности — не полный XML.
+  const decodeEntities = (s) => String(s || "")
+    .replace(/&(amp|lt|gt|quot|apos|nbsp);/g, (_, e) => ({ amp: "&", lt: "<", gt: ">", quot: '"', apos: "'", nbsp: " " }[e]))
+    .replace(/&#(\d+);/g, (_, n) => String.fromCharCode(+n))
+    .replace(/&#x([0-9a-f]+);/gi, (_, h) => String.fromCharCode(parseInt(h, 16)));
+
   // image может быть строкой, массивом, {url}/{contentUrl} или массивом таких
   function pickImage(img) {
     if (!img) return "";
@@ -218,7 +227,7 @@
       const tag = m[0];
       const key = (tag.match(/\b(?:property|name|itemprop)\s*=\s*["']([^"']+)["']/i) || [])[1];
       const val = (tag.match(/\bcontent\s*=\s*["']([^"']*)["']/i) || [])[1];
-      if (key && val != null) tags[key.toLowerCase()] = val;
+      if (key && val != null) tags[key.toLowerCase()] = decodeEntities(val);
     }
     return tags;
   }
@@ -274,7 +283,7 @@
   function titleFromHtml(html) {
     const h1 = (html.match(/<h1[^>]*>([\s\S]*?)<\/h1>/i) || [])[1];
     const ti = (html.match(/<title[^>]*>([\s\S]*?)<\/title>/i) || [])[1];
-    return clean((h1 || ti || "").replace(/<[^>]+>/g, ""));
+    return clean(decodeEntities((h1 || ti || "").replace(/<[^>]+>/g, "")));
   }
 
   /* ----------------------------- СЛИЯНИЕ ИСТОЧНИКОВ ----------------------------- */

@@ -148,6 +148,17 @@ describe("extractFromHtml — OpenGraph фолбэк", () => {
     expect(r.fields.supplier).toBe("СветМаркет");
     expect(r.sources.price).toBe("og");
   });
+
+  // Ревью раунда 2 (clipper-bench): og:image на citilux.ru пришёл HTML-энтити-кодированным
+  // («?a=1&amp;b=2»), regex-парсер meta-тегов не декодировал — «&amp;» буквально попадал в
+  // URL/заголовок (ломало ссылку на фото). decodeEntities() в metaTags()/titleFromHtml().
+  it("декодирует HTML-сущности в meta-атрибутах (&amp; и т.п.)", () => {
+    const h = `<meta property="og:title" content="Стол &amp; стул, набор &quot;Классика&quot;" />
+      <meta property="og:image" content="https://x.ru/img?a=1&amp;b=2" />`;
+    const r = CL.extractFromHtml(h, "https://x.ru");
+    expect(r.fields.title).toBe('Стол & стул, набор "Классика"');
+    expect(r.fields.img).toBe("https://x.ru/img?a=1&b=2");
+  });
 });
 
 describe("extractFromHtml — фолбэки и эвристики", () => {
