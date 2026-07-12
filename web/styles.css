@@ -396,25 +396,15 @@ a { color: inherit; text-decoration: none; }
 .arch-node { transition: transform .25s, border-color .25s; }
 .arch-node:hover { transform: translateX(4px); }
 
-/* ---- "Как это работает" — мобильный свайп-степпер (scroll-snap) ---- */
-.how-scroller {
-  display: grid; grid-auto-flow: column; grid-auto-columns: 100%;
-  gap: 16px; overflow-x: auto; overscroll-behavior-x: contain;
-  scroll-snap-type: x mandatory; -webkit-overflow-scrolling: touch;
-  scrollbar-width: none; margin-top: 28px;
-}
-.how-scroller::-webkit-scrollbar { display: none; }
-.how-slide { scroll-snap-align: center; display: flex; flex-direction: column; gap: 16px; }
-.how-dots { display: flex; gap: 4px; justify-content: center; margin-top: 22px; }
-.how-dots button { height: 26px; display: flex; align-items: center; padding: 0 5px; background: none; }
-.how-dots button i { display: block; width: 28px; height: 8px; border-radius: 99px; background: var(--surface-2); transform: scaleX(0.286); transform-origin: left; transition: transform .35s var(--ease), background .35s; }
-.how-dots button.on i { transform: scaleX(1); background: var(--accent); }
+/* ---- "Как это работает" — статичная сетка 7 шагов + CTA-ячейка ---- */
+.how-static { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; margin-top: 44px; }
+@media (max-width: 860px) { .how-static { grid-template-columns: 1fr; } }
 
 /* ---- Responsive ---- */
 /* грид-колонки hero не должны расти от min-content детей (моно-подпись/плита) */
 .hero-grid > * { min-width: 0; }
 @media (max-width: 1000px) {
-  .hero-grid, .how-grid, .github-grid { grid-template-columns: 1fr !important; }
+  .hero-grid, .github-grid { grid-template-columns: 1fr !important; }
   .hero-visual { height: 440px !important; }
   .bento { grid-template-columns: repeat(2, 1fr); }
   .bento-card.b-lg { grid-column: span 2 !important; grid-row: span 2 !important; }

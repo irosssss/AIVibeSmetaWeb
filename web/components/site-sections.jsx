@@ -1,21 +1,17 @@
 /* ============================================================
    Design Ledger — секции промо-сайта (часть 2)
-   How-it-works (sticky scroll-сторителлинг) · Bento · Новости ·
+   How-it-works (статичная сетка шагов) · Bento · Новости ·
    GitHub · Footer
    ============================================================ */
-const { useState: useS2, useEffect: useE2, useRef: useR2 } = React;
+const { useState: useS2, useEffect: useE2 } = React;
 
 // единая точка канона наценки (web/ffe.js) — не дублировать литерал 25 по файлам
 const S2_DEFAULT_MARKUP = (window.AIVibeFFE && window.AIVibeFFE.DEFAULT_MARKUP_PCT) || 25;
 
-const prefersReduced = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-/* На телефоне/планшете «приколотый» скролл-сторителлинг рвётся и тяжёл —
-   там показываем секцию статично (как при reduce-motion). */
-const narrowVP = window.matchMedia && window.matchMedia("(max-width: 860px)").matches;
-const staticHow = prefersReduced || narrowVP;
-
 /* --------------------------------------------------------------
-   HOW IT WORKS — sticky-сцена, прогресс ведётся скроллом
+   HOW IT WORKS — статичная сетка 7 шагов (реш. владельца 12.07:
+   sticky-скролл-сторителлинг убран — «прибитая» сцена на 6.5 экранов
+   глючила и по сути ничего не показывала; весь путь читается сразу)
 -------------------------------------------------------------- */
 /* нумерованный путь 01–07 (рецепт Programa: Client Dashboard/Procurement/Library
    на страницах фич — mono-номер + глагол + сцена); лендинг-версия «пути сметы»,
@@ -31,242 +27,49 @@ const STEPS = [
   { n: "06", icon: I.truck,  lot: null,          tag: "Закупка · сроки",       title: "Закупка идёт по датам — ничего не теряется", text: "Стадии заказ → отгрузка → доставка → монтаж, платежи клиенту и поставщику по датам, трек-номера отправлений — видно на одном столе комплектатора." },
   { n: "07", icon: I.download, lot: null,        tag: "Сдача проекта",         title: "Сдаёте проект — клиент получает документы", text: "Протокол согласования, спецификация, закупочный лист — единым пакетом. Проект уходит в архив, история остаётся в кабинете." },
 ];
-const STEP_VH = 94; /* высота скролл-сцены на шаг (было 108 при 5 шагах — при 7 шагах снижена, чтобы вся секция не растягивалась на 7.5 экрана) */
-
-/* глиф шага: активный — Lottie line-art на бумажном квадрате; иначе статичная иконка */
-function StepGlyph({ step, on }) {
-  const box = { flex: "none", width: 44, height: 44, borderRadius: 12, display: "grid", placeItems: "center", transition: "all .45s" };
-  if (on) return (
-    <div style={{ ...box, background: "var(--surface)", border: "1px solid rgba(94,107,91,.4)", boxShadow: "var(--shadow-card)" }}>
-      <Lottie name={step.lot} ariaLabel="" fallback={<step.icon size={22} style={{ color: "var(--accent-2)" }} />} style={{ width: 34, height: 34 }} />
+/* глиф шага: Lottie line-art на бумажном квадрате (играет по видимости),
+   для шагов без анимации — статичная иконка тем же кеглем */
+function StepGlyph({ step }) {
+  return (
+    <div style={{ flex: "none", width: 44, height: 44, borderRadius: 12, display: "grid", placeItems: "center", background: "var(--surface)", border: "1px solid rgba(94,107,91,.4)", boxShadow: "var(--shadow-card)" }}>
+      {step.lot
+        ? <Lottie name={step.lot} ariaLabel="" fallback={<step.icon size={22} style={{ color: "var(--accent-2)" }} />} style={{ width: 34, height: 34 }} />
+        : <step.icon size={22} style={{ color: "var(--accent-2)" }} />}
     </div>
   );
-  return <div style={{ ...box, background: "var(--surface-2)", color: "var(--muted)" }}><step.icon size={21} /></div>;
 }
 
-/* роутер: на узких экранах — свайп-степпер, иначе — sticky-сторителлинг */
-function HowItWorks() {
-  return narrowVP ? <HowMobile /> : <HowDesktop />;
-}
-
-function HowDesktop() {
-  const wrapRef = useR2(null);
-  const [p, setP] = useS2(0); // 0..1 прогресс по секции
-
-  useE2(() => {
-    if (prefersReduced) { setP(0.5); return; }
-    let raf = 0;
-    const onScroll = () => {
-      cancelAnimationFrame(raf);
-      raf = requestAnimationFrame(() => {
-        const el = wrapRef.current; if (!el) return;
-        const rect = el.getBoundingClientRect();
-        const total = el.offsetHeight - window.innerHeight;
-        const prog = Math.min(1, Math.max(0, -rect.top / total));
-        setP(prog);
-      });
-    };
-    onScroll();
-    window.addEventListener("scroll", onScroll, { passive: true });
-    window.addEventListener("resize", onScroll);
-    return () => { window.removeEventListener("scroll", onScroll); window.removeEventListener("resize", onScroll); cancelAnimationFrame(raf); };
-  }, []);
-
-  const N = STEPS.length;
-  const active = Math.min(N - 1, Math.floor(p * N + (prefersReduced ? 0 : 0.0001)));
-  const sub = Math.min(1, (p * N) - active); // прогресс внутри активного шага
-
+function HowItWorks({ go }) {
+  const ref = useReveal();
   return (
-    <section id="how" ref={wrapRef} style={{ position: "relative", height: prefersReduced ? "auto" : (N * STEP_VH) + "vh" }}>
-      <div className="minh-screen" style={{ position: prefersReduced ? "static" : "sticky", top: 0, minHeight: prefersReduced ? "auto" : undefined, display: "flex", alignItems: "center", paddingBlock: "clamp(60px,10vh,110px)" }}>
-        <div className="container how-grid" style={{ display: "grid", gridTemplateColumns: "0.92fr 1.08fr", gap: "clamp(32px,5vw,72px)", width: "min(var(--maxw),100% - var(--gutter)*2)", alignItems: "center" }}>
-          {/* левая колонка — шаги */}
+    <section id="how" style={{ paddingBlock: "clamp(70px,10vh,120px)" }} ref={ref}>
+      <div className="container reveal">
+        <div className="catsec-head">
           <div>
-            <div className="eyebrow jade" style={{ marginBottom: 18 }}>КАК ЭТО РАБОТАЕТ</div>
-            <h2 className="display" style={{ fontSize: "clamp(34px,4.4vw,60px)" }}>От пустой комнаты<br />до сданного проекта</h2>
-            <p style={{ color: "var(--muted)", fontSize: "var(--fs-15)", marginTop: 14, marginBottom: 36 }}>Смета — собрана. Наценка — скрыта. Клиент — согласовал. Закупка — под контролем.</p>
-            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-              {STEPS.map((s, i) => {
-                const on = i === active;
-                return (
-                  <div key={s.n} className="glass" style={{ borderRadius: "var(--r-lg)", padding: "20px 22px", display: "flex", gap: 16,
-                    borderColor: on ? "rgba(94,107,91,.5)" : "var(--hairline)",
-                    background: on ? "var(--accent-2-tint)" : "var(--surface)",
-                    boxShadow: on ? "var(--shadow-card)" : "none",
-                    opacity: on ? 1 : 0.55, transition: "all .45s ease" }}>
-                    <StepGlyph step={s} on={on} />
-                    <div>
-                      <div style={{ display: "flex", gap: 9, alignItems: "baseline", marginBottom: 4 }}>
-                        <span className="mono" style={{ fontSize: "var(--fs-13)", fontWeight: 500, color: on ? "var(--accent-2)" : "var(--faint)" }}>{s.n}</span>
-                        <span style={{ fontWeight: 700, fontSize: "var(--fs-16)" }}>{s.tag}</span>
-                      </div>
-                      <p style={{ fontSize: "var(--fs-14)", color: "var(--muted)", lineHeight: 1.55 }}>{on ? s.title : s.text}</p>
-                      {on && !prefersReduced && (
-                        <div style={{ height: 3, borderRadius: 9, background: "var(--surface-2)", marginTop: 12, overflow: "hidden" }}>
-                          <div style={{ height: "100%", width: sub * 100 + "%", background: "var(--accent-2)" }} />
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
+            <div className="eyebrow jade">КАК ЭТО РАБОТАЕТ</div>
+            <h2 className="display" style={{ fontSize: "clamp(30px,4vw,50px)", marginTop: 14 }}>От пустой комнаты<br />до сданного проекта</h2>
           </div>
-          {/* правая колонка — эволюционирующая сцена */}
-          <DemoStage active={active} sub={sub} />
+          <p style={{ color: "var(--muted)", maxWidth: 340, fontSize: "var(--fs-14)" }}>Смета — собрана. Наценка — скрыта. Клиент — согласовал. Закупка — под контролем.</p>
         </div>
-      </div>
-    </section>
-  );
-}
-
-/* мобильный свайп-степпер: слайд на каждый шаг STEPS, демо-сцена заморожена на своём шаге */
-function HowMobile() {
-  const scRef = useR2(null);
-  const [idx, setIdx] = useS2(0);
-  const onScroll = () => {
-    const el = scRef.current; if (!el) return;
-    const i = Math.round(el.scrollLeft / el.clientWidth);
-    setIdx((prev) => (prev !== i ? i : prev));
-  };
-  const goto = (i) => {
-    const el = scRef.current; if (!el) return;
-    el.scrollTo({ left: i * el.clientWidth, behavior: motionOK() ? "smooth" : "auto" });
-  };
-  return (
-    <section id="how" style={{ paddingBlock: "clamp(56px,9vh,90px)" }}>
-      <div className="container">
-        <div className="eyebrow jade" style={{ marginBottom: 16 }}>КАК ЭТО РАБОТАЕТ</div>
-        <h2 className="display" style={{ fontSize: "clamp(30px,8vw,44px)" }}>От пустой комнаты<br />до сданного проекта</h2>
-        <p style={{ color: "var(--muted)", fontSize: "var(--fs-14)", marginTop: 12 }}>Смета — собрана. Наценка — скрыта. Клиент — согласовал. Закупка — под контролем.</p>
-
-        <div ref={scRef} onScroll={onScroll} className="how-scroller" style={{ marginTop: 16 }}>
-          {STEPS.map((s, i) => (
-            <div key={s.n} className="how-slide">
-              <DemoStage active={i} sub={1} />
-              <div className="glass" style={{ borderRadius: "var(--r-lg)", padding: "18px 20px", display: "flex", gap: 15,
-                borderColor: "rgba(94,107,91,.45)", background: "rgba(94,107,91,.07)" }}>
-                <StepGlyph step={s} on={true} />
-                <div>
-                  <div style={{ display: "flex", gap: 9, alignItems: "baseline", marginBottom: 4 }}>
-                    <span className="mono" style={{ fontSize: "var(--fs-13)", fontWeight: 500, color: "var(--accent-2)" }}>{s.n}</span>
-                    <span style={{ fontWeight: 700, fontSize: "var(--fs-16)" }}>{s.tag}</span>
-                  </div>
-                  <p style={{ fontSize: "var(--fs-14)", color: "var(--muted)", lineHeight: 1.55 }}>{s.title}</p>
-                </div>
+        <div className="how-static">
+          {STEPS.map((s) => (
+            <div key={s.n} className="glass" style={{ borderRadius: "var(--r-lg)", padding: "20px 22px", display: "flex", gap: 16, alignItems: "flex-start" }}>
+              <StepGlyph step={s} />
+              <div>
+                <div className="mono" style={{ fontSize: "var(--fs-12)", fontWeight: 500, letterSpacing: ".06em", color: "var(--accent-2)", marginBottom: 6 }}>{s.n} · {s.tag}</div>
+                <div style={{ fontWeight: 700, fontSize: "var(--fs-16)", lineHeight: 1.35 }}>{s.title}</div>
+                <p style={{ fontSize: "var(--fs-14)", color: "var(--muted)", lineHeight: 1.55, marginTop: 6 }}>{s.text}</p>
               </div>
             </div>
           ))}
-        </div>
-
-        <div className="how-dots" role="tablist" aria-label="Шаги">
-          {STEPS.map((s, i) => (
-            <button key={s.n} className={i === idx ? "on" : ""} aria-label={`Шаг ${s.n}: ${s.tag}`} aria-selected={i === idx} role="tab" onClick={() => goto(i)}><i /></button>
-          ))}
+          {/* 8-я ячейка добивает сетку 2×4 и закрывает путь конверсией */}
+          <div className="glass" style={{ borderRadius: "var(--r-lg)", padding: "20px 22px", display: "flex", flexDirection: "column", justifyContent: "center", gap: 14, borderColor: "rgba(183,80,44,.4)", background: "rgba(183,80,44,.05)" }}>
+            <div style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: "var(--fs-21)", lineHeight: 1.3 }}>Весь путь — в одном кабинете, без вечера в Excel</div>
+            <button className="btn btn-primary" style={{ alignSelf: "flex-start" }} onClick={() => go && go("auth")}>Собрать первую смету — бесплатно</button>
+          </div>
         </div>
       </div>
     </section>
-  );
-}
-
-/* центральная сцена: скан → позиция+нормы → наценка/две цены → PDF клиенту → согласование → закупка → сдача
-   (нумерованный путь 01–07, синхронизирован с STEPS) */
-function DemoStage({ active, sub }) {
-  const scanFill = active === 0 ? sub : 1;
-  const bottomPanel = (i, extra) => ({ position: "absolute", left: 18, right: 18, bottom: 18,
-    opacity: active === i ? 1 : 0, transform: active === i ? "none" : "translateY(14px)", transition: "all .5s", pointerEvents: "none", ...extra });
-  return (
-    <div className="glass" style={{ position: "relative", borderRadius: "var(--r-xl)", overflow: "hidden", aspectRatio: "4/3.4", boxShadow: "var(--shadow-pop)" }}>
-      <Img src={PHOTOS.living} label="фото интерьера" />
-      <div style={{ position: "absolute", inset: 0, background: "linear-gradient(180deg, rgba(46,42,38,.10), rgba(46,42,38,.5))" }} />
-
-      {/* СТАДИЯ 0 — скан (терракота) */}
-      <div style={{ position: "absolute", inset: 0, opacity: active === 0 ? 1 : 0.25, transition: "opacity .5s" }}>
-        <div style={{ position: "absolute", inset: 0, backgroundImage: "linear-gradient(rgba(183,80,44,.30) 1px,transparent 1px),linear-gradient(90deg,rgba(183,80,44,.30) 1px,transparent 1px)", backgroundSize: "30px 30px",
-          clipPath: `inset(0 ${(1 - scanFill) * 100}% 0 0)`, transition: "clip-path .2s linear" }} />
-        <div style={{ position: "absolute", top: 0, bottom: 0, left: scanFill * 100 + "%", width: 2, background: "var(--accent)", boxShadow: "0 0 22px var(--accent)", opacity: active === 0 ? 1 : 0 }} />
-      </div>
-
-      {/* СТАДИЯ 1 — позиция добавлена в смету, эргономика проверена рядом */}
-      <div style={{ ...bottomPanel(1), display: "flex", flexDirection: "column", gap: 10 }}>
-        <div className="glass" style={{ padding: "13px 16px", borderRadius: 14, display: "flex", alignItems: "center", gap: 12, boxShadow: "var(--shadow-card)" }}>
-          <span style={{ flex: "none", width: 34, height: 34, borderRadius: 9, background: "var(--surface-2)", display: "grid", placeItems: "center", color: "var(--accent-2)" }}><I.check size={17} /></span>
-          <div>
-            <div style={{ fontSize: "var(--fs-13)", fontWeight: 600 }}>Кресло лаунж, дуб/букле</div>
-            <div className="mono" style={{ fontSize: "var(--fs-11)", color: "var(--spec-meta)", marginTop: 2 }}>KR-118 · добавлено в смету</div>
-          </div>
-        </div>
-        <div className="glass" style={{ alignSelf: "flex-start", padding: "8px 13px", borderRadius: 10, fontSize: "var(--fs-12)", fontWeight: 600, display: "flex", alignItems: "center", gap: 7, borderColor: "rgba(94,107,91,.55)" }}>
-          <I.ruler size={14} style={{ color: "var(--accent-2)" }} /> проход 92 см <span className="mono" style={{ fontSize: "var(--fs-10)", color: "var(--accent-2)" }}>в норме</span>
-        </div>
-      </div>
-
-      {/* СТАДИЯ 2 — наценка и две цены */}
-      <div style={{ ...bottomPanel(2), display: "flex", flexDirection: "column", gap: 10 }}>
-        <div style={{ display: "flex", gap: 10 }}>
-          <div className="glass" style={{ flex: 1, padding: "12px 14px", borderRadius: 14, opacity: .6 }}>
-            <span className="mono" style={{ display: "block", fontSize: "var(--fs-10)", letterSpacing: ".06em", color: "var(--spec-meta)" }}>СЕБЕСТОИМОСТЬ</span>
-            <div className="mono" style={{ fontSize: "var(--fs-14)", fontWeight: 600, marginTop: 4 }}>2 689 000 ₽</div>
-          </div>
-          <div className="glass" style={{ flex: 1, padding: "12px 14px", borderRadius: 14, borderColor: "rgba(183,80,44,.4)", boxShadow: "var(--shadow-card)" }}>
-            <span className="mono" style={{ display: "block", fontSize: "var(--fs-10)", letterSpacing: ".06em", color: "var(--accent-ink)" }}>ЦЕНА КЛИЕНТУ</span>
-            <div className="mono" style={{ fontSize: "var(--fs-16)", fontWeight: 700, marginTop: 4 }}>3 550 000 ₽</div>
-          </div>
-        </div>
-        <div className="mono" style={{ fontSize: "var(--fs-11)", color: "var(--accent-2-ink)", textAlign: "center" }}>наценка +32% · прибыль 861 000 ₽</div>
-      </div>
-
-      {/* СТАДИЯ 3 — PDF клиенту (без себестоимости и наценки) */}
-      <div className="glass" style={{ ...bottomPanel(3, { padding: "14px 16px", borderRadius: 14, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, boxShadow: "var(--shadow-card)" }) }}>
-        <div>
-          <div style={{ fontSize: "var(--fs-13)", fontWeight: 600 }}>Смета-комплектация.pdf</div>
-          <div className="mono" style={{ fontSize: "var(--fs-11)", color: "var(--spec-meta)", marginTop: 2 }}>только цена клиенту · без наценки</div>
-        </div>
-        <span className="mono" style={{ fontSize: "var(--fs-11)", fontWeight: 600, color: "var(--accent-2-ink)", display: "flex", alignItems: "center", gap: 5, flex: "none" }}><I.check size={14} /> отправлено</span>
-      </div>
-
-      {/* СТАДИЯ 4 — согласование в клиентском портале */}
-      <div style={{ ...bottomPanel(4), display: "flex", flexDirection: "column", gap: 10 }}>
-        <div className="glass" style={{ alignSelf: "flex-start", maxWidth: "85%", padding: "11px 15px", borderRadius: "16px 16px 16px 4px", fontSize: "var(--fs-13)", boxShadow: "var(--shadow-card)" }}>
-          <span className="mono" style={{ display: "block", color: "var(--accent-2)", fontWeight: 500, fontSize: "var(--fs-11)", letterSpacing: ".06em", marginBottom: 5 }}>КЛИЕНТ · ПОРТАЛ</span>
-          Кресло лаунж — можно светлее обивку?
-        </div>
-        <div className="glass" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 15px", borderRadius: 12, borderColor: "rgba(94,107,91,.5)" }}>
-          <span style={{ fontSize: "var(--fs-12)", fontWeight: 600 }}>Статус позиции</span>
-          <span className="mono" style={{ fontSize: "var(--fs-11)", fontWeight: 600, color: "var(--accent-2-ink)" }}>Согласовано</span>
-        </div>
-      </div>
-
-      {/* СТАДИЯ 5 — закупка: сроки и трек-номер (волна C, «Сегодня в работе») */}
-      <div style={{ ...bottomPanel(5), display: "flex", flexDirection: "column", gap: 10 }}>
-        <div className="glass" style={{ padding: "13px 16px", borderRadius: 14, display: "flex", alignItems: "center", gap: 12, boxShadow: "var(--shadow-card)" }}>
-          <span style={{ flex: "none", width: 34, height: 34, borderRadius: 9, background: "var(--surface-2)", display: "grid", placeItems: "center", color: "var(--accent-ink)" }}><I.truck size={17} /></span>
-          <div>
-            <div style={{ fontSize: "var(--fs-13)", fontWeight: 600 }}>Аванс поставщику — сегодня</div>
-            <div className="mono" style={{ fontSize: "var(--fs-11)", color: "var(--spec-meta)", marginTop: 2 }}>трек ЛП-4412 · в пути</div>
-          </div>
-        </div>
-        <div className="glass" style={{ alignSelf: "flex-start", padding: "8px 13px", borderRadius: 10, fontSize: "var(--fs-12)", fontWeight: 600, display: "flex", alignItems: "center", gap: 7, borderColor: "rgba(183,80,44,.5)" }}>
-          <I.wallet size={14} style={{ color: "var(--accent-ink)" }} /> «Сегодня в работе» <span className="mono" style={{ fontSize: "var(--fs-10)", color: "var(--accent-ink)" }}>2 платежа</span>
-        </div>
-      </div>
-
-      {/* СТАДИЯ 6 — сдача: пакет документов клиенту */}
-      <div className="glass" style={{ ...bottomPanel(6, { padding: "14px 16px", borderRadius: 14, display: "flex", flexDirection: "column", gap: 10, boxShadow: "var(--shadow-card)" }) }}>
-        {[["Смета-комплектация.pdf"], ["Протокол согласования.pdf"], ["Закупочный лист.xlsx"]].map(([name], i) => (
-          <div key={i} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
-            <span style={{ fontSize: "var(--fs-13)", fontWeight: 600 }}>{name}</span>
-            <span className="mono" style={{ fontSize: "var(--fs-11)", fontWeight: 600, color: "var(--accent-2-ink)", display: "flex", alignItems: "center", gap: 5, flex: "none" }}><I.check size={13} /> готово</span>
-          </div>
-        ))}
-      </div>
-
-      {/* верхний статус-бар сцены */}
-      <div className="glass" style={{ position: "absolute", top: 16, left: 16, padding: "8px 14px", borderRadius: 99, fontSize: "var(--fs-12)", fontWeight: 700, display: "flex", alignItems: "center", gap: 9, boxShadow: "var(--shadow-card)" }}>
-        <span style={{ width: 8, height: 8, borderRadius: "50%", background: "var(--accent)" }} />
-        {STEPS[active].tag}
-      </div>
-    </div>
   );
 }
 

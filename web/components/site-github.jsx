@@ -100,7 +100,7 @@ function SitePage({ go }) {
         <WhoFor />
         <InlineCta go={go} text="Хотите смету по своему проекту?" sub="Первая — бесплатно, без карты" />
         <SocialProof />
-        <HowItWorks />
+        <HowItWorks go={go} />
         <ClientPortalPromo />
         <InlineCta go={go} text="Согласование — без вотсапа и созвонов" sub="Клиентский портал входит в любой тариф" />
         <Bento />
