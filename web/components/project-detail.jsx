@@ -286,10 +286,11 @@ function RoomSpecOverlay({ data, nav, onClose }) {
       if (d.cat) next.cat = d.cat; else delete next.cat;
       if (d.sup) next.sup = d.sup; else delete next.sup;
       // FF&E-детали: пустые не храним (delete), чтобы позиция не таскала "" по схеме;
-      // d.* приходят из PosEditor.draft() (sku/url/material тримнуты, dims/leadWeeks — число или "")
+      // d.* приходят из PosEditor.draft() (sku/url/material/img тримнуты, dims/leadWeeks — число или "")
       if (d.sku) next.sku = d.sku; else delete next.sku;
       if (d.url) next.url = d.url; else delete next.url;
       if (d.material) next.material = d.material; else delete next.material;
+      if (d.img) next.img = d.img; else delete next.img;
       if (d.leadWeeks !== "") next.leadWeeks = d.leadWeeks; else delete next.leadWeeks;
       if (d.dims && (d.dims.w !== "" || d.dims.d !== "" || d.dims.h !== "")) next.dims = d.dims; else delete next.dims;
       // цену ввели/поменяли руками — значит проверили сейчас, пометка давности обнуляется
@@ -1590,11 +1591,12 @@ function PosEditor({ item, cats, sups, isNew, onSave, onDelete, onCancel, librar
     sku: (item && item.sku) || "",
     url: (item && item.url) || "",
     material: (item && item.material) || "",
+    img: (item && item.img) || "",
     dimW: s(dm.w), dimD: s(dm.d), dimH: s(dm.h),
     leadWeeks: s(item && item.leadWeeks),
   });
   // «Подробнее» раскрыт сразу, если у позиции уже есть FF&E-детали (правка — не прячем данные)
-  const hasFFE = !!(d.sku || d.url || d.material || d.dimW || d.dimD || d.dimH || d.leadWeeks);
+  const hasFFE = !!(d.sku || d.url || d.material || d.img || d.dimW || d.dimD || d.dimH || d.leadWeeks);
   const [more, setMore] = usePD(hasFFE);
   // кламп 1–999: реальный fat-finger из проверки — 350 000 «штук» гарнитура
   const qty = Math.max(1, Math.min(999, Math.round(+d.qty || 1)));
@@ -1604,7 +1606,7 @@ function PosEditor({ item, cats, sups, isNew, onSave, onDelete, onCancel, librar
   const nOrEmpty = (v) => { const t = String(v).trim(); return t === "" ? "" : Math.max(0, Math.round(+t || 0)); };
   const draft = () => ({
     title: d.title.trim(), qty, price, cat: d.cat.trim(), sup: d.sup.trim(),
-    sku: d.sku.trim(), url: d.url.trim(), material: d.material.trim(),
+    sku: d.sku.trim(), url: d.url.trim(), material: d.material.trim(), img: d.img.trim(),
     dims: { w: nOrEmpty(d.dimW), d: nOrEmpty(d.dimD), h: nOrEmpty(d.dimH) },
     leadWeeks: nOrEmpty(d.leadWeeks),
   });
@@ -1613,6 +1615,7 @@ function PosEditor({ item, cats, sups, isNew, onSave, onDelete, onCancel, librar
   const dirty = !!item && (d.title.trim() !== item.title || qty !== (item.qty || 1) || price !== item.price
     || d.cat.trim() !== (item.cat || "") || d.sup.trim() !== (item.sup || "")
     || d.sku.trim() !== (item.sku || "") || d.url.trim() !== (item.url || "") || d.material.trim() !== (item.material || "")
+    || d.img.trim() !== (item.img || "")
     || d.dimW !== s(dm.w) || d.dimD !== s(dm.d) || d.dimH !== s(dm.h) || d.leadWeeks !== s(item.leadWeeks));
   // dirty, но невалидно (например, стёрли название) — не топим правку молча: держим редактор
   // на месте, пусть починят или явно жмут «Отмена» (кнопки честно обещают «правки сохранятся»)
@@ -1688,7 +1691,7 @@ function PosEditor({ item, cats, sups, isNew, onSave, onDelete, onCancel, librar
       <button type="button" onClick={() => setMore((v) => !v)} aria-expanded={more}
         style={{ alignSelf: "flex-start", display: "inline-flex", alignItems: "center", gap: 6, background: "none", border: "none", padding: "2px 0", cursor: "pointer", fontSize: "var(--fs-12)", color: "var(--muted)" }}>
         <I.chevron size={12} stroke={2.2} style={{ transform: more ? "rotate(0deg)" : "rotate(-90deg)", transition: "transform .15s var(--ease-pop)" }} />
-        Подробнее — артикул, материал, габариты, срок
+        Подробнее — фото, артикул, материал, габариты, срок
       </button>
       {more && (
         <div className="view-enter" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
@@ -1702,6 +1705,9 @@ function PosEditor({ item, cats, sups, isNew, onSave, onDelete, onCancel, librar
           </div>
           <label style={lab}>Ссылка на товар
             <input style={{ ...fld, fontFamily: "var(--font-mono)", fontSize: "var(--fs-12)" }} type="url" inputMode="url" value={d.url} placeholder="https://…" onChange={(e) => setD((x) => ({ ...x, url: e.target.value }))} />
+          </label>
+          <label style={lab}>Фото (ссылка на изображение)
+            <input style={{ ...fld, fontFamily: "var(--font-mono)", fontSize: "var(--fs-12)" }} type="url" inputMode="url" value={d.img} placeholder="https://…" onChange={(e) => setD((x) => ({ ...x, img: e.target.value }))} />
           </label>
           <div className="pe-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 96px", gap: 10, alignItems: "end" }}>
             <label style={lab}>Ширина, см

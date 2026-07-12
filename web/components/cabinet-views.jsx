@@ -483,6 +483,7 @@ function Projects() {
   const [statusF, setStatusF] = useCV("Все"); // фильтр по статусу
   const [sort, setSort] = useCV("updated");   // updated | budget | name
   const [menuId, setMenuId] = useCV(null);    // открытое ⋯-меню карточки
+  const bgRef = useCVR(null);                 // фон под .pd-overlay — см. bgHidden ниже
 
   const refresh = () => {
     LedgerAPI.projects.list().then(setRows);
@@ -576,8 +577,19 @@ function Projects() {
     .sort((a, b) => (a.pinned ? 0 : 1) - (b.pinned ? 0 : 1)
       || (sort === "budget" ? b.budget - a.budget : sort === "name" ? (a.name || "").localeCompare(b.name || "") : (b.updated || "").localeCompare(a.updated || ""))) : null;
 
+  // .pd-overlay (ProjectDetail/RoomSpecOverlay) полностью закрывает эту область визуально
+  // (position:fixed, z-index 150), но без aria-hidden/inert список «Мои проекты» оставался
+  // виден вспомогательным технологиям под оверлеем — axe-аудит 12.07, осознанно отложено
+  // до отдельной волны (см. WEB_SMETA_ROADMAP). Сайдбар (cabinet.jsx) в эту область не входит
+  // и остаётся интерактивным — оверлей его не перекрывает.
+  const bgHidden = !!(openId || importData);
+  // React 18 не прокидывает inert как проп (появилось только в React 19) — выставляем
+  // DOM-свойство напрямую; вместе с aria-hidden это и прячет фон от скринридера, и снимает
+  // его из Tab-обхода (без inert aria-hidden на фокусируемых элементах — новое нарушение axe)
+  useCVE(() => { if (bgRef.current) bgRef.current.inert = bgHidden; }, [bgHidden]);
   return (
     <div className="reveal in" ref={useReveal()}>
+      <div ref={bgRef} aria-hidden={bgHidden || undefined}>
       <PageHead title="Мои проекты" sub="Сохранённые комнаты и сметы для клиентов"
         right={<div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
           <button className="btn btn-ghost" onClick={() => setQuizOpen(true)}><I.spark size={16} /> Стиль-квиз</button>
@@ -636,6 +648,7 @@ function Projects() {
           ))}
         </div>
       )}
+      </div>
 
       {openId && <ProjectDetail id={openId} nav={openNav} onClose={closeProject} />}
       {importData && <RoomSpecOverlay data={importData} onClose={() => { setImportData(null); refresh(); }} />}
