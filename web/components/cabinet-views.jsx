@@ -438,11 +438,11 @@ function ProcureHub({ onOpen }) {
 
       {rows && rows.length > 0 && (
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 18 }}>
-          <select className="fld" value={projF} onChange={(e) => setProjF(e.target.value)} style={{ width: "auto", padding: "9px 12px", fontSize: "var(--fs-13)", fontWeight: 700, cursor: "pointer" }}>
+          <select className="fld" value={projF} onChange={(e) => setProjF(e.target.value)} aria-label="Фильтр по проекту" style={{ width: "auto", padding: "9px 12px", fontSize: "var(--fs-13)", fontWeight: 700, cursor: "pointer" }}>
             {projects.map((p) => <option key={p} value={p}>{p === "Все" ? "Все проекты" : p}</option>)}
           </select>
           {suppliers.length > 1 && (
-            <select className="fld" value={supF} onChange={(e) => setSupF(e.target.value)} style={{ width: "auto", padding: "9px 12px", fontSize: "var(--fs-13)", fontWeight: 700, cursor: "pointer" }}>
+            <select className="fld" value={supF} onChange={(e) => setSupF(e.target.value)} aria-label="Фильтр по поставщику" style={{ width: "auto", padding: "9px 12px", fontSize: "var(--fs-13)", fontWeight: 700, cursor: "pointer" }}>
               {suppliers.map((s) => <option key={s} value={s}>{s === "Все" ? "Все поставщики" : s}</option>)}
             </select>
           )}
@@ -604,7 +604,7 @@ function Projects() {
                 background: statusF === s ? "var(--accent)" : "var(--surface)", color: statusF === s ? "var(--on-accent)" : "var(--muted)" }}>{s}</button>
             ))}
           </div>
-          <select value={sort} onChange={(e) => setSort(e.target.value)} className="fld" style={{ width: "auto", padding: "9px 12px", fontSize: "var(--fs-13)", fontWeight: 700, cursor: "pointer", marginLeft: "auto" }}>
+          <select value={sort} onChange={(e) => setSort(e.target.value)} className="fld" aria-label="Сортировка проектов" style={{ width: "auto", padding: "9px 12px", fontSize: "var(--fs-13)", fontWeight: 700, cursor: "pointer", marginLeft: "auto" }}>
             <option value="updated">Сначала новые</option>
             <option value="budget">По бюджету</option>
             <option value="name">По названию</option>
