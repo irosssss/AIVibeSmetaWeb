@@ -135,6 +135,33 @@ describe("clientPricing — инвариант клиентских цен (по
     expect(cp.totalClient).toBe(120);
     expect(FFE.clientPricing({}).totalClient).toBe(0);
   });
+  it("запас/отход (wastePct): наценка — поверх себестоимости с запасом, не поверх сырой цены", () => {
+    const it_ = { title: "Плитка", price: 1000, qty: 2, wastePct: 10, cat: "Отделка" };
+    const cp = FFE.clientPricing({ rooms: [{ items: [it_] }], markup: 0 });
+    expect(FFE.costUnit(it_)).toBe(1100);           // 1000 × 1.10
+    expect(cp.costUnit(it_)).toBe(1100);
+    expect(cp.unitClient(it_)).toBe(1100);          // наценка 0% — клиент платит ровно себестоимость с запасом
+    expect(cp.lineClient(it_)).toBe(2200);          // 1100 × 2
+    expect(FFE.lineTotal(it_)).toBe(2200);
+    const cpMarkup = FFE.clientPricing({ rooms: [{ items: [it_] }], markup: 25 });
+    expect(cpMarkup.unitClient(it_)).toBe(1375);    // 1100 × 1.25 — наценка поверх запаса
+    expect(cpMarkup.lineClient(it_)).toBe(2750);
+  });
+  it("wastePct=0/отсутствует — не меняет прежнее поведение", () => {
+    const it_ = { title: "X", price: 1000, qty: 1 };
+    expect(FFE.costUnit(it_)).toBe(1000);
+    expect(FFE.lineTotal(it_)).toBe(1000);
+  });
+});
+
+describe("qtyLabel — подпись количества с единицей измерения", () => {
+  it("шт → ×N (без единицы), прочие единицы → ×N ед.", () => {
+    expect(FFE.qtyLabel({ qty: 2, unit: "шт" })).toBe("×2");
+    expect(FFE.qtyLabel({ qty: 2 })).toBe("×2");            // unit отсутствует = шт
+    expect(FFE.qtyLabel({ qty: 50, unit: "м²" })).toBe("×50 м²");
+    expect(FFE.qtyLabel({ qty: 3, unit: "пог.м" })).toBe("×3 пог.м");
+    expect(FFE.qtyLabel({ unit: "компл" })).toBe("×1 компл");   // qty по умолчанию 1
+  });
 });
 
 describe("портал-шара — публикация снимка и ответы клиента (волна A2)", () => {

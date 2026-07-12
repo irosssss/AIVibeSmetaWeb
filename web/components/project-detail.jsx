@@ -285,12 +285,14 @@ function RoomSpecOverlay({ data, nav, onClose }) {
       const next = { ...base, title: d.title, qty: d.qty, price: d.price };
       if (d.cat) next.cat = d.cat; else delete next.cat;
       if (d.sup) next.sup = d.sup; else delete next.sup;
+      if (d.unit && d.unit !== "шт") next.unit = d.unit; else delete next.unit;   // дефолт «шт» не храним
       // FF&E-детали: пустые не храним (delete), чтобы позиция не таскала "" по схеме;
       // d.* приходят из PosEditor.draft() (sku/url/material тримнуты, dims/leadWeeks — число или "")
       if (d.sku) next.sku = d.sku; else delete next.sku;
       if (d.url) next.url = d.url; else delete next.url;
       if (d.material) next.material = d.material; else delete next.material;
       if (d.leadWeeks !== "") next.leadWeeks = d.leadWeeks; else delete next.leadWeeks;
+      if (d.wastePct !== "") next.wastePct = d.wastePct; else delete next.wastePct;
       if (d.dims && (d.dims.w !== "" || d.dims.d !== "" || d.dims.h !== "")) next.dims = d.dims; else delete next.dims;
       // цену ввели/поменяли руками — значит проверили сейчас, пометка давности обнуляется
       if (ii === -1 || d.price !== base.price) next.priceDate = todayISO();
@@ -377,16 +379,20 @@ function RoomSpecOverlay({ data, nav, onClose }) {
     return () => document.removeEventListener("keydown", onKey);
   }, [mode, editPos, rooms.length]);
   // наценка: базовая + необязательный оверрайд по разделу. Округляется ЦЕНА ЗА ШТУКУ,
-  // сумма строки = цена × кол-во — тогда колонки документа бьются арифметически (UI = PDF = Excel)
-  const catOf = (it) => it.cat || "Прочее";
-  const pctOf = (cat) => (catMarkup[cat] != null ? catMarkup[cat] : markup);
-  const lineCost = (it) => it.price * (it.qty || 1);
-  const unitClient = (it) => Math.round(it.price * (1 + pctOf(catOf(it)) / 100));
-  const lineClient = (it) => unitClient(it) * (it.qty || 1);
+  // сумма строки = цена × кол-во — тогда колонки документа бьются арифметически (UI = PDF = Excel).
+  // Формула — из FFE.clientPricing (ffe.js), единый источник для UI/PDF/Excel/портала:
+  // себестоимость учитывает запас/отход (costUnit), наценка — поверх неё.
+  const FFE = window.LedgerFFE;
+  const cp = FFE.clientPricing({ rooms, markup, catMarkup });
+  const catOf = cp.catOf;
+  const pctOf = cp.pctOf;
+  const lineCost = (it) => cp.costUnit(it) * (it.qty || 1);
+  const unitClient = cp.unitClient;
+  const lineClient = cp.lineClient;
   const roomTotal = (r) => r.items.reduce((s, it) => s + lineCost(it), 0);
   const roomClient = (r) => r.items.reduce((s, it) => s + lineClient(it), 0);
   const grand = rooms.reduce((s, r) => s + roomTotal(r), 0);
-  const client = rooms.reduce((s, r) => s + roomClient(r), 0);
+  const client = cp.client;
   const itemsCount = rooms.reduce((s, r) => s + r.items.length, 0);
   const over = grand > data.budget;
   // паспорт свежести цен (роадмап «Стол комплектатора» шаг C1) — та же честная нижняя граница, что уходит в PDF/Excel
@@ -425,8 +431,8 @@ function RoomSpecOverlay({ data, nav, onClose }) {
 
   /* --- стадии закупки по позициям (фаза 2 слияния, шаг 2; словарь стадий — web/ffe.js).
      Позиция без status считается «Подбор»; смена стадии штампует дату (stampStatus
-     не затирает ранее пройденные). Живут только в «Закупке» — клиент их не видит. */
-  const FFE = window.LedgerFFE || null;
+     не затирает ранее пройденные). Живут только в «Закупке» — клиент их не видит.
+     FFE уже объявлен выше (формула клиентских цен). */
   const stOf = (it) => (FFE && FFE.STATUS_BY_ID[it.status] ? it.status : "specified");
   // смена стадии сбрасывает eta — дата была ожиданием ПРЕЖНЕЙ стадии, на новой
   // она бы ложно висела просрочкой (см. комментарий к eta в ffe.js)
@@ -808,8 +814,8 @@ function RoomSpecOverlay({ data, nav, onClose }) {
                   <div className="mono" style={{ display: "flex", alignItems: "baseline", gap: 10, padding: "2px 0 6px", fontSize: "var(--fs-10)", letterSpacing: ".06em", textTransform: "uppercase", color: "var(--spec-meta)", borderBottom: "1px solid var(--hairline)" }}>
                     <span style={{ flex: 1 }}>Позиция</span>
                     <span className="rs-cat" style={{ width: 78, textAlign: "right" }}>Раздел</span>
-                    <span style={{ width: 34, textAlign: "right" }}>Кол</span>
-                    <span className="rs-unit" style={{ width: 88, textAlign: "right" }}>Цена/шт</span>
+                    <span style={{ width: 62, textAlign: "right" }}>Кол</span>
+                    <span className="rs-unit" style={{ width: 88, textAlign: "right" }}>Цена/ед.</span>
                     {mode === "work" && <span style={{ width: 100, textAlign: "right" }}>Себест.</span>}
                     <span style={{ width: 104, textAlign: "right" }}>Клиенту</span>
                     {mode === "work" && FFE && <span className="rs-ap" style={{ width: 122, textAlign: "right" }}>Клиент решил</span>}
@@ -817,7 +823,6 @@ function RoomSpecOverlay({ data, nav, onClose }) {
                   </div>
                   <div style={{ display: "flex", flexDirection: "column" }}>
                     {r.items.map((it, i) => {
-                      const qty = it.qty || 1;
                       const editing = mode === "work" && editPos && editPos.ri === ri && editPos.ii === i;
                       // фильтр «ждут решения»: согласованные строки скрываем (редактируемую — никогда)
                       if (mode === "work" && apFilter && !editing && apOf(it) === "ok") return null;
@@ -836,14 +841,15 @@ function RoomSpecOverlay({ data, nav, onClose }) {
                               it.material || null,
                               dl || null,
                               mode === "work" && it.leadWeeks ? it.leadWeeks + " нед." : null,
+                              mode === "work" && it.wastePct ? "запас " + it.wastePct + "%" : null,
                             ].filter(Boolean);
                             return parts.length ? <div className="mono" style={{ fontSize: "var(--fs-10)", color: "var(--spec-meta)", marginTop: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{parts.join(" · ")}</div> : null;
                           })()}
                         </span>
                         <span className="rs-cat" style={{ color: "var(--spec-meta)", whiteSpace: "nowrap", fontSize: "var(--fs-12)", width: 78, textAlign: "right", overflow: "hidden", textOverflow: "ellipsis" }}>{catOf(it)}</span>
-                        <span className="mono" style={{ color: "var(--spec-meta)", whiteSpace: "nowrap", width: 34, textAlign: "right", fontSize: "var(--fs-12)" }}>×{qty}</span>
+                        <span className="mono" style={{ color: "var(--spec-meta)", whiteSpace: "nowrap", width: 62, textAlign: "right", fontSize: "var(--fs-12)", overflow: "hidden", textOverflow: "ellipsis" }}>{FFE.qtyLabel(it)}</span>
                         <span className="mono rs-unit" style={{ color: "var(--spec-meta)", whiteSpace: "nowrap", width: 88, textAlign: "right", fontSize: "var(--fs-12)" }}>{fmtMoney(mode === "client" ? unitClient(it) : it.price)}</span>
-                        {mode === "work" && <span className="mono" style={{ color: "var(--muted)", whiteSpace: "nowrap", width: 100, textAlign: "right" }}>{fmtMoney(it.price * qty)}</span>}
+                        {mode === "work" && <span className="mono" style={{ color: "var(--muted)", whiteSpace: "nowrap", width: 100, textAlign: "right" }}>{fmtMoney(lineCost(it))}</span>}
                         <span className="mono" style={{ fontWeight: 600, whiteSpace: "nowrap", width: 104, textAlign: "right", color: mode === "work" ? "var(--accent-2)" : "var(--text)" }}>{fmtMoney(lineClient(it))}</span>
                         {mode === "work" && FFE && (() => {
                           const aid = apOf(it), m = FFE.approveMeta(aid);
@@ -874,6 +880,7 @@ function RoomSpecOverlay({ data, nav, onClose }) {
                         const adjIdx = (dir) => { const j = i + dir; return j >= 0 && j < r.items.length ? j : null; };
                         return (
                           <PosEditor item={it} cats={cats} sups={supList} library={library} onToLibrary={saveToLibrary}
+                            markup={markup} catMarkup={catMarkup}
                             posNav={{ index: i, total: r.items.length, prev: adjIdx(-1), next: adjIdx(1),
                               go: (j, draft) => { if (draft) savePos(ri, i, draft); setEditPos({ ri, ii: j }); } }}
                             onCancel={() => setEditPos(null)} onSave={(d) => savePos(ri, i, d)} onDelete={() => removePos(ri, i)} />
@@ -888,7 +895,8 @@ function RoomSpecOverlay({ data, nav, onClose }) {
                     <div style={{ padding: "8px 0 2px", fontSize: "var(--fs-12)", color: "var(--muted)" }}>Все позиции комнаты согласованы клиентом ✓</div>
                   )}
                   {mode === "work" && (editPos && editPos.ri === ri && editPos.ii === -1
-                    ? <PosEditor isNew cats={cats} sups={supList} library={library} onToLibrary={saveToLibrary} onCancel={() => setEditPos(null)} onSave={(d) => savePos(ri, -1, d)} />
+                    ? <PosEditor isNew cats={cats} sups={supList} library={library} onToLibrary={saveToLibrary} markup={markup} catMarkup={catMarkup}
+                        onCancel={() => setEditPos(null)} onSave={(d) => savePos(ri, -1, d)} />
                     : <div style={{ display: "flex", gap: 8, marginTop: 10, flexWrap: "wrap" }}>
                         {/* Д1 (W6): инлайн-панель добавления в контексте комнаты — паттерн Programa
                            «строка вставки между секциями»; «По ссылке» первым с искоркой (клиппер) */}
@@ -926,15 +934,14 @@ function RoomSpecOverlay({ data, nav, onClose }) {
                     <div className="mono" style={{ display: "flex", alignItems: "baseline", gap: 10, padding: "2px 0 6px", fontSize: "var(--fs-10)", letterSpacing: ".06em", textTransform: "uppercase", color: "var(--spec-meta)", borderBottom: "1px solid var(--hairline)" }}>
                       <span style={{ flex: 1 }}>Позиция</span>
                       <span className="rs-cat" style={{ width: 104, textAlign: "right" }}>Помещение</span>
-                      <span style={{ width: 34, textAlign: "right" }}>Кол</span>
-                      <span className="rs-unit" style={{ width: 88, textAlign: "right" }}>Цена/шт</span>
+                      <span style={{ width: 62, textAlign: "right" }}>Кол</span>
+                      <span className="rs-unit" style={{ width: 88, textAlign: "right" }}>Цена/ед.</span>
                       <span style={{ width: 100, textAlign: "right" }}>Сумма</span>
                       <span style={{ width: 128, textAlign: "right" }}>Поставщик</span>
                       {FFE && <span style={{ width: 130, textAlign: "right" }}>Стадия</span>}
                     </div>
                     <div style={{ display: "flex", flexDirection: "column" }}>
                       {g.rows.map((x, i) => {
-                        const qty = x.it.qty || 1;
                         const editingPay = payEdit && payEdit.ri === x.ri && payEdit.ii === x.ii;
                         const due = dueOf(x.it), dueColor = urgentColor(due);
                         return (
@@ -952,7 +959,7 @@ function RoomSpecOverlay({ data, nav, onClose }) {
                               )}
                             </span>
                             <span className="rs-cat" style={{ color: "var(--spec-meta)", whiteSpace: "nowrap", fontSize: "var(--fs-12)", width: 104, textAlign: "right", overflow: "hidden", textOverflow: "ellipsis" }}>{x.room}</span>
-                            <span className="mono" style={{ color: "var(--spec-meta)", whiteSpace: "nowrap", width: 34, textAlign: "right", fontSize: "var(--fs-12)" }}>×{qty}</span>
+                            <span className="mono" style={{ color: "var(--spec-meta)", whiteSpace: "nowrap", width: 62, textAlign: "right", fontSize: "var(--fs-12)", overflow: "hidden", textOverflow: "ellipsis" }}>{FFE.qtyLabel(x.it)}</span>
                             <span className="mono rs-unit" style={{ color: "var(--spec-meta)", whiteSpace: "nowrap", width: 88, textAlign: "right", fontSize: "var(--fs-12)" }}>{fmtMoney(x.it.price)}</span>
                             <span className="mono" style={{ fontWeight: 600, whiteSpace: "nowrap", width: 100, textAlign: "right" }}>{fmtMoney(lineCost(x.it))}</span>
                             <input className="fld rs-sup" list="rs-sup-list" defaultValue={supOf(x.it)} key={"sup-" + x.ri + "-" + x.ii + "-" + supOf(x.it)}
@@ -1376,7 +1383,7 @@ function VersionsModal({ versions, current, onSave, onRestore, onSetStatus, onPa
     (rooms || []).forEach((r) => (r.items || []).forEach((it) => {
       const k = r.name + "¶" + it.title;
       const e = m.get(k) || { title: it.title, qty: 0, total: 0 };
-      e.qty += it.qty || 1; e.total += (it.price || 0) * (it.qty || 1);
+      e.qty += it.qty || 1; e.total += FFE ? FFE.lineTotal(it) : (it.price || 0) * (it.qty || 1);   // себестоимость с запасом
       m.set(k, e);
     }));
     return m;
@@ -1577,33 +1584,38 @@ function CommentThreadCard({ group, onReply }) {
    деньги нормализуются до целых рублей, расчёты идут прежним конвейером
    (инвариант UI=PDF=Excel не трогаем). Enter — сохранить, Esc — закрыть
    редактор (не оверлей: stopPropagation до window-слушателя). */
-function PosEditor({ item, cats, sups, isNew, onSave, onDelete, onCancel, library, onToLibrary, posNav }) {
+function PosEditor({ item, cats, sups, isNew, onSave, onDelete, onCancel, library, onToLibrary, posNav, markup, catMarkup }) {
   const dm = (item && item.dims) || {};
   const s = (v) => (v == null || v === "" ? "" : String(v));
   const [d, setD] = usePD({
     title: item ? item.title : "",
     cat: (item && item.cat) || "",
     qty: String((item && item.qty) || 1),
+    unit: (item && item.unit) || "шт",
     price: item ? String(item.price) : "",
     sup: (item && item.sup) || "",
-    // FF&E-поля (проф-уровень спецификации) — редактируются в блоке «Подробнее»
+    wastePct: s(item && item.wastePct),
+    // FF&E-поля (проф-уровень спецификации) — редактируются на вкладке «Основное»
     sku: (item && item.sku) || "",
     url: (item && item.url) || "",
     material: (item && item.material) || "",
     dimW: s(dm.w), dimD: s(dm.d), dimH: s(dm.h),
     leadWeeks: s(item && item.leadWeeks),
   });
-  // «Подробнее» раскрыт сразу, если у позиции уже есть FF&E-детали (правка — не прячем данные)
-  const hasFFE = !!(d.sku || d.url || d.material || d.dimW || d.dimD || d.dimH || d.leadWeeks);
-  const [more, setMore] = usePD(hasFFE);
+  // две вкладки как в карточке позиции Programa: «Финансы» — количество/цена/запас
+  // (обязательны для сохранения, самый частый путь при добавлении), «Основное» — раздел
+  // и спецификация (артикул/материал/габариты/срок). Открыты не одновременно — переключатель.
+  const [tab, setTab] = usePD("fin");
   // кламп 1–999: реальный fat-finger из проверки — 350 000 «штук» гарнитура
   const qty = Math.max(1, Math.min(999, Math.round(+d.qty || 1)));
   const price = Math.round(+d.price || 0);
   const ok = !!d.title.trim() && price > 0;
-  // габариты/срок: пустая строка → "" (не 0), число → округляем ≥0
+  // габариты/срок/запас: пустая строка → "" (не 0), число → округляем ≥0
   const nOrEmpty = (v) => { const t = String(v).trim(); return t === "" ? "" : Math.max(0, Math.round(+t || 0)); };
+  const wastePct = nOrEmpty(d.wastePct);   // нормализуем один раз — draft/превью/подпись берут отсюда
   const draft = () => ({
     title: d.title.trim(), qty, price, cat: d.cat.trim(), sup: d.sup.trim(),
+    unit: d.unit, wastePct,
     sku: d.sku.trim(), url: d.url.trim(), material: d.material.trim(),
     dims: { w: nOrEmpty(d.dimW), d: nOrEmpty(d.dimD), h: nOrEmpty(d.dimH) },
     leadWeeks: nOrEmpty(d.leadWeeks),
@@ -1611,9 +1623,19 @@ function PosEditor({ item, cats, sups, isNew, onSave, onDelete, onCancel, librar
   const submit = () => { if (ok) onSave(draft()); };
   // W5.3: правил ли пользователь поля (для prev/next: изменённый валидный черновик сохраняем перед переходом)
   const dirty = !!item && (d.title.trim() !== item.title || qty !== (item.qty || 1) || price !== item.price
-    || d.cat.trim() !== (item.cat || "") || d.sup.trim() !== (item.sup || "")
+    || d.cat.trim() !== (item.cat || "") || d.sup.trim() !== (item.sup || "") || d.wastePct !== s(item.wastePct) || d.unit !== (item.unit || "шт")
     || d.sku.trim() !== (item.sku || "") || d.url.trim() !== (item.url || "") || d.material.trim() !== (item.material || "")
     || d.dimW !== s(dm.w) || d.dimD !== s(dm.d) || d.dimH !== s(dm.h) || d.leadWeeks !== s(item.leadWeeks));
+  // живой итог на вкладке «Финансы» — считаем ровно тем же FFE.clientPricing, что UI/PDF/
+  // Excel/портал (единый источник формулы: запас в costUnit → наценка раздела поверх →
+  // округление цены/шт). Синтетический снимок из одной позиции, чтобы превью не разъезжалось
+  // с реальной строкой при будущих правках формулы.
+  const FFE = window.LedgerFFE;
+  const previewItem = { price, qty, cat: d.cat.trim(), wastePct: wastePct || 0 };
+  const unitLabel = d.unit && d.unit !== "шт" ? " " + d.unit : "";
+  const cpPreview = FFE.clientPricing({ rooms: [{ items: [previewItem] }], markup, catMarkup });
+  const costUnitPreview = cpPreview.costUnit(previewItem);
+  const unitClientPreview = cpPreview.unitClient(previewItem);
   // dirty, но невалидно (например, стёрли название) — не топим правку молча: держим редактор
   // на месте, пусть починят или явно жмут «Отмена» (кнопки честно обещают «правки сохранятся»)
   const goNav = (j) => {
@@ -1668,30 +1690,53 @@ function PosEditor({ item, cats, sups, isNew, onSave, onDelete, onCancel, librar
           <button type="button" className="btn btn-ghost" style={{ padding: "3px 9px", fontSize: "var(--fs-11)", flex: "none" }} onClick={() => applyLib(libMatch, true)}>Подставить</button>
         </div>
       )}
-      <div className="pe-grid" style={{ display: "grid", gridTemplateColumns: "1fr 76px 116px 1fr", gap: 10 }}>
-        <label style={lab}>Раздел
-          <input style={fld} list="pe-cat-list" value={d.cat} placeholder="Прочее" onChange={(e) => setD((x) => ({ ...x, cat: e.target.value }))} />
-        </label>
-        <label style={lab}>Кол-во
-          <input style={{ ...fld, fontFamily: "var(--font-mono)" }} type="number" min="1" max="999" step="1" inputMode="numeric" value={d.qty} onChange={(e) => setD((x) => ({ ...x, qty: e.target.value }))} />
-        </label>
-        <label style={lab}>Цена/шт, ₽
-          <input style={{ ...fld, fontFamily: "var(--font-mono)" }} type="number" min="1" step="100" inputMode="numeric" value={d.price} onChange={(e) => setD((x) => ({ ...x, price: e.target.value }))} />
-        </label>
-        <label style={lab}>Поставщик
-          <input style={fld} list="pe-sup-list" value={d.sup} placeholder="точка закупки" onChange={(e) => setD((x) => ({ ...x, sup: e.target.value }))} />
-        </label>
+      <div className="plate-toggle" role="tablist" aria-label="Раздел редактора позиции" style={{ alignSelf: "flex-start" }}>
+        <button type="button" role="tab" aria-selected={tab === "fin"} className={tab === "fin" ? "on" : ""} onClick={() => setTab("fin")}>Финансы</button>
+        <button type="button" role="tab" aria-selected={tab === "main"} className={tab === "main" ? "on" : ""} onClick={() => setTab("main")}>Основное</button>
       </div>
 
-      {/* FF&E-детали спецификации (артикул/ссылка/материал/габариты/срок) — свёрнуто,
-         чтобы обычный ввод «название+цена» не перегружать; раскрыто, если поля уже есть */}
-      <button type="button" onClick={() => setMore((v) => !v)} aria-expanded={more}
-        style={{ alignSelf: "flex-start", display: "inline-flex", alignItems: "center", gap: 6, background: "none", border: "none", padding: "2px 0", cursor: "pointer", fontSize: "var(--fs-12)", color: "var(--muted)" }}>
-        <I.chevron size={12} stroke={2.2} style={{ transform: more ? "rotate(0deg)" : "rotate(-90deg)", transition: "transform .15s var(--ease-pop)" }} />
-        Подробнее — артикул, материал, габариты, срок
-      </button>
-      {more && (
+      {tab === "fin" && (
         <div className="view-enter" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          <div className="pe-grid" style={{ display: "grid", gridTemplateColumns: "76px 72px 116px 1fr 84px", gap: 10 }}>
+            <label style={lab}>Кол-во
+              <input style={{ ...fld, fontFamily: "var(--font-mono)" }} type="number" min="1" max="999" step="1" inputMode="numeric" value={d.qty} onChange={(e) => setD((x) => ({ ...x, qty: e.target.value }))} />
+            </label>
+            <label style={lab}>Ед.
+              <select style={fld} value={d.unit} onChange={(e) => setD((x) => ({ ...x, unit: e.target.value }))}>
+                {((FFE && FFE.FFE_UNITS) || ["шт"]).map((u) => <option key={u} value={u}>{u}</option>)}
+              </select>
+            </label>
+            <label style={lab}>Цена/ед., ₽
+              <input style={{ ...fld, fontFamily: "var(--font-mono)" }} type="number" min="1" step="100" inputMode="numeric" value={d.price} onChange={(e) => setD((x) => ({ ...x, price: e.target.value }))} />
+            </label>
+            <label style={lab}>Поставщик
+              <input style={fld} list="pe-sup-list" value={d.sup} placeholder="точка закупки" onChange={(e) => setD((x) => ({ ...x, sup: e.target.value }))} />
+            </label>
+            <label style={lab} title="Запас на подрезку/бой — для плитки, краски и т.п.">Запас, %
+              <input style={{ ...fld, fontFamily: "var(--font-mono)" }} type="number" min="0" step="1" inputMode="numeric" value={d.wastePct} placeholder="0" onChange={(e) => setD((x) => ({ ...x, wastePct: e.target.value }))} />
+            </label>
+          </div>
+          {/* живой итог позиции — аналог блока Totals в карточке деталей Programa */}
+          {price > 0 && (
+            <div className="mono" style={{ display: "flex", flexDirection: "column", gap: 2, padding: "8px 10px", borderRadius: 9, background: "var(--surface)", border: "1px solid var(--hairline)", fontSize: "var(--fs-12)" }}>
+              <span style={{ display: "flex", justifyContent: "space-between", color: "var(--muted)" }}>
+                <span>Себестоимость{wastePct ? " (с запасом)" : ""}</span>
+                <span>{fmtMoney(costUnitPreview)} × {qty}{unitLabel} = {fmtMoney(costUnitPreview * qty)}</span>
+              </span>
+              <span style={{ display: "flex", justifyContent: "space-between", color: "var(--accent-2-ink)", fontWeight: 600 }}>
+                <span>Клиенту</span>
+                <span>{fmtMoney(unitClientPreview)} × {qty}{unitLabel} = {fmtMoney(unitClientPreview * qty)}</span>
+              </span>
+            </div>
+          )}
+        </div>
+      )}
+
+      {tab === "main" && (
+        <div className="view-enter" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          <label style={lab}>Раздел
+            <input style={fld} list="pe-cat-list" value={d.cat} placeholder="Прочее" onChange={(e) => setD((x) => ({ ...x, cat: e.target.value }))} />
+          </label>
           <div className="pe-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
             <label style={lab}>Артикул
               <input style={fld} value={d.sku} placeholder="напр. MIL-3" onChange={(e) => setD((x) => ({ ...x, sku: e.target.value }))} />
@@ -1796,6 +1841,7 @@ function PayTrackEditor({ item, onCancel, onSave }) {
    позиция сметы через window.LedgerClipper (перенос с vite-ветки); при
    CORS-блоке честный фолбэк «вставьте HTML страницы вручную». */
 function AddPositionsModal({ excludeId, roomNames, initialTab, initialRoom, onClose, onAdd }) {
+  const FFE = window.LedgerFFE;   // себестоимость превью — с запасом (FFE.lineTotal), как в Смете
   // Д1 (W6): инлайн-панель комнаты открывает модалку сразу на «По ссылке» со своей комнатой
   const [tab, setTab] = usePD(initialTab || "past");        // past | tpl | clip
   const [sources, setSources] = usePD(null);  // прошлые проекты со сметой по комнатам
@@ -1821,7 +1867,7 @@ function AddPositionsModal({ excludeId, roomNames, initialTab, initialRoom, onCl
     LedgerAPI.templates.list().then(setTpls);
   }, []);
 
-  const cost = (items) => items.reduce((s, it) => s + it.price * (it.qty || 1), 0);
+  const cost = (items) => items.reduce((s, it) => s + (FFE ? FFE.lineTotal(it) : it.price * (it.qty || 1)), 0);
   const srcCount = (rooms) => rooms.reduce((s, r) => s + r.items.length, 0);
   const k = (ri, ii) => ri + ":" + ii;
   const pickSrc = (s, allSelected) => {
@@ -2028,8 +2074,8 @@ function AddPositionsModal({ excludeId, roomNames, initialTab, initialRoom, onCl
                     <label key={ii} style={{ display: "flex", alignItems: "baseline", gap: 10, padding: "6px 0", borderTop: ii ? "1px solid var(--hairline-2)" : "none", fontSize: "var(--fs-13)", cursor: "pointer" }}>
                       <input type="checkbox" checked={!!sel[k(ri, ii)]} onChange={() => setSel((s) => ({ ...s, [k(ri, ii)]: !s[k(ri, ii)] }))} style={{ accentColor: "var(--accent-2)", width: 14, height: 14, flex: "none", position: "relative", top: 2 }} />
                       <span style={{ flex: 1, lineHeight: 1.4 }}>{it.title}</span>
-                      <span className="mono" style={{ color: "var(--spec-meta)", whiteSpace: "nowrap", fontSize: "var(--fs-12)" }}>×{it.qty || 1}</span>
-                      <span className="mono" style={{ whiteSpace: "nowrap", fontSize: "var(--fs-12)" }}>{fmtMoney(it.price * (it.qty || 1))}</span>
+                      <span className="mono" style={{ color: "var(--spec-meta)", whiteSpace: "nowrap", fontSize: "var(--fs-12)" }}>{FFE ? FFE.qtyLabel(it) : "×" + (it.qty || 1)}</span>
+                      <span className="mono" style={{ whiteSpace: "nowrap", fontSize: "var(--fs-12)" }}>{fmtMoney(FFE ? FFE.lineTotal(it) : it.price * (it.qty || 1))}</span>
                     </label>
                   ))}
                 </div>
@@ -2076,7 +2122,9 @@ function projectMetrics(data) {
   const discount = data.discountPct || 0, delivery = data.deliveryCost || 0, install = data.installCost || 0;
   const items = rooms.flatMap((r) => r.items || []);
   const itemsCount = items.length;
-  const grand = items.reduce((s, it) => s + (it.price || 0) * (it.qty || 1), 0);
+  // себестоимость включает запас/отход (FFE.lineTotal) — тем же costUnit, что и Смета
+  // (RoomSpecOverlay), иначе profit = client − grand завышался бы на стоимость запаса
+  const grand = items.reduce((s, it) => s + (FFE ? FFE.lineTotal(it) : (it.price || 0) * (it.qty || 1)), 0);
   const pricing = FFE ? FFE.clientPricing({ rooms, markup, catMarkup, discount, delivery, install })
     : { client: 0, discountAmt: 0, totalClient: 0 };
   const profit = pricing.client - pricing.discountAmt - grand;  // доставка/монтаж — транзит (без наценки), в профит не входят

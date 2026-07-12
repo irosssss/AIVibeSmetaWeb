@@ -48,8 +48,10 @@
     const discountAmt = Math.round((clientTotal || 0) * (discountPct || 0) / 100);
     const totalClient = (clientTotal || 0) - discountAmt + (deliveryCost || 0) + (installCost || 0);
     const pctOf = (it) => { const c = it.cat || "Прочее"; return catMarkupPct && catMarkupPct[c] != null ? catMarkupPct[c] : (markupPct || 0); };
-    const lineCost = (it) => it.price * (it.qty || 1);
-    const unitClient = (it) => Math.round(it.price * (1 + pctOf(it) / 100));       // округляется цена/шт,
+    // себестоимость учитывает запас/отход (FFE.costUnit — тот же источник, что в UI/Excel)
+    const costUnit = (it) => (FFE && FFE.costUnit ? FFE.costUnit(it) : it.price);
+    const lineCost = (it) => costUnit(it) * (it.qty || 1);
+    const unitClient = (it) => Math.round(costUnit(it) * (1 + pctOf(it) / 100));    // округляется цена/шт,
     const lineClient = (it) => unitClient(it) * (it.qty || 1);                     // сумма = цена × кол-во — как в UI, документ бьётся
     const hasCatMk = !!catMarkupPct && Object.keys(catMarkupPct).length > 0;
     const content = [
@@ -71,7 +73,7 @@
           return [
           meta ? { stack: [{ text: it.title }, { text: meta, fontSize: 8, color: PDF.muted, margin: [0, 1, 0, 0] }] } : it.title,
           { text: it.cat || "Прочее", color: PDF.muted, fontSize: 9 },
-          { text: "×" + (it.qty || 1), alignment: "right", fontSize: 9, color: PDF.muted },
+          { text: FFE && FFE.qtyLabel ? FFE.qtyLabel(it) : "×" + (it.qty || 1), alignment: "right", fontSize: 9, color: PDF.muted },
           { text: money(clientMode ? lineClient(it) : lineCost(it)), alignment: "right" },
         ]; }) },
         layout: { hLineWidth: () => 0.5, hLineColor: () => "#EFEAE4", vLineWidth: () => 0, paddingTop: () => 3.5, paddingBottom: () => 3.5 },
@@ -126,7 +128,10 @@
   // «цена от …» — давность цены скопированной позиции (тем же цветом-варнингом после 30 дней)
   function exportProcurePDF({ project, area, rooms, grand, budget, studioName, studioContact }) {
     const NO_SUP = "Поставщик не указан";
-    const lineCost = (it) => it.price * (it.qty || 1);
+    // стадии закупки (словарь — web/ffe.js; без модуля колонка не печатается)
+    const FFE = window.LedgerFFE || null;
+    // себестоимость учитывает запас/отход — закупочный лист сообщает, сколько реально заказывать
+    const lineCost = (it) => (FFE && FFE.lineTotal ? FFE.lineTotal(it) : it.price * (it.qty || 1));
     const fmtD = (d) => { const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(d || "")); return m ? m[3] + "." + m[2] + "." + m[1] : ""; };
     const stale = (d) => { const t = new Date(d + "T00:00:00").getTime(); return !isNaN(t) && (Date.now() - t) / 86400000 > 30; };
     const groups = {};
@@ -134,8 +139,6 @@
     const total = (k) => groups[k].reduce((s, x) => s + lineCost(x.it), 0);
     const names = Object.keys(groups).sort((a, b) => (a === NO_SUP ? 1 : b === NO_SUP ? -1 : total(b) - total(a)));
 
-    // стадии закупки (словарь — web/ffe.js; без модуля колонка не печатается)
-    const FFE = window.LedgerFFE || null;
     const stId = (it) => (FFE && FFE.STATUS_BY_ID[it.status] ? it.status : "specified");
     const stShort = (it) => (FFE ? FFE.statusMeta(stId(it)).short : "");
     const supProgress = (k) => (FFE && groups[k].length
@@ -166,7 +169,7 @@
           const cells = [
             subLines.length ? { stack: [{ text: x.it.title }, ...subLines] } : x.it.title,
             { text: x.room, color: PDF.muted, fontSize: 9 },
-            { text: "×" + (x.it.qty || 1), alignment: "right", fontSize: 9, color: PDF.muted },
+            { text: FFE && FFE.qtyLabel ? FFE.qtyLabel(x.it) : "×" + (x.it.qty || 1), alignment: "right", fontSize: 9, color: PDF.muted },
             { text: money(lineCost(x.it)), alignment: "right" },
           ];
           // колонка стадии — между помещением и количеством
@@ -234,7 +237,7 @@
         const aid = apOf(it);
         content.push({
           columns: [
-            { text: it.title + "  ×" + (it.qty || 1), width: "*" },
+            { text: it.title + "  " + (FFE && FFE.qtyLabel ? FFE.qtyLabel(it) : "×" + (it.qty || 1)), width: "*" },
             { text: apLabel(it) + (it.approveAt ? " · " + fmtD(it.approveAt) : ""), color: AP_COLOR[aid], bold: true, fontSize: 9.5, alignment: "right", width: 160 },
           ],
           margin: [0, 5, 0, (it.comments && it.comments.length) ? 2 : 5],

@@ -260,11 +260,19 @@
       it.material || null,
       dimsLabel(it.dims) || null,
       !client && it.leadWeeks ? it.leadWeeks + " нед." : null,
+      !client && it.wastePct ? "запас " + it.wastePct + "%" : null,
     ].filter(Boolean).join(" · ");
   }
 
-  // сумма строки = цена × кол-во × (1 + запас%)
-  const lineTotal = (it) => Math.round(num(it.price, 0) * num(it.qty || 1, 1) * (1 + num(it.wastePct || 0, 0) / 100));
+  // подпись количества с единицей измерения: «шт» → ×N (как было), иначе ×N ед. (×50 м²).
+  // Единый хелпер — иначе дублировался бы в строке сметы / закупке / PDF / превью копирования
+  const qtyLabel = (it) => "×" + ((it && it.qty) || 1) + (it && it.unit && it.unit !== "шт" ? " " + it.unit : "");
+
+  // себестоимость единицы с учётом запаса/отхода (плитка, краска…) — округляется один
+  // раз, тем же принципом, что и unitClient в clientPricing: «цена/шт округлена, сумма
+  // строки = цена/шт × кол-во» — иначе колонки «Цена»/«Сумма» в Excel/PDF не бьются
+  const costUnit = (it) => Math.round(num(it.price, 0) * (1 + num(it.wastePct || 0, 0) / 100));
+  const lineTotal = (it) => costUnit(it) * num(it.qty || 1, 1);
 
   /* ----------------------------- БИБЛИОТЕКА ТОВАРОВ СТУДИИ (волна B1, бенчмарк Programa) -----------------------------
      Мастер-запись товара студии — то, что дизайнер подбирает снова и снова (диван,
@@ -325,12 +333,14 @@
     const discount = +s.discount || 0, delivery = +s.delivery || 0, install = +s.install || 0;
     const catOf = (it) => it.cat || "Прочее";
     const pctOf = (cat) => (catMarkup[cat] != null ? catMarkup[cat] : markup);
-    const unitClient = (it) => Math.round((it.price || 0) * (1 + pctOf(catOf(it)) / 100));
+    // наценка — поверх себестоимости С УЧЁТОМ запаса/отхода (costUnit), не поверх сырой
+    // цены: клиент оплачивает и материал, реально уходящий в закупку из-за запаса
+    const unitClient = (it) => Math.round(costUnit(it) * (1 + pctOf(catOf(it)) / 100));
     const lineClient = (it) => unitClient(it) * (it.qty || 1);
     const client = rooms.reduce((a, r) => a + (r.items || []).reduce((x, it) => x + lineClient(it), 0), 0);
     const discountAmt = Math.round(client * discount / 100);
     const totalClient = client - discountAmt + delivery + install;
-    return { catOf, pctOf, unitClient, lineClient, client, discount, discountAmt, delivery, install, totalClient };
+    return { catOf, pctOf, costUnit, unitClient, lineClient, client, discount, discountAmt, delivery, install, totalClient };
   }
 
   /* ----------------------------- УСЛУГИ И СБОРЫ (доставка/монтаж/налог) -----------------------------
@@ -703,7 +713,7 @@
     PAYMENT_KINDS, PAYKIND_BY_ID, blankPayment, blankPayments, blankTrack,
     URGENCY_BUCKETS, URGENCY_BY_ID, urgencyBucket, itemDueItems,
     EXTRA_PRESETS, statusMeta, statusProgress, stampStatus, today, priceFreshness,
-    blankPosition, normalizePosition, dimsLabel, ffeMeta, lineTotal,
+    blankPosition, normalizePosition, dimsLabel, ffeMeta, qtyLabel, costUnit, lineTotal,
     blankComment, addComment,
     blankProduct, productFromPosition, positionFromProduct,
     blankExtra, extraAmount, extrasTotal,
