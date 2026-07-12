@@ -8,6 +8,12 @@
       "port": 8753
     },
     {
+      "name": "aivibe-web-wt",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["vite", "--port", "8763", "--strictPort"],
+      "port": 8763
+    },
+    {
       "name": "aivibe-build-preview",
       "runtimeExecutable": "npx",
       "runtimeArgs": ["vite", "preview", "--port", "8781", "--strictPort"],
