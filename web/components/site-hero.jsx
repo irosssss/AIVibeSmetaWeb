@@ -45,6 +45,17 @@ const footLinksFrom = (secs) => secs.filter((s) => s.foot).map((s) => [s.foot, "
 window.footLinksFrom = footLinksFrom;
 
 /* --------------------------------------------------------------
+   ХЕЛПЕРЫ МИНИ-ИЛЛЮСТРАЦИЙ мока — единый визуальный язык бумажных
+   мокапов фич: Fv* (сетка фич, site-sections) и Clip* (/changelog,
+   site-github). Один набор вместо двух почти-одинаковых копий.
+   Радиус карточки — токен --r-md; чип — .06em трекинг.
+-------------------------------------------------------------- */
+const mockCardCss = { background: "var(--bg-base)", border: "1px solid var(--hairline)", borderRadius: "var(--r-md)", boxShadow: "var(--shadow-card)" };
+const mockMono = (extra) => ({ fontFamily: "var(--font-mono)", fontSize: "var(--fs-11)", ...extra });
+const mockTag = { fontFamily: "var(--font-mono)", fontSize: "var(--fs-10)", fontWeight: 700, letterSpacing: ".06em", textTransform: "uppercase", color: "var(--accent-2-ink)", padding: "3px 9px", borderRadius: 99, background: "var(--accent-2-tint)" };
+Object.assign(window, { mockCardCss, mockMono, mockTag });
+
+/* --------------------------------------------------------------
    NAV — бумажная панель (без тёмного стекла)
 -------------------------------------------------------------- */
 function SiteNav({ go }) {

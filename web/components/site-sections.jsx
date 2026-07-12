@@ -536,29 +536,28 @@ function Pricing({ go }) {
    реш. владельца 12.07): центрированная serif-шапка + 6 карточек с
    мини-визуалами продукта. Заменила асимметричный Bento. Визуалы —
    стилизованные мокапы фич (не скриншоты — не устаревают по стилю),
-   тот же приём, что иллюстрации /changelog (site-github.jsx, Clip*).
+   тот же приём и тот же хелпер, что иллюстрации /changelog
+   (mockCardCss/mockMono/mockTag — site-hero.jsx, единый визуальный язык).
 -------------------------------------------------------------- */
-const fvCard = { background: "var(--bg-base)", border: "1px solid var(--hairline)", borderRadius: 12, boxShadow: "var(--shadow-card)" };
-const fvMono = (extra) => ({ fontFamily: "var(--font-mono)", fontSize: "var(--fs-11)", ...extra });
-const fvChip = { fontFamily: "var(--font-mono)", fontSize: "var(--fs-10)", fontWeight: 700, letterSpacing: ".05em", textTransform: "uppercase", color: "var(--accent-2-ink)", padding: "3px 9px", borderRadius: 99, background: "var(--accent-2-tint)" };
+const { mockCardCss, mockMono, mockTag } = window;   // общий набор (site-hero.jsx грузится раньше)
 
 function FvPrice() {
   const ROWS = [["Диван «Милано»", 128000, 169000], ["Кресло лаунж", 73000, 96400]];
   return (
-    <div style={{ ...fvCard, width: "min(300px,100%)", padding: 14, display: "flex", flexDirection: "column", gap: 9 }}>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr auto auto", gap: 10, ...fvMono({ fontSize: "var(--fs-10)", color: "var(--spec-meta)", fontWeight: 700, letterSpacing: ".04em", textTransform: "uppercase" }) }}>
+    <div style={{ ...mockCardCss, width: "min(300px,100%)", padding: 14, display: "flex", flexDirection: "column", gap: 9 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr auto auto", gap: 10, ...mockMono({ fontSize: "var(--fs-10)", color: "var(--spec-meta)", fontWeight: 700, letterSpacing: ".04em", textTransform: "uppercase" }) }}>
         <span>Позиция</span><span>Себест.</span><span>Клиенту</span>
       </div>
       {ROWS.map(([n, c, cli]) => (
         <div key={n} style={{ display: "grid", gridTemplateColumns: "1fr auto auto", gap: 10, fontSize: "var(--fs-12)", alignItems: "center" }}>
           <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{n}</span>
-          <span style={fvMono({ color: "var(--muted)" })}>{fmtMoney(c)}</span>
-          <span style={fvMono({ fontWeight: 700 })}>{fmtMoney(cli)}</span>
+          <span style={mockMono({ color: "var(--muted)" })}>{fmtMoney(c)}</span>
+          <span style={mockMono({ fontWeight: 700 })}>{fmtMoney(cli)}</span>
         </div>
       ))}
       <div style={{ display: "flex", alignItems: "center", gap: 8, paddingTop: 9, borderTop: "1px solid var(--hairline)" }}>
-        <span style={fvChip}>наценка +32%</span>
-        <span style={fvMono({ color: "var(--accent-2-ink)", fontWeight: 700, marginLeft: "auto" })}>+64 400 ₽</span>
+        <span style={mockTag}>наценка +32%</span>
+        <span style={mockMono({ color: "var(--accent-2-ink)", fontWeight: 700, marginLeft: "auto" })}>+64 400 ₽</span>
       </div>
     </div>
   );
@@ -567,16 +566,16 @@ function FvPrice() {
 function FvClip() {
   return (
     <div style={{ width: "min(280px,100%)", display: "flex", flexDirection: "column", gap: 9 }}>
-      <div style={{ ...fvCard, display: "flex", alignItems: "center", gap: 8, padding: "9px 12px" }}>
+      <div style={{ ...mockCardCss, display: "flex", alignItems: "center", gap: 8, padding: "9px 12px" }}>
         <I.scan size={14} style={{ color: "var(--spec-meta)", flex: "none" }} />
-        <span style={fvMono({ color: "var(--muted)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" })}>divan.ru/product/milano-3</span>
+        <span style={mockMono({ color: "var(--muted)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" })}>divan.ru/product/milano-3</span>
       </div>
       <div style={{ display: "flex", justifyContent: "center", color: "var(--spec-meta)" }}><I.arrow size={15} style={{ transform: "rotate(90deg)" }} /></div>
-      <div style={{ ...fvCard, padding: "11px 13px" }}>
+      <div style={{ ...mockCardCss, padding: "11px 13px" }}>
         <div style={{ fontWeight: 600, fontSize: "var(--fs-13)" }}>Диван «Милано», 3-местный</div>
         <div style={{ display: "flex", justifyContent: "space-between", marginTop: 5 }}>
-          <span style={fvMono({ color: "var(--spec-meta)" })}>арт. MIL-3 · Divan.ru</span>
-          <span style={fvMono({ fontWeight: 700 })}>128 000 ₽</span>
+          <span style={mockMono({ color: "var(--spec-meta)" })}>арт. MIL-3 · Divan.ru</span>
+          <span style={mockMono({ fontWeight: 700 })}>128 000 ₽</span>
         </div>
       </div>
     </div>
@@ -585,15 +584,15 @@ function FvClip() {
 
 function FvPortal() {
   return (
-    <div style={{ ...fvCard, width: "min(290px,100%)", padding: 14, display: "flex", flexDirection: "column", gap: 10 }}>
+    <div style={{ ...mockCardCss, width: "min(290px,100%)", padding: 14, display: "flex", flexDirection: "column", gap: 10 }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
         <span style={{ fontWeight: 600, fontSize: "var(--fs-12)" }}>Кресло лаунж, букле</span>
-        <span style={fvChip}>Согласовано</span>
+        <span style={mockTag}>Согласовано</span>
       </div>
       <div style={{ alignSelf: "flex-start", maxWidth: "92%", padding: "8px 11px", borderRadius: "11px 11px 11px 3px", fontSize: "var(--fs-12)", background: "rgba(183,80,44,.08)", border: "1px solid rgba(183,80,44,.28)", lineHeight: 1.4 }}>
         Можно светлее обивку?
       </div>
-      <div style={{ ...fvCard, boxShadow: "none", alignSelf: "flex-end", maxWidth: "92%", padding: "8px 11px", borderRadius: "11px 11px 3px 11px", fontSize: "var(--fs-12)", lineHeight: 1.4 }}>
+      <div style={{ ...mockCardCss, boxShadow: "none", alignSelf: "flex-end", maxWidth: "92%", padding: "8px 11px", borderRadius: "11px 11px 3px 11px", fontSize: "var(--fs-12)", lineHeight: 1.4 }}>
         Заменю на бежевый букле
       </div>
     </div>
@@ -609,10 +608,10 @@ function FvLib() {
   return (
     <div style={{ position: "relative", width: "min(280px,100%)", height: 150 }}>
       {ITEMS.map(([n, p, bg, rot, left], i) => (
-        <div key={n} style={{ ...fvCard, position: "absolute", left: left + "%", top: i * 14, width: 132, padding: 10, transform: `rotate(${rot})`, zIndex: i }}>
+        <div key={n} style={{ ...mockCardCss, position: "absolute", left: left + "%", top: i * 14, width: 132, padding: 10, transform: `rotate(${rot})`, zIndex: i }}>
           <div style={{ height: 44, borderRadius: 7, background: bg }} />
           <div style={{ fontWeight: 600, fontSize: "var(--fs-11)", marginTop: 7, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{n}</div>
-          <div style={fvMono({ fontSize: "var(--fs-10)", color: "var(--spec-meta)", marginTop: 2 })}>{p}</div>
+          <div style={mockMono({ fontSize: "var(--fs-10)", color: "var(--spec-meta)", marginTop: 2 })}>{p}</div>
         </div>
       ))}
     </div>
@@ -622,7 +621,7 @@ function FvLib() {
 function FvToday() {
   const ROWS = [["Аванс поставщику · диван", "просрочен 2 дня", true], ["Остаток клиенту · кресло", "до 15 июля", false]];
   return (
-    <div style={{ ...fvCard, width: "min(300px,100%)", padding: 14, display: "flex", flexDirection: "column", gap: 10 }}>
+    <div style={{ ...mockCardCss, width: "min(300px,100%)", padding: 14, display: "flex", flexDirection: "column", gap: 10 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
         <I.calendar size={14} style={{ color: "var(--accent-2-ink)" }} />
         <span style={{ fontWeight: 600, fontSize: "var(--fs-12)" }}>Сегодня в работе</span>
@@ -630,12 +629,12 @@ function FvToday() {
       {ROWS.map(([n, when, late]) => (
         <div key={n} style={{ display: "flex", alignItems: "center", gap: 8, justifyContent: "space-between" }}>
           <span style={{ fontSize: "var(--fs-11)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{n}</span>
-          <span style={fvMono({ fontSize: "var(--fs-10)", fontWeight: 600, flex: "none", padding: "3px 8px", borderRadius: 99, color: late ? "var(--accent-ink)" : "var(--spec-meta)", background: late ? "var(--accent-tint)" : "var(--hairline)" })}>{when}</span>
+          <span style={mockMono({ fontSize: "var(--fs-10)", fontWeight: 600, flex: "none", padding: "3px 8px", borderRadius: 99, color: late ? "var(--accent-ink)" : "var(--spec-meta)", background: late ? "var(--accent-tint)" : "var(--hairline)" })}>{when}</span>
         </div>
       ))}
       <div style={{ display: "flex", alignItems: "center", gap: 7, paddingTop: 9, borderTop: "1px solid var(--hairline)" }}>
         <I.truck size={13} style={{ color: "var(--spec-meta)", flex: "none" }} />
-        <span style={fvMono({ fontSize: "var(--fs-10)", color: "var(--muted)" })}>трек RU284…19 · в пути</span>
+        <span style={mockMono({ fontSize: "var(--fs-10)", color: "var(--muted)" })}>трек RU284…19 · в пути</span>
       </div>
     </div>
   );
@@ -643,13 +642,13 @@ function FvToday() {
 
 function FvExport() {
   return (
-    <div style={{ ...fvCard, width: "min(240px,100%)", padding: "16px 16px 14px" }}>
+    <div style={{ ...mockCardCss, width: "min(240px,100%)", padding: "16px 16px 14px" }}>
       <div style={{ fontFamily: "var(--font-display)", fontWeight: 600, fontSize: "var(--fs-13)" }}>Смета-комплектация</div>
-      <div style={fvMono({ fontSize: "var(--fs-10)", color: "var(--spec-meta)", marginTop: 2 })}>№ 024 · 38 позиций</div>
+      <div style={mockMono({ fontSize: "var(--fs-10)", color: "var(--spec-meta)", marginTop: 2 })}>№ 024 · 38 позиций</div>
       {[86, 70, 78].map((w, i) => <div key={i} style={{ height: 5, width: w + "%", borderRadius: 3, background: "var(--hairline)", marginTop: i ? 7 : 12 }} />)}
       <div style={{ display: "flex", gap: 7, marginTop: 14 }}>
         {["PDF", "Excel", "Закупка"].map((t) => (
-          <span key={t} style={fvMono({ fontSize: "var(--fs-10)", color: "var(--muted)", border: "1px solid var(--hairline)", borderRadius: 7, padding: "4px 9px" })}>{t}</span>
+          <span key={t} style={mockMono({ fontSize: "var(--fs-10)", color: "var(--muted)", border: "1px solid var(--hairline)", borderRadius: 7, padding: "4px 9px" })}>{t}</span>
         ))}
       </div>
     </div>
