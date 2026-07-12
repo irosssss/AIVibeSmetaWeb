@@ -72,15 +72,20 @@ const NORMS_LOGIC = {
     const minV = key === "walkwayMin" ? val : (("walkwayMin" in n) ? n.walkwayMin : canon.walkwayMin);
     const comfV = key === "walkwayComfort" ? val : (("walkwayComfort" in n) ? n.walkwayComfort : canon.walkwayComfort);
     if (minV > comfV) {
+      // зажимаем ТОЛЬКО при правке одной из walkway-норм: если нарушенная пара уже
+      // лежала в сторе (сброс комфорта при поднятом минимуме), правка НЕСВЯЗАННОЙ
+      // нормы не должна молча переписывать чужой порог (находка код-ревью 12.07)
       if (key === "walkwayMin") { n.walkwayComfort = minV; note = "Комфортный проход подтянут до " + minV + " см — он не бывает меньше минимального."; }
-      else { n.walkwayMin = comfV; note = "Минимальный проход опущен до " + comfV + " см — он не бывает больше комфортного."; }
+      else if (key === "walkwayComfort") { n.walkwayMin = comfV; note = "Минимальный проход опущен до " + comfV + " см — он не бывает больше комфортного."; }
     }
     return { override: n, note };
   },
   resetKey(override, key) { const n = { ...override }; delete n[key]; return n; },
   toggleKey(enabled, key) { return { ...enabled, [key]: enabled[key] === false ? true : false }; },
   resetAll() { return { override: {}, enabled: {}, baseKey: "canon" }; },
-  modCount: (override) => Object.keys(override).length,
+  // только реальные нормы: мусорный/устаревший ключ в сохранённом override не должен
+  // расщеплять счётчики (confirm пресета видит «1 изменённый», а футер — «всё по канону»)
+  modCount: (override) => NORM_DEFS.filter((d) => d.key in override).length,
   changedCount: (override, enabled) => NORM_DEFS.filter((d) => (d.key in override) || enabled[d.key] === false).length,
 };
 window.AIVibeNormsLogic = NORMS_LOGIC;   // наружу — для юнит-тестов

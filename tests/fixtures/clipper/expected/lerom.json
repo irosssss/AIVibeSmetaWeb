@@ -8,6 +8,6 @@
   "brand": "Лером",
   "material": "ЛДСП",
   "img": "https://www.lerom.ru/upload/iblock/743/kzxvey3r17gsquk9hh7r92edcejauy4x/Composition-01_SYA.webp",
-  "traps": ["no-schema", "generic-og", "promo-price-nearby", "combined-dims-string"],
+  "traps": ["no-schema", "generic-og", "crossed-out-old-price", "combined-dims-string"],
   "notes": "Сайт фабрики Лером, разметки Product нет. og:title — «Лером 2026» (генерик сайта, НЕ имя товара — эталон из h1), og:image — заглушка /images/og-image.png (относительная!), настоящее фото композиции — Composition-01_SYA.webp в галерее. Цена 92 639 ₽ актуальная (класс --sale), рядом зачёркнутая старая 123 519 ₽. Габариты строкой «ВхШхГ - 2180х3195х448 мм» — порядок осей НЕ WxDxH: высота первая (218 × 319.5 × 44.8 см). Материалы: «корпус ЛДСП, фасад МДФ»."
 }

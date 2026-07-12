@@ -41,7 +41,9 @@ describe("счётчики: 4 угловых случая (правка / тум
   it("включённый тумблер (true) и мусорные ключи не считаются изменением", () => {
     expect(L.changedCount({}, { walkwayMin: true })).toBe(0);
     expect(L.changedCount({ notANorm: 1 }, { notANorm: false })).toBe(0);  // не из NORM_DEFS
-    expect(L.modCount({ notANorm: 1 })).toBe(1);   // modCount честно считает ключи override
+    // мусорный/устаревший ключ в сохранённом override не расщепляет счётчики:
+    // иначе confirm пресета видел бы «1 изменённый», а футер — «всё по канону»
+    expect(L.modCount({ notANorm: 1 })).toBe(0);
   });
 });
 
@@ -89,5 +91,12 @@ describe("связка walkwayMin ≤ walkwayComfort (мягкий зажим + 
     const r = L.setKey({}, "walkwayMin", 80, { walkwayMin: 70, walkwayComfort: 90 });
     expect(r.override).toEqual({ walkwayMin: 80 });
     expect(r.note).toBe("");
+  });
+  it("правка НЕСВЯЗАННОЙ нормы не зажимает walkway-пару (регресс код-ревью 12.07)", () => {
+    // нарушенная пара уже в сторе: min=100 поверх канонного комфорта 90
+    // (так бывает после «↺ сброс» у комфорта при поднятом минимуме)
+    const r = L.setKey({ walkwayMin: 100 }, "doorSwing", 95, { walkwayMin: 70, walkwayComfort: 90 });
+    expect(r.override).toEqual({ walkwayMin: 100, doorSwing: 95 });   // min не тронут
+    expect(r.note).toBe("");                                          // и нет ложной сноски
   });
 });
