@@ -22,13 +22,42 @@ function parseRoute() {
   const [view, tab, sub, s2] = h.split("/");
   return { view: view || "site", tab: tab || "", sub: sub || "", s2: s2 || "" };
 }
-function setRoute(view, tab, sub, s2) {
+function applyRoute(view, tab, sub, s2) {
   const next = "#" + view + (tab ? "/" + tab : "") + (sub ? "/" + sub : "") + (s2 ? "/" + s2 : "");
   if (location.hash !== next) location.hash = next;
 }
+/* Долг W2/W6: уход со сметы (сайдбар/крошка-переключатель/⌘K/«Все проекты») без
+   сохранения молча терял правки RoomSpecOverlay. window.pdSmetaDirty — мост: сама
+   смета регистрирует {save}, пока в ней есть несохранённые правки (project-detail.jsx
+   RoomSpecOverlay), снимает при сохранении/размонтировании. guardSmetaLeave — общая
+   точка «спросить и сохранить, если есть что терять» для setRoute (сайдбар/крошка/
+   назад) и смены студийной вкладки (только ⌘K может её вызвать при открытом проекте —
+   сайдбар в этот момент показывает разделы проекта, не вкладки). Переход МЕЖДУ
+   режимами той же сметы (smeta/client/procure/versions — RoomSpecOverlay не
+   размонтируется, W1: «внутренние переключатели пишут адрес обратно») не спрашивает —
+   держит staysInOverlay в setRoute. «Проекты»-крошка/стрелка назад/Esc внутри самой
+   смёты — не отсюда, гвардятся локально (project-detail.jsx guardedClose). */
+function guardSmetaLeave(action) {
+  const g = window.pdSmetaDirty;
+  if (!g) { action(); return; }
+  confirmLeaveSmeta().then((ok) => {
+    if (!ok) return;
+    g.save().then(action).catch(() => toast("Не удалось сохранить смету — попробуйте вручную.", "warn"));
+  });
+}
+function setRoute(view, tab, sub, s2) {
+  const g = window.pdSmetaDirty;
+  if (g) {
+    const cur = parseRoute();
+    const s2n = s2 || "";
+    const staysInOverlay = view === cur.view && tab === cur.tab && sub === cur.sub && s2n !== "" && s2n !== "settings";
+    if (!staysInOverlay) { guardSmetaLeave(() => applyRoute(view, tab, sub, s2)); return; }
+  }
+  applyRoute(view, tab, sub, s2);
+}
 /* прототип-свитчер и синтетический вход в админку — только в dev-окружении */
 const DEV_MODE = location.hostname === "localhost" || location.hostname === "127.0.0.1" || /[?&]dev=1\b/.test(location.search);
-window.parseRoute = parseRoute; window.setRoute = setRoute; window.DEV_MODE = DEV_MODE;
+window.parseRoute = parseRoute; window.setRoute = setRoute; window.applyRoute = applyRoute; window.guardSmetaLeave = guardSmetaLeave; window.DEV_MODE = DEV_MODE;
 
 /* провайдерские кнопки — фирменные SVG-логотипы (Яндекс / VK) */
 function YandexBtn({ onClick, loading }) {
@@ -179,8 +208,13 @@ function Cabinet({ user, onLogout, go }) {
     return () => document.removeEventListener("keydown", onKey);
   }, [cmdk]);
   const changeTab = (t) => {
-    if (LEGACY_WORKSHOP[t]) { setTab("workshop"); setRoute("cabinet", "workshop", LEGACY_WORKSHOP[t]); return; }
-    setTab(t); setRoute("cabinet", t);
+    // studio-вкладки скрыты из сайдбара, пока открыт проект (WsSidebar: {!proj && ...}) —
+    // единственный путь сюда при дирти-смете — студийный пункт из ⌘K; guardSmetaLeave
+    // не даст setTab (эта смена не идёт через setRoute) молча снести RoomSpecOverlay
+    guardSmetaLeave(() => {
+      if (LEGACY_WORKSHOP[t]) { setTab("workshop"); applyRoute("cabinet", "workshop", LEGACY_WORKSHOP[t]); return; }
+      setTab(t); applyRoute("cabinet", t);
+    });
   };
 
   // синхронизация с адресом (кнопка «назад», deep-link, ручная правка hash)

@@ -358,20 +358,63 @@ function RoomSpecOverlay({ data, nav, onClose }) {
     if (!ok) return;
     AIVibeAPI.markupProfiles.remove(p.id).then(() => setProfiles((ps) => ps.filter((x) => x.id !== p.id)));
   };
+  /* --- dirty-флаг несохранённых правок (долг W2/W6): сайдбар/крошка/⌘K уходили со
+     сметы, молча теряя правки в этом локальном стейте (rooms/markup/... персистятся
+     только по клику «Сохранить»). savedSnapRef — снимок ПОСЛЕДНЕГО сохранённого
+     состояния (тех же полей, что несёт patch ниже); dirty — плоское сравнение на
+     каждый рендер (JSON.stringify недорог на размере сметы, а useMemo здесь дал бы
+     ложный «неизменившийся» результат — deps не видят мутацию ref после сохранения). */
+  const pdSnap = (m, cm, d, dl, ins, rm) => JSON.stringify({ m, cm, d, dl, ins, rm });
+  const savedSnapRef = usePDR(pdSnap(
+    data.markupPct != null ? data.markupPct : PD_DEFAULT_MARKUP, data.catMarkupPct || {},
+    data.discountPct || 0, data.deliveryCost || 0, data.installCost || 0, data.rooms || []));
+  const dirty = pdSnap(markup, catMarkup, discount, delivery, install, rooms) !== savedSnapRef.current;
+  const savingRef = usePDR(null);   // промис уже идущего сохранения — вторая правка не должна коротить мимо него Promise.resolve()
   const saveRoom = () => {
-    if (roomSaving) return;
+    if (savingRef.current) return savingRef.current;
     setRoomSaving(true);
-    const done = () => { setRoomSaving(false); setRoomSaved(true); setTimeout(() => setRoomSaved(false), 1700); };
+    const snap = pdSnap(markup, catMarkup, discount, delivery, install, rooms);
+    const done = () => { savedSnapRef.current = snap; savingRef.current = null; setRoomSaving(false); setRoomSaved(true); setTimeout(() => setRoomSaved(false), 1700); };
     const patch = { markupPct: markup, catMarkupPct: catMarkup, discountPct: discount, deliveryCost: delivery, installCost: install, rooms, items: itemsCount };
-    if (savedId) { AIVibeAPI.projects.update(savedId, patch).then(done); return; }
-    // импортированная из Excel смета не привязана к проекту — создаём его,
-    // иначе «Сохранено» врало бы, а наценки терялись при закрытии оверлея
-    AIVibeAPI.projects.create({
-      name: data.name || "Смета из Excel", room: data.generated ? "Черновик по площади" : "Комплектация из Excel", style: "",
-      area: data.area, budget: data.budget || 0,
-      summaryShort: data.summaryShort, ...patch,
-    }).then((p) => { setSavedId(p.id); toast("Смета сохранена в «Мои проекты»"); done(); });
+    const p = savedId
+      ? AIVibeAPI.projects.update(savedId, patch).then(done)
+      // импортированная из Excel смета не привязана к проекту — создаём его,
+      // иначе «Сохранено» врало бы, а наценки терялись при закрытии оверлея
+      : AIVibeAPI.projects.create({
+          name: data.name || "Смета из Excel", room: data.generated ? "Черновик по площади" : "Комплектация из Excel", style: "",
+          area: data.area, budget: data.budget || 0,
+          summaryShort: data.summaryShort, ...patch,
+        }).then((p2) => { setSavedId(p2.id); toast("Смета сохранена в «Мои проекты»"); done(); });
+    savingRef.current = p;
+    return p;
   };
+  // saveRoom/guardedClose пересоздаются КАЖДЫЙ рендер (закрывают текущие markup/
+  // catMarkup/rooms/...), а мост наружу и Esc-листенер ниже регистрируются РЕЖЕ —
+  // только на переход dirty false→true — поэтому обязаны звать через ref на
+  // последнее значение, не напрямую: иначе застрявшее в замыкании эффекта значение
+  // saveRoom навсегда осталось бы на состоянии ПЕРВОЙ правки dirty-сессии, и
+  // «Сохранить и уйти» после ВТОРОЙ правки тихо ушло бы с данными первой
+  // (найдено код-ревью 12.07 — баг сводил на нет весь смысл этой волны).
+  const saveRoomRef = usePDR(saveRoom);
+  saveRoomRef.current = saveRoom;
+  // мост наружу (сайдбар/крошка-переключатель/⌘K живут в cabinet.jsx — другое дерево
+  // компонентов): пока правки не сохранены, window.setRoute/changeTab спросят
+  // подтверждение перед уходом со сметы (guardSmetaLeave, cabinet.jsx)
+  usePDE(() => {
+    window.pdSmetaDirty = dirty ? { save: () => saveRoomRef.current() } : null;
+    return () => { window.pdSmetaDirty = null; };
+  }, [dirty]);
+  // «Проекты»-крошка/стрелка назад/Esc уходят из ЭТОЙ смёты напрямую (не через
+  // setRoute) — тот же вопрос локально, на местном dirty, без моста
+  const guardedClose = () => {
+    if (!dirty) { onClose(); return; }
+    confirmLeaveSmeta().then((ok) => {
+      if (!ok) return;
+      saveRoomRef.current().then(onClose).catch(() => toast("Не удалось сохранить смету — попробуйте вручную.", "warn"));
+    });
+  };
+  const guardedCloseRef = usePDR(guardedClose);
+  guardedCloseRef.current = guardedClose;
 
   // копии из прошлого проекта / шаблона: комнаты с одинаковым именем сливаются
   const addFrom = (entries, srcLabel) => {
@@ -473,12 +516,15 @@ function RoomSpecOverlay({ data, nav, onClose }) {
   };
 
   // Esc закрывает смету-оверлей (когда открыта напрямую, напр. из импорта Excel);
-  // из полей ввода Esc не закрывает, а отдаёт фокус
+  // из полей ввода Esc не закрывает, а отдаёт фокус. Регистрируем ОДИН раз ([] —
+  // не [dirty]) и зовём через guardedCloseRef: слушатель с deps=[dirty] пересобирался
+  // бы только на переход dirty, застревая на guardedClose первой правки сессии
+  // (тот же класс бага, что был у моста window.pdSmetaDirty — см. выше).
   usePDE(() => {
     const onKey = (e) => {
       if (e.key !== "Escape") return;
       if (/^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName)) { e.target.blur(); return; }
-      onClose();
+      guardedCloseRef.current();
     };
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
@@ -719,8 +765,8 @@ function RoomSpecOverlay({ data, nav, onClose }) {
 
   return (
     <div className={"pd-overlay" + (nav == null ? " pd-fullscreen" : "")} role="dialog" aria-label={"Смета: " + data.name}>
-      <OverlayHead onBack={onClose} budget={data.budget}
-        crumbs={[{ label: "Проекты", onClick: onClose }, { label: data.name }, { label: projS2Label(curS2) }]}
+      <OverlayHead onBack={guardedClose} budget={data.budget}
+        crumbs={[{ label: "Проекты", onClick: guardedClose }, { label: data.name }, { label: projS2Label(curS2) }]}
         crumbMenu={nav != null && savedId ? projCrumbMenu(savedId, curS2) : null}
         title={data.name}
         sub={"Комплектация по дизайн-проекту · " + data.area + " м² · " + itemsCount + " " + plural(itemsCount, ["позиция", "позиции", "позиций"])

@@ -391,7 +391,11 @@ function Projects() {
   /* открытый проект живёт в адресе: #cabinet/projects/p_1 → F5 переоткрывает,
      «назад» закрывает оверлей, ссылкой можно поделиться (wayfinding UpRock) */
   const openProject = (id) => { setOpenId(id); setRoute("cabinet", "projects", id); };
-  const closeProject = () => { setOpenId(null); setOpenStyle(null); refresh(); setRoute("cabinet", "projects"); };
+  // applyRoute (НЕ guarded setRoute): closeProject доходит сюда либо когда нечего
+  // терять, либо УЖЕ после подтверждения+сохранения через guardedClose
+  // (project-detail.jsx) — повторный вопрос был бы гонкой с эффектом, снимающим
+  // window.pdSmetaDirty (setRoomSaving/setRoomSaved ещё не отрисовались к этому тику)
+  const closeProject = () => { setOpenId(null); setOpenStyle(null); refresh(); applyRoute("cabinet", "projects"); };
 
   useCVE(() => {
     refresh();
