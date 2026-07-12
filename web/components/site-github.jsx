@@ -10,7 +10,7 @@ function Footer({ go }) {
   /* [название, якорь|null] — null = раздел ещё не написан, честная заглушка без мёртвого клика.
      Порядок «Продукт» — по факту скролла SitePage (ниже), не по важности. */
   const cols = [
-    ["Продукт", [["Для кого", "#whofor"], ["Как работает", "#how"], ["Клиентский портал", "#clientportal"], ["Возможности", "#features"], ["Окупаемость", "#payoff"], ["Тарифы", "#pricing"], ["Новости", "#news"]]],
+    ["Продукт", [["Возможности", "#features"], ["Как работает", "#how"], ["Клиентский портал", "#clientportal"], ["Для кого", "#whofor"], ["Окупаемость", "#payoff"], ["Тарифы", "#pricing"], ["Новости", "#news"]]],
     ["Технологии", [["Движок эргономики", "#how"], ["Каталог фабрик", "#komplektacia"], ["YandexGPT 5", "#features"], ["Выгрузка сметы", "#komplektacia"]]],
     ["Компания", [["Что нового", "#changelog"], ["О проекте", null], ["Контакты", null], ["Политика", null], ["Оферта", null]]],
   ];
@@ -94,18 +94,25 @@ function SitePage({ go }) {
   return (
     <div>
       <SiteNav go={go} />
+      {/* порядок — по рецепту стартовой Programa (реш. владельца 12.07):
+         hero → лента фактов → сетка фич → интерактив-демо → цитата →
+         путь → портал → витрина → отстройка → калькуляторы → голоса →
+         тарифы → журнал */}
       <main id="main">
         <Hero go={go} />
-        <SpecCategories />
-        <WhoFor />
-        <InlineCta go={go} text="Хотите смету по своему проекту?" sub="Первая — бесплатно, без карты" />
-        <SocialProof />
+        <FactsMarquee />
+        <FeatureGrid go={go} />
+        <ClipperDemo go={go} />
+        <QuoteBand />
         <HowItWorks go={go} />
         <ClientPortalPromo />
         <InlineCta go={go} text="Согласование — без вотсапа и созвонов" sub="Клиентский портал входит в любой тариф" />
-        <Bento />
+        <SpecCategories />
+        <WhoFor />
+        <InlineCta go={go} text="Хотите смету по своему проекту?" sub="Первая — бесплатно, без карты" />
         <BudgetCalc go={go} />
         <PayoffCalc />
+        <SocialProof />
         <Pricing go={go} />
         <NewsFeed />
       </main>
