@@ -1,7 +1,7 @@
 /* Юнит-тесты клиппера «вставь-ссылку» (web/clipper.js).
-   clipper.js — IIFE, пишет API в window.AIVibeClipper. Ядро extractFromHtml
+   clipper.js — IIFE, пишет API в window.LedgerClipper. Ядро extractFromHtml
    DOM-опционально (regex по JSON-LD/OG/meta), поэтому тестируется в node без jsdom.
-   mapToPosition зависит от AIVibeFFE — подгружаем ffe.js так же. */
+   mapToPosition зависит от LedgerFFE — подгружаем ffe.js так же. */
 import { describe, it, expect, beforeAll, afterEach } from "vitest";
 
 let CL, FFE;
@@ -9,8 +9,8 @@ beforeAll(async () => {
   globalThis.window = globalThis.window || {};
   await import("../web/ffe.js");
   await import("../web/clipper.js");
-  CL = globalThis.window.AIVibeClipper;
-  FFE = globalThis.window.AIVibeFFE;
+  CL = globalThis.window.LedgerClipper;
+  FFE = globalThis.window.LedgerFFE;
 });
 
 describe("parsePrice — терпимый разбор цены", () => {

@@ -1,6 +1,6 @@
 /* ============================================================
    Design Ledger — выгрузка спецификации в PDF (pdfmake, шрифт Roboto/кириллица)
-   Экспортирует window.AIVibePDF.exportSpec(...)
+   Экспортирует window.LedgerPDF.exportSpec(...)
    ============================================================ */
 (function () {
   const money = (n) => new Intl.NumberFormat("ru-RU").format(Math.round(n)) + " ₽"; // ₽
@@ -114,7 +114,7 @@
     if (!window.pdfMake) { (window.toast ? toast("PDF-модуль ещё загружается — попробуйте через секунду.", "info") : 0); return false; }
     if (mode === "procure") return exportProcurePDF({ project, area, rooms: rooms || [], grand, budget, studioName, studioContact });
     const clientMode = mode === "client";
-    const FFE = window.AIVibeFFE || null;
+    const FFE = window.LedgerFFE || null;
     const fresh = FFE && FFE.priceFreshness ? FFE.priceFreshness(rooms) : null;
     const fmtD = (d) => { const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(d || "")); return m ? m[3] + "." + m[2] + "." + m[1] : ""; };
     // итог структурой: скидка округляется до рубля от подытога — та же формула, что в UI/Excel
@@ -204,7 +204,7 @@
     const names = Object.keys(groups).sort((a, b) => (a === NO_SUP ? 1 : b === NO_SUP ? -1 : total(b) - total(a)));
 
     // стадии закупки (словарь — web/ffe.js; без модуля колонка не печатается)
-    const FFE = window.AIVibeFFE || null;
+    const FFE = window.LedgerFFE || null;
     const stId = (it) => (FFE && FFE.STATUS_BY_ID[it.status] ? it.status : "specified");
     const stShort = (it) => (FFE ? FFE.statusMeta(stId(it)).short : "");
     const supProgress = (k) => (FFE && groups[k].length
@@ -268,7 +268,7 @@
      Юридически фиксирует состояние переговоров на момент выгрузки. */
   function exportApprovalProtocol({ project, versionLabel, createdAt, vStatusLabel, statusAt, respondedAt, studioName, studioContact, snapshot }) {
     if (!window.pdfMake) { (window.toast ? toast("PDF-модуль ещё загружается — попробуйте через секунду.", "info") : 0); return false; }
-    const FFE = window.AIVibeFFE;
+    const FFE = window.LedgerFFE;
     const snap = snapshot || {};
     const rooms = Array.isArray(snap.rooms) ? snap.rooms : [];
     const cp = FFE ? FFE.clientPricing(snap) : null;
@@ -334,5 +334,5 @@
     return true;
   }
 
-  window.AIVibePDF = { exportSpec, exportRoomSpec, exportApprovalProtocol };
+  window.LedgerPDF = { exportSpec, exportRoomSpec, exportApprovalProtocol };
 })();

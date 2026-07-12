@@ -1,7 +1,7 @@
 /* Юнит-тесты пульса портала (web/ffe.js, адаптация ченджлога Programa 12.07):
    suggestAlternatives (Ч2 — аналоги при отказе клиента), portalEventsFromShare
    (Ч3 — лента действий), collectGaps (Ч3 — пробелы комплектации),
-   notePortalVisit (Ч4 — «клиент открыл»). ffe.js — IIFE в window.AIVibeFFE;
+   notePortalVisit (Ч4 — «клиент открыл»). ffe.js — IIFE в window.LedgerFFE;
    портал-хранилище — localStorage, в node шимится Map'ом. */
 import { describe, it, expect, beforeAll, beforeEach } from "vitest";
 
@@ -16,7 +16,7 @@ beforeAll(async () => {
     clear: () => store.clear(),
   };
   await import("../web/ffe.js");
-  FFE = globalThis.window.AIVibeFFE;
+  FFE = globalThis.window.LedgerFFE;
 });
 beforeEach(() => globalThis.localStorage.clear());
 

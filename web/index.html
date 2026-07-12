@@ -63,8 +63,8 @@
 (function () {
   function showFail() {
     var root = document.getElementById("root");
-    if (!root || root.childElementCount || window.__aivibeErrShown) return;
-    window.__aivibeErrShown = true;
+    if (!root || root.childElementCount || window.__ledgerErrShown) return;
+    window.__ledgerErrShown = true;
     root.innerHTML = '<div style="min-height:100vh;display:grid;place-items:center;padding:24px;text-align:center;font-family:Georgia,serif;color:#2E2A26">' +
       '<div><div style="font-size:26px;margin-bottom:10px">Что-то не загрузилось…</div>' +
       '<div style="font-size:15px;opacity:.7;margin-bottom:20px;font-family:system-ui,sans-serif">Похоже, часть скриптов не доехала по сети. Обновите страницу — обычно этого достаточно.</div>' +

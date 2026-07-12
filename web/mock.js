@@ -1,5 +1,5 @@
 /* ============================================================
-   Design Ledger — единый mock-слой данных (AIVibeAPI)
+   Design Ledger — единый mock-слой данных (LedgerAPI)
    ------------------------------------------------------------
    Все экраны ходят ТОЛЬКО сюда. Сигнатуры методов совпадают с
    будущим реальным API (Yandex Cloud Functions + YDB), поэтому
@@ -64,7 +64,7 @@
   };
 
   /* ----------------------------- localStorage-адаптер -----------------------------
-     Персистентность за теми же сигнатурами AIVibeAPI: при подключении бэкенда
+     Персистентность за теми же сигнатурами LedgerAPI: при подключении бэкенда
      тела методов меняются на fetch(...), UI не трогаем. */
   const LS = {
     get(k, d) { try { const v = localStorage.getItem("aivibe_" + k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } },
@@ -173,7 +173,7 @@
   }
 
   /* ----------------------------- API surface ----------------------------- */
-  window.AIVibeAPI = {
+  window.LedgerAPI = {
     /* — Аутентификация (OAuth Яндекс ID / VK ID) — */
     auth: {
       loginWithYandex: () => oauth("yandex"),   // → POST /api/auth/oauth/yandex
@@ -345,14 +345,14 @@
     },
 
     /* — Библиотека товаров студии (мастер-записи, волна B1). Все записи свои
-         (системных пресетов нет). Нормализация схемы — через AIVibeFFE.blankProduct
+         (системных пресетов нет). Нормализация схемы — через LedgerFFE.blankProduct
          (единый источник схемы; вызовы рантайм-асинхронные, модуль уже загружен). — */
     library: {
       list: async () => { await delay(120); return clone(db.library); },        // → GET /api/library
       get: async (id) => { await delay(70); return clone(db.library.find((p) => p.id === id)); },
       create: async (patch = {}) => {                                           // → POST /api/library
         await delay(150);
-        const F = window.AIVibeFFE;
+        const F = window.LedgerFFE;
         const body = F && F.blankProduct ? F.blankProduct(patch) : patch;
         if (F) body.priceDate = body.priceDate || today();  // новый товар — цена только что введена/собрана (волна B3)
         const row = { id: "lib_" + Date.now(), ...body, createdAt: today(), updatedAt: today() };
@@ -364,7 +364,7 @@
         await delay(130);
         const i = db.library.findIndex((p) => p.id === id);
         if (i >= 0) {
-          const F = window.AIVibeFFE;
+          const F = window.LedgerFFE;
           const prev = db.library[i];
           const body = F && F.blankProduct ? F.blankProduct({ ...prev, ...patch }) : { ...prev, ...patch };
           // сравниваем ОБЕ стороны через ту же нормализацию (blankProduct), а не body
@@ -393,7 +393,7 @@
       list: async () => { await delay(120); return clone(db.markupProfiles); },  // → GET /api/markup-profiles
       create: async (patch = {}) => {                                            // → POST /api/markup-profiles
         await delay(150);
-        const defMarkup = (window.AIVibeFFE && window.AIVibeFFE.DEFAULT_MARKUP_PCT) || 25;
+        const defMarkup = (window.LedgerFFE && window.LedgerFFE.DEFAULT_MARKUP_PCT) || 25;
         const row = { id: "mp_" + Date.now(), name: "Мой стандарт", markupPct: defMarkup, catMarkupPct: {}, discountPct: 0, deliveryCost: 0, installCost: 0, ...patch, createdAt: today() };
         db.markupProfiles.push(row);
         LS.set("markupProfiles", db.markupProfiles);
@@ -408,7 +408,7 @@
     },
 
     /* — «Недавнее» для ⌘K (Д3, W6): последние открытые проекты/разделы кабинета.
-       Локальная история устройства, но за сигнатурой AIVibeAPI, как вся персистенция
+       Локальная история устройства, но за сигнатурой LedgerAPI, как вся персистенция
        (при переезде на бэкенд станет частью профиля). Без delay: это не «сеть». — */
     recents: {
       list: async () => clone(LS.get("recentVisits", [])),                     // → GET /api/recents

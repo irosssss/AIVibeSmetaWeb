@@ -1,12 +1,12 @@
 /* Юнит-тесты детерминированного движка сметы (web/engine.js).
-   engine.js — IIFE, который пишет API в window.AIVibeEngine; даём ему window и импортируем. */
+   engine.js — IIFE, который пишет API в window.LedgerEngine; даём ему window и импортируем. */
 import { describe, it, expect, beforeAll } from "vitest";
 
 let E;
 beforeAll(async () => {
   globalThis.window = globalThis.window || {};
   await import("../web/engine.js");
-  E = globalThis.window.AIVibeEngine;
+  E = globalThis.window.LedgerEngine;
 });
 
 /* Каталог проекта p_1 «Гостиная на Патриках» — id/price/rating как в web/project-data.js */
@@ -38,7 +38,7 @@ const catalog = () => [
   ] },
 ];
 
-describe("AIVibeEngine API", () => {
+describe("LedgerEngine API", () => {
   it("экспортирует детерминированный API", () => {
     expect(E).toBeTruthy();
     expect(typeof E.checkErgonomics).toBe("function");

@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>AIVibe — прототип «Нормы дизайна» (редактируемый канон)</title>
+<title>Design Ledger — прототип «Нормы дизайна» (редактируемый канон)</title>
 
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -191,7 +191,7 @@
   <div class="head">
     <span class="eyebrow">Нормы дизайна</span>
     <h1 class="display">Правила эргономики</h1>
-    <p>Вшитый канон AIVibe (NKBA / Нойферт) — уже работает по умолчанию. Здесь вы подстраиваете пороги под себя: слой правок ложится поверх канона, хранится только отличие. Обновим эталон — подтянется всё, что вы не трогали.</p>
+    <p>Вшитый канон Design Ledger (NKBA / Нойферт) — уже работает по умолчанию. Здесь вы подстраиваете пороги под себя: слой правок ложится поверх канона, хранится только отличие. Обновим эталон — подтянется всё, что вы не трогали.</p>
   </div>
 
   <div class="toolbar">
@@ -203,7 +203,7 @@
     <div class="preset">
       База:
       <select id="preset">
-        <option value="canon">Канон AIVibe</option>
+        <option value="canon">Канон Design Ledger</option>
         <option value="nkba">NKBA (США)</option>
         <option value="neufert">Нойферт (ЕС)</option>
         <option value="small">Малометражка</option>
@@ -416,8 +416,8 @@ function render(){
     else if (scope==='project' && (n.key in overrides.global)) badge = '<span class="badge inh">из моего канона</span>';
 
     const srcTxt = scope==='global'
-      ? (isMod(n.key)?'источник: мой канон':'источник: канон AIVibe · '+baseLabel())
-      : (isMod(n.key)?'источник: этот проект':((n.key in overrides.global)?'наследует: мой канон':'источник: канон AIVibe'));
+      ? (isMod(n.key)?'источник: мой канон':'источник: канон Design Ledger · '+baseLabel())
+      : (isMod(n.key)?'источник: этот проект':((n.key in overrides.global)?'наследует: мой канон':'источник: канон Design Ledger'));
 
     // контрол
     let ctrl = '';
@@ -479,7 +479,7 @@ function stepper(key, part, val, n){
     <button data-step="${key}" data-part="${part}" data-dir="1">+</button>
   </span>`;
 }
-function baseLabel(){ return ({canon:'канон AIVibe',nkba:'NKBA',neufert:'Нойферт',small:'малометражка',commercial:'коммерция'})[baseKey]; }
+function baseLabel(){ return ({canon:'канон Design Ledger',nkba:'NKBA',neufert:'Нойферт',small:'малометражка',commercial:'коммерция'})[baseKey]; }
 
 /* ---------- взаимодействие ---------- */
 function clampVal(n, v){ return Math.max(n.min, Math.min(n.max, v)); }

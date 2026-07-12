@@ -1,7 +1,7 @@
 /* ============================================================
    Design Ledger — БИБЛИОТЕКА СТИЛЕЙ (редактировать / создавать свои)
    ------------------------------------------------------------
-   Единый реестр AIVibeAPI.styles заменяет три хардкода. Системные пресеты
+   Единый реестр LedgerAPI.styles заменяет три хардкода. Системные пресеты
    (owner:null) — read-only база; «Дублировать» форкает в свой (Shopify «Copy of…»),
    «Создать» — с нуля. Стиль = палитра + материалы + уровень декора + бюджет-factor,
    применяется к смете по id (правишь стиль — смета пересчитывается).
@@ -15,15 +15,15 @@ const factorDelta = (f) => { const d = Math.round(((f || 1) - 1) * 100); return 
 function StylesLibrary() {
   const [rows, setRows] = useS(null);
   const [edit, setEdit] = useS(null);       // редактируемый/создаваемый стиль (draft) | null
-  const reload = () => AIVibeAPI.styles.list().then(setRows);
+  const reload = () => LedgerAPI.styles.list().then(setRows);
   useSE(() => { reload(); }, []);
 
-  const duplicate = async (id) => { const c = await AIVibeAPI.styles.duplicate(id); await reload(); if (c) setEdit(c); };
+  const duplicate = async (id) => { const c = await LedgerAPI.styles.duplicate(id); await reload(); if (c) setEdit(c); };
   const remove = async (id) => {
     const s = (rows || []).find((x) => x.id === id);
     const ok = await confirmDialog({ title: "Удалить стиль?", text: "«" + ((s && s.name) || "Стиль") + "» исчезнет из библиотеки. Проекты, где он был выбран, вернутся к базовому стилю — цены пересчитаются.", confirmLabel: "Удалить стиль" });
     if (!ok) return;
-    await AIVibeAPI.styles.remove(id); reload(); toast("Стиль удалён");
+    await LedgerAPI.styles.remove(id); reload(); toast("Стиль удалён");
   };
   const createNew = () => setEdit({ __new: true, name: "", owner: "me", mood: "", desc: "", palette: ["#C57B57", "#E7D3C0", "#8A8175", "#2E2A28"], materials: ["дерево", "ткань", "металл"], decorLevel: "mid", factor: 1.0 });
 
@@ -131,15 +131,15 @@ function StyleEditor({ draft, onClose, onSaved }) {
     if (busy) return;
     const name = (d.name || "").trim();
     if (!name) { setNameErr("Дайте стилю имя — без него его не найти в библиотеке и в смете."); return; }
-    const all = await AIVibeAPI.styles.list();
+    const all = await LedgerAPI.styles.list();
     if (all.some((s) => s.id !== d.id && (s.name || "").trim().toLowerCase() === name.toLowerCase())) {
       setNameErr("Стиль «" + name + "» уже есть в библиотеке — назовите этот иначе.");
       return;
     }
     const payload = { name, mood: d.mood, desc: d.desc, palette: d.palette, materials: d.materials, decorLevel: d.decorLevel, factor: d.factor };
     setBusy(true);
-    if (d.__new) await AIVibeAPI.styles.create(payload);
-    else await AIVibeAPI.styles.update(d.id, payload);
+    if (d.__new) await LedgerAPI.styles.create(payload);
+    else await LedgerAPI.styles.update(d.id, payload);
     setBusy(false);
     setDone(true);
     setTimeout(onSaved, 650);   // дать увидеть «Сохранено», затем закрыть

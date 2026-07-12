@@ -2,7 +2,7 @@
    Design Ledger — детальные данные проекта (анализ помещения, стили,
    бюджет-тиры, каталог фабрик-партнёров) + AI-чат.
 
-   Расширяет AIVibeAPI.projects методами get(id) и chat(id, msg).
+   Расширяет LedgerAPI.projects методами get(id) и chat(id, msg).
    Точки замены под реальный бэкенд помечены  // → API:
    ============================================================ */
 (function () {
@@ -455,8 +455,8 @@
 
   /* ----------------------------- РАСШИРЯЕМ API ----------------------------- */
   function attach() {
-    if (!window.AIVibeAPI || !window.AIVibeAPI.projects) { setTimeout(attach, 30); return; }
-    const projects = window.AIVibeAPI.projects;
+    if (!window.LedgerAPI || !window.LedgerAPI.projects) { setTimeout(attach, 30); return; }
+    const projects = window.LedgerAPI.projects;
 
     // → API: GET /api/projects/:id  (проект + анализ + стили + бюджет + каталог)
     projects.get = async (id) => {
@@ -482,7 +482,7 @@
       return clone(respond(det, message));
     };
 
-    window.AIVIBE_DETAILS = DETAILS;
+    window.LEDGER_DETAILS = DETAILS;
   }
   attach();
 })();

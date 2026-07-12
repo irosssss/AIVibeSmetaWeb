@@ -3,7 +3,7 @@
    ------------------------------------------------------------
    Наш ров: чистая арифметика, без GPU и без секретов. Сейчас крутится
    в браузере; ТОТ ЖЕ код переносится в Node (Yandex Cloud Function)
-   без изменений — экспортируется в window.AIVibeEngine.
+   без изменений — экспортируется в window.LedgerEngine.
 
    Нормы — зеркало DesignNorms.swift (в продакшене единый источник —
    там; здесь дублируем как плейсхолдер до подключения бэкенда).
@@ -161,5 +161,5 @@
     return { selection, total, fits: total <= budget, leftover: budget - total };
   }
 
-  window.AIVibeEngine = { NORMS, checkErgonomics, optimizeSpec };
+  window.LedgerEngine = { NORMS, checkErgonomics, optimizeSpec };
 })();

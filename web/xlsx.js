@@ -1,6 +1,6 @@
 /* ============================================================
    Design Ledger — выгрузка сметы-комплектации в Excel (SheetJS, client-side)
-   Экспортирует window.AIVibeXLSX.exportRoomSpec(...)
+   Экспортирует window.LedgerXLSX.exportRoomSpec(...)
    Структура книги:
      • «Свод»        — итоги по помещениям и по разделам + бюджет;
      • «Все позиции» — плоская мастер-таблица (фильтр/сводная по любой оси);
@@ -42,7 +42,7 @@
     rooms = rooms || [];
     if (mode === "procure") return exportProcure({ project, area, rooms, grand, budget });
     const clientMode = mode === "client";
-    const fresh = window.AIVibeFFE && window.AIVibeFFE.priceFreshness ? window.AIVibeFFE.priceFreshness(rooms) : null;
+    const fresh = window.LedgerFFE && window.LedgerFFE.priceFreshness ? window.LedgerFFE.priceFreshness(rooms) : null;
     // итог структурой: скидка округляется до рубля от подытога — та же формула, что в UI/PDF
     const discountAmt = Math.round((clientTotal || 0) * (discountPct || 0) / 100);
     const totalClient = (clientTotal || 0) - discountAmt + (deliveryCost || 0) + (installCost || 0);
@@ -132,7 +132,7 @@
     const hasSup = !clientMode && rooms.some((r) => r.items.some((it) => it.sup));
     const hasPD = !clientMode && rooms.some((r) => r.items.some((it) => it.priceDate));
     // согласование по позициям (волна A1): решения клиента — внутренняя кухня, только рабочий файл
-    const FFE = window.AIVibeFFE || null;
+    const FFE = window.LedgerFFE || null;
     const apLabel = (it) => (FFE && it.approve && FFE.APPROVE_BY_ID[it.approve] ? FFE.APPROVE_BY_ID[it.approve].label : "");
     const hasAp = !clientMode && !!FFE && rooms.some((r) => r.items.some((it) => apLabel(it)));
     const head = ["№", "Помещение", "Раздел"];
@@ -206,7 +206,7 @@
     const names = Object.keys(groups).sort((a, b) => (a === NO_SUP ? 1 : b === NO_SUP ? -1 : supTotal(b) - supTotal(a)));
 
     // стадии закупки (словарь — web/ffe.js; при недоступном модуле колонки пустые)
-    const FFE = window.AIVibeFFE || null;
+    const FFE = window.LedgerFFE || null;
     const stId = (it) => (FFE && FFE.STATUS_BY_ID[it.status] ? it.status : "specified");
     const stLabel = (it) => (FFE ? FFE.statusMeta(stId(it)).label : "");
     const stDate = (it) => fmtDateCell(it.statusDates && it.statusDates[stId(it)]);
@@ -337,12 +337,12 @@
           const cSup = colOf(head, /поставщ|supplier/);          // закупочный лист / рабочая мастер-таблица
           const cPD = colOf(head, /цена от|дата цены/);           // давность цены (ДД.ММ.ГГГГ → ISO)
           const cSt = colOf(head, /стади|статус/);                // стадия закупки (метка → id из ffe.js)
-          const stByLabel = window.AIVibeFFE
-            ? Object.fromEntries(window.AIVibeFFE.FFE_STATUSES.map((s) => [norm(s.label), s.id])) : {};
+          const stByLabel = window.LedgerFFE
+            ? Object.fromEntries(window.LedgerFFE.FFE_STATUSES.map((s) => [norm(s.label), s.id])) : {};
           const cAp = colOf(head, /клиент решил|согласован/);     // решение клиента по позиции (волна A1)
           const cApD = colOf(head, /решение от/);
-          const apByLabel = window.AIVibeFFE
-            ? Object.fromEntries(window.AIVibeFFE.APPROVE_STATUSES.map((s) => [norm(s.label), s.id])) : {};
+          const apByLabel = window.LedgerFFE
+            ? Object.fromEntries(window.LedgerFFE.APPROVE_STATUSES.map((s) => [norm(s.label), s.id])) : {};
           // платёжные даты (волна C1) — 4 колонки, различаем «клиента»/«поставщику» внутри «аванс»/«остаток»
           const cPayCols = {
             clientAdvance:   colOf(head, /аванс.*клиент/),
@@ -444,7 +444,7 @@
             });
             // хранить только реальные отличия от базовой ставки — так же, как их пишет UI.
             // Дефолт — из web/ffe.js (единая точка канона), а не свой литерал
-            const defMarkup = (window.AIVibeFFE && window.AIVibeFFE.DEFAULT_MARKUP_PCT) || 25;
+            const defMarkup = (window.LedgerFFE && window.LedgerFFE.DEFAULT_MARKUP_PCT) || 25;
             const base = markupPct != null ? markupPct : defMarkup;
             const ov = Object.fromEntries(Object.entries(catOv).filter(([, p]) => p !== base));
             if (Object.keys(ov).length) catMarkupPct = ov;
@@ -469,5 +469,5 @@
     });
   }
 
-  window.AIVibeXLSX = { exportRoomSpec, importRoomSpec };
+  window.LedgerXLSX = { exportRoomSpec, importRoomSpec };
 })();

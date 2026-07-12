@@ -1,16 +1,16 @@
 /* ============================================================
    Design Ledger — НОРМЫ ДИЗАЙНА (редактируемый канон эргономики)
    ------------------------------------------------------------
-   Вшитый канон Design Ledger (AIVibeEngine.NORMS) → слой правок пользователя.
-   Храним ТОЛЬКО дельту (изменённые поля) в AIVibeAPI.settings.normsOverride —
+   Вшитый канон Design Ledger (LedgerEngine.NORMS) → слой правок пользователя.
+   Храним ТОЛЬКО дельту (изменённые поля) в LedgerAPI.settings.normsOverride —
    обновили эталон, подтянулось всё, что не трогали (модель Style Dictionary).
    UX редактируемых-с-дефолтом значений — из VS Code Settings: бейдж «изменено»,
    Reset у отклонённого, фильтр «только изменённые», вкл/выкл правила.
-   Живая проверка справа — тот же движок AIVibeEngine.checkErgonomics.
+   Живая проверка справа — тот же движок LedgerEngine.checkErgonomics.
    ============================================================ */
 const { useState: useN, useEffect: useNE } = React;
 
-const N_CANON = (window.AIVibeEngine && AIVibeEngine.NORMS) ||
+const N_CANON = (window.LedgerEngine && LedgerEngine.NORMS) ||
   { walkwayMin: 70, walkwayComfort: 90, seatToCoffee: { min: 30, max: 45 }, tvComfort: { min: 150, max: 350 }, doorSwing: 90, occupancyWarn: 0.6 };
 
 /* пресеты-базы (в единицах движка; occupancyWarn — доля) */
@@ -88,7 +88,7 @@ const NORMS_LOGIC = {
   modCount: (override) => NORM_DEFS.filter((d) => d.key in override).length,
   changedCount: (override, enabled) => NORM_DEFS.filter((d) => (d.key in override) || enabled[d.key] === false).length,
 };
-window.AIVibeNormsLogic = NORMS_LOGIC;   // наружу — для юнит-тестов
+window.LedgerNormsLogic = NORMS_LOGIC;   // наружу — для юнит-тестов
 
 function NormsSettings() {
   const [loaded, setLoaded] = useN(false);
@@ -103,7 +103,7 @@ function NormsSettings() {
   const reveal = useReveal();     // хук — до любого раннего return (Rules of Hooks)
 
   useNE(() => {
-    AIVibeAPI.settings.get().then((s) => {
+    LedgerAPI.settings.get().then((s) => {
       setOverride((s && s.normsOverride) || {});
       setEnabled((s && s.enabledNorms) || {});
       setLoaded(true);
@@ -143,7 +143,7 @@ function NormsSettings() {
     setOverride(ov); setSaved(false);
   };
   const save = () => {
-    AIVibeAPI.settings.update({ normsOverride: override, enabledNorms: enabled }).then(() => {
+    LedgerAPI.settings.update({ normsOverride: override, enabledNorms: enabled }).then(() => {
       setSaved(true);
       setJustSaved(true);
       setTimeout(() => setJustSaved(false), 2200);
@@ -153,7 +153,7 @@ function NormsSettings() {
   const modCount = NORMS_LOGIC.modCount(override);                 // контракты счётчиков — см. NORMS_LOGIC
   const changedCount = NORMS_LOGIC.changedCount(override, enabled);
   const effNorms = { ...override, enabled };
-  const check = (window.AIVibeEngine && loaded) ? AIVibeEngine.checkErgonomics({ plan: N_PLAN }, N_ROOM, effNorms) : { findings: [], warns: 0, ok: true };
+  const check = (window.LedgerEngine && loaded) ? LedgerEngine.checkErgonomics({ plan: N_PLAN }, N_ROOM, effNorms) : { findings: [], warns: 0, ok: true };
   const okN = check.findings.filter((f) => f.kind === "plus").length;
   const warnN = check.warns;
 

@@ -10,8 +10,8 @@ function Profile({ user }) {
   // согласования и PDF-выгрузки клиенту (шапки «Смета клиенту»/«Закупочный лист»)
   const [studio, setStudio] = useCV({ studioName: "", studioCity: "", studioPhone: "", studioEmail: "", studioTaxId: "" });
   useCVE(() => {
-    AIVibeAPI.profile.analytics().then(setAn);
-    AIVibeAPI.settings.get().then((s) => { if (s) setStudio(Object.fromEntries(STUDIO_FIELDS.map((k) => [k, s[k] || ""]))); });
+    LedgerAPI.profile.analytics().then(setAn);
+    LedgerAPI.settings.get().then((s) => { if (s) setStudio(Object.fromEntries(STUDIO_FIELDS.map((k) => [k, s[k] || ""]))); });
   }, []);
   const setStudioField = (k) => (e) => setStudio((s) => ({ ...s, [k]: e.target.value }));
   // дебаунс: табуляция по всем 5 полям блюрит каждое по очереди — без задержки это было бы
@@ -22,7 +22,7 @@ function Profile({ user }) {
     saveTimer.current = setTimeout(() => {
       const trimmed = Object.fromEntries(STUDIO_FIELDS.map((k) => [k, (studio[k] || "").trim()]));
       setStudio(trimmed);
-      AIVibeAPI.settings.update(trimmed).then(() => toast("Реквизиты студии сохранены — подставятся в портал, протокол и PDF клиенту.", "info", 3500));
+      LedgerAPI.settings.update(trimmed).then(() => toast("Реквизиты студии сохранены — подставятся в портал, протокол и PDF клиенту.", "info", 3500));
     }, 600);
   };
   return (
@@ -146,9 +146,9 @@ const QUIZ_STYLE_NAME = { deco: "Neo Deco", warm: "Тёплый минимали
 /* стадии петли комплектатора (статус ПРОЕКТА «собрал → согласовал → закупил →
    сдал») — единый домовой словарь в ffe.js (как STATUS/APPROVE), общий с «Обзором»
    проекта (W2). Здесь только алиасы; ffe.js грузится раньше (main.jsx). */
-const PROJ_STATUSES = window.AIVibeFFE.PROJ_STATUSES;
-const statusColor = window.AIVibeFFE.PROJ_STATUS_COLOR;
-const STAGE_NEXT = window.AIVibeFFE.PROJ_STAGE_NEXT;
+const PROJ_STATUSES = window.LedgerFFE.PROJ_STATUSES;
+const statusColor = window.LedgerFFE.PROJ_STATUS_COLOR;
+const STAGE_NEXT = window.LedgerFFE.PROJ_STAGE_NEXT;
 const fmtDCV = (d) => { const t = new Date(d + "T00:00:00"); return isNaN(t.getTime()) ? String(d) : t.toLocaleDateString("ru-RU", { day: "2-digit", month: "2-digit" }); };
 
 /* «Сегодня в работе» (волна C2, шаг «Стол комплектатора», бенчмарк Programa) —
@@ -157,7 +157,7 @@ const fmtDCV = (d) => { const t = new Date(d + "T00:00:00"); return isNaN(t.getT
    (FFE.urgencyBucket). Чистая функция от полных карточек проектов (с rooms) —
    без побочных эффектов. Ранг — порядок FFE.URGENCY_BUCKETS, не дублируем список id. */
 function buildUrgentQueue(projects) {
-  const FFE = window.AIVibeFFE;
+  const FFE = window.LedgerFFE;
   if (!FFE) return [];
   const rank = Object.fromEntries(FFE.URGENCY_BUCKETS.map((b, i) => [b.id, i]));
   const rows = [];
@@ -171,12 +171,12 @@ function buildUrgentQueue(projects) {
   return rows.sort((a, b) => rank[a.bucket] - rank[b.bucket] || a.date.localeCompare(b.date));
 }
 
-// AIVibeAPI.projects.list() отдаёт rooms только у проектов, хоть раз сохранённых
+// LedgerAPI.projects.list() отдаёт rooms только у проектов, хоть раз сохранённых
 // через RoomSpecOverlay (saveRoom патчит rooms в запись списка) — свежие/каталожные
 // проекты молча выпадали бы из виджета. Тянем полную карточку каждого, как
 // AddPositionsModal уже делает для вкладки «из прошлого проекта».
 function loadUrgentQueue(projects) {
-  return Promise.all((projects || []).map((p) => AIVibeAPI.projects.get(p.id).catch(() => null)))
+  return Promise.all((projects || []).map((p) => LedgerAPI.projects.get(p.id).catch(() => null)))
     .then((full) => buildUrgentQueue(full.filter((d) => d && d.rooms)));
 }
 
@@ -199,7 +199,7 @@ function FeedRow({ color, date, right, onClick, first, compact, children }) {
 /* строка очереди срочности — общая для TodayWidget (топ-8, компактная) и ProcureHub
    (полный список, волна W3.2) */
 function UrgencyRow({ r, onOpen, first, compact }) {
-  const FFE = window.AIVibeFFE;
+  const FFE = window.LedgerFFE;
   const b = FFE.URGENCY_BY_ID[r.bucket];
   return (
     <FeedRow color={b.color} date={fmtDCV(r.date)} right={r.label} onClick={() => onOpen(r.projectId)} first={first} compact={compact}>
@@ -209,7 +209,7 @@ function UrgencyRow({ r, onOpen, first, compact }) {
 }
 
 function TodayWidget({ rows, onOpen }) {
-  const FFE = window.AIVibeFFE;
+  const FFE = window.LedgerFFE;
   if (!FFE) return null;
   const counts = Object.fromEntries(FFE.URGENCY_BUCKETS.map((b) => [b.id, 0]));
   rows.forEach((r) => counts[r.bucket]++);
@@ -245,10 +245,10 @@ function TodayWidget({ rows, onOpen }) {
    Их Pulse: лента «что требует действия» — решения клиента live + карточки
    «Products missing suppliers / lead time». Наша версия поверх волны C:
    события порталов всех проектов (решения approve + комментарии клиента,
-   AIVibeFFE.portalEventsFromShare) и пробелы комплектации (collectGaps).
+   LedgerFFE.portalEventsFromShare) и пробелы комплектации (collectGaps).
    Чистые функции от уже загруженных проектов — фетчит вызывающий (Today). */
 function buildClientPulse(projects, fullProjects) {
-  const FFE = window.AIVibeFFE;
+  const FFE = window.LedgerFFE;
   if (!FFE || !FFE.portalEventsFromShare) return { events: [], gaps: [] };
   const events = [];
   (projects || []).forEach((p) => {
@@ -270,7 +270,7 @@ function buildClientPulse(projects, fullProjects) {
 }
 
 function ClientPulseWidget({ pulse, onOpenVersions, onOpenProcure }) {
-  const FFE = window.AIVibeFFE;
+  const FFE = window.LedgerFFE;
   if (!FFE || !pulse || (!pulse.events.length && !pulse.gaps.length)) return null;
   // approveMeta уже возвращает {label, color} — не пересобираем (дрейф формы)
   const evMeta = (t) => (t === "comment" ? { label: "Комментарий", color: "var(--info)" } : FFE.approveMeta(t));
@@ -379,11 +379,11 @@ function Today({ user, onNewProject, onOpenProjects }) {
   const [urgent, setUrgent] = useCV([]);
   const [pulse, setPulse] = useCV(null);   // Ч3: {events, gaps} | null пока грузится
   useCVE(() => {
-    AIVibeAPI.projects.list().then((list) => {
+    LedgerAPI.projects.list().then((list) => {
       setRows(list);
       // полные карточки тянем ОДИН раз на оба виджета (очередь срочности + пульс портала),
       // не через loadUrgentQueue — иначе 2×N запросов за одними и теми же проектами
-      Promise.all(list.map((p) => AIVibeAPI.projects.get(p.id).catch(() => null))).then((full) => {
+      Promise.all(list.map((p) => LedgerAPI.projects.get(p.id).catch(() => null))).then((full) => {
         const fp = full.filter((d) => d && d.rooms);
         setUrgent(buildUrgentQueue(fp));
         setPulse(buildClientPulse(list, fp));
@@ -427,11 +427,11 @@ function ProcureHub({ onOpen }) {
   const [rows, setRows] = useCV(null);
   const [projF, setProjF] = useCV("Все");
   const [supF, setSupF] = useCV("Все");
-  useCVE(() => { AIVibeAPI.projects.list().then((list) => loadUrgentQueue(list).then(setRows)); }, []);
+  useCVE(() => { LedgerAPI.projects.list().then((list) => loadUrgentQueue(list).then(setRows)); }, []);
   const projects = rows ? ["Все", ...Array.from(new Set(rows.map((r) => r.projectName)))] : ["Все"];
   const suppliers = rows ? ["Все", ...Array.from(new Set(rows.map((r) => r.sup).filter(Boolean)))] : ["Все"];
   const shown = rows ? rows.filter((r) => (projF === "Все" || r.projectName === projF) && (supF === "Все" || r.sup === supF)) : null;
-  const FFE = window.AIVibeFFE;
+  const FFE = window.LedgerFFE;
   return (
     <div className="reveal in" ref={useReveal()}>
       <PageHead title="Закупка" sub="Сквозная очередь срочности по всем проектам — даты стадий закупки и платежи" />
@@ -486,8 +486,8 @@ function Projects() {
   const [menuId, setMenuId] = useCV(null);    // открытое ⋯-меню карточки
 
   const refresh = () => {
-    AIVibeAPI.projects.list().then(setRows);
-    AIVibeAPI.projects.summary().then(setSum);
+    LedgerAPI.projects.list().then(setRows);
+    LedgerAPI.projects.summary().then(setSum);
   };
 
   /* открытый проект живёт в адресе: #cabinet/projects/p_1 → F5 переоткрывает,
@@ -503,7 +503,7 @@ function Projects() {
     refresh();
     // черновик из калькулятора площади (лендинг → кабинет) — открываем сразу
     // в смете-комплектации, каналом Excel-импорта (RoomSpecOverlay без id)
-    const F = window.AIVibeFFE;
+    const F = window.LedgerFFE;
     const draft = F && F.takePendingDraft && F.takePendingDraft();
     if (draft) setImportData(draft);
     // онбординг-квиз не всплывает поверх открытого по диплинку проекта/сметы
@@ -536,15 +536,15 @@ function Projects() {
     const room = (extra && extra.room) || "Гостиная";
     const budget = (extra && extra.budget) || 420000;
     const styleName = QUIZ_STYLE_NAME[styleId] || "";
-    AIVibeAPI.projects.create({ name: room + " · " + (styleName || "проект"), room, budget, style: styleName }).then((p) => { markOnboardStep("project"); refresh(); setOpenStyle(styleId); openProject(p.id); });
+    LedgerAPI.projects.create({ name: room + " · " + (styleName || "проект"), room, budget, style: styleName }).then((p) => { markOnboardStep("project"); refresh(); setOpenStyle(styleId); openProject(p.id); });
   };
 
   // импорт сметы из Excel → открываем в той же смете-комплектации (RoomSpecOverlay)
   const onImport = (e) => {
     const f = e.target.files && e.target.files[0];
     e.target.value = ""; // чтобы можно было выбрать тот же файл повторно
-    if (!f || !(window.AIVibeXLSX && AIVibeXLSX.importRoomSpec)) return;
-    withLib("xlsx", () => AIVibeXLSX.importRoomSpec(f)
+    if (!f || !(window.LedgerXLSX && LedgerXLSX.importRoomSpec)) return;
+    withLib("xlsx", () => LedgerXLSX.importRoomSpec(f)
       .then((d) => {
         if (d && d.rooms && d.rooms.length) setImportData(d);
         else toast("Не удалось распознать смету. Нужны колонки: Помещение, Раздел, Наименование, Кол-во, Цена.", "warn", 7000);
@@ -556,18 +556,18 @@ function Projects() {
   const rename = async (p) => {
     setMenuId(null);
     const name = await promptDialog({ title: "Переименовать проект", label: "Название", value: p.name });
-    if (name && name.trim()) { await AIVibeAPI.projects.update(p.id, { name: name.trim() }); refresh(); toast("Проект переименован"); }
+    if (name && name.trim()) { await LedgerAPI.projects.update(p.id, { name: name.trim() }); refresh(); toast("Проект переименован"); }
   };
   // pinned не копируем — закреп это выбор пользователя про КОНКРЕТНУЮ карточку,
   // копия не должна молча запрыгивать наверх сетки без его действия
-  const duplicate = async (p) => { setMenuId(null); const { id, pinned, ...rest } = p; await AIVibeAPI.projects.create({ ...rest, name: p.name + " (копия)" }); refresh(); toast("Копия создана — «" + p.name + " (копия)»"); };
-  const changeStatus = async (p, status) => { setMenuId(null); await AIVibeAPI.projects.update(p.id, { status }); refresh(); };
+  const duplicate = async (p) => { setMenuId(null); const { id, pinned, ...rest } = p; await LedgerAPI.projects.create({ ...rest, name: p.name + " (копия)" }); refresh(); toast("Копия создана — «" + p.name + " (копия)»"); };
+  const changeStatus = async (p, status) => { setMenuId(null); await LedgerAPI.projects.update(p.id, { status }); refresh(); };
   // закрепить сверху сетки (волна W3.3, паттерн Programa: hover-кнопка на обложке)
-  const togglePin = async (p) => { await AIVibeAPI.projects.update(p.id, { pinned: !p.pinned }); refresh(); };
+  const togglePin = async (p) => { await LedgerAPI.projects.update(p.id, { pinned: !p.pinned }); refresh(); };
   const removeP = async (p) => {
     setMenuId(null);
     const ok = await confirmDialog({ title: "Удалить проект?", text: "«" + p.name + "» будет удалён вместе со сметой. Это действие нельзя отменить.", confirmLabel: "Удалить проект" });
-    if (ok) { await AIVibeAPI.projects.remove(p.id); refresh(); toast("Проект «" + p.name + "» удалён"); }
+    if (ok) { await LedgerAPI.projects.remove(p.id); refresh(); toast("Проект «" + p.name + "» удалён"); }
   };
 
   const shown = rows ? rows
@@ -744,7 +744,7 @@ function NewProjectModal({ onClose, onCreate, onExample }) {
   const submit = async () => {
     if (busy) return;
     setBusy(true);
-    const p = await AIVibeAPI.projects.create({ name: name.trim() || (room + " — новый проект"), room, area: +area || 0, budget: +budget || 0, style: "" });
+    const p = await LedgerAPI.projects.create({ name: name.trim() || (room + " — новый проект"), room, area: +area || 0, budget: +budget || 0, style: "" });
     setBusy(false);
     onCreate(p);
   };
@@ -792,11 +792,11 @@ function Favorites() {
   const [items, setItems] = useCV(null);
   const [room, setRoom] = useCV("Все");
   const [pickOpen, setPickOpen] = useCV(false);
-  useCVE(() => { AIVibeAPI.favorites.list().then(setItems); }, []);
+  useCVE(() => { LedgerAPI.favorites.list().then(setItems); }, []);
 
   const remove = async (id) => {
     setItems((arr) => arr.filter((f) => f.id !== id));   // оптимистично
-    AIVibeAPI.favorites.remove(id);
+    LedgerAPI.favorites.remove(id);
   };
 
   const rooms = items ? ["Все", ...Array.from(new Set(items.map((f) => f.room)))] : ["Все"];
@@ -882,11 +882,11 @@ function Favorites() {
 function FavTransferModal({ count, total, onClose, onDone }) {
   const [rows, setRows] = useCV(null);
   const [busy, setBusy] = useCV(false);
-  useCVE(() => { AIVibeAPI.projects.list().then(setRows); }, []);
+  useCVE(() => { LedgerAPI.projects.list().then(setRows); }, []);
   const pick = async (p) => {
     if (busy) return;
     setBusy(true);
-    await AIVibeAPI.projects.update(p.id, { items: (p.items || 0) + count });
+    await LedgerAPI.projects.update(p.id, { items: (p.items || 0) + count });
     setBusy(false);
     onDone(p);
   };

@@ -51,7 +51,7 @@ function Admin({ user, onLogout, go }) {
 /* ------------------------- ДАШБОРД ------------------------- */
 function Dashboard() {
   const [data, setData] = useA(null);
-  useAE(() => { AIVibeAPI.analytics.overview().then(setData); }, []);
+  useAE(() => { LedgerAPI.analytics.overview().then(setData); }, []);
 
   return (
     <div>

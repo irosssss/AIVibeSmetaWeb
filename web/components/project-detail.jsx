@@ -7,7 +7,7 @@
 const { useState: usePD, useEffect: usePDE, useRef: usePDR } = React;
 
 // единая точка канона наценки (web/ffe.js) — не дублировать литерал 25 по файлам
-const PD_DEFAULT_MARKUP = (window.AIVibeFFE && window.AIVibeFFE.DEFAULT_MARKUP_PCT) || 25;
+const PD_DEFAULT_MARKUP = (window.LedgerFFE && window.LedgerFFE.DEFAULT_MARKUP_PCT) || 25;
 
 const MP_NAME = { f1: "Дубрава", f2: "Линея" };
 const TIER_NAME = { eco: "Эконом", opt: "Оптимально", prem: "Премиум" };
@@ -121,7 +121,7 @@ function ProjectDetail({ id, nav, onClose, initialStyle }) {
 
   usePDE(() => {
     let alive = true;
-    AIVibeAPI.projects.get(id).then((d) => {
+    LedgerAPI.projects.get(id).then((d) => {
       if (!alive) return;
       if (!d || !d.id) { toast("Проект не найден — возможно, ссылка устарела.", "warn", 5000); onClose(); return; }
       setData(d);
@@ -133,15 +133,15 @@ function ProjectDetail({ id, nav, onClose, initialStyle }) {
     });
     return () => { alive = false; setTitle("cabinet"); };
   }, [id]);
-  // «Настройки» (волна W4.2) сохраняют через AIVibeAPI напрямую, не через setData — без
+  // «Настройки» (волна W4.2) сохраняют через LedgerAPI напрямую, не через setData — без
   // этого Обзор показывал бы старые значения до следующего полного перемонтирования.
   // projects.update(...) уже возвращает свежую запись — мержим её в data локально, вместо
   // повторного projects.get(id) (тот делает 2 цепочки delay() ради данных, которые уже есть)
   const applyPatch = (patch) => setData((d) => (d ? { ...d, ...patch } : d));
 
   usePDE(() => {
-    AIVibeAPI.settings.get().then(setSettings);
-    AIVibeAPI.styles.list().then((list) => setMyStyles(list.filter((s) => s.owner !== null)));
+    LedgerAPI.settings.get().then(setSettings);
+    LedgerAPI.styles.list().then((list) => setMyStyles(list.filter((s) => s.owner !== null)));
   }, []);
 
   // Esc закрывает оверлей (диалоги/модалки перехватывают Esc в capture-фазе раньше;
@@ -204,14 +204,14 @@ function ProjectDetail({ id, nav, onClose, initialStyle }) {
 
   // Движок: проверка эргономики выбранной раскладки (с учётом моих норм) + строки сметы для PDF
   const effNorms = settings ? { ...(settings.normsOverride || {}), enabled: settings.enabledNorms || {} } : undefined;
-  const checks = window.AIVibeEngine ? AIVibeEngine.checkErgonomics(activeLayout, data.analysis.plan, effNorms) : { findings: [], ok: true, warns: 0 };
+  const checks = window.LedgerEngine ? LedgerEngine.checkErgonomics(activeLayout, data.analysis.plan, effNorms) : { findings: [], ok: true, warns: 0 };
   const specRows = data.catalog.map((c, i) => {
     const it = c.items.find((x) => x.id === sel[i]);
     return it ? { cat: c.cat, title: it.title, factory: MP_NAME[it.mp], tier: TIER_NAME[it.tier], price: adj(it.price) } : null;
   }).filter(Boolean);
-  const exportPDF = () => { if (window.AIVibePDF) withLib("pdf", () => AIVibePDF.exportSpec({ project: data.name, styleName: activeStyle.name, rows: specRows, total, budget: data.budget, checks })); };
-  const optimize = () => { if (window.AIVibeEngine) setSel(AIVibeEngine.optimizeSpec(data.catalog, data.budget, factor).selection); };
-  const saveSpec = () => AIVibeAPI.projects.update(id, { style: activeStyle.name, items: cartItems.length }).then(() => { setSpecSaved(true); setTimeout(() => setSpecSaved(false), 1700); });
+  const exportPDF = () => { if (window.LedgerPDF) withLib("pdf", () => LedgerPDF.exportSpec({ project: data.name, styleName: activeStyle.name, rows: specRows, total, budget: data.budget, checks })); };
+  const optimize = () => { if (window.LedgerEngine) setSel(LedgerEngine.optimizeSpec(data.catalog, data.budget, factor).selection); };
+  const saveSpec = () => LedgerAPI.projects.update(id, { style: activeStyle.name, items: cartItems.length }).then(() => { setSpecSaved(true); setTimeout(() => setSpecSaved(false), 1700); });
 
   return (
     <div className="pd-overlay" role="dialog" aria-label={"Проект: " + data.name}>
@@ -318,22 +318,22 @@ function RoomSpecOverlay({ data, nav, onClose }) {
   const [roomSaving, setRoomSaving] = usePD(false);   // guard: двойной клик «Сохранить» не должен создать проект-дубль
   const [savedId, setSavedId] = usePD(data.id || null);
   const [settings, setSettings] = usePD(null);   // мои нормы — для проверки эргономики по комнатам
-  usePDE(() => { AIVibeAPI.settings.get().then(setSettings); }, []);
+  usePDE(() => { LedgerAPI.settings.get().then(setSettings); }, []);
   const [me, setMe] = usePD(null);               // аккаунт — фолбэк имени студии для брендинга портала (волна A5)
-  usePDE(() => { AIVibeAPI.profile.get().then(setMe); }, []);
+  usePDE(() => { LedgerAPI.profile.get().then(setMe); }, []);
   // брендинг + контакты студии (волна A5 + W4.1) — один источник для портала/протокола/PDF,
   // вместо повтора одной и той же сборки в 3 местах
   const studioName = (settings && settings.studioName) || (me && me.name) || "";
   const studioContact = settings ? [settings.studioCity, settings.studioPhone, settings.studioEmail].filter(Boolean).join(" · ") : "";
   const [library, setLibrary] = usePD([]);       // библиотека товаров студии (волна B1): автоподстановка + пикер
-  const reloadLibrary = () => AIVibeAPI.library.list().then(setLibrary);
+  const reloadLibrary = () => LedgerAPI.library.list().then(setLibrary);
   usePDE(() => { reloadLibrary(); }, []);
   const [pickerRoom, setPickerRoom] = usePD(null);   // индекс комнаты с открытым пикером библиотеки | null
 
   /* --- профили наценки «мой стандарт» (роадмап п.4): применить одним кликом
      на новый проект или сохранить текущую настройку под именем --- */
   const [profiles, setProfiles] = usePD([]);
-  const reloadProfiles = () => AIVibeAPI.markupProfiles.list().then(setProfiles);
+  const reloadProfiles = () => LedgerAPI.markupProfiles.list().then(setProfiles);
   usePDE(() => { reloadProfiles(); }, []);
   const [profName, setProfName] = usePD("");
   const [profSaving, setProfSaving] = usePD(false);   // guard: двойной клик «Сохранить как стандарт» не должен создать дубль
@@ -350,13 +350,13 @@ function RoomSpecOverlay({ data, nav, onClose }) {
     const name = profName.trim();
     if (!name || profSaving) return;
     setProfSaving(true);
-    AIVibeAPI.markupProfiles.create({ name, markupPct: markup, catMarkupPct: catMarkup, discountPct: discount, deliveryCost: delivery, installCost: install })
+    LedgerAPI.markupProfiles.create({ name, markupPct: markup, catMarkupPct: catMarkup, discountPct: discount, deliveryCost: delivery, installCost: install })
       .then((row) => { setProfiles((ps) => [...ps, row]); setProfName(""); setProfSaving(false); toast("Стандарт «" + row.name + "» сохранён"); });
   };
   const removeProfile = async (p) => {
     const ok = await confirmDialog({ title: "Удалить стандарт?", text: "«" + p.name + "» исчезнет из списка. На уже применённые проекты это не влияет.", confirmLabel: "Удалить стандарт" });
     if (!ok) return;
-    AIVibeAPI.markupProfiles.remove(p.id).then(() => setProfiles((ps) => ps.filter((x) => x.id !== p.id)));
+    LedgerAPI.markupProfiles.remove(p.id).then(() => setProfiles((ps) => ps.filter((x) => x.id !== p.id)));
   };
   /* --- dirty-флаг несохранённых правок (долг W2/W6): сайдбар/крошка/⌘K уходили со
      сметы, молча теряя правки в этом локальном стейте (rooms/markup/... персистятся
@@ -377,10 +377,10 @@ function RoomSpecOverlay({ data, nav, onClose }) {
     const done = () => { savedSnapRef.current = snap; savingRef.current = null; setRoomSaving(false); setRoomSaved(true); setTimeout(() => setRoomSaved(false), 1700); };
     const patch = { markupPct: markup, catMarkupPct: catMarkup, discountPct: discount, deliveryCost: delivery, installCost: install, rooms, items: itemsCount };
     const p = savedId
-      ? AIVibeAPI.projects.update(savedId, patch).then(done)
+      ? LedgerAPI.projects.update(savedId, patch).then(done)
       // импортированная из Excel смета не привязана к проекту — создаём его,
       // иначе «Сохранено» врало бы, а наценки терялись при закрытии оверлея
-      : AIVibeAPI.projects.create({
+      : LedgerAPI.projects.create({
           name: data.name || "Смета из Excel", room: data.generated ? "Черновик по площади" : "Комплектация из Excel", style: "",
           area: data.area, budget: data.budget || 0,
           summaryShort: data.summaryShort, ...patch,
@@ -557,7 +557,7 @@ function RoomSpecOverlay({ data, nav, onClose }) {
   const itemsCount = rooms.reduce((s, r) => s + r.items.length, 0);
   const over = grand > data.budget;
   // паспорт свежести цен (роадмап «Стол комплектатора» шаг C1) — та же честная нижняя граница, что уходит в PDF/Excel
-  const fresh = window.AIVibeFFE && window.AIVibeFFE.priceFreshness ? window.AIVibeFFE.priceFreshness(rooms) : null;
+  const fresh = window.LedgerFFE && window.LedgerFFE.priceFreshness ? window.LedgerFFE.priceFreshness(rooms) : null;
   // разделы проекта — из фактических позиций, тяжёлые по себестоимости первыми
   const catCost = {}, catCli = {};   // catCli — суммой округлённых строк, чтобы панель сходилась с итогом и выгрузками
   rooms.forEach((r) => r.items.forEach((it) => { const k = catOf(it); catCost[k] = (catCost[k] || 0) + lineCost(it); catCli[k] = (catCli[k] || 0) + lineClient(it); }));
@@ -593,7 +593,7 @@ function RoomSpecOverlay({ data, nav, onClose }) {
   /* --- стадии закупки по позициям (фаза 2 слияния, шаг 2; словарь стадий — web/ffe.js).
      Позиция без status считается «Подбор»; смена стадии штампует дату (stampStatus
      не затирает ранее пройденные). Живут только в «Закупке» — клиент их не видит. */
-  const FFE = window.AIVibeFFE || null;
+  const FFE = window.LedgerFFE || null;
   const stOf = (it) => (FFE && FFE.STATUS_BY_ID[it.status] ? it.status : "specified");
   // смена стадии сбрасывает eta — дата была ожиданием ПРЕЖНЕЙ стадии, на новой
   // она бы ложно висела просрочкой (см. комментарий к eta в ffe.js)
@@ -655,7 +655,7 @@ function RoomSpecOverlay({ data, nav, onClose }) {
     if (library.some((p) => (p.title || "").trim().toLowerCase() === title.toLowerCase())) {
       toast("«" + title + "» уже есть в библиотеке студии."); return;
     }
-    AIVibeAPI.library.create(FFE.productFromPosition(pos)).then(() => {
+    LedgerAPI.library.create(FFE.productFromPosition(pos)).then(() => {
       reloadLibrary(); toast("«" + title + "» добавлен в библиотеку студии.");
     });
   };
@@ -679,14 +679,14 @@ function RoomSpecOverlay({ data, nav, onClose }) {
   // эргономика по комнатам: там, где в РД есть план расстановки (plan+layout); мои нормы учитываются.
   // До прихода settings не считаем — иначе первый кадр показан по канону и «мигает» при загрузке моих норм
   const effNorms = settings ? { ...(settings.normsOverride || {}), enabled: settings.enabledNorms || {} } : undefined;
-  const ergo = window.AIVibeEngine && settings
-    ? rooms.filter((r) => r.plan && r.layout).map((r) => ({ name: r.name, res: AIVibeEngine.checkErgonomics({ plan: r.layout }, r.plan, effNorms) }))
+  const ergo = window.LedgerEngine && settings
+    ? rooms.filter((r) => r.plan && r.layout).map((r) => ({ name: r.name, res: LedgerEngine.checkErgonomics({ plan: r.layout }, r.plan, effNorms) }))
     : [];
   const ergoWarns = ergo.reduce((s, e) => s + e.res.warns, 0);
   const ergoSkipped = rooms.length - ergo.length;
   const specArgs = () => ({ project: data.name, area: data.area, rooms, grand, markupPct: markup, catMarkupPct: catMarkup, clientTotal: client, discountPct: discount, deliveryCost: delivery, installCost: install, budget: data.budget, mode, studioName, studioContact });
-  const exportPDF = () => { if (window.AIVibePDF && AIVibePDF.exportRoomSpec) withLib("pdf", () => AIVibePDF.exportRoomSpec(specArgs())); };
-  const exportXLSX = () => { if (window.AIVibeXLSX) withLib("xlsx", () => AIVibeXLSX.exportRoomSpec(specArgs())); };
+  const exportPDF = () => { if (window.LedgerPDF && LedgerPDF.exportRoomSpec) withLib("pdf", () => LedgerPDF.exportRoomSpec(specArgs())); };
+  const exportXLSX = () => { if (window.LedgerXLSX) withLib("xlsx", () => LedgerXLSX.exportRoomSpec(specArgs())); };
 
   /* --- версии + согласование (фаза 2 слияния, шаг 3; статусы и хранилище — web/ffe.js).
      Снимок = позиции + наценки + скидка/доставка/монтаж: восстановление возвращает смету
@@ -1382,19 +1382,19 @@ function RoomSpecOverlay({ data, nav, onClose }) {
 /* ---------------- Ч2: ЗАМЕНЫ ПО ОТВЕТУ КЛИЕНТА (адаптация ченджлога Programa 12.07) ----------------
    Клиент отклонил / отправил на пересмотр позицию в портале → подбираем аналоги из УЖЕ
    собранного дизайнером: библиотека товаров + позиции прошлых проектов (скоринг —
-   AIVibeFFE.suggestAlternatives; фид фабрик подключится тем же интерфейсом, роадмап §2).
+   LedgerFFE.suggestAlternatives; фид фабрик подключится тем же интерфейсом, роадмап §2).
    «Заменить» правит рабочую смету через onReplace (RoomSpecOverlay.replaceFromAlternative);
    снимок отправленной версии не трогаем — он исторический документ. */
 function AlternativesModal({ rejected, projectId, onReplace, onClose }) {
-  const FFE = window.AIVibeFFE;
+  const FFE = window.LedgerFFE;
   const [cands, setCands] = usePD(null);   // null = грузим; [] = источники пусты
   const [done, setDone] = usePD({});       // room¶title → название замены (в этой сессии)
   usePDE(() => {
     let alive = true;
     Promise.all([
-      AIVibeAPI.library.list().catch(() => []),
-      AIVibeAPI.projects.list()
-        .then((list) => Promise.all(list.filter((p) => p.id !== projectId).map((p) => AIVibeAPI.projects.get(p.id).catch(() => null))))
+      LedgerAPI.library.list().catch(() => []),
+      LedgerAPI.projects.list()
+        .then((list) => Promise.all(list.filter((p) => p.id !== projectId).map((p) => LedgerAPI.projects.get(p.id).catch(() => null))))
         .catch(() => []),
     ]).then(([lib, projs]) => {
       if (!alive) return;
@@ -1485,7 +1485,7 @@ function AlternativesModal({ rejected, projectId, onReplace, onClose }) {
 }
 
 function VersionsModal({ versions, current, onSave, onRestore, onSetStatus, onPatch, onRemove, onShare, onClose, projectId, onReplacePos }) {
-  const FFE = window.AIVibeFFE;
+  const FFE = window.LedgerFFE;
   const [label, setLabel] = usePD("");
   const [compareId, setCompareId] = usePD(null);
   const [cmtOpenId, setCmtOpenId] = usePD(null);   // id версии, у которой раскрыты комментарии-треды
@@ -1613,7 +1613,7 @@ function VersionsModal({ versions, current, onSave, onRestore, onSetStatus, onPa
                   </button>
                 )}
                 <button className="btn btn-ghost" style={{ padding: "7px 12px", fontSize: "var(--fs-12)" }}
-                  onClick={() => withLib("pdf", () => AIVibePDF.exportApprovalProtocol({
+                  onClick={() => withLib("pdf", () => LedgerPDF.exportApprovalProtocol({
                     project: current.project, versionLabel: v.label, createdAt: v.createdAt,
                     vStatusLabel: sm.label, statusAt: v.statusAt, respondedAt: sh && sh.respondedAt,
                     studioName: (sh && sh.studioName) || current.studioName,
@@ -1827,7 +1827,7 @@ function PosEditor({ item, cats, sups, isNew, onSave, onDelete, onCancel, librar
    трек-номер отправления. Отдельный drawer, а не поля в PosEditor — правится
    реже (по ходу закупки, не при вводе позиции) и живёт только в «Закупке». */
 function PayTrackEditor({ item, onCancel, onSave }) {
-  const FFE = window.AIVibeFFE;
+  const FFE = window.LedgerFFE;
   const [d, setD] = usePD({ eta: item.eta || "", payments: FFE.blankPayments(item.payments), track: FFE.blankTrack(item.track) });
   const setPayField = (id, field, v) => setD((x) => ({ ...x, payments: { ...x.payments, [id]: { ...x.payments[id], [field]: v } } }));
   const setTrackField = (field, v) => setD((x) => ({ ...x, track: { ...x.track, [field]: v } }));
@@ -1879,7 +1879,7 @@ function PayTrackEditor({ item, onCancel, onSave }) {
    пометку давности — priceDate = дата обновления проекта-источника) и вставка
    типовых комплектаций. Двухшаговый выбор: источник → чекбоксы.
    Роадмап #1 (фаза 1 слияния): вкладка «По ссылке» — клиппер URL/HTML →
-   позиция сметы через window.AIVibeClipper (перенос с vite-ветки); при
+   позиция сметы через window.LedgerClipper (перенос с vite-ветки); при
    CORS-блоке честный фолбэк «вставьте HTML страницы вручную». */
 function AddPositionsModal({ excludeId, roomNames, initialTab, initialRoom, onClose, onAdd }) {
   // Д1 (W6): инлайн-панель комнаты открывает модалку сразу на «По ссылке» со своей комнатой
@@ -1898,13 +1898,13 @@ function AddPositionsModal({ excludeId, roomNames, initialTab, initialRoom, onCl
 
   usePDE(() => {
     // источники: только проекты со сметой по комнатам (каталожные демо-проекты отпадают)
-    AIVibeAPI.projects.list()
+    LedgerAPI.projects.list()
       .then((list) => Promise.all(list.filter((p) => p.id !== excludeId).map((p) =>
-        AIVibeAPI.projects.get(p.id).then((d) => (d && d.rooms && d.rooms.length
+        LedgerAPI.projects.get(p.id).then((d) => (d && d.rooms && d.rooms.length
           ? { id: p.id, label: p.name, stamp: p.updated, rooms: d.rooms }
           : null)))))
       .then((xs) => setSources(xs.filter(Boolean)));
-    AIVibeAPI.templates.list().then(setTpls);
+    LedgerAPI.templates.list().then(setTpls);
   }, []);
 
   const cost = (items) => items.reduce((s, it) => s + it.price * (it.qty || 1), 0);
@@ -1955,7 +1955,7 @@ function AddPositionsModal({ excludeId, roomNames, initialTab, initialRoom, onCl
     if (!u || clipBusy) return;
     setClipBusy(true); setClipErr(""); setClipForm(null);
     try {
-      const r = await window.AIVibeClipper.clip(u);
+      const r = await window.LedgerClipper.clip(u);
       if (r.ok) clipPrefill(r.extracted, r.via);
       else if (r.blocked) { setClipHtmlMode(true); setClipErr("Магазин не отдаёт страницу напрямую (защита/CORS). Откройте товар в соседней вкладке, скопируйте HTML (Ctrl+U → выделить всё) и вставьте ниже."); }
       else setClipErr(r.error || "Не удалось разобрать страницу.");
@@ -1964,7 +1964,7 @@ function AddPositionsModal({ excludeId, roomNames, initialTab, initialRoom, onCl
   const doParseHtml = () => {
     const h = clipHtml.trim();
     if (!h) return;
-    const ex = window.AIVibeClipper.extractFromHtml(h, clipUrl.trim());
+    const ex = window.LedgerClipper.extractFromHtml(h, clipUrl.trim());
     if (!ex.fields.title && ex.fields.price == null) setClipErr("В этом HTML не нашлось данных товара — проверьте, что скопирована страница целиком.");
     else clipPrefill(ex, "html");
   };
@@ -2731,7 +2731,7 @@ function AdvisorChat({ id, hello, onAction, onClose }) {
     setMsgs((m) => [...m, { role: "me", text: t }]);
     setVal("");
     setBusy(true);
-    const res = await AIVibeAPI.projects.chat(id, t);
+    const res = await LedgerAPI.projects.chat(id, t);
     setBusy(false);
     setMsgs((m) => [...m, { role: "ai", text: res.text }]);
     if (res.action) setTimeout(() => onAction(res.action), 250);
@@ -2780,7 +2780,7 @@ function AdvisorChat({ id, hello, onAction, onClose }) {
    client/totalClient/profit — через FFE.clientPricing; согласование, стадии
    закупки, свежесть цен, версии — из тех же справочников FFE. */
 function projectMetrics(data) {
-  const FFE = window.AIVibeFFE;
+  const FFE = window.LedgerFFE;
   const rooms = (data && data.rooms) || [];
   const markup = data.markupPct != null ? data.markupPct : PD_DEFAULT_MARKUP;
   const catMarkup = data.catMarkupPct || {};
@@ -2865,7 +2865,7 @@ function OvKpi({ label, value, mono, sub, subTone, onClick, title }) {
    (FFE.PROJ_STATUSES/PROJ_STATUS_COLOR) и общие пункты меню (StatusMenuItems),
    те же, что на карточке проекта: без копипаста дропдауна. */
 function LoopStatusChip({ status, onChange }) {
-  const colors = (window.AIVibeFFE && window.AIVibeFFE.PROJ_STATUS_COLOR) || {};
+  const colors = (window.LedgerFFE && window.LedgerFFE.PROJ_STATUS_COLOR) || {};
   const [open, setOpen] = usePD(false);
   useMenu(open, () => setOpen(false), "ov-status-wrap");
   return (
@@ -2890,13 +2890,13 @@ function ProjectOverview({ data, onClose }) {
   // метрики зависят только от data — мемоизируем, чтобы смена статуса (частый ре-рендер)
   // не гоняла flatMap/reduce/clientPricing и синхронное чтение localStorage (loadVersions)
   const m = React.useMemo(() => projectMetrics(data), [data]);
-  const stageNext = (window.AIVibeFFE && window.AIVibeFFE.PROJ_STAGE_NEXT) || {};   // подсказка следующего шага петли (словарь — ffe.js)
+  const stageNext = (window.LedgerFFE && window.LedgerFFE.PROJ_STAGE_NEXT) || {};   // подсказка следующего шага петли (словарь — ffe.js)
   const goSection = (s2) => setRoute("cabinet", "projects", data.id, s2);
   const changeStatus = (s) => {
     if (!data.id) { setStatus(s); return; }   // несохранённая смета — некуда persist'ить, просто отражаем
     const prev = status;
     setStatus(s);   // оптимистично — чип реагирует сразу
-    AIVibeAPI.projects.update(data.id, { status: s })
+    LedgerAPI.projects.update(data.id, { status: s })
       .then(() => toast("Статус проекта: «" + s + "»"))
       .catch(() => { setStatus(prev); toast("Не удалось сменить статус — попробуйте ещё раз.", "warn", 5000); });   // откат оптимизма
   };
@@ -3011,7 +3011,7 @@ function ProjectOverview({ data, onClose }) {
 
 /* ---------------- НАСТРОЙКИ ПРОЕКТА (волна W4.2) ----------------
    «Детали»: имя/срок/адрес объекта/описание/обложка + Архив (= статус петли «Архив»,
-   не отдельная сущность — тот же AIVibeAPI.projects.update, что и смена статуса в
+   не отдельная сущность — тот же LedgerAPI.projects.update, что и смена статуса в
    Обзоре/карточке). «Портал клиента» (дефолтная вьюха, список клиентов) сознательно НЕ
    строим сейчас — у нас нет ни режима просмотра сметы клиентом (кроме единственного,
    который уже есть), ни multi-user доступа: делать переключатель без реального эффекта
@@ -3034,7 +3034,7 @@ function ProjectSettings({ data, onClose, onSaved }) {
     setSaving(true);
     const cleanName = name.trim() || data.name;
     try {
-      const updated = await AIVibeAPI.projects.update(data.id, { name: cleanName, address: address.trim(), dateStart, dateEnd, summaryShort: summaryShort.trim(), cover });
+      const updated = await LedgerAPI.projects.update(data.id, { name: cleanName, address: address.trim(), dateStart, dateEnd, summaryShort: summaryShort.trim(), cover });
       onSaved(updated);   // Обзор держит отдельную копию data — без мержа показал бы старое
       setName(cleanName);
       setTitle("cabinet", cleanName);
@@ -3055,7 +3055,7 @@ function ProjectSettings({ data, onClose, onSaved }) {
     if (!ok) return;
     setArchiving(true);
     try {
-      const updated = await AIVibeAPI.projects.update(data.id, { status: "Архив" });
+      const updated = await LedgerAPI.projects.update(data.id, { status: "Архив" });
       onSaved(updated);
       toast("Проект «" + data.name + "» отправлен в архив");
     } catch (e) {
