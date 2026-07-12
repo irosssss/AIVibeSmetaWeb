@@ -1,6 +1,6 @@
 /* ============================================================
    Design Ledger — выгрузка спецификации в PDF (pdfmake, шрифт Roboto/кириллица)
-   Экспортирует window.LedgerPDF.exportSpec(...)
+   Экспортирует window.LedgerPDF.exportRoomSpec(...)
    ============================================================ */
 (function () {
   const money = (n) => new Intl.NumberFormat("ru-RU").format(Math.round(n)) + " ₽"; // ₽
@@ -30,79 +30,6 @@
       ...(studioName ? [{ text: studioName, bold: true, fontSize: 10.5, color: PDF.accent, margin: [0, 0, 0, 2] }] : []),
       ...(studioContact ? [{ text: studioContact, fontSize: 9, color: PDF.muted, margin: [0, 0, 0, 2] }] : []),
     ];
-  }
-
-  function exportSpec({ project, styleName, rows, total, budget, checks }) {
-    if (!window.pdfMake) { (window.toast ? toast("PDF-модуль ещё загружается — попробуйте через секунду.", "info") : 0); return false; }
-    const over = total > budget;
-
-    const tableBody = [
-      [
-        { text: "Категория", style: "th" },
-        { text: "Предмет", style: "th" },
-        { text: "Фабрика", style: "th" },
-        { text: "Уровень", style: "th" },
-        { text: "Цена", style: "th", alignment: "right" },
-      ],
-      ...rows.map((r) => [
-        r.cat,
-        r.title,
-        r.factory || "—",
-        r.tier || "—",
-        { text: money(r.price), alignment: "right" },
-      ]),
-    ];
-
-    const checkLines = (checks && checks.findings ? checks.findings : []).map((f) => ({
-      text: (f.kind === "warn" ? "•  " : "•  ") + f.text,
-      color: f.kind === "warn" ? PDF.warn : PDF.ok,
-      fontSize: 9, margin: [0, 1.5, 0, 1.5],
-    }));
-    const checkSummary = checks
-      ? (checks.ok ? "Все нормы соблюдены" : checks.warns + " замечани" + (checks.warns === 1 ? "е" : checks.warns < 5 ? "я" : "й"))
-      : "—";
-
-    const doc = {
-      pageMargins: [40, 46, 40, 44],
-      content: [
-        {
-          columns: [
-            { text: "Design Ledger", style: "logo" },
-            { text: "Спецификация проекта", alignment: "right", style: "muted", margin: [0, 6, 0, 0] },
-          ],
-        },
-        { canvas: [{ type: "line", x1: 0, y1: 0, x2: 515, y2: 0, lineWidth: 1, lineColor: "#B7502C" }], margin: [0, 8, 0, 0] },
-        { text: project || "Проект", style: "h1", margin: [0, 14, 0, 2] },
-        { text: (styleName ? styleName + " · " : "") + "смета по каталогу фабрик-партнёров", style: "muted", margin: [0, 0, 0, 16] },
-
-        { text: "Проверка эргономики — " + checkSummary, style: "h2" },
-        ...(checkLines.length ? checkLines : [{ text: "—", fontSize: 9, color: PDF.muted }]),
-
-        { text: "Спецификация", style: "h2", margin: [0, 16, 0, 6] },
-        {
-          table: { headerRows: 1, widths: ["*", "*", 58, 54, "auto"], body: tableBody },
-          layout: {
-            hLineWidth: (i) => (i === 1 ? 1 : 0.5),
-            hLineColor: () => "#E5E0DA",
-            vLineWidth: () => 0,
-            paddingTop: () => 5, paddingBottom: () => 5,
-          },
-        },
-        {
-          columns: [
-            { text: over ? "Превышение бюджета на " + money(total - budget) : "В рамках бюджета · остаток " + money(budget - total), color: over ? PDF.warn : PDF.ok, fontSize: 10, margin: [0, 12, 0, 0] },
-            { text: "Итого: " + money(total), alignment: "right", style: "total", margin: [0, 9, 0, 0] },
-          ],
-        },
-        { text: "Цены, наличие и сроки — по каталогу фабрик-партнёров. Документ сформирован в Design Ledger.", style: "foot", margin: [0, 20, 0, 0] },
-      ],
-      styles: PDF_STYLES,
-      defaultStyle: PDF_DEFAULT,
-    };
-
-    const name = "smeta-" + String(project || "designledger").replace(/\s+/g, "-").toLowerCase() + ".pdf";
-    window.pdfMake.createPdf(doc).download(name);
-    return true;
   }
 
   // Многокомнатная смета-комплектация (реальный дизайн-проект): разделы по комнатам.
@@ -334,5 +261,5 @@
     return true;
   }
 
-  window.LedgerPDF = { exportSpec, exportRoomSpec, exportApprovalProtocol };
+  window.LedgerPDF = { exportRoomSpec, exportApprovalProtocol };
 })();

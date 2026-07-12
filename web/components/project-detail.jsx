@@ -1,123 +1,22 @@
 /* ============================================================
-   Design Ledger — ДЕТАЛЬ ПРОЕКТА
-   Анализ помещения · Стиль и варианты · Бюджет · Спецификация
-   (каталог фабрик-партнёров) · AI-чат с дизайнером.
-   Открывается из раздела «Мои проекты».
+   Design Ledger — ДЕТАЛЬ ПРОЕКТА (смета-комплектация)
+   Обзор · Смета по комнатам · Согласование · Закупка · Версии ·
+   Настройки. Открывается из раздела «Мои проекты».
    ============================================================ */
 const { useState: usePD, useEffect: usePDE, useRef: usePDR } = React;
 
 // единая точка канона наценки (web/ffe.js) — не дублировать литерал 25 по файлам
 const PD_DEFAULT_MARKUP = (window.LedgerFFE && window.LedgerFFE.DEFAULT_MARKUP_PCT) || 25;
 
-const MP_NAME = { f1: "Дубрава", f2: "Линея" };
-const TIER_NAME = { eco: "Эконом", opt: "Оптимально", prem: "Премиум" };
 const FIND_ICON = { plus: (p) => <I.check {...p} />, warn: (p) => <I.info {...p} />, idea: (p) => <I.spark {...p} /> };
-
-/* материалы/отделка по стилю — подставляются в карточки товаров, чтобы подбор
-   визуально перекрашивался под выбранное направление (категории идут по порядку) */
-const STYLE_MATERIALS = {
-  deco:    ["велюр", "латунь", "мрамор", "рифление", "винный бархат"],
-  warm:    ["лён", "тёплое дерево", "букле", "керамика", "шерсть"],
-  japandi: ["светлый дуб", "графит", "ротанг", "лён", "матовый металл"],
-  scandi:  ["светлый дуб", "хлопок", "белёный ясень", "мята", "фетр"],
-  modern:  ["шпон", "латунь", "молдинг", "бархат", "мрамор"],
-  indust:  ["чёрный металл", "дуб", "бетон", "кожа", "сталь"],
-  midmod:  ["орех", "горчичный велюр", "тик", "латунь", "шерсть"],
-};
-const DEFAULT_MATERIALS = ["дерево", "ткань", "металл", "стекло", "текстиль"];
-
-/* варианты расстановки мебели — выбираются внутри стиля.
-   plan[] — схема сверху (x,y,w,h в %), pins[] — AR-метки на фото [left%, top%, label] */
-const LAYOUTS = [
-  {
-    id: "window", name: "У окна", note: "Зона отдыха развёрнута к свету — диван у окна, мягкий вечерний сценарий.",
-    pros: ["Максимум естественного света", "Уютная зона чтения"],
-    plan: [
-      { x: 14, y: 12, w: 48, h: 16, k: "seat", label: "Диван" },
-      { x: 30, y: 40, w: 26, h: 26, k: "rug", label: "Ковёр" },
-      { x: 36, y: 46, w: 14, h: 12, k: "table", label: "Стол" },
-      { x: 70, y: 34, w: 16, h: 22, k: "accent", label: "Кресло" },
-    ],
-    pins: [[30, 40, "Диван"], [72, 52, "Кресло"], [48, 70, "Свет"]],
-  },
-  {
-    id: "media", name: "Медиа-стена", note: "ТВ-зона на глухой стене напротив окон, диван — фронтально к экрану.",
-    pros: ["Кино-зона на всю стену", "Чёткое зонирование"],
-    plan: [
-      { x: 10, y: 70, w: 60, h: 12, k: "media", label: "ТВ-стена" },
-      { x: 18, y: 30, w: 46, h: 15, k: "seat", label: "Диван" },
-      { x: 26, y: 50, w: 24, h: 14, k: "table", label: "Стол" },
-      { x: 74, y: 30, w: 14, h: 34, k: "accent", label: "Стеллаж" },
-    ],
-    pins: [[36, 58, "Диван"], [62, 40, "ТВ-стена"], [80, 52, "Стеллаж"]],
-  },
-  {
-    id: "symmetry", name: "Симметрия", note: "Центральная ось: диван по центру и парные кресла напротив.",
-    pros: ["Парадная гостиная", "Баланс и порядок"],
-    plan: [
-      { x: 26, y: 16, w: 48, h: 15, k: "seat", label: "Диван" },
-      { x: 18, y: 58, w: 16, h: 20, k: "accent", label: "Кресло" },
-      { x: 66, y: 58, w: 16, h: 20, k: "accent", label: "Кресло" },
-      { x: 40, y: 44, w: 20, h: 16, k: "table", label: "Стол" },
-    ],
-    pins: [[50, 38, "Диван"], [26, 66, "Кресло"], [72, 66, "Кресло"]],
-  },
-];
-/* чертёжные цвета мебели: line-art (контур-чернила + лёгкий тинт), не сплошные заливки */
-const LAYOUT_K = {
-  seat:   { stroke: "var(--accent-ink)", fill: "rgba(183,80,44,.10)",  ink: "var(--accent-ink)" },
-  media:  { stroke: "var(--info)",       fill: "rgba(62,74,89,.10)",   ink: "var(--info)" },
-  table:  { stroke: "var(--accent-2)",   fill: "rgba(94,107,91,.12)",  ink: "var(--accent-2-ink)" },
-  accent: { stroke: "var(--chart-ink)",  fill: "rgba(201,138,46,.14)", ink: "var(--chart-ink)" },
-  rug:    { stroke: "rgba(46,42,38,.35)", fill: "transparent",         ink: "var(--spec-meta)", dashed: true },
-};
 
 /* дата в приемлемом для дизайнера формате (документ сметы, история цен) */
 const fmtDateRu = (d) => { const t = new Date(d + "T00:00:00"); return isNaN(t.getTime()) ? String(d) : t.toLocaleDateString("ru-RU"); };
 /* давность цены позиции, скопированной из прошлого проекта — тултип свой, геометрия чипа общая (PriceAgeChip, ui.jsx) */
 const pastCopyNote = (d) => (days, stale) => "Цена скопирована из прошлого проекта, от " + fmtDateRu(d) + (stale ? " — стоит перепроверить" : "");
 
-/* цена предмета с поправкой на выбранный стиль (округляем до сотен) */
-const adjustPrice = (price, factor) => (price == null ? price : Math.round((price * factor) / 100) * 100);
-
-/* детерминированный «хеш» из строки — чтобы наличие/доставка были стабильны между рендерами */
-const hashStr = (s) => { let h = 0; for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0; return h; };
-
-/* наличие + срок поставки — выводим из id/тира/отзывов (имитация ответа каталога фабрики) */
-function stockInfo(item) {
-  const h = hashStr(item.id);
-  const mode = h % 10; // 0..9
-  if (mode === 0) return { state: "order", label: "Под заказ", eta: "4–6 недель", color: "var(--faint)" };
-  if (mode === 1 || mode === 2) {
-    const left = 2 + (h % 5); // 2..6
-    return { state: "low", label: `Осталось ${left} шт`, eta: item.mp === "f1" ? "1–2 недели" : "2–3 недели", color: "var(--accent)" };
-  }
-  return { state: "in", label: "На складе", eta: item.mp === "f1" ? "1–2 недели" : "2–3 недели", color: "var(--accent-2)" };
-}
-
-/* первичный выбор по одному товару из каждой категории под тариф */
-function pickByTier(catalog, tier) {
-  const sel = {};
-  catalog.forEach((c, i) => {
-    const it = c.items.find((x) => x.tier === tier) || c.items[0];
-    sel[i] = it.id;
-  });
-  return sel;
-}
-
-function ProjectDetail({ id, nav, onClose, initialStyle }) {
+function ProjectDetail({ id, nav, onClose }) {
   const [data, setData] = usePD(null);
-  const [styleId, setStyleId] = usePD(null);
-  const [tier, setTier] = usePD("opt");
-  const [sel, setSel] = usePD({});
-  const [layoutId, setLayoutId] = usePD("window");
-  const [chatOpen, setChatOpen] = usePD(false);
-  const [settings, setSettings] = usePD(null);   // пользовательские нормы-override
-  const [myStyles, setMyStyles] = usePD([]);     // стили из библиотеки пользователя
-  const [specSaved, setSpecSaved] = usePD(false);
-
-  const mainRef = usePDR(null);
-  const secRefs = { analysis: usePDR(null), styles: usePDR(null), budget: usePDR(null), products: usePDR(null) };
 
   usePDE(() => {
     let alive = true;
@@ -126,10 +25,6 @@ function ProjectDetail({ id, nav, onClose, initialStyle }) {
       if (!d || !d.id) { toast("Проект не найден — возможно, ссылка устарела.", "warn", 5000); onClose(); return; }
       setData(d);
       setTitle("cabinet", d.name);
-      if (d.rooms) return; // проект-квартира: смета-комплектация по комнатам (отдельный рендер)
-      const match = initialStyle && d.styles.find((s) => s.id === initialStyle);
-      setStyleId((match || d.styles.find((s) => s.active) || d.styles[0]).id);
-      setSel(pickByTier(d.catalog, "opt"));
     });
     return () => { alive = false; setTitle("cabinet"); };
   }, [id]);
@@ -139,14 +34,10 @@ function ProjectDetail({ id, nav, onClose, initialStyle }) {
   // повторного projects.get(id) (тот делает 2 цепочки delay() ради данных, которые уже есть)
   const applyPatch = (patch) => setData((d) => (d ? { ...d, ...patch } : d));
 
+  // Esc закрывает Обзор/Настройки (смета НЕ здесь: у RoomSpecOverlay свой Esc
+  // через guardedClose — несохранённые правки спрашивают, а не теряются)
   usePDE(() => {
-    LedgerAPI.settings.get().then(setSettings);
-    LedgerAPI.styles.list().then((list) => setMyStyles(list.filter((s) => s.owner !== null)));
-  }, []);
-
-  // Esc закрывает оверлей (диалоги/модалки перехватывают Esc в capture-фазе раньше;
-  // из полей ввода — чат AI-дизайнера — Esc не закрывает, а отдаёт фокус)
-  usePDE(() => {
+    if (nav !== "" && nav !== "settings") return;
     const onKey = (e) => {
       if (e.key !== "Escape") return;
       if (/^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName)) { e.target.blur(); return; }
@@ -154,21 +45,7 @@ function ProjectDetail({ id, nav, onClose, initialStyle }) {
     };
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
-  }, []);
-
-  const goto = (key) => {
-    const el = secRefs[key] && secRefs[key].current, box = mainRef.current;
-    if (!el || !box) return;
-    const top = el.getBoundingClientRect().top - box.getBoundingClientRect().top + box.scrollTop - 8;
-    box.scrollTo({ top, behavior: motionOK() ? "smooth" : "auto" });
-  };
-  const applyTier = (t) => { setTier(t); if (data) setSel(pickByTier(data.catalog, t)); };
-  const onAction = (a) => {
-    if (!a) return;
-    if (a.type === "tier") applyTier(a.value);
-    else if (a.type === "style") setStyleId(a.value);
-    else if (a.type === "scroll") goto(a.value);
-  };
+  }, [nav]);
 
   if (!data) {
     return (
@@ -177,71 +54,20 @@ function ProjectDetail({ id, nav, onClose, initialStyle }) {
           <Lottie name="loader" playOnView={false} ariaLabel="Design Ledger собирает смету"
                   fallback={<span className="spin" style={{ width: 30, height: 30 }} />}
                   style={{ width: 230, height: 150 }} />
-          Design Ledger собирает смету и проверяет расстановку…
+          Design Ledger собирает смету…
         </div>
       </div>
     );
   }
 
-  // W2: у смет-комплектаций раздел '' — «Обзор» (лицо проекта), смета живёт на 'smeta'.
+  // W2: раздел '' — «Обзор» (лицо проекта), смета живёт на 'smeta'.
   // key: при смене id через hash state оверлея (наценки/скидка/savedId) обязан переинициализироваться,
-  // иначе «Сохранить» запишет значения предыдущего проекта в новый
-  if (data.rooms) {
-    if (nav === "") return <ProjectOverview key={data.id || "overview"} data={data} onClose={onClose} />;
-    // W4.2: «Настройки» — детали проекта (не режим выгрузки сметы), отдельная от RoomSpecOverlay ветка
-    if (nav === "settings") return <ProjectSettings key={data.id || "settings"} data={data} onClose={onClose} onSaved={applyPatch} />;
-    return <RoomSpecOverlay key={data.id || "imported"} data={data} nav={nav} onClose={onClose} />;
-  }
-
-  const activeStyle = [...data.styles, ...myStyles].find((s) => s.id === styleId) || data.styles[0];
-  const activeLayout = LAYOUTS.find((l) => l.id === layoutId) || LAYOUTS[0];
-  const factor = activeStyle.factor || 1;
-  const adj = (p) => adjustPrice(p, factor);
-  const mats = (activeStyle.materials && activeStyle.materials.length ? activeStyle.materials : STYLE_MATERIALS[activeStyle.id]) || DEFAULT_MATERIALS;
-  const cartItems = data.catalog.map((c, i) => c.items.find((x) => x.id === sel[i])).filter(Boolean);
-  const total = cartItems.reduce((s, it) => s + adj(it.price), 0);
-  const oldTotal = cartItems.reduce((s, it) => s + adj(it.old || it.price), 0);
-
-  // Движок: проверка эргономики выбранной раскладки (с учётом моих норм) + строки сметы для PDF
-  const effNorms = settings ? { ...(settings.normsOverride || {}), enabled: settings.enabledNorms || {} } : undefined;
-  const checks = window.LedgerEngine ? LedgerEngine.checkErgonomics(activeLayout, data.analysis.plan, effNorms) : { findings: [], ok: true, warns: 0 };
-  const specRows = data.catalog.map((c, i) => {
-    const it = c.items.find((x) => x.id === sel[i]);
-    return it ? { cat: c.cat, title: it.title, factory: MP_NAME[it.mp], tier: TIER_NAME[it.tier], price: adj(it.price) } : null;
-  }).filter(Boolean);
-  const exportPDF = () => { if (window.LedgerPDF) withLib("pdf", () => LedgerPDF.exportSpec({ project: data.name, styleName: activeStyle.name, rows: specRows, total, budget: data.budget, checks })); };
-  const optimize = () => { if (window.LedgerEngine) setSel(LedgerEngine.optimizeSpec(data.catalog, data.budget, factor).selection); };
-  const saveSpec = () => LedgerAPI.projects.update(id, { style: activeStyle.name, items: cartItems.length }).then(() => { setSpecSaved(true); setTimeout(() => setSpecSaved(false), 1700); });
-
-  return (
-    <div className="pd-overlay" role="dialog" aria-label={"Проект: " + data.name}>
-      {/* шапка */}
-      <OverlayHead onBack={onClose} budget={data.budget}
-        crumbs={[{ label: "Проекты", onClick: onClose }, { label: data.name }]}
-        title={data.name}
-        sub={data.room + " · " + activeStyle.name + " · " + data.area + " м²"} />
-
-      <div className="pd-body">
-        <div className="pd-main" ref={mainRef}>
-          <StyleHero data={data} style={activeStyle} />
-          <RoomAnalysis a={data.analysis} sref={secRefs.analysis} />
-          <StylePicker data={data} styleId={styleId} onPick={setStyleId} sref={secRefs.styles} myStyles={myStyles} />
-          <LayoutPicker layout={activeLayout} onPick={setLayoutId} />
-          <BeforeAfter data={data} style={activeStyle} pins={activeLayout.pins} />
-          <NormsCheck checks={checks} />
-          <BudgetPicker data={data} tier={tier} onTier={applyTier} total={total} onOptimize={optimize} sref={secRefs.budget} />
-          <ProductCatalog data={data} sel={sel} adj={adj} style={activeStyle} mats={mats} onPick={(i, idv) => setSel((s) => ({ ...s, [i]: idv }))} sref={secRefs.products} />
-          <CartBar items={cartItems} total={total} oldTotal={oldTotal} budget={data.budget} style={activeStyle} onExport={exportPDF} onSave={saveSpec} saved={specSaved} />
-        </div>
-
-        <aside className={"pd-rail" + (chatOpen ? " open" : "")}>
-          <AdvisorChat id={id} hello={data.chatHello} onAction={onAction} onClose={() => setChatOpen(false)} />
-        </aside>
-      </div>
-
-      <button className="pd-chat-fab" onClick={() => setChatOpen(true)} style={{ display: chatOpen ? "none" : undefined }}><I.chat size={19} />Помощник</button>
-    </div>
-  );
+  // иначе «Сохранить» запишет значения предыдущего проекта в новый.
+  // Проект без сида (новый/квиз/копия) получает rooms: [] от projects.get — пустая смета, не чужие данные.
+  if (nav === "") return <ProjectOverview key={data.id || "overview"} data={data} onClose={onClose} />;
+  // W4.2: «Настройки» — детали проекта (не режим выгрузки сметы), отдельная от RoomSpecOverlay ветка
+  if (nav === "settings") return <ProjectSettings key={data.id || "settings"} data={data} onClose={onClose} onSaved={applyPatch} />;
+  return <RoomSpecOverlay key={data.id || "imported"} data={data} nav={nav} onClose={onClose} />;
 }
 
 /* W5.1: «К комнате ▾» — прыжок по секциям длинной сметы (паттерн Programa «View section»):
@@ -931,6 +757,14 @@ function RoomSpecOverlay({ data, nav, onClose }) {
               </div>
             </div>}
 
+            {/* пустая смета (новый проект / квиз / копия без сида): продающее пустое
+               состояние вместо тупика — кнопка «Комната» иначе живёт только внутри
+               уже существующей комнаты (Д1) */}
+            {mode !== "procure" && rooms.length === 0 && (
+              <EmptyState icon="plan" text={<React.Fragment>В смете пока нет комнат.<br />Добавьте первую — и наполняйте её позициями: по ссылке на товар, из библиотеки или вручную.</React.Fragment>}
+                action={<button className="btn btn-primary" onClick={() => addRoomAfter(-1)}><I.plus size={16} /> Добавить первую комнату</button>} />
+            )}
+
             {/* комнаты — читаются как документ: шапка колонок + две цены построчно.
                В «Рабочей» каждая строка редактируема (карандаш → PosEditor), комнату
                можно переименовать, позицию — добавить вручную. «Для клиента» — чистый просмотр. */}
@@ -1303,8 +1137,9 @@ function RoomSpecOverlay({ data, nav, onClose }) {
             </section>
           )}
 
-          {/* итог (sticky) */}
-          <div className="pd-cart">
+          {/* итог (sticky); в пустой смете (0 комнат) не рендерим — полупрозрачная полоса
+             перекрывала бы кнопку «Добавить первую комнату» пустого состояния (elementFromPoint) */}
+          {rooms.length > 0 && <div className="pd-cart">
             <div style={{ display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
               {/* без aria-live: сумму при драге озвучивает aria-valuetext слайдера; live — только статус бюджета */}
               {/* статус — с суммой бюджета: на ≤560px чип шапки скрыт, и это единственная цифра бюджета */}
@@ -1354,7 +1189,7 @@ function RoomSpecOverlay({ data, nav, onClose }) {
                 <button className="btn btn-primary" style={{ padding: "11px 18px" }} onClick={saveRoom} disabled={roomSaving}>{roomSaved ? <React.Fragment><I.check size={16} />Сохранено</React.Fragment> : <React.Fragment><I.check size={16} />Сохранить смету</React.Fragment>}</button>
               </div>
             </div>
-          </div>
+          </div>}
         </div>
       </div>
       {addOpen && <AddPositionsModal excludeId={savedId} roomNames={rooms.map((r) => r.name)}
@@ -2138,631 +1973,6 @@ function AddPositionsModal({ excludeId, roomNames, initialTab, initialRoom, onCl
         </React.Fragment>
       )}
     </Modal>
-  );
-}
-
-/* ---------------- ГЕРОЙ (обложка + активная палитра стиля) ---------------- */
-function StyleHero({ data, style }) {
-  return (
-    <div style={{ position: "relative", height: 188, overflow: "hidden", borderBottom: "1px solid var(--hairline)" }}>
-      <Img src={PHOTOS[data.cover] || PHOTOS.living} label={data.room} style={{ position: "absolute", inset: 0 }} />
-      <div style={{ position: "absolute", inset: 0, background: "linear-gradient(90deg, rgba(46,42,38,.92) 0%, rgba(46,42,38,.55) 55%, rgba(46,42,38,.2) 100%)" }} />
-      <div style={{ position: "relative", height: "100%", display: "flex", flexDirection: "column", justifyContent: "center", gap: 8, padding: "0 clamp(16px,3vw,40px)", maxWidth: 560, color: "#FCF6EE" }}>
-        <span style={{ fontSize: "var(--fs-12)", fontWeight: 700, color: "rgba(252,246,238,.74)", letterSpacing: ".06em" }}>{data.analysis.scannedAt}</span>
-        <div className="display" style={{ fontSize: "clamp(22px,3vw,30px)", letterSpacing: "-0.02em" }}>Стиль: {style.name}</div>
-        <div style={{ color: "rgba(252,246,238,.8)", fontSize: "var(--fs-14)" }}>{style.mood}</div>
-        <div style={{ display: "flex", gap: 7, marginTop: 4 }}>
-          {style.palette.map((c, i) => <span key={i} title={c} style={{ width: 30, height: 30, borderRadius: 7, background: c, border: "1px solid rgba(255,255,255,.2)" }} />)}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-/* ---------------- АНАЛИЗ ПОМЕЩЕНИЯ ---------------- */
-function RoomAnalysis({ a, sref }) {
-  return (
-    <section className="pd-section" ref={sref}>
-      <div className="eyebrow jade" style={{ marginBottom: 14 }}>Анализ помещения · по плану и габаритам</div>
-      <h3 className="pd-h">Что Design Ledger увидел в комнате</h3>
-
-      <div style={{ display: "grid", gridTemplateColumns: "minmax(220px,300px) 1fr", gap: 22, alignItems: "start", marginTop: 18 }} className="pd-an-top">
-        <div className="glass" style={{ borderRadius: "var(--r-lg)", padding: 18 }}>
-          <FloorPlan plan={a.plan} />
-          <div style={{ marginTop: 16 }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 7 }}>
-              {/* солнце = охра (терракота у нас — варнинг, высокая инсоляция — не «плохо») */}
-              <span style={{ display: "flex", alignItems: "center", gap: 7, fontSize: "var(--fs-13)", fontWeight: 700 }}><I.sun size={15} style={{ color: "var(--chart-ink)" }} />{a.light.label}</span>
-              <span className="mono" style={{ fontWeight: 600, fontSize: "var(--fs-15)" }}>{a.light.score}<span style={{ fontSize: "var(--fs-11)", color: "var(--spec-meta)", fontWeight: 400 }}>/100</span></span>
-            </div>
-            <div className="light-meter"><i style={{ width: a.light.score + "%" }} /></div>
-            <div style={{ fontSize: "var(--fs-12)", color: "var(--muted)", marginTop: 7 }}>{a.light.note}</div>
-          </div>
-        </div>
-
-        <div className="metric-grid">
-          {a.metrics.map((m) => (
-            <div className="m" key={m.label}><div className="k">{m.label}</div><div className="v">{m.value}</div></div>
-          ))}
-        </div>
-      </div>
-
-      <p style={{ marginTop: 20, fontSize: "var(--fs-15)", lineHeight: 1.7, color: "var(--muted)", maxWidth: 880, textWrap: "pretty" }}>{a.summary}</p>
-
-      <div style={{ marginTop: 22 }}>
-        <div style={{ fontSize: "var(--fs-13)", fontWeight: 700, color: "var(--faint)", textTransform: "uppercase", letterSpacing: ".1em", marginBottom: 12 }}>Зонирование</div>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(190px,1fr))", gap: 12 }}>
-          {a.zones.map((z) => (
-            <div key={z.name} className="glass" style={{ borderRadius: 12, padding: "14px 16px" }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 10 }}>
-                <span style={{ fontWeight: 700, fontSize: "var(--fs-14)" }}>{z.name}</span>
-                <span style={{ fontSize: "var(--fs-12)", color: "var(--accent-2)", fontWeight: 700, whiteSpace: "nowrap" }}>{z.area}</span>
-              </div>
-              <div style={{ fontSize: "var(--fs-13)", color: "var(--muted)", marginTop: 5, lineHeight: 1.4 }}>{z.note}</div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      <div style={{ marginTop: 22, display: "flex", flexDirection: "column", gap: 9 }}>
-        <div style={{ fontSize: "var(--fs-13)", fontWeight: 700, color: "var(--spec-meta)", textTransform: "uppercase", letterSpacing: ".1em", marginBottom: 3 }}>Выводы по помещению</div>
-        {a.findings.map((f, i) => {
-          const Ico = FIND_ICON[f.kind] || FIND_ICON.idea;
-          return (
-            <div key={i} className={"find " + f.kind}>
-              <span className="fi"><Ico size={15} /></span>
-              <span style={{ fontSize: "var(--fs-14)", lineHeight: 1.5, color: "var(--text)" }}>{f.text}</span>
-            </div>
-          );
-        })}
-      </div>
-    </section>
-  );
-}
-
-/* мини-план — фрагмент рабочего чертежа (язык интерьерных тех-инфографик из рефов):
-   тушь-стены, окна двойной линией остекления с откосами, дверная дуга открывания,
-   выносные размерные линии с косыми засечками, миллиметровка вместо штриховки */
-function FloorPlan({ plan }) {
-  const RW = 200, RH = Math.round(RW / (plan.w / plan.l));
-  const M = { l: 8, t: 22, r: 36, b: 30 };                    // поля: сверху солнце, справа/снизу размеры
-  const W = RW + M.l + M.r, H = RH + M.t + M.b;
-  const x0 = M.l, y0 = M.t, x1 = x0 + RW, y1 = y0 + RH;
-  const fmtM = (v) => String(v).replace(".", ",") + " м";
-  // окна равномерно по верхней (световой) стене
-  const seg = RW / plan.windows;
-  const wins = Array.from({ length: plan.windows }, (_, i) => {
-    const len = Math.min(seg * 0.6, 62), cx = x0 + seg * (i + 0.5);
-    return [cx - len / 2, cx + len / 2];
-  });
-  // дверь на нижней стене: проём + полотно + дуга (петля у ближнего угла)
-  const dw = Math.max(28, RW * 0.16);
-  const hingeLeft = plan.door === "low-left";
-  const dx = hingeLeft ? x0 + RW * 0.10 : x1 - RW * 0.10 - dw;
-  const hx = hingeLeft ? dx : dx + dw;
-  const arc = hingeLeft
-    ? `M ${dx + dw} ${y1} A ${dw} ${dw} 0 0 0 ${dx} ${y1 - dw}`
-    : `M ${dx} ${y1} A ${dw} ${dw} 0 0 1 ${dx + dw} ${y1 - dw}`;
-  const tick = (x, y, key) => <line key={key} x1={x - 3} y1={y + 3} x2={x + 3} y2={y - 3} stroke="var(--spec-meta)" strokeWidth="1.1" />;
-  const dimY = y1 + 18, dimX = x1 + 18;
-  const mono = { fontFamily: "var(--font-mono)", fontSize: "var(--fs-10)", fill: "var(--spec-meta)" };
-  return (
-    <div>
-      <svg viewBox={`0 0 ${W} ${H}`} width="100%" style={{ display: "block", maxHeight: 240, margin: "0 auto" }} role="img"
-           aria-label={"План комнаты " + plan.w + "×" + plan.l + " м, окна на " + plan.side}>
-        <defs>
-          <pattern id="fp-grid" width="16" height="16" patternUnits="userSpaceOnUse">
-            <path d="M16 0H0V16" fill="none" stroke="var(--hairline-2)" strokeWidth="1" />
-          </pattern>
-        </defs>
-        {/* бумага + миллиметровка */}
-        <rect x={x0} y={y0} width={RW} height={RH} fill="var(--surface)" />
-        <rect x={x0} y={y0} width={RW} height={RH} fill="url(#fp-grid)" />
-        {/* стены */}
-        <rect x={x0} y={y0} width={RW} height={RH} fill="none" stroke="var(--text)" strokeWidth="2.4" />
-        {/* окна: разрыв стены + двойное остекление + откосы */}
-        {wins.map(([a, b], i) => (
-          <g key={i}>
-            <line x1={a} y1={y0} x2={b} y2={y0} stroke="var(--surface)" strokeWidth="3.4" />
-            <line x1={a} y1={y0 - 1.7} x2={b} y2={y0 - 1.7} stroke="var(--info)" strokeWidth="1.2" />
-            <line x1={a} y1={y0 + 1.7} x2={b} y2={y0 + 1.7} stroke="var(--info)" strokeWidth="1.2" />
-            <line x1={a} y1={y0 - 3.2} x2={a} y2={y0 + 3.2} stroke="var(--text)" strokeWidth="1.5" />
-            <line x1={b} y1={y0 - 3.2} x2={b} y2={y0 + 3.2} stroke="var(--text)" strokeWidth="1.5" />
-          </g>
-        ))}
-        {/* солнце + румб у световой стены (охра = свет) */}
-        <g transform={`translate(${x1 - 34} ${y0 - 11})`}>
-          <circle cx="0" cy="0" r="2.6" fill="none" stroke="var(--chart-ink)" strokeWidth="1.2" />
-          {[0, 45, 90, 135, 180, 225, 270, 315].map((a) => (
-            <line key={a} x1={4.2 * Math.cos(a * Math.PI / 180)} y1={4.2 * Math.sin(a * Math.PI / 180)}
-                  x2={6 * Math.cos(a * Math.PI / 180)} y2={6 * Math.sin(a * Math.PI / 180)} stroke="var(--chart-ink)" strokeWidth="1" />
-          ))}
-          <text x="11" y="3.4" style={{ ...mono, fill: "var(--chart-ink)", letterSpacing: ".08em" }}>{plan.side}</text>
-        </g>
-        {/* дверь */}
-        <line x1={dx} y1={y1} x2={dx + dw} y2={y1} stroke="var(--surface)" strokeWidth="3.4" />
-        <line x1={dx} y1={y1 - 3.2} x2={dx} y2={y1 + 3.2} stroke="var(--text)" strokeWidth="1.5" />
-        <line x1={dx + dw} y1={y1 - 3.2} x2={dx + dw} y2={y1 + 3.2} stroke="var(--text)" strokeWidth="1.5" />
-        <line x1={hx} y1={y1} x2={hx} y2={y1 - dw} stroke="var(--accent-ink)" strokeWidth="1.6" />
-        <path d={arc} fill="none" stroke="var(--accent-ink)" strokeWidth="1.1" strokeDasharray="3 3" opacity=".65" />
-        {/* размер по ширине: выноски + линия + засечки + подпись */}
-        <line x1={x0} y1={y1 + 4} x2={x0} y2={dimY + 3} stroke="var(--hairline)" strokeWidth="1" />
-        <line x1={x1} y1={y1 + 4} x2={x1} y2={dimY + 3} stroke="var(--hairline)" strokeWidth="1" />
-        <line x1={x0} y1={dimY} x2={x1} y2={dimY} stroke="var(--spec-meta)" strokeWidth="1" />
-        {tick(x0, dimY, "tw1")}{tick(x1, dimY, "tw2")}
-        <text x={(x0 + x1) / 2} y={dimY - 4} textAnchor="middle" style={mono}>{fmtM(plan.w)}</text>
-        {/* размер по глубине */}
-        <line x1={x1 + 4} y1={y0} x2={dimX + 3} y2={y0} stroke="var(--hairline)" strokeWidth="1" />
-        <line x1={x1 + 4} y1={y1} x2={dimX + 3} y2={y1} stroke="var(--hairline)" strokeWidth="1" />
-        <line x1={dimX} y1={y0} x2={dimX} y2={y1} stroke="var(--spec-meta)" strokeWidth="1" />
-        {tick(dimX, y0, "th1")}{tick(dimX, y1, "th2")}
-        <text x={dimX - 4} y={(y0 + y1) / 2} textAnchor="middle" transform={`rotate(-90 ${dimX - 4} ${(y0 + y1) / 2})`} style={mono}>{fmtM(plan.l)}</text>
-      </svg>
-      {/* легенда — те же условные обозначения, что на чертеже */}
-      <div style={{ display: "flex", gap: 18, justifyContent: "center", marginTop: 10, fontFamily: "var(--font-mono)", fontSize: "var(--fs-10)", letterSpacing: ".07em", textTransform: "uppercase", color: "var(--spec-meta)" }}>
-        <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
-          <svg width="18" height="8" aria-hidden="true"><line x1="1" y1="2.5" x2="17" y2="2.5" stroke="var(--info)" strokeWidth="1.3" /><line x1="1" y1="5.5" x2="17" y2="5.5" stroke="var(--info)" strokeWidth="1.3" /></svg>Окно
-        </span>
-        <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
-          <svg width="12" height="12" aria-hidden="true"><line x1="10.5" y1="1" x2="10.5" y2="11" stroke="var(--accent-ink)" strokeWidth="1.4" /><path d="M1 11 A 10 10 0 0 1 10.5 1.5" fill="none" stroke="var(--accent-ink)" strokeWidth="1" strokeDasharray="2.5 2.5" opacity=".7" /></svg>Вход
-        </span>
-      </div>
-    </div>
-  );
-}
-
-/* ---------------- СТИЛЬ И ВАРИАНТЫ ---------------- */
-function StyleOptionCard({ s, on, onPick }) {
-  const delta = Math.round(((s.factor || 1) - 1) * 100);
-  const deltaLabel = delta === 0 ? "базовый бюджет" : (delta > 0 ? `≈ дороже на ${delta}%` : `≈ дешевле на ${Math.abs(delta)}%`);
-  return (
-    <button className={"style-card" + (on ? " sel" : "")} onClick={() => onPick(s.id)} aria-pressed={on}>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
-        <span style={{ fontWeight: 800, fontFamily: "var(--font-display)", fontSize: "var(--fs-16)" }}>{s.name}</span>
-        {on && <span style={{ width: 22, height: 22, borderRadius: "50%", background: "var(--accent)", color: "var(--on-accent)", display: "grid", placeItems: "center", flex: "none" }}><I.check size={13} /></span>}
-      </div>
-      <div style={{ fontSize: "var(--fs-12)", color: "var(--muted)", marginTop: 4 }}>{s.mood}</div>
-      <div className="sw">{(s.palette || []).map((c, i) => <span key={i} style={{ background: c }} />)}</div>
-      {s.desc && <div style={{ fontSize: "var(--fs-13)", color: "var(--muted)", marginTop: 12, lineHeight: 1.45 }}>{s.desc}</div>}
-      <div style={{ marginTop: 12, fontSize: "var(--fs-12)", fontWeight: 700, color: delta > 0 ? "var(--accent)" : (delta < 0 ? "var(--accent-2)" : "var(--faint)") }}>{deltaLabel}</div>
-    </button>
-  );
-}
-
-function StylePicker({ data, styleId, onPick, sref, myStyles }) {
-  const mine = myStyles || [];
-  return (
-    <section className="pd-section" ref={sref}>
-      <div className="eyebrow jade" style={{ marginBottom: 14 }}>Стиль и варианты</div>
-      <h3 className="pd-h">Направления под эту комнату</h3>
-      <p style={{ color: "var(--muted)", fontSize: "var(--fs-14)", marginTop: 4, marginBottom: 18, maxWidth: 720 }}>
-        AI подобрал стили под пропорции, свет и назначение помещения. Выберите направление — палитра и акценты обновятся, а рядом видно ориентировочное влияние на бюджет.
-      </p>
-      <div className="pd-styles" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: 14 }}>
-        {data.styles.map((s) => <StyleOptionCard key={s.id} s={s} on={s.id === styleId} onPick={onPick} />)}
-      </div>
-
-      {mine.length > 0 && (
-        <React.Fragment>
-          <div style={{ display: "flex", alignItems: "center", gap: 9, margin: "22px 2px 12px" }}>
-            <I.user size={16} style={{ color: "var(--accent)", flex: "none" }} />
-            <span style={{ fontWeight: 700, fontSize: "var(--fs-14)" }}>Мои стили</span>
-            <span style={{ fontSize: "var(--fs-12)", color: "var(--faint)" }}>· из библиотеки «Мои стили»</span>
-          </div>
-          <div className="pd-styles" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: 14 }}>
-            {mine.map((s) => <StyleOptionCard key={s.id} s={s} on={s.id === styleId} onPick={onPick} />)}
-          </div>
-        </React.Fragment>
-      )}
-    </section>
-  );
-}
-
-/* ---------------- РАССТАНОВКА (варианты раскладки) ---------------- */
-function LayoutPicker({ layout, onPick }) {
-  return (
-    <section className="pd-section">
-      <div className="eyebrow jade" style={{ marginBottom: 14 }}>Расстановка</div>
-      <h3 className="pd-h">Варианты раскладки мебели</h3>
-      <p style={{ color: "var(--muted)", fontSize: "var(--fs-14)", marginTop: 4, marginBottom: 18, maxWidth: 720 }}>
-        Готовые схемы расстановки под геометрию комнаты. Выберите раскладку — обновятся метки на визуализации «до/после» и акценты сцены.
-      </p>
-      <div className="pd-styles" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: 14 }}>
-        {LAYOUTS.map((l) => {
-          const on = l.id === layout.id;
-          return (
-            <button key={l.id} className={"style-card" + (on ? " sel" : "")} onClick={() => onPick(l.id)} aria-pressed={on}>
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, marginBottom: 12 }}>
-                <span style={{ fontWeight: 800, fontFamily: "var(--font-display)", fontSize: "var(--fs-16)" }}>{l.name}</span>
-                {on && <span style={{ width: 22, height: 22, borderRadius: "50%", background: "var(--accent)", color: "var(--on-accent)", display: "grid", placeItems: "center", flex: "none" }}><I.check size={13} /></span>}
-              </div>
-              <MiniLayout plan={l.plan} />
-              <div style={{ fontSize: "var(--fs-13)", color: "var(--muted)", marginTop: 12, lineHeight: 1.45 }}>{l.note}</div>
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 12 }}>
-                {l.pros.map((p) => (
-                  <span key={p} style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: "var(--fs-11)", fontWeight: 700, color: "var(--accent-2)", padding: "3px 9px", borderRadius: 99, background: "rgba(94,107,91,.12)", border: "1px solid rgba(94,107,91,.28)" }}>
-                    <I.check size={12} />{p}
-                  </span>
-                ))}
-              </div>
-            </button>
-          );
-        })}
-      </div>
-    </section>
-  );
-}
-
-/* схема раскладки сверху — тот же чертёжный язык, что и FloorPlan: тушь-стены, line-art мебель */
-function MiniLayout({ plan }) {
-  return (
-    <div className="plan-box" style={{ position: "relative", width: "100%", aspectRatio: "16/11" }}>
-      <span className="pl-win" style={{ left: "26%", width: "48%" }} />
-      <span className="pl-door" style={{ left: "8%", width: "16%" }} />
-      {plan.map((b, i) => {
-        const k = LAYOUT_K[b.k] || LAYOUT_K.table;
-        const tall = b.h * 0.6875 > b.w;   // вытянутый по вертикали блок (аспект карты 16/11) — подпись вертикально
-        // подпись 10px (WCAG-порог читаемости, было 8.5px) только на крупных блоках;
-        // мелким хватает тултипа title (уже есть на span) — 10px в них не помещается
-        const showLabel = (tall ? b.h : b.w) >= 20;
-        return (
-          <span key={i} title={b.label} style={{ position: "absolute", left: b.x + "%", top: b.y + "%", width: b.w + "%", height: b.h + "%",
-            borderRadius: 2, background: k.fill, border: (k.dashed ? "1.2px dashed " : "1.3px solid ") + k.stroke,
-            display: "grid", placeItems: k.dashed ? "end center" : "center", overflow: "hidden" }}>
-            {showLabel && (
-              <span className="mono" style={{ fontSize: "var(--fs-10)", letterSpacing: ".05em", textTransform: "uppercase", color: k.ink, whiteSpace: "nowrap",
-                padding: k.dashed ? "0 2px 2px" : "0 2px", writingMode: tall ? "vertical-rl" : undefined }}>{b.label}</span>
-            )}
-          </span>
-        );
-      })}
-    </div>
-  );
-}
-
-/* ---------------- ДО / ПОСЛЕ (слайдер визуализации) ---------------- */
-function BeforeAfter({ data, style, pins }) {
-  const [pos, setPos] = usePD(56);
-  const [drag, setDrag] = usePD(false);
-  const boxRef = usePDR(null);
-  const knobRef = usePDR(null);   // фокус на ручку при клике (preventDefault гасит нативный фокус)
-  const img = PHOTOS[data.cover] || PHOTOS.living;
-  const pal = style.palette;
-  const arPins = pins || [[31, 60, "Диван"], [69, 45, "Стеллаж"], [50, 74, "Свет"]];
-
-  const setFromX = (clientX) => {
-    const el = boxRef.current; if (!el) return;
-    const r = el.getBoundingClientRect();
-    setPos(Math.max(6, Math.min(94, ((clientX - r.left) / r.width) * 100)));
-  };
-  usePDE(() => {
-    if (!drag) return;
-    const mv = (e) => { if (e.cancelable) e.preventDefault(); setFromX(e.clientX); };
-    const up = () => setDrag(false);
-    window.addEventListener("pointermove", mv, { passive: false });
-    window.addEventListener("pointerup", up);
-    return () => { window.removeEventListener("pointermove", mv); window.removeEventListener("pointerup", up); };
-  }, [drag]);
-
-  const badge = (extra) => ({ position: "absolute", display: "inline-flex", alignItems: "center", gap: 6, padding: "6px 11px", borderRadius: 99, fontSize: "var(--fs-11)", fontWeight: 700, letterSpacing: ".04em", backdropFilter: "blur(6px)", WebkitBackdropFilter: "blur(6px)", ...extra });
-
-  return (
-    <section className="pd-section">
-      <div className="eyebrow jade" style={{ marginBottom: 14 }}>Визуализация</div>
-      <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
-        <h3 className="pd-h" style={{ marginBottom: 0 }}>До и после</h3>
-        <span className="glass" style={{ display: "inline-flex", alignItems: "center", gap: 7, padding: "6px 12px", borderRadius: 99, fontSize: "var(--fs-12)", fontWeight: 700 }}>
-          <span style={{ width: 9, height: 9, borderRadius: 3, background: pal[0], flex: "none" }} />{style.name}
-        </span>
-      </div>
-      <p style={{ color: "var(--muted)", fontSize: "var(--fs-14)", marginTop: 8, marginBottom: 18, maxWidth: 760 }}>
-        Слева — исходное фото комнаты, справа — тональное превью в палитре стиля «{style.name}» с метками расстановки (это демо-визуализация, не рендер). Перетащите ползунок, чтобы сравнить.
-      </p>
-
-      <div ref={boxRef} onPointerDown={(e) => { e.preventDefault(); if (knobRef.current) knobRef.current.focus({ preventScroll: true }); setDrag(true); setFromX(e.clientX); }}
-        style={{ position: "relative", borderRadius: "var(--r-xl)", overflow: "hidden", aspectRatio: "16/9", userSelect: "none", touchAction: "none", cursor: "ew-resize", boxShadow: "var(--shadow-pop)", border: "1px solid var(--hairline)" }}>
-
-        {/* ПОСЛЕ — полный слой снизу, цветокоррекция + тон палитры стиля */}
-        <div style={{ position: "absolute", inset: 0 }}>
-          <Img src={img} label="после" style={{ position: "absolute", inset: 0, filter: "saturate(1.2) contrast(1.06) brightness(1.05)" }} />
-          <div style={{ position: "absolute", inset: 0, background: `linear-gradient(125deg, ${pal[0]}66 0%, transparent 42%), linear-gradient(305deg, ${(pal[1] || pal[0])}55 0%, transparent 46%)`, mixBlendMode: "soft-light" }} />
-          <div style={{ position: "absolute", inset: 0, background: "linear-gradient(180deg, transparent 50%, rgba(46,42,38,.55))" }} />
-          {/* AR-метки расставленной мебели */}
-          {arPins.map(([l, t, name], i) => (
-            <span key={i} className="glass" style={{ position: "absolute", left: l + "%", top: t + "%", transform: "translate(-50%,-50%)", padding: "6px 11px", borderRadius: 9, fontSize: "var(--fs-12)", fontWeight: 700, display: "flex", alignItems: "center", gap: 6, borderColor: "rgba(94,107,91,.6)", background: "rgba(46,42,38,.58)", color: "#FCF6EE", whiteSpace: "nowrap" }}>
-              <I.check size={13} style={{ color: "var(--accent-2)" }} />{name}
-            </span>
-          ))}
-          <span style={badge({ right: 14, top: 14, background: "rgba(94,107,91,.92)", border: "1px solid rgba(94,107,91,.5)", color: "#FCF6EE" })}>
-            <I.spark size={13} />ПОСЛЕ · превью стиля
-          </span>
-          <div style={{ position: "absolute", left: 14, bottom: 14, display: "flex", gap: 6 }}>
-            {pal.map((c, i) => <span key={i} style={{ width: 22, height: 22, borderRadius: 6, background: c, border: "1px solid rgba(255,255,255,.25)" }} />)}
-          </div>
-        </div>
-
-        {/* ДО — верхний слой, обрезан по ползунку (показываем левую часть) */}
-        <div style={{ position: "absolute", inset: 0, clipPath: `inset(0 ${100 - pos}% 0 0)` }}>
-          <Img src={img} label="скан" style={{ position: "absolute", inset: 0, filter: "grayscale(.92) brightness(.58) contrast(1.06)" }} />
-          <div style={{ position: "absolute", inset: 0, background: "linear-gradient(180deg, rgba(46,42,38,.3), rgba(46,42,38,.5))" }} />
-          <div style={{ position: "absolute", inset: 0, backgroundImage: "linear-gradient(rgba(94,107,91,.22) 1px,transparent 1px),linear-gradient(90deg,rgba(94,107,91,.22) 1px,transparent 1px)", backgroundSize: "32px 32px" }} />
-          <span style={badge({ left: 14, top: 14, background: "rgba(46,42,38,.6)", border: "1px solid rgba(252,246,238,.22)", color: "#FCF6EE" })}>
-            <I.scan size={13} style={{ color: "var(--accent-2)" }} />ДО · исходное фото
-          </span>
-        </div>
-
-        {/* разделитель + ручка (доступна с клавиатуры: role=slider, ←/→) */}
-        <div style={{ position: "absolute", top: 0, bottom: 0, left: pos + "%", width: 2, background: "#fff", transform: "translateX(-1px)", boxShadow: "0 0 14px rgba(0,0,0,.55)" }}>
-          <button ref={knobRef} type="button" role="slider" aria-label="Сравнение до и после"
-            aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(pos)}
-            aria-valuetext={"«до» занимает " + Math.round(pos) + "% кадра"}
-            onKeyDown={(e) => {
-              if (e.key === "ArrowLeft" || e.key === "ArrowDown") { e.preventDefault(); setPos((p) => Math.max(6, p - 5)); }
-              if (e.key === "ArrowRight" || e.key === "ArrowUp") { e.preventDefault(); setPos((p) => Math.min(94, p + 5)); }
-              if (e.key === "Home") { e.preventDefault(); setPos(6); }
-              if (e.key === "End") { e.preventDefault(); setPos(94); }
-            }}
-            style={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%,-50%)", width: 42, height: 42, borderRadius: "50%", background: "var(--surface)", color: "var(--text)", display: "grid", placeItems: "center", boxShadow: "0 4px 18px rgba(46,42,38,.4)", cursor: "ew-resize" }}>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M9 7l-4 5 4 5M15 7l4 5-4 5" /></svg>
-          </button>
-        </div>
-      </div>
-    </section>
-  );
-}
-
-/* ---------------- ПРОВЕРКА НОРМ (движок эргономики) ---------------- */
-function NormsCheck({ checks }) {
-  const c = checks || { findings: [], ok: true, warns: 0 };
-  return (
-    <section className="pd-section">
-      <div className="eyebrow jade" style={{ marginBottom: 14 }}>Проверка норм</div>
-      <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
-        <h3 className="pd-h" style={{ marginBottom: 0 }}>Эргономика расстановки</h3>
-        <span className="glass" style={{ display: "inline-flex", alignItems: "center", gap: 7, padding: "6px 12px", borderRadius: 99, fontSize: "var(--fs-12)", fontWeight: 700,
-          color: c.ok ? "var(--accent-2)" : "var(--accent)", borderColor: c.ok ? "rgba(94,107,91,.4)" : "rgba(183,80,44,.4)" }}>
-          <span style={{ width: 8, height: 8, borderRadius: "50%", background: c.ok ? "var(--accent-2)" : "var(--accent)", flex: "none" }} />
-          {c.ok ? "Все нормы соблюдены" : c.warns + " " + plural(c.warns, ["замечание", "замечания", "замечаний"])}
-        </span>
-      </div>
-      <p style={{ color: "var(--muted)", fontSize: "var(--fs-14)", marginTop: 8, marginBottom: 18, maxWidth: 760 }}>
-        Движок проверил проходы, дистанции и плотность по нормам эргономики — детерминированно, из геометрии выбранной раскладки. Меняете раскладку выше — проверка пересчитывается.
-      </p>
-      <div style={{ display: "flex", flexDirection: "column", gap: 9 }}>
-        {/* замечания первыми — иерархия критичности, «в норме» подчинённо */}
-        {[...c.findings].sort((a, b) => (a.kind === "warn" ? 0 : 1) - (b.kind === "warn" ? 0 : 1)).map((f, i) => {
-          const Ico = FIND_ICON[f.kind] || FIND_ICON.idea;
-          return (
-            <div key={i} className={"find " + f.kind}>
-              <span className="fi"><Ico size={15} /></span>
-              <span style={{ fontSize: "var(--fs-14)", lineHeight: 1.5, color: "var(--text)" }}>{f.text}</span>
-            </div>
-          );
-        })}
-      </div>
-    </section>
-  );
-}
-
-/* ---------------- БЮДЖЕТ ---------------- */
-function BudgetPicker({ data, tier, onTier, total, onOptimize, sref }) {
-  const budget = data.budget;
-  const pct = Math.min(100, Math.round((total / budget) * 100));
-  const over = total > budget;
-  const cur = data.budgets.find((b) => b.id === tier) || data.budgets[1];
-  return (
-    <section className="pd-section" ref={sref}>
-      <div className="eyebrow jade" style={{ marginBottom: 14 }}>Бюджет</div>
-      <h3 className="pd-h">Под какой бюджет собираем</h3>
-      <p style={{ color: "var(--muted)", fontSize: "var(--fs-14)", marginTop: 4, marginBottom: 18, maxWidth: 720 }}>
-        Тариф меняет наполнение сметы целиком — AI пересобирает подбор под выбранный уровень. Отдельные предметы потом можно заменить вручную ниже.
-      </p>
-
-      <SegTabs className="pd-seg" style={{ maxWidth: 520 }} ariaLabel="Уровень бюджета" value={tier} onChange={onTier}
-        items={data.budgets.map((b) => ({ id: b.id, label: b.name, sub: b.recommended ? "рекомендация AI" : null }))} />
-      <div style={{ fontSize: "var(--fs-13)", color: "var(--muted)", marginTop: 12 }}>{cur.note}</div>
-
-      <div className="glass" style={{ borderRadius: "var(--r-lg)", padding: "18px 20px", marginTop: 18, maxWidth: 640 }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 12, flexWrap: "wrap", gap: 8 }}>
-          <span style={{ fontSize: "var(--fs-14)", color: "var(--muted)" }}>Подобрано на</span>
-          <span className="mono" style={{ fontSize: "var(--fs-21)", fontWeight: 600 }}>{fmtMoney(total)} <span style={{ fontSize: "var(--fs-13)", color: "var(--spec-meta)", fontWeight: 400 }}>из {fmtMoney(budget)}</span></span>
-        </div>
-        <div className="budget-bar"><i style={{ transform: `scaleX(${pct / 100})`, background: over ? "linear-gradient(90deg,#B7502C,#ff7849)" : "linear-gradient(90deg,var(--accent-2),#39b88c)" }} /></div>
-        <div style={{ display: "flex", justifyContent: "space-between", marginTop: 10, fontSize: "var(--fs-13)" }}>
-          <span style={{ color: over ? "var(--accent)" : "var(--accent-2)", fontWeight: 700 }}>
-            {over ? `Превышение на ${fmtMoney(total - budget)}` : `Остаток ${fmtMoney(budget - total)}`}
-          </span>
-          <span style={{ color: "var(--faint)" }}>{pct}% бюджета</span>
-        </div>
-      </div>
-
-      <button className="btn btn-ghost" style={{ marginTop: 14, padding: "11px 18px" }} onClick={onOptimize}>
-        <I.spark size={16} />Уложить в бюджет автоматически
-      </button>
-    </section>
-  );
-}
-
-/* ---------------- СПЕЦИФИКАЦИЯ (каталог фабрик) ---------------- */
-function ProductCatalog({ data, sel, onPick, sref, adj, style, mats }) {
-  return (
-    <section className="pd-section" ref={sref} style={{ borderBottom: "none" }}>
-      <div className="eyebrow jade" style={{ marginBottom: 14 }}>Спецификация</div>
-      <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
-        <h3 className="pd-h" style={{ marginBottom: 0 }}>Подбор по каталогу фабрик</h3>
-        <span className="mp f1">Дубрава</span><span className="mp f2">Линея</span>
-        {/* честная метка: фабрики и цены каталога — демонстрационные, реальные позиции придут из клиппера/фида */}
-        <span style={{ padding: "4px 10px", borderRadius: 99, fontSize: "var(--fs-11)", fontWeight: 700, letterSpacing: ".04em", color: "var(--muted)", background: "var(--glass-2)", border: "1px dashed var(--hairline)" }}>демо-каталог</span>
-      </div>
-      <p style={{ color: "var(--muted)", fontSize: "var(--fs-14)", marginTop: 8, marginBottom: 18, maxWidth: 760 }}>
-        В каждой категории — 3 варианта по цене и фабрике (демо-данные для примера работы). Нажмите на карточку, чтобы заменить предмет в смете: итог и полоса бюджета пересчитаются автоматически.
-      </p>
-      <div className="glass" style={{ display: "inline-flex", alignItems: "center", gap: 9, padding: "8px 14px", borderRadius: 99, marginBottom: 22, fontSize: "var(--fs-13)" }}>
-        <span style={{ width: 11, height: 11, borderRadius: 4, background: style.palette[0], border: "1px solid rgba(255,255,255,.25)", flex: "none" }} />
-        Подбор и цены адаптированы под стиль <b style={{ color: "var(--text)" }}>{style.name}</b>
-      </div>
-
-      <div style={{ display: "flex", flexDirection: "column", gap: 26 }}>
-        {data.catalog.map((c, ci) => {
-          const Ico = I[c.icon] || I.layers;
-          const selItem = c.items.find((x) => x.id === sel[ci]);
-          // самый дешёвый «не под заказ» аналог в категории (для умного действия)
-          const cheapest = c.items.filter((x) => stockInfo(x).state !== "order").sort((a, b) => a.price - b.price)[0] || c.items[0];
-          const canSave = selItem && cheapest && cheapest.id !== selItem.id && adj(cheapest.price) < adj(selItem.price);
-          const saving = canSave ? adj(selItem.price) - adj(cheapest.price) : 0;
-          return (
-            <div key={c.cat}>
-              <div style={{ display: "flex", alignItems: "center", gap: 11, marginBottom: 12 }}>
-                <span style={{ width: 34, height: 34, borderRadius: 10, background: "var(--surface-2)", color: "var(--accent)", display: "grid", placeItems: "center", flex: "none" }}><Ico size={18} /></span>
-                <span style={{ fontWeight: 700, fontSize: "var(--fs-16)" }}>{c.cat}</span>
-                {selItem && <span className="mono" style={{ marginLeft: "auto", fontWeight: 600, fontSize: "var(--fs-15)" }}>{fmtMoney(adj(selItem.price))}</span>}
-              </div>
-
-              {canSave && (
-                <button onClick={() => onPick(ci, cheapest.id)} className="save-banner">
-                  <span style={{ width: 30, height: 30, borderRadius: 9, background: "rgba(94,107,91,.18)", color: "var(--accent-2)", display: "grid", placeItems: "center", flex: "none" }}><I.spark size={16} /></span>
-                  <span style={{ flex: 1, textAlign: "left", fontSize: "var(--fs-13)", lineHeight: 1.4 }}>
-                    <b style={{ color: "var(--text)" }}>Аналог дешевле на {fmtMoney(saving)}</b>
-                    <span style={{ color: "var(--muted)" }}> — «{cheapest.title}», рейтинг {cheapest.rating}</span>
-                  </span>
-                  <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: "var(--fs-13)", fontWeight: 700, color: "var(--accent-2)", whiteSpace: "nowrap" }}>Заменить<I.arrow size={15} /></span>
-                </button>
-              )}
-
-              <div className="cat-row">
-                {c.items.map((it) => (
-                  <ProductCard key={it.id} item={it} selected={sel[ci] === it.id}
-                    priceAdj={adj(it.price)} oldAdj={it.old ? adj(it.old) : null}
-                    material={mats[ci % mats.length]} dot={style.palette[1] || style.palette[0]}
-                    onClick={() => onPick(ci, it.id)} />
-                ))}
-              </div>
-            </div>
-          );
-        })}
-      </div>
-    </section>
-  );
-}
-
-function ProductCard({ item, selected, onClick, priceAdj, oldAdj, material, dot }) {
-  const price = priceAdj != null ? priceAdj : item.price;
-  const old = oldAdj != null ? oldAdj : item.old;
-  const disc = old && old > price ? Math.round((1 - price / old) * 100) : 0;
-  const stock = stockInfo(item);
-  return (
-    <button className={"prod-card" + (selected ? " sel" : "")} onClick={onClick} aria-pressed={selected}>
-      <div className="pim">
-        <Img src={item.img} label={MP_NAME[item.mp]} style={{ position: "absolute", inset: 0 }} />
-        <span className={"mp mp-badge " + item.mp}>{MP_NAME[item.mp]}</span>
-        {selected && <span className="selflag"><I.check size={13} /></span>}
-      </div>
-      <div className="pbody">
-        <div style={{ display: "flex", alignItems: "center", gap: 7, flexWrap: "wrap" }}>
-          <span className={"tier-tag " + item.tier}>{TIER_NAME[item.tier]}</span>
-          {material && (
-            <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: "var(--fs-11)", fontWeight: 700, color: "var(--muted)", padding: "3px 8px", borderRadius: 99, background: "var(--glass-2)", border: "1px solid var(--hairline)" }}>
-              <span style={{ width: 9, height: 9, borderRadius: 3, background: dot, flex: "none" }} />{material}
-            </span>
-          )}
-        </div>
-        <div className="pt">{item.title}</div>
-        <div style={{ display: "flex", alignItems: "center", gap: 5, fontSize: "var(--fs-12)", color: "var(--muted)" }}>
-          <I.star size={13} style={{ color: "var(--accent)" }} /><span style={{ fontWeight: 700, color: "var(--text)" }}>{item.rating}</span>
-          <span style={{ color: "var(--faint)" }}>· {fmt(item.reviews)} отз.</span>
-        </div>
-        {/* наличие + доставка */}
-        <div style={{ display: "flex", alignItems: "center", gap: 7, fontSize: "var(--fs-11)", marginTop: "auto", flexWrap: "wrap" }}>
-          <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontWeight: 700, color: stock.color }}>
-            <span style={{ width: 7, height: 7, borderRadius: "50%", background: stock.color, flex: "none" }} />{stock.label}
-          </span>
-          <span style={{ display: "inline-flex", alignItems: "center", gap: 4, color: "var(--faint)" }}>
-            <I.truck size={13} />{stock.eta}
-          </span>
-        </div>
-        <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
-          <span className="pprice">{fmtMoney(price)}</span>
-          {disc > 0 && <span className="pold">{fmtMoney(old)}</span>}
-          {disc > 0 && <span style={{ marginLeft: "auto", fontSize: "var(--fs-11)", fontWeight: 700, color: "var(--accent-2)" }}>−{disc}%</span>}
-        </div>
-      </div>
-    </button>
-  );
-}
-
-/* ---------------- СМЕТА (sticky) ---------------- */
-function CartBar({ items, total, oldTotal, budget, style, onExport, onSave, saved }) {
-  const discount = oldTotal - total;
-  const over = total > budget;
-  return (
-    <div className="pd-cart">
-      <div style={{ display: "flex", alignItems: "center", gap: 18, flexWrap: "wrap" }}>
-        <SmetaTotal amount={total} size={21}
-          caption={<React.Fragment>{items.length} {plural(items.length, ["позиция", "позиции", "позиций"])} · {over ? <span style={{ color: "var(--accent-ink)" }}>сверх бюджета</span> : <span style={{ color: "var(--accent-2)" }}>в рамках бюджета</span>}</React.Fragment>} />
-        {style && <span className="glass" style={{ display: "inline-flex", alignItems: "center", gap: 7, padding: "7px 12px", borderRadius: 99, fontSize: "var(--fs-12)", fontWeight: 700 }}>
-          <span style={{ width: 9, height: 9, borderRadius: 3, background: style.palette[0], flex: "none" }} />{style.name}
-        </span>}
-        {discount > 0 && <span className="glass" style={{ padding: "7px 12px", borderRadius: 99, fontSize: "var(--fs-12)", fontWeight: 700, color: "var(--accent-2)" }}>Скидка по каталогу: −{fmtMoney(discount)}</span>}
-        <div style={{ marginLeft: "auto", display: "flex", gap: 10 }}>
-          <button className="btn btn-ghost" style={{ padding: "11px 16px" }} onClick={onExport}><I.layers size={16} />Выгрузить PDF</button>
-          <button className="btn btn-primary" style={{ padding: "11px 18px" }} onClick={onSave}>{saved ? <React.Fragment><I.check size={16} />Сохранено</React.Fragment> : <React.Fragment><I.check size={16} />Сохранить смету</React.Fragment>}</button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-/* ---------------- AI-ЧАТ ---------------- */
-function AdvisorChat({ id, hello, onAction, onClose }) {
-  const [msgs, setMsgs] = usePD([{ role: "ai", text: hello }]);
-  const [val, setVal] = usePD("");
-  const [busy, setBusy] = usePD(false);
-  const scrollRef = usePDR(null);
-  const chips = ["Сделай дешевле", "Собери премиум", "Что с освещением?", "Покажи стиль Japandi", "Итоговая смета"];
-
-  usePDE(() => {
-    const el = scrollRef.current;
-    if (el) el.scrollTop = el.scrollHeight;
-  }, [msgs, busy]);
-
-  const send = async (text) => {
-    const t = (text || "").trim();
-    if (!t || busy) return;
-    setMsgs((m) => [...m, { role: "me", text: t }]);
-    setVal("");
-    setBusy(true);
-    const res = await LedgerAPI.projects.chat(id, t);
-    setBusy(false);
-    setMsgs((m) => [...m, { role: "ai", text: res.text }]);
-    if (res.action) setTimeout(() => onAction(res.action), 250);
-  };
-
-  return (
-    <React.Fragment>
-      <div className="pd-chat-head">
-        <span style={{ width: 38, height: 38, borderRadius: 11, background: "var(--accent)", color: "var(--on-accent)", display: "grid", placeItems: "center", flex: "none" }}><I.spark size={20} /></span>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontWeight: 700, fontSize: "var(--fs-15)" }}>Помощник проекта</div>
-          {/* честный лейбл: чат работает на сценариях-командах (дешевле/премиум/стиль), настоящий ИИ подключится Worker-слоем */}
-          <div style={{ fontSize: "var(--fs-12)", color: "var(--muted)", display: "flex", alignItems: "center", gap: 6 }}><span style={{ width: 7, height: 7, borderRadius: "50%", background: "var(--accent-2)" }} />демо-сценарии · без ИИ</div>
-        </div>
-        <button className="icon-btn pd-rail-close" onClick={onClose} aria-label="Свернуть чат"><I.close size={18} /></button>
-      </div>
-
-      <div className="pd-chat-scroll" ref={scrollRef} role="log" aria-label="Диалог с помощником проекта">
-        {msgs.map((m, i) => <div key={i} className={"pd-msg " + m.role}>{m.text}</div>)}
-        {busy && <div className="pd-msg ai" role="status" aria-label="Помощник печатает"><span className="pd-typing"><i /><i /><i /></span></div>}
-      </div>
-
-      <div className="pd-chips">
-        {chips.map((c) => <button key={c} onClick={() => send(c)} disabled={busy}>{c}</button>)}
-      </div>
-
-      <form className="pd-chat-input" onSubmit={(e) => { e.preventDefault(); send(val); }}>
-        <input value={val} onChange={(e) => setVal(e.target.value)} placeholder="Команда помощнику…" aria-label="Сообщение" />
-        <button type="submit" className="btn btn-primary" disabled={busy || !val.trim()} style={{ padding: "0 16px" }} aria-label="Отправить"><I.send size={17} /></button>
-      </form>
-    </React.Fragment>
   );
 }
 
