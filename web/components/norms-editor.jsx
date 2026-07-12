@@ -188,8 +188,8 @@ function NormsSettings() {
         {/* строки-правила */}
         <div className="glass" style={{ borderRadius: "var(--r-lg)", overflow: "hidden" }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 22px", borderBottom: "1px solid var(--hairline)" }}>
-            <h3 style={{ fontSize: "var(--fs-15)", fontWeight: 700 }}>Пороги эргономики</h3>
-            <span style={{ fontFamily: "var(--font-mono)", fontSize: "var(--fs-12)", color: "var(--faint)" }}>{changedCount ? changedCount + " изменено" : "всё по канону"}</span>
+            <h2 style={{ fontSize: "var(--fs-15)", fontWeight: 700 }}>Пороги эргономики</h2>
+            <span style={{ fontFamily: "var(--font-mono)", fontSize: "var(--fs-12)", color: "var(--muted)" }}>{changedCount ? changedCount + " изменено" : "всё по канону"}</span>
           </div>
 
           {linkNote && (
@@ -233,10 +233,10 @@ function NormsSettings() {
         <aside className="norms-aside" style={{ position: "sticky", top: "calc(var(--nav-h) + 20px)" }}>
           <div className="glass" style={{ borderRadius: "var(--r-lg)", overflow: "hidden" }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 20px", borderBottom: "1px solid var(--hairline)" }}>
-              <h3 style={{ fontSize: "var(--fs-15)", fontWeight: 700, display: "flex", alignItems: "center", gap: 8 }}>
+              <h2 style={{ fontSize: "var(--fs-15)", fontWeight: 700, display: "flex", alignItems: "center", gap: 8 }}>
                 <span style={{ width: 8, height: 8, borderRadius: "50%", background: "var(--accent-2)" }} />Проверка на примере
-              </h3>
-              <span style={{ fontFamily: "var(--font-mono)", fontSize: "var(--fs-11)", color: "var(--faint)" }}>Гостиная · 4.4×5.2 м</span>
+              </h2>
+              <span style={{ fontFamily: "var(--font-mono)", fontSize: "var(--fs-11)", color: "var(--muted)" }}>Гостиная · 4.4×5.2 м</span>
             </div>
             <div style={{ padding: "18px 20px 20px" }}>
               <div style={{ display: "flex", gap: 16, alignItems: "flex-start" }}>
@@ -294,12 +294,12 @@ function NormRow({ def, value, modified, enabled, locked, onChange, onReset, onT
           {def.label}
           {modified
             ? <span style={{ fontSize: "var(--fs-11)", fontWeight: 600, padding: "2px 9px", borderRadius: 99, background: "rgba(183,80,44,.14)", color: "var(--accent-ink)" }}>изменено</span>
-            : <span style={{ fontSize: "var(--fs-11)", fontWeight: 600, padding: "2px 9px", borderRadius: 99, background: "var(--surface-2)", color: "var(--faint)" }}>по канону</span>}
+            : <span style={{ fontSize: "var(--fs-11)", fontWeight: 600, padding: "2px 9px", borderRadius: 99, background: "var(--surface-2)", color: "var(--muted)" }}>по канону</span>}
         </div>
         <div style={{ color: locked ? "var(--accent-ink)" : "var(--muted)", fontSize: "var(--fs-13)", marginTop: 3 }}>
           {locked ? "Считается только вместе с «Минимальным проходом» — включите его выше." : def.hint}
         </div>
-        <div style={{ fontFamily: "var(--font-mono)", fontSize: "var(--fs-11)", color: "var(--faint)", marginTop: 6 }}>
+        <div style={{ fontFamily: "var(--font-mono)", fontSize: "var(--fs-11)", color: "var(--muted)", marginTop: 6 }}>
           {modified ? "источник: мой канон" : "дефолт: канон Design Ledger · " + canonDisp + " " + def.unit}
         </div>
       </div>
@@ -307,18 +307,18 @@ function NormRow({ def, value, modified, enabled, locked, onChange, onReset, onT
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           {def.type === "range" ? (
             <React.Fragment>
-              <Stepper value={disp(def.key, value.min)} step={def.step} onSet={(x) => setPart("min", x)} disabled={!active} />
+              <Stepper value={disp(def.key, value.min)} step={def.step} onSet={(x) => setPart("min", x)} disabled={!active} ariaLabel={def.label + " — минимум"} />
               <span style={{ color: "var(--faint)", fontFamily: "var(--font-mono)" }}>–</span>
-              <Stepper value={disp(def.key, value.max)} step={def.step} onSet={(x) => setPart("max", x)} disabled={!active} />
+              <Stepper value={disp(def.key, value.max)} step={def.step} onSet={(x) => setPart("max", x)} disabled={!active} ariaLabel={def.label + " — максимум"} />
             </React.Fragment>
           ) : (
             <React.Fragment>
-              <input type="range" min={def.min} max={def.max} step={def.step} value={d1} disabled={!active}
+              <input type="range" min={def.min} max={def.max} step={def.step} value={d1} disabled={!active} aria-label={def.label}
                 onChange={(e) => setSingle(+e.target.value)} style={{ width: 150, accentColor: "var(--accent)", cursor: "pointer" }} />
-              <Stepper value={d1} step={def.step} onSet={setSingle} disabled={!active} />
+              <Stepper value={d1} step={def.step} onSet={setSingle} disabled={!active} ariaLabel={def.label} />
             </React.Fragment>
           )}
-          <span style={{ fontFamily: "var(--font-mono)", fontSize: "var(--fs-12)", color: "var(--faint)", minWidth: 18 }}>{def.unit}</span>
+          <span style={{ fontFamily: "var(--font-mono)", fontSize: "var(--fs-12)", color: "var(--muted)", minWidth: 18 }}>{def.unit}</span>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           {modified && <button onClick={onReset} style={{ display: "inline-flex", alignItems: "center", gap: 5, fontFamily: "var(--font-mono)", fontSize: "var(--fs-11)", color: "var(--muted)", border: "1px solid var(--hairline)", borderRadius: 99, padding: "5px 10px" }}>↺ сброс</button>}
@@ -331,13 +331,13 @@ function NormRow({ def, value, modified, enabled, locked, onChange, onReset, onT
   );
 }
 
-function Stepper({ value, step, onSet, disabled }) {
+function Stepper({ value, step, onSet, disabled, ariaLabel }) {
   return (
     <span style={{ display: "inline-flex", alignItems: "center", background: "var(--surface-2)", border: "1px solid var(--hairline)", borderRadius: 10, overflow: "hidden", opacity: disabled ? 0.5 : 1 }}>
-      <button onClick={() => onSet(value - step)} disabled={disabled} style={{ width: 30, height: 34, fontSize: "var(--fs-16)", color: "var(--muted)" }}>−</button>
-      <input value={value} disabled={disabled} inputMode="numeric" onChange={(e) => { const v = parseInt(e.target.value, 10); if (!isNaN(v)) onSet(v); }}
+      <button onClick={() => onSet(value - step)} disabled={disabled} aria-label={(ariaLabel ? ariaLabel + " — " : "") + "уменьшить"} style={{ width: 30, height: 34, fontSize: "var(--fs-16)", color: "var(--muted)" }}>−</button>
+      <input value={value} disabled={disabled} inputMode="numeric" aria-label={ariaLabel} onChange={(e) => { const v = parseInt(e.target.value, 10); if (!isNaN(v)) onSet(v); }}
         style={{ width: 48, height: 34, border: "none", textAlign: "center", background: "transparent", fontFamily: "var(--font-mono)", fontWeight: 500, fontSize: "var(--fs-14)", color: "var(--text)" }} />
-      <button onClick={() => onSet(value + step)} disabled={disabled} style={{ width: 30, height: 34, fontSize: "var(--fs-16)", color: "var(--muted)" }}>+</button>
+      <button onClick={() => onSet(value + step)} disabled={disabled} aria-label={(ariaLabel ? ariaLabel + " — " : "") + "увеличить"} style={{ width: 30, height: 34, fontSize: "var(--fs-16)", color: "var(--muted)" }}>+</button>
     </span>
   );
 }

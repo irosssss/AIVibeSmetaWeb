@@ -92,7 +92,7 @@ function SiteNav({ go }) {
         </div>
         <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
           <button className="btn btn-ghost site-cta" style={{ padding: "11px 20px" }} onClick={() => go("auth")}>Войти</button>
-          <button className="btn btn-primary nav-cta-primary" style={{ padding: "11px 20px" }} onClick={() => go("auth")}>
+          <button className="btn btn-primary nav-cta-primary" aria-label="Собрать смету" style={{ padding: "11px 20px" }} onClick={() => go("auth")}>
             <I.layers size={17} /> <span className="nav-cta-label">Собрать смету</span>
           </button>
           <button className="icon-btn nav-burger" aria-label="Меню" aria-expanded={open} onClick={() => setOpen((o) => !o)}>

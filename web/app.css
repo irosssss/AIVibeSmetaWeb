@@ -379,7 +379,7 @@ body:has(.pd-overlay) .proto-switch { display: none; }
    W5.0 (§5.3): табы-«пилюли» без контейнера — активная = белая пилюля с ring-тенью
    (режим вьюхи, не выбор данных: терракота остаётся за .pd-seg бюджета — канон П3) */
 .spec-mode { display: inline-flex; align-items: center; gap: 2px; }
-.spec-mode .spec-mode-cap { font-size: var(--fs-11); font-weight: 700; color: var(--faint); padding: 0 8px 0 2px; letter-spacing: .02em; }
+.spec-mode .spec-mode-cap { font-size: var(--fs-11); font-weight: 700; color: var(--muted); padding: 0 8px 0 2px; letter-spacing: .02em; }
 .spec-mode button { padding: 5px 12px; border-radius: 99px; font-weight: 600; font-size: var(--fs-13); color: var(--muted); transition: var(--dur-fast); white-space: nowrap; }
 .spec-mode button:hover:not(.on) { color: var(--text); }
 .spec-mode button.on { background: var(--surface); color: var(--text); font-weight: 600; box-shadow: var(--shadow-ctl); }

@@ -62,12 +62,12 @@ function Footer({ go }) {
                 {items.map(([t, href]) => href
                   ? <a key={t} href={href} style={{ color: "var(--muted)", fontSize: "var(--fs-14)", transition: "var(--dur-fast)" }}
                       onMouseEnter={(e) => (e.target.style.color = "var(--text)")} onMouseLeave={(e) => (e.target.style.color = "var(--muted)")}>{t}</a>
-                  : <span key={t} title="Раздел скоро" style={{ color: "var(--faint)", fontSize: "var(--fs-14)", cursor: "default" }}>{t}</span>)}
+                  : <span key={t} title="Раздел скоро" style={{ color: "var(--spec-meta)", fontSize: "var(--fs-14)", cursor: "default" }}>{t}</span>)}
               </div>
             </div>
           ))}
         </div>
-        <div style={{ borderTop: "1px solid var(--hairline)", marginTop: 44, paddingTop: 26, display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 12, color: "var(--faint)", fontSize: "var(--fs-13)" }}>
+        <div style={{ borderTop: "1px solid var(--hairline)", marginTop: 44, paddingTop: 26, display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 12, color: "var(--muted)", fontSize: "var(--fs-13)" }}>
           <span>© 2026 Design Ledger. Прототип интерфейса.</span>
           <span>Сделано в России · Yandex Cloud</span>
         </div>

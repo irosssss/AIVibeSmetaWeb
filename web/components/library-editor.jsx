@@ -87,14 +87,14 @@ function ProductCard({ p, onEdit, onRemove }) {
         </div>
         <div style={{ textAlign: "right", flex: "none" }}>
           <div className="mono" style={{ fontWeight: 700, fontSize: "var(--fs-15)", color: "var(--accent-2)", whiteSpace: "nowrap" }}>{fmtMoney(p.price || 0)}</div>
-          <div style={{ fontSize: "var(--fs-11)", color: "var(--faint)" }}>за {p.unit || "шт"}</div>
+          <div style={{ fontSize: "var(--fs-11)", color: "var(--muted)" }}>за {p.unit || "шт"}</div>
         </div>
       </div>
 
       {(meta || dims) && (
         <div style={{ fontSize: "var(--fs-12)", color: "var(--muted)", lineHeight: 1.5, display: "flex", flexDirection: "column", gap: 2 }}>
           {meta && <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{meta}</span>}
-          {dims && <span className="mono" style={{ fontSize: "var(--fs-11)", color: "var(--faint)" }}>{dims}</span>}
+          {dims && <span className="mono" style={{ fontSize: "var(--fs-11)", color: "var(--muted)" }}>{dims}</span>}
         </div>
       )}
 

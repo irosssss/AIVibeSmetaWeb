@@ -39,7 +39,7 @@ function Admin({ user, onLogout, go }) {
       </aside>
 
       {/* CONTENT */}
-      <main style={{ padding: "clamp(22px,3vw,40px)", minWidth: 0 }}>
+      <main id="main" style={{ padding: "clamp(22px,3vw,40px)", minWidth: 0 }}>
         {view === "dash" && <Dashboard />}
         {view === "news" && <NewsAdmin />}
         {view === "users" && <UsersAdmin />}
