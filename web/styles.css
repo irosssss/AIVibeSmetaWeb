@@ -361,31 +361,38 @@ a { color: inherit; text-decoration: none; }
    ПРОМО-САЙТ — раскладки и анимации
    ============================================================ */
 
-/* Bento → асимметричная издательская сетка */
-.bento {
-  margin-top: 56px;
-  display: grid;
-  grid-template-columns: 1.6fr 1fr 1fr;
-  grid-auto-rows: 176px;
-  gap: 16px;
+/* ---- Сетка фич (образец Programa: центрированная шапка + карточки
+   с мини-визуалом продукта, визуал прижат к низу и слегка уходит за край) ---- */
+.feat-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-top: clamp(40px, 6vh, 64px); }
+.feat-card {
+  background: var(--surface); border: 1px solid var(--hairline);
+  border-radius: var(--r-lg); padding: 24px 24px 0;
+  overflow: hidden; display: flex; flex-direction: column; min-width: 0;
+  transition: transform .35s var(--ease), box-shadow .35s var(--ease), border-color .35s;
 }
-.bento-card {
-  position: relative; overflow: hidden;
-  border-radius: var(--r-lg);
-  background: var(--surface);
-  border: 1px solid var(--hairline);
-  box-shadow: var(--shadow-card);
-  transition: transform .35s var(--ease), border-color .35s, box-shadow .35s;
+.feat-card:hover { transform: translateY(-4px); border-color: var(--accent); box-shadow: var(--shadow-card); }
+.feat-card h3 { font-family: var(--font-display); font-size: var(--fs-21); font-weight: 600; letter-spacing: -0.01em; }
+.feat-card .fsub { color: var(--muted); font-size: var(--fs-14); line-height: 1.55; margin-top: 6px; }
+.feat-vis { margin-top: 20px; flex: 1; min-height: 176px; position: relative; display: flex; align-items: flex-end; justify-content: center; }
+/* внутренняя «бумажка» визуала — чуть тонет за нижний край карточки */
+.feat-vis > * { margin-bottom: -10px; }
+@media (max-width: 1000px) { .feat-grid { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 640px) { .feat-grid { grid-template-columns: 1fr; } }
+
+/* ---- Блок-цитата на фото (аналог видео-цитаты Programa) ---- */
+.quote-band {
+  position: relative; overflow: hidden; border-radius: var(--r-xl);
+  min-height: clamp(320px, 46vh, 440px);
+  display: grid; place-items: center; text-align: center;
+  padding: clamp(30px, 5vw, 60px);
 }
-.bento-card:hover { transform: translateY(-5px); border-color: var(--accent); box-shadow: var(--shadow-pop); }
-.bento-body { position: relative; z-index: 2; height: 100%; padding: 26px; display: flex; flex-direction: column; }
-.bento-body h3 { font-family: var(--font-display); font-size: var(--fs-24); font-weight: 600; margin: 14px 0 8px; letter-spacing: -0.01em; }
-.bento-body p { color: var(--muted); font-size: var(--fs-14); line-height: 1.55; max-width: 42ch; }
-.b-lg .bento-body { justify-content: flex-end; }
-.b-lg .bento-body h3 { font-size: var(--fs-30); color: var(--on-dark); }
-.b-lg .bento-body p { color: rgba(252,246,238,.86); }
-.bento-shade { position: absolute; inset: 0; background: linear-gradient(180deg, rgba(46,42,38,.10) 0%, rgba(46,42,38,.78) 100%); z-index: 1; }
-.bento-badge { position: absolute; top: 18px; right: 18px; z-index: 3; padding: 6px 13px; border-radius: 99px; font-size: var(--fs-12); font-weight: 700; border: 1px solid; }
+.quote-band .qshade { position: absolute; inset: 0; z-index: 1; background: rgba(36, 30, 25, 0.62); }
+.quote-band blockquote {
+  position: relative; z-index: 2; margin: 0; max-width: 820px;
+  font-family: var(--font-display); font-weight: 500; font-style: italic;
+  font-size: clamp(24px, 3.4vw, 44px); line-height: 1.2; letter-spacing: -0.01em; color: var(--on-dark);
+}
+.quote-band figcaption { position: relative; z-index: 2; margin-top: 22px; color: rgba(252,246,238,.78); }
 
 /* News → журнальная лента */
 .news-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
@@ -404,14 +411,7 @@ a { color: inherit; text-decoration: none; }
 .how-static .btn { white-space: normal; }
 
 /* ---- Responsive ---- */
-/* грид-колонки hero не должны расти от min-content детей (моно-подпись/плита) */
-.hero-grid > * { min-width: 0; }
 @media (max-width: 1000px) {
-  .hero-grid, .github-grid { grid-template-columns: 1fr !important; }
-  .hero-visual { height: 440px !important; }
-  .bento { grid-template-columns: repeat(2, 1fr); }
-  .bento-card.b-lg { grid-column: span 2 !important; grid-row: span 2 !important; }
-  .bento-card.b-wide { grid-column: span 2 !important; }
   .news-grid { grid-template-columns: repeat(2, 1fr); }
   .news-card { grid-column: span 1 !important; }
   .footer-grid { grid-template-columns: 1fr 1fr !important; }
@@ -423,11 +423,8 @@ a { color: inherit; text-decoration: none; }
      вход, и «начать» требует лишнего тапа (аудит Programa: «обе кнопки спрятаны») */
   .nav-cta-primary { padding: 0 !important; width: 44px; height: 44px; justify-content: center; border-radius: 12px; }
   .nav-cta-primary .nav-cta-label { display: none; }
-  .bento { grid-template-columns: 1fr; }
-  .bento-card, .bento-card.b-lg, .bento-card.b-wide { grid-column: span 1 !important; grid-row: auto !important; min-height: 200px; }
   .news-grid { grid-template-columns: 1fr; }
   .footer-grid { grid-template-columns: 1fr !important; }
-  .hero-visual { display: none; }
 }
 
 /* ---- Мобильное меню (бургер + выпадающий лист) ---- */
@@ -472,14 +469,52 @@ a { color: inherit; text-decoration: none; }
 .plate-banner { position: relative; border-radius: var(--r-sm); overflow: hidden; aspect-ratio: 16 / 7; animation: plateBob 8s ease-in-out infinite; }
 @keyframes plateBob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-2px); } }
 
-/* скролл-параллакс без JS (рецепт Programa) — только там, где браузер поддерживает
-   scroll-driven animations; иначе тихо остаётся статикой (0 JS-фолбэка, как у них) */
-@supports (animation-timeline: view()) {
-  @media (min-width: 900px) and (prefers-reduced-motion: no-preference) {
-    .hero-text-col { animation: heroParallax linear both; animation-timeline: view(); animation-range: entry 0% cover 60%; }
-  }
+/* ---- Центрированный hero (образец Programa) ---- */
+.hero-announce {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 7px 14px; border-radius: 99px;
+  border: 1px solid rgba(94, 107, 91, 0.38); background: var(--accent-2-tint);
+  color: var(--accent-2-ink); font-size: var(--fs-12); font-weight: 500; letter-spacing: .02em;
+  transition: transform .25s var(--ease), box-shadow .25s, border-color .25s;
 }
-@keyframes heroParallax { to { transform: translateY(-4%); } }
+.hero-announce:hover { transform: translateY(-1px); border-color: var(--accent-2); box-shadow: var(--glow-jade); }
+.hero-announce i { width: 6px; height: 6px; border-radius: 50%; background: var(--accent-2); flex: none; }
+
+.hero-plate-wrap { margin-top: clamp(44px, 7vh, 76px); }
+.hero-plate-wrap .plate { max-width: 780px; }
+
+/* летающие артефакты: позиция+поворот на обёртке, бобинг на вкладыше
+   (два transform не конфликтуют); вход — мягкий fade со стаггером */
+.fc { position: absolute; z-index: 1; animation: fcIn .9s var(--ease) both; }
+.fc-bob { animation: fcBob 7s ease-in-out infinite alternate; }
+.fc-card {
+  background: var(--surface); border: 1px solid var(--hairline);
+  border-radius: 14px; padding: 12px 14px; box-shadow: var(--shadow-card);
+}
+.fc-pill { font-family: var(--font-mono); font-size: var(--fs-11); color: var(--muted); border: 1px solid var(--hairline); border-radius: 7px; padding: 4px 9px; }
+.fc1 { left: 3%;  top: 96px;  transform: rotate(-5deg); animation-delay: .15s; }
+.fc2 { left: 8%;  top: 320px; transform: rotate(3deg);  animation-delay: .35s; }
+.fc3 { left: 4%;  top: 500px; transform: rotate(-2deg); animation-delay: .55s; }
+.fc4 { right: 4%; top: 110px; transform: rotate(5deg);  animation-delay: .25s; }
+.fc5 { right: 9%; top: 310px; transform: rotate(-4deg); animation-delay: .45s; }
+.fc6 { right: 3%; top: 495px; transform: rotate(2deg);  animation-delay: .65s; }
+.fc2 .fc-bob, .fc5 .fc-bob { animation-duration: 8.5s; }
+.fc3 .fc-bob, .fc6 .fc-bob { animation-duration: 6s; }
+@keyframes fcBob { from { transform: translateY(-5px); } to { transform: translateY(5px); } }
+@keyframes fcIn { from { opacity: 0; } to { opacity: 1; } }
+/* прячем раньше, чем карточки начнут наезжать на заголовок */
+@media (max-width: 1180px) { .fc { display: none; } }
+
+/* ---- Марквиз фактов (наш ответ ленте наград Programa) ---- */
+.marq { overflow: hidden; border-block: 1px solid var(--hairline); background: var(--surface); margin-top: clamp(52px, 8vh, 92px); }
+.marq-track { display: flex; width: max-content; animation: marqScroll 46s linear infinite; }
+.marq-item {
+  display: inline-flex; align-items: center; gap: 30px; margin-right: 30px; padding-block: 15px;
+  font-size: var(--fs-12); letter-spacing: .1em; text-transform: uppercase;
+  color: var(--spec-meta); white-space: nowrap;
+}
+.marq-item i { width: 5px; height: 5px; border-radius: 50%; background: var(--accent); opacity: .55; flex: none; }
+@keyframes marqScroll { to { transform: translateX(-50%); } }
 .plate-banner::after { content: ""; position: absolute; inset: 0; pointer-events: none;
   background: linear-gradient(180deg, rgba(46,42,38,.04), rgba(46,42,38,.24)); }
 .plate-lab { position: absolute; top: 12px; left: 12px; z-index: 2; background: rgba(251,248,242,.94);
@@ -537,11 +572,6 @@ a { color: inherit; text-decoration: none; }
 .plate-foot .ergo { display: inline-flex; align-items: center; gap: 7px; font-family: var(--font-mono); font-size: var(--fs-11); color: var(--accent-2); }
 .plate-foot .exp { display: flex; gap: 8px; }
 .plate-foot .exp span { font-size: var(--fs-12); color: var(--muted); border: 1px solid var(--hairline); border-radius: 8px; padding: 6px 11px; }
-
-.hero-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 26px; }
-.hchip { display: inline-flex; align-items: center; gap: 7px; font-size: var(--fs-12); color: var(--muted);
-  background: var(--surface); border: 1px solid var(--hairline); border-radius: var(--r-pill); padding: 6px 13px; }
-.hchip i { width: 7px; height: 7px; border-radius: 50%; flex: none; }
 
 .catsec-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 24px; margin-bottom: 28px; flex-wrap: wrap; }
 .catgrid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }

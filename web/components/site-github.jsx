@@ -8,9 +8,9 @@ const { useEffect: useE3 } = React;
 -------------------------------------------------------------- */
 function Footer({ go }) {
   /* [название, якорь|null] — null = раздел ещё не написан, честная заглушка без мёртвого клика.
-     Порядок «Продукт» — по факту скролла SitePage (ниже), не по важности. */
+     Колонка «Продукт» — из единого LANDING_SECTIONS (site-hero.jsx), одного порядка с навбаром и скроллом. */
   const cols = [
-    ["Продукт", [["Для кого", "#whofor"], ["Как работает", "#how"], ["Клиентский портал", "#clientportal"], ["Возможности", "#features"], ["Окупаемость", "#payoff"], ["Тарифы", "#pricing"], ["Новости", "#news"]]],
+    ["Продукт", window.footLinksFrom(window.LANDING_SECTIONS)],
     ["Технологии", [["Движок эргономики", "#how"], ["Каталог фабрик", "#komplektacia"], ["YandexGPT 5", "#features"], ["Выгрузка сметы", "#komplektacia"]]],
     ["Компания", [["Что нового", "#changelog"], ["О проекте", null], ["Контакты", null], ["Политика", null], ["Оферта", null]]],
   ];
@@ -94,18 +94,27 @@ function SitePage({ go }) {
   return (
     <div>
       <SiteNav go={go} />
+      {/* порядок — по рецепту стартовой Programa (реш. владельца 12.07):
+         hero → лента фактов → сетка фич → интерактив-демо → цитата →
+         путь → портал → витрина → отстройка → калькуляторы → голоса →
+         тарифы → журнал.
+         ⚠ При переносе секции с якорем-ссылкой синхронно правь LANDING_SECTIONS
+         (site-hero.jsx) — из него выводятся навбар и колонка «Продукт» футера. */}
       <main id="main">
         <Hero go={go} />
-        <SpecCategories />
-        <WhoFor />
-        <InlineCta go={go} text="Хотите смету по своему проекту?" sub="Первая — бесплатно, без карты" />
-        <SocialProof />
+        <FactsMarquee />
+        <FeatureGrid go={go} />
+        <ClipperDemo go={go} />
+        <QuoteBand />
         <HowItWorks go={go} />
         <ClientPortalPromo />
         <InlineCta go={go} text="Согласование — без вотсапа и созвонов" sub="Клиентский портал входит в любой тариф" />
-        <Bento />
+        <SpecCategories />
+        <WhoFor />
+        <InlineCta go={go} text="Хотите смету по своему проекту?" sub="Первая — бесплатно, без карты" />
         <BudgetCalc go={go} />
         <PayoffCalc />
+        <SocialProof />
         <Pricing go={go} />
         <NewsFeed />
       </main>
@@ -204,23 +213,23 @@ function ClipHero({ kind }) {
   );
 }
 
-const clipCardCss = { background: "var(--bg-base, #fff)", border: "1px solid var(--hairline)", borderRadius: "var(--r-md, 12px)", boxShadow: "var(--shadow-card)" };
-const clipMono = (extra) => ({ fontFamily: "var(--font-mono)", fontSize: "var(--fs-11)", ...extra });
-const clipTag = { fontFamily: "var(--font-mono)", fontSize: "var(--fs-10)", fontWeight: 700, letterSpacing: ".06em", textTransform: "uppercase", color: "var(--accent-2-ink)", padding: "3px 9px", borderRadius: 99, background: "var(--accent-2-tint)" };
+// мокап-хелперы — единый набор из site-hero.jsx (mockCardCss/mockMono/mockTag),
+// общий с Fv* сетки фич; site-hero грузится раньше, window.* уже готов
+const { mockCardCss, mockMono, mockTag } = window;
 
 function ClipMockClipper() {
   return (
     <div style={{ width: "min(340px,100%)", display: "flex", flexDirection: "column", gap: 12 }}>
-      <div style={{ ...clipCardCss, display: "flex", alignItems: "center", gap: 8, padding: "10px 12px" }}>
+      <div style={{ ...mockCardCss, display: "flex", alignItems: "center", gap: 8, padding: "10px 12px" }}>
         <I.scan size={15} style={{ color: "var(--spec-meta)", flex: "none" }} />
-        <span style={clipMono({ color: "var(--muted)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" })}>divan.ru/product/sofa-milano-3</span>
+        <span style={mockMono({ color: "var(--muted)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" })}>divan.ru/product/sofa-milano-3</span>
       </div>
       <div style={{ display: "flex", justifyContent: "center", color: "var(--spec-meta)" }}><I.arrow size={16} style={{ transform: "rotate(90deg)" }} /></div>
-      <div style={{ ...clipCardCss, padding: "12px 14px", display: "flex", flexDirection: "column", gap: 6 }}>
+      <div style={{ ...mockCardCss, padding: "12px 14px", display: "flex", flexDirection: "column", gap: 6 }}>
         <div style={{ fontWeight: 700, fontSize: "var(--fs-14)", fontFamily: "var(--font-display)" }}>Диван «Милано», 3-местный</div>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <span style={clipMono({ color: "var(--spec-meta)" })}>арт. MIL-3 · Divan.ru</span>
-          <span style={clipMono({ fontWeight: 700, color: "var(--text)" })}>128 000 ₽</span>
+          <span style={mockMono({ color: "var(--spec-meta)" })}>арт. MIL-3 · Divan.ru</span>
+          <span style={mockMono({ fontWeight: 700, color: "var(--text)" })}>128 000 ₽</span>
         </div>
       </div>
     </div>
@@ -229,15 +238,15 @@ function ClipMockClipper() {
 
 function ClipMockPortal() {
   return (
-    <div style={{ width: "min(340px,100%)", ...clipCardCss, padding: 16, display: "flex", flexDirection: "column", gap: 12 }}>
+    <div style={{ width: "min(340px,100%)", ...mockCardCss, padding: 16, display: "flex", flexDirection: "column", gap: 12 }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <span style={{ fontWeight: 700, fontSize: "var(--fs-13)" }}>Кресло лаунж, дуб/букле</span>
-        <span style={clipMono({ fontWeight: 600, padding: "3px 9px", borderRadius: 99, background: "rgba(94,107,91,.14)", color: "var(--accent-2-ink)" })}>Согласовано</span>
+        <span style={mockMono({ fontWeight: 600, padding: "3px 9px", borderRadius: 99, background: "rgba(94,107,91,.14)", color: "var(--accent-2-ink)" })}>Согласовано</span>
       </div>
       <div style={{ alignSelf: "flex-start", maxWidth: "90%", padding: "9px 12px", borderRadius: "12px 12px 12px 3px", fontSize: "var(--fs-12)", background: "rgba(183,80,44,.08)", border: "1px solid rgba(183,80,44,.28)", lineHeight: 1.45 }}>
         Можно светлее обивку? Остальное нравится.
       </div>
-      <div style={{ alignSelf: "flex-end", maxWidth: "90%", padding: "9px 12px", borderRadius: "12px 12px 3px 12px", fontSize: "var(--fs-12)", ...clipCardCss, boxShadow: "none", lineHeight: 1.45 }}>
+      <div style={{ alignSelf: "flex-end", maxWidth: "90%", padding: "9px 12px", borderRadius: "12px 12px 3px 12px", fontSize: "var(--fs-12)", ...mockCardCss, boxShadow: "none", lineHeight: 1.45 }}>
         Заменю на бежевый букле, пришлю фото сегодня
       </div>
     </div>
@@ -248,20 +257,20 @@ function ClipMockPrice() {
   const ROWS = [["Диван «Милано», 3-местный", 128000, 173000], ["Кресло лаунж, дуб/букле", 73000, 98600]];
   const fmt = (n) => new Intl.NumberFormat("ru-RU").format(n) + " ₽";
   return (
-    <div style={{ width: "min(340px,100%)", ...clipCardCss, padding: 14, display: "flex", flexDirection: "column", gap: 10 }}>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr auto auto", gap: 10, ...clipMono({ color: "var(--spec-meta)", fontWeight: 700, letterSpacing: ".04em", textTransform: "uppercase" }) }}>
+    <div style={{ width: "min(340px,100%)", ...mockCardCss, padding: 14, display: "flex", flexDirection: "column", gap: 10 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr auto auto", gap: 10, ...mockMono({ color: "var(--spec-meta)", fontWeight: 700, letterSpacing: ".04em", textTransform: "uppercase" }) }}>
         <span>Позиция</span><span style={{ textAlign: "right" }}>Себест.</span><span style={{ textAlign: "right" }}>Клиенту</span>
       </div>
       {ROWS.map(([n, c, cli]) => (
         <div key={n} style={{ display: "grid", gridTemplateColumns: "1fr auto auto", gap: 10, alignItems: "center", fontSize: "var(--fs-12)" }}>
           <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{n}</span>
-          <span style={clipMono({ color: "var(--muted)", textAlign: "right" })}>{fmt(c)}</span>
-          <span style={clipMono({ color: "var(--text)", fontWeight: 700, textAlign: "right" })}>{fmt(cli)}</span>
+          <span style={mockMono({ color: "var(--muted)", textAlign: "right" })}>{fmt(c)}</span>
+          <span style={mockMono({ color: "var(--text)", fontWeight: 700, textAlign: "right" })}>{fmt(cli)}</span>
         </div>
       ))}
       <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 2, paddingTop: 10, borderTop: "1px solid var(--hairline)" }}>
-        <span style={clipTag}>наценка +35%</span>
-        <span style={clipMono({ color: "var(--accent-2-ink)", fontWeight: 700, marginLeft: "auto" })}>прибыль +70 600 ₽</span>
+        <span style={mockTag}>наценка +35%</span>
+        <span style={mockMono({ color: "var(--accent-2-ink)", fontWeight: 700, marginLeft: "auto" })}>прибыль +70 600 ₽</span>
       </div>
     </div>
   );
@@ -273,7 +282,7 @@ function ClipMockToday() {
     ["Остаток клиенту · кресло", "до 15 июля", false],
   ];
   return (
-    <div style={{ width: "min(340px,100%)", ...clipCardCss, padding: 16, display: "flex", flexDirection: "column", gap: 12 }}>
+    <div style={{ width: "min(340px,100%)", ...mockCardCss, padding: 16, display: "flex", flexDirection: "column", gap: 12 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
         <I.calendar size={15} style={{ color: "var(--accent-2-ink)" }} />
         <span style={{ fontWeight: 700, fontSize: "var(--fs-13)" }}>Сегодня в работе</span>
@@ -281,12 +290,12 @@ function ClipMockToday() {
       {ROWS.map(([n, when, late]) => (
         <div key={n} style={{ display: "flex", alignItems: "center", gap: 10, justifyContent: "space-between" }}>
           <span style={{ fontSize: "var(--fs-12)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{n}</span>
-          <span style={clipMono({ fontWeight: 600, flex: "none", padding: "3px 9px", borderRadius: 99, color: late ? "var(--accent-ink)" : "var(--spec-meta)", background: late ? "var(--accent-tint)" : "var(--hairline)" })}>{when}</span>
+          <span style={mockMono({ fontWeight: 600, flex: "none", padding: "3px 9px", borderRadius: 99, color: late ? "var(--accent-ink)" : "var(--spec-meta)", background: late ? "var(--accent-tint)" : "var(--hairline)" })}>{when}</span>
         </div>
       ))}
       <div style={{ display: "flex", alignItems: "center", gap: 7, paddingTop: 10, borderTop: "1px solid var(--hairline)" }}>
         <I.truck size={14} style={{ color: "var(--spec-meta)", flex: "none" }} />
-        <span style={clipMono({ color: "var(--muted)" })}>трек RU284…19 · в пути</span>
+        <span style={mockMono({ color: "var(--muted)" })}>трек RU284…19 · в пути</span>
       </div>
     </div>
   );
@@ -302,7 +311,7 @@ function ClipBigEntry({ item, soon }) {
       </div>
       <div style={{ padding: "clamp(20px,3.4vw,30px)" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12, flexWrap: "wrap" }}>
-          <span className="mono" style={clipTag}>{item.tag}</span>
+          <span className="mono" style={mockTag}>{item.tag}</span>
           <span className="mono" style={{ fontSize: "var(--fs-12)", color: "var(--spec-meta)", fontWeight: 600 }}>
             {soon ? "в планах" : fmtLongDate(item.date)}
           </span>

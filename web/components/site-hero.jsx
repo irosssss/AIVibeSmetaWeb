@@ -23,6 +23,39 @@ const PHOTOS = {
 window.PHOTOS = PHOTOS;
 
 /* --------------------------------------------------------------
+   ЕДИНЫЙ ПОРЯДОК СЕКЦИЙ — один источник правды для трёх мест, которые
+   раньше держались в синхроне только комментарием: ссылки навбара,
+   колонка «Продукт» футера и порядок скролла SitePage. Порядок здесь =
+   порядок секций в <main> (site-github.jsx). nav/foot — подписи там,
+   где секция попадает в навбар / футер (пусто = не попадает).
+   Навбар и футер выводятся отсюда фильтром — рассинхрону взяться неоткуда.
+   При добавлении/переносе секции правим ЭТОТ список (и JSX SitePage). */
+const LANDING_SECTIONS = [
+  { id: "features",     nav: "Возможности",  foot: "Возможности" },
+  { id: "how",          nav: "Как работает", foot: "Как работает" },
+  { id: "clientportal",                      foot: "Клиентский портал" },
+  { id: "whofor",                            foot: "Для кого" },
+  { id: "payoff",                            foot: "Окупаемость" },
+  { id: "pricing",      nav: "Тарифы",       foot: "Тарифы" },
+  { id: "news",         nav: "Журнал",       foot: "Новости" },
+];
+window.LANDING_SECTIONS = LANDING_SECTIONS;
+const navLinksFrom = (secs) => secs.filter((s) => s.nav).map((s) => [s.nav, "#" + s.id]);
+const footLinksFrom = (secs) => secs.filter((s) => s.foot).map((s) => [s.foot, "#" + s.id]);
+window.footLinksFrom = footLinksFrom;
+
+/* --------------------------------------------------------------
+   ХЕЛПЕРЫ МИНИ-ИЛЛЮСТРАЦИЙ мока — единый визуальный язык бумажных
+   мокапов фич: Fv* (сетка фич, site-sections) и Clip* (/changelog,
+   site-github). Один набор вместо двух почти-одинаковых копий.
+   Радиус карточки — токен --r-md; чип — .06em трекинг.
+-------------------------------------------------------------- */
+const mockCardCss = { background: "var(--bg-base)", border: "1px solid var(--hairline)", borderRadius: "var(--r-md)", boxShadow: "var(--shadow-card)" };
+const mockMono = (extra) => ({ fontFamily: "var(--font-mono)", fontSize: "var(--fs-11)", ...extra });
+const mockTag = { fontFamily: "var(--font-mono)", fontSize: "var(--fs-10)", fontWeight: 700, letterSpacing: ".06em", textTransform: "uppercase", color: "var(--accent-2-ink)", padding: "3px 9px", borderRadius: 99, background: "var(--accent-2-tint)" };
+Object.assign(window, { mockCardCss, mockMono, mockTag });
+
+/* --------------------------------------------------------------
    NAV — бумажная панель (без тёмного стекла)
 -------------------------------------------------------------- */
 function SiteNav({ go }) {
@@ -37,8 +70,7 @@ function SiteNav({ go }) {
     document.body.style.overflow = open ? "hidden" : "";
     return () => { document.body.style.overflow = ""; };
   }, [open]);
-  {/* порядок — по факту скролла страницы (SitePage, site-github.jsx), не по важности */}
-  const links = [["Как работает", "#how"], ["Возможности", "#features"], ["Тарифы", "#pricing"], ["Журнал", "#news"]];
+  const links = navLinksFrom(LANDING_SECTIONS);   // единый источник порядка (см. LANDING_SECTIONS выше)
   const jump = (h) => { setOpen(false); document.querySelector(h)?.scrollIntoView({ behavior: motionOK() ? "smooth" : "auto" }); };
   const lit = solid || open;
   return (
@@ -89,41 +121,116 @@ function SiteNav({ go }) {
 }
 
 /* --------------------------------------------------------------
-   HERO — издательский разворот + живая смета на бумаге (вариант B)
+   HERO — центрированный «Programa-разворот» (реш. владельца 12.07,
+   образец programa.design): анонс-чип → крупный serif-заголовок →
+   CTA → живая смета-«скриншот» ниже. Вокруг заголовка — летающие
+   бумажные артефакты продукта (карточка товара, клиппер, наценка,
+   согласование) — наши аналоги их floating-cards. Чистый декор:
+   aria-hidden, на узких экранах скрыты (styles.css .fc).
 -------------------------------------------------------------- */
+/* артефакты: контент = реальные сущности продукта, стиль = бумажные
+   мини-карточки; позиция/поворот — в CSS (.fc1….fc6), бобинг — .fc-bob */
+/* [позиция-класс .fcN, стиль вкладыша, содержимое] — контент карточек
+   разнородный (у каждой своя сущность продукта), но обёртку .fc/.fc-bob
+   гоним одним .map(), как STEPS/CATS/CARDS в остальном коде */
+const HERO_FLEET = [
+  ["fc1", { width: 158 }, (         // карточка товара из библиотеки
+    <React.Fragment>
+      <div style={{ height: 62, borderRadius: 8, background: "linear-gradient(135deg, #C4886B, #8F5B41)" }} />
+      <div style={{ fontWeight: 600, fontSize: "var(--fs-13)", marginTop: 9, lineHeight: 1.3 }}>Диван «Милано»</div>
+      <div className="mono" style={{ fontSize: "var(--fs-11)", color: "var(--spec-meta)", marginTop: 3 }}>128 000 ₽ · MIL-3</div>
+    </React.Fragment>
+  )],
+  ["fc2", { width: 190 }, (         // клиппер: ссылка стала позицией
+    <React.Fragment>
+      <div className="mono" style={{ fontSize: "var(--fs-11)", color: "var(--muted)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>divan.ru/product/milano-3</div>
+      <div className="mono" style={{ fontSize: "var(--fs-11)", color: "var(--accent-2-ink)", marginTop: 6, display: "flex", alignItems: "center", gap: 6 }}><I.check size={13} /> позиция в смете</div>
+    </React.Fragment>
+  )],
+  ["fc3", { display: "flex", gap: 7, alignItems: "center" }, (   // выгрузка клиенту
+    <React.Fragment>
+      <span className="fc-pill">PDF</span><span className="fc-pill">Excel</span>
+      <span style={{ fontSize: "var(--fs-11)", color: "var(--muted)" }}>клиенту</span>
+    </React.Fragment>
+  )],
+  ["fc4", { width: 168 }, (         // согласование в портале
+    <React.Fragment>
+      <div style={{ fontSize: "var(--fs-12)", fontWeight: 600, lineHeight: 1.3 }}>Кресло лаунж, букле</div>
+      <span className="mono" style={{ display: "inline-block", marginTop: 7, fontSize: "var(--fs-10)", fontWeight: 700, letterSpacing: ".05em", textTransform: "uppercase", color: "var(--accent-2-ink)", background: "var(--accent-2-tint)", padding: "3px 9px", borderRadius: 99 }}>Согласовано</span>
+    </React.Fragment>
+  )],
+  ["fc5", { width: 172 }, (         // наценка — живая математика продукта
+    <React.Fragment>
+      <div className="mono" style={{ fontSize: "var(--fs-11)", color: "var(--spec-meta)" }}>наценка <b style={{ color: "var(--text)" }}>+32%</b></div>
+      <div className="mono" style={{ fontSize: "var(--fs-12)", color: "var(--accent-2-ink)", fontWeight: 700, marginTop: 5 }}>прибыль +212 400 ₽</div>
+    </React.Fragment>
+  )],
+  ["fc6", { width: 178, borderRadius: "14px 14px 14px 4px", background: "rgba(183,80,44,.07)", borderColor: "rgba(183,80,44,.3)" }, (  // реплика клиента
+    <div style={{ fontSize: "var(--fs-12)", lineHeight: 1.45 }}>Можно светлее обивку? Остальное нравится.</div>
+  )],
+];
+
+function HeroFleet() {
+  return (
+    <div aria-hidden="true">
+      {HERO_FLEET.map(([cls, style, content]) => (
+        <div className={"fc " + cls} key={cls}><div className="fc-bob fc-card" style={style}>{content}</div></div>
+      ))}
+    </div>
+  );
+}
+
 function Hero({ go }) {
   return (
-    <header className="minh-screen" style={{ position: "relative", display: "flex", alignItems: "center", paddingTop: "var(--nav-h)", overflow: "hidden" }}>
-      <div className="container hero-grid" style={{ display: "grid", gridTemplateColumns: "0.82fr 1.18fr", gap: 56, alignItems: "center", position: "relative", zIndex: 2, paddingBlock: "clamp(40px,7vh,84px)" }}>
-        <div className="hero-text-col">
-          <span className="eyebrow">смета-комплектация · для дизайнера</span>
-          <h1 className="display hero-h1" style={{ fontSize: "clamp(38px, 4.8vw, 66px)", lineHeight: 1.02, letterSpacing: "-0.025em", marginTop: 20 }}>
-            <span style={{ display: "block" }}>Смета клиенту —</span>
-            <span style={{ display: "block" }}>с вашей <span style={{ color: "var(--accent-ink)", fontStyle: "italic" }}>наценкой</span></span>
-          </h1>
-          <p style={{ marginTop: 22, color: "var(--muted)", maxWidth: 430, fontSize: "var(--fs-16)", lineHeight: 1.65 }}>
-            Две цены в одном документе: себестоимость фабрики и цена клиенту. Собрано за минуту, а не за вечер в таблицах — проверено по нормам и готово к отправке.
-          </p>
-          <div style={{ marginTop: 30, display: "flex", gap: 14, flexWrap: "wrap" }} id="download">
-            <button className="btn btn-primary" style={{ padding: "16px 26px", fontSize: "var(--fs-16)" }} onClick={() => go("auth")}><I.layers size={19} /> Начать бесплатно</button>
-            <a className="btn btn-ghost" style={{ padding: "16px 26px", fontSize: "var(--fs-16)" }} href="#how">Как это работает <I.arrow size={17} /></a>
-          </div>
-          <div className="mono" style={{ marginTop: 12, fontSize: "var(--fs-12)", color: "var(--spec-meta)", letterSpacing: ".02em" }}>
-            первая смета — бесплатно · без карты · 2 проекта на тарифе «Старт»
-          </div>
-          <div className="hero-chips">
-            <span className="hchip"><i style={{ background: "var(--accent)" }} />Две цены и ваша наценка</span>
-            <span className="hchip"><i style={{ background: "var(--accent-2)" }} />Экспорт клиенту PDF · Excel</span>
-            <span className="hchip"><i style={{ background: "var(--info)" }} />Проверка эргономики</span>
-          </div>
+    <header style={{ position: "relative", overflow: "hidden", paddingTop: "calc(var(--nav-h) + clamp(44px, 9vh, 104px))" }}>
+      <HeroFleet />
+      <div className="container" style={{ position: "relative", zIndex: 2, display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center" }}>
+        <button type="button" className="hero-announce mono" onClick={() => go("changelog")}>
+          <i /> Новое: клиент согласует смету по ссылке <I.arrow size={13} />
+        </button>
+        <h1 className="display" style={{ fontSize: "clamp(40px, 6.4vw, 86px)", lineHeight: 1.0, letterSpacing: "-0.03em", marginTop: 26 }}>
+          <span style={{ display: "block" }}>Смета клиенту —</span>
+          <span style={{ display: "block" }}>а не вечер в <span style={{ color: "var(--accent-ink)", fontStyle: "italic" }}>Excel</span></span>
+        </h1>
+        <p style={{ marginTop: 22, color: "var(--muted)", maxWidth: 540, fontSize: "var(--fs-16)", lineHeight: 1.65 }}>
+          Себестоимость фабрики и цена клиенту — в одном документе. Проверено по нормам, готово к отправке за минуту.
+        </p>
+        <div style={{ marginTop: 30, display: "flex", gap: 14, flexWrap: "wrap", justifyContent: "center" }} id="download">
+          <button className="btn btn-primary" style={{ padding: "16px 26px", fontSize: "var(--fs-16)" }} onClick={() => go("auth")}><I.layers size={19} /> Начать бесплатно</button>
+          <a className="btn btn-ghost" style={{ padding: "16px 26px", fontSize: "var(--fs-16)" }} href="#how">Как это работает <I.arrow size={17} /></a>
         </div>
+        <div className="mono" style={{ marginTop: 14, fontSize: "var(--fs-12)", color: "var(--spec-meta)", letterSpacing: ".02em" }}>
+          первая смета — бесплатно · без карты · 2 проекта на тарифе «Старт»
+        </div>
+      </div>
+      {/* «скриншот приложения» по-нашему: живая плита сметы, крупно и по центру */}
+      <div className="container hero-plate-wrap" style={{ position: "relative", zIndex: 2 }}>
         <SmetaPlate />
       </div>
-      <div style={{ position: "absolute", bottom: 26, left: "50%", transform: "translateX(-50%)", color: "var(--faint)", fontSize: "var(--fs-12)", letterSpacing: ".2em", textTransform: "uppercase", display: "flex", flexDirection: "column", alignItems: "center", gap: 8 }}>
-        прокрутите
-        <span style={{ width: 1, height: 34, background: "linear-gradient(var(--accent), transparent)" }} />
-      </div>
     </header>
+  );
+}
+
+/* --------------------------------------------------------------
+   МАРКВИЗ ФАКТОВ — наш ответ ленте наград Programa. Наград у
+   прототипа нет (канон честности) — бежит строка того, что продукт
+   реально умеет. Дубль контента ×2 — бесшовная петля translateX(-50%);
+   reduced-motion глушится глобальным правилом styles.css.
+-------------------------------------------------------------- */
+function FactsMarquee() {
+  const FACTS = [
+    "две цены в одном документе", "наценка по разделам", "PDF · Excel · закупочный лист",
+    "проверка норм NKBA / Neufert", "портал согласования для клиента", "смета из ссылки на магазин",
+    "библиотека позиций студии", "сбор → согласование → закупка → сдача",
+  ];
+  return (
+    <section className="marq" aria-label="Что умеет Design Ledger">
+      <div className="marq-track">
+        {FACTS.concat(FACTS).map((f, i) => (
+          <span key={i} className="marq-item mono" aria-hidden={i >= FACTS.length || undefined}>{f}<i /></span>
+        ))}
+      </div>
+    </section>
   );
 }
 
@@ -196,3 +303,4 @@ function SmetaPlate() {
 
 window.SiteNav = SiteNav;
 window.Hero = Hero;
+window.FactsMarquee = FactsMarquee;

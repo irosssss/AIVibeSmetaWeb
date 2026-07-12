@@ -100,6 +100,129 @@ function downloadSpecTemplate() {
   withLib("xlsx", () => LedgerXLSX.exportRoomSpec({ project: "Шаблон сметы", area: "", rooms, grand, markupPct, catMarkupPct: {}, clientTotal, discountPct: 0, deliveryCost: 0, installCost: 0, budget: 300000, mode: "work" }));
 }
 
+/* --------------------------------------------------------------
+   ГОСТЕВОЙ КЛИППЕР-ДЕМО (роадмап п.9 «ценность до регистрации»,
+   паттерн FckSignups): вставь ссылку → извлечённая позиция, ДО
+   регистрации. Пока это МОК: Worker'а нет, а живой фетч с лендинга
+   (CORS-прокси) слишком ненадёжен для первого касания — демо отвечает
+   по каталогу сохранённых примеров: реальные товары из фикстур
+   клиппера (tests/fixtures/clipper/expected — то, что extractFromHtml
+   реально извлёк из сохранённых страниц магазинов). Честная пометка
+   «пример» — канон 09.07. С Worker+доменом инпут переключается на
+   LedgerClipper.clip(url) без смены UI; лимит на IP — тоже тогда.
+-------------------------------------------------------------- */
+const CLIP_DEMO_CATALOG = [
+  { host: "divan.ru", chip: "divan.ru · диван", url: "https://www.divan.ru/product/divan-pryamoj-kirmas-velyur-terrakotovyj",
+    title: "Диван прямой Кирмас Велюр Терракотовый", price: 68990, sku: "317220", material: "Велюр", dims: { w: 103, d: 60, h: 90 }, sup: "Divan.ru", cat: "Мебель" },
+  { host: "askona.ru", chip: "askona.ru · матрас", url: "https://www.askona.ru/matrasy/comfort-plus.htm",
+    title: "Анатомический матрас Comfort Plus", price: 6599, sku: "2165159", material: "", dims: { w: 80, d: 195 }, sup: "Аскона", cat: "Мебель" },
+  { host: "citilux.ru", chip: "citilux.ru · люстра", url: "https://citilux.ru/store/cl137151/",
+    title: "Citilux Ямато CL137151 Люстра потолочная деревянная", price: 12410, sku: "CL137151", material: "Стекло", dims: { w: 50, h: 18 }, sup: "Citilux", cat: "Свет" },
+  { host: "maytoni.ru", chip: "maytoni.ru · бра", url: "https://maytoni.ru/catalog/decorative/nastennye-svetilniki/c031wl-l8w3k1/",
+    title: "Настенный светильник (бра) Комодо / Comodo", price: 10380, sku: "C031WL-L8W3K1", material: "", dims: null, sup: "Maytoni", cat: "Свет" },
+  { host: "kuchenland.ru", chip: "kuchenland.ru · посуда", url: "https://www.kuchenland.ru/product/salatnik-25kh10-sm-2-1-l-steklo-s-zolotistym-kantom-berg/",
+    title: "Блюдо глубокое, 25х10 см, с золотистым кантом, Berg", price: 1990, sku: "284032", material: "стекло", dims: { w: 25, h: 10 }, sup: "Kuchenland", cat: "Декор" },
+];
+
+function ClipperDemo({ go }) {
+  const ref = useReveal();
+  const [url, setUrl] = useS2("");
+  const [busy, setBusy] = useS2(false);
+  const [hit, setHit] = useS2(null);    // найденная позиция каталога
+  const [miss, setMiss] = useS2(false); // домен не из примеров
+  const tRef = React.useRef(null);
+  useE2(() => () => clearTimeout(tRef.current), []); // уход с лендинга (auth) размонтирует секцию
+
+  const hostOf = (u) => {
+    try { return new URL(/^https?:\/\//i.test(u) ? u : "https://" + u).hostname.replace(/^www\./, "").toLowerCase(); }
+    catch { return ""; }
+  };
+  const run = (u) => {
+    const h = hostOf(u);
+    if (!h) return;
+    clearTimeout(tRef.current); // повторный ввод до срабатывания — гасим прежний таймер, иначе два в полёте дают hit+miss разом
+    setBusy(true); setHit(null); setMiss(false);
+    // короткая честная пауза — извлечение читается как процесс, а не как подмена инпута
+    tRef.current = setTimeout(() => {
+      const found = CLIP_DEMO_CATALOG.find((c) => h === c.host || h.endsWith("." + c.host));
+      setBusy(false);
+      if (found) setHit(found); else setMiss(true);
+    }, 650);
+  };
+  const tryChip = (c) => { setUrl(c.url); run(c.url); };
+
+  // мета-строка как в клиентской смете/PDF/портале — client:true прячет артикул
+  // (закупочная деталь): лендинг публичный, канон ffe.js «SKU не клиенту»
+  const F = window.LedgerFFE;
+  const meta = hit && F && F.ffeMeta ? [F.ffeMeta({ sku: hit.sku, material: hit.material, dims: hit.dims }, { client: true }), hit.sup].filter(Boolean).join(" · ") : "";
+
+  return (
+    <section id="clipper" style={{ paddingBlock: "clamp(70px,10vh,120px)" }} ref={ref}>
+      <div className="container reveal">
+        <div className="catsec-head">
+          <div>
+            <div className="eyebrow">клиппер · попробуйте без регистрации</div>
+            <h2 className="display" style={{ fontSize: "clamp(30px,4vw,50px)", marginTop: 14 }}>Смета начинается со ссылки</h2>
+          </div>
+          <p style={{ color: "var(--muted)", maxWidth: 340, fontSize: "var(--fs-14)" }}>Вставьте ссылку на товар — получите готовую строку сметы: название, артикул, габариты, цена. Ровно так позиции попадают в смету в кабинете.</p>
+        </div>
+
+        <div className="glass" style={{ borderRadius: "var(--r-lg)", padding: "clamp(16px,3vw,26px)", maxWidth: 720 }}>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            <input type="url" placeholder="https://ссылка-на-товар в магазине" value={url}
+              onChange={(e) => setUrl(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && !busy) run(url); }}
+              aria-label="Ссылка на товар для демо-извлечения"
+              style={{ flex: "1 1 220px", minWidth: 0, padding: "10px 14px", borderRadius: 10, border: "1px solid var(--hairline)", background: "var(--surface)", color: "var(--text)", fontSize: "var(--fs-14)" }} />
+            <button type="button" className="btn btn-primary" style={{ padding: "10px 16px", flex: "none" }} disabled={!url.trim() || busy} onClick={() => run(url)}>
+              {busy ? <span className="spin" style={{ width: 15, height: 15 }} /> : <I.spark size={15} />}Извлечь
+            </button>
+          </div>
+
+          {/* магазины-примеры — клик сразу извлекает */}
+          <div style={{ display: "flex", gap: 7, flexWrap: "wrap", marginTop: 12 }}>
+            {CLIP_DEMO_CATALOG.map((c) => (
+              <button key={c.host} type="button" onClick={() => tryChip(c)} disabled={busy}
+                className="mono" style={{ fontSize: "var(--fs-11)", padding: "5px 11px", borderRadius: 99, border: "1px solid var(--hairline)", background: "transparent", color: "var(--muted)", cursor: "pointer" }}>
+                {c.chip}
+              </button>
+            ))}
+          </div>
+
+          {miss && (
+            <div className="find warn" style={{ fontSize: "var(--fs-13)", lineHeight: 1.5, marginTop: 14 }}>
+              <span className="fi"><I.info size={14} /></span>
+              <span>Демо отвечает по сохранённым примерам — попробуйте один из магазинов выше. В кабинете клиппер извлекает по живой ссылке любого магазина.</span>
+            </div>
+          )}
+
+          {hit && (
+            <div style={{ border: "1px solid var(--hairline)", borderRadius: 12, padding: "14px 16px", marginTop: 14 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, marginBottom: 8 }}>
+                <span className="mono" style={{ fontSize: "var(--fs-10)", fontWeight: 700, letterSpacing: ".06em", textTransform: "uppercase", color: "var(--accent-2-ink)", padding: "3px 9px", borderRadius: 99, background: "var(--accent-2-tint)" }}>Позиция извлечена</span>
+                <span className="mono" style={{ fontSize: "var(--fs-10)", letterSpacing: ".06em", textTransform: "uppercase", color: "var(--spec-meta)" }}>пример</span>
+              </div>
+              <div style={{ fontSize: "var(--fs-15)", fontWeight: 600, lineHeight: 1.35 }}>{hit.title}</div>
+              {meta && <div className="mono" style={{ fontSize: "var(--fs-11)", color: "var(--spec-meta)", marginTop: 4, overflowWrap: "anywhere" }}>{meta}</div>}
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 10, marginTop: 10, flexWrap: "wrap" }}>
+                <span className="mono" style={{ fontSize: "var(--fs-18)", fontWeight: 600 }}>{fmtMoney(hit.price)}</span>
+                <span style={{ fontSize: "var(--fs-12)", color: "var(--muted)" }}>{hit.cat} · 1 шт</span>
+              </div>
+              <button type="button" className="btn btn-primary" style={{ marginTop: 14 }} onClick={() => go && go("auth")}>
+                Добавить в смету — бесплатно<I.arrow size={15} />
+              </button>
+            </div>
+          )}
+
+          {/* честность (канон 09.07): демо — на сохранённых страницах, не живой фетч */}
+          <p className="mono" style={{ fontSize: "var(--fs-11)", color: "var(--spec-meta)", letterSpacing: ".04em", lineHeight: 1.55, marginTop: 14 }}>
+            Демо отвечает по сохранённым страницам реальных магазинов — как пример. Извлечение по живой ссылке — в кабинете.
+          </p>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 function SpecCategories() {
   const ref = useReveal();
   const CATS = [
@@ -409,61 +532,187 @@ function Pricing({ go }) {
 }
 
 /* --------------------------------------------------------------
-   BENTO — 4 возможности (асимметричная издательская сетка)
+   СЕТКА ФИЧ (образец Programa «Built by and for interior designers»,
+   реш. владельца 12.07): центрированная serif-шапка + 6 карточек с
+   мини-визуалами продукта. Заменила асимметричный Bento. Визуалы —
+   стилизованные мокапы фич (не скриншоты — не устаревают по стилю),
+   тот же приём и тот же хелпер, что иллюстрации /changelog
+   (mockCardCss/mockMono/mockTag — site-hero.jsx, единый визуальный язык).
 -------------------------------------------------------------- */
-function Bento() {
+const { mockCardCss, mockMono, mockTag } = window;   // общий набор (site-hero.jsx грузится раньше)
+
+function FvPrice() {
+  const ROWS = [["Диван «Милано»", 128000, 169000], ["Кресло лаунж", 73000, 96400]];
+  return (
+    <div style={{ ...mockCardCss, width: "min(300px,100%)", padding: 14, display: "flex", flexDirection: "column", gap: 9 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr auto auto", gap: 10, ...mockMono({ fontSize: "var(--fs-10)", color: "var(--spec-meta)", fontWeight: 700, letterSpacing: ".04em", textTransform: "uppercase" }) }}>
+        <span>Позиция</span><span>Себест.</span><span>Клиенту</span>
+      </div>
+      {ROWS.map(([n, c, cli]) => (
+        <div key={n} style={{ display: "grid", gridTemplateColumns: "1fr auto auto", gap: 10, fontSize: "var(--fs-12)", alignItems: "center" }}>
+          <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{n}</span>
+          <span style={mockMono({ color: "var(--muted)" })}>{fmtMoney(c)}</span>
+          <span style={mockMono({ fontWeight: 700 })}>{fmtMoney(cli)}</span>
+        </div>
+      ))}
+      <div style={{ display: "flex", alignItems: "center", gap: 8, paddingTop: 9, borderTop: "1px solid var(--hairline)" }}>
+        <span style={mockTag}>наценка +32%</span>
+        <span style={mockMono({ color: "var(--accent-2-ink)", fontWeight: 700, marginLeft: "auto" })}>+64 400 ₽</span>
+      </div>
+    </div>
+  );
+}
+
+function FvClip() {
+  return (
+    <div style={{ width: "min(280px,100%)", display: "flex", flexDirection: "column", gap: 9 }}>
+      <div style={{ ...mockCardCss, display: "flex", alignItems: "center", gap: 8, padding: "9px 12px" }}>
+        <I.scan size={14} style={{ color: "var(--spec-meta)", flex: "none" }} />
+        <span style={mockMono({ color: "var(--muted)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" })}>divan.ru/product/milano-3</span>
+      </div>
+      <div style={{ display: "flex", justifyContent: "center", color: "var(--spec-meta)" }}><I.arrow size={15} style={{ transform: "rotate(90deg)" }} /></div>
+      <div style={{ ...mockCardCss, padding: "11px 13px" }}>
+        <div style={{ fontWeight: 600, fontSize: "var(--fs-13)" }}>Диван «Милано», 3-местный</div>
+        <div style={{ display: "flex", justifyContent: "space-between", marginTop: 5 }}>
+          <span style={mockMono({ color: "var(--spec-meta)" })}>арт. MIL-3 · Divan.ru</span>
+          <span style={mockMono({ fontWeight: 700 })}>128 000 ₽</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function FvPortal() {
+  return (
+    <div style={{ ...mockCardCss, width: "min(290px,100%)", padding: 14, display: "flex", flexDirection: "column", gap: 10 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
+        <span style={{ fontWeight: 600, fontSize: "var(--fs-12)" }}>Кресло лаунж, букле</span>
+        <span style={mockTag}>Согласовано</span>
+      </div>
+      <div style={{ alignSelf: "flex-start", maxWidth: "92%", padding: "8px 11px", borderRadius: "11px 11px 11px 3px", fontSize: "var(--fs-12)", background: "rgba(183,80,44,.08)", border: "1px solid rgba(183,80,44,.28)", lineHeight: 1.4 }}>
+        Можно светлее обивку?
+      </div>
+      <div style={{ ...mockCardCss, boxShadow: "none", alignSelf: "flex-end", maxWidth: "92%", padding: "8px 11px", borderRadius: "11px 11px 3px 11px", fontSize: "var(--fs-12)", lineHeight: 1.4 }}>
+        Заменю на бежевый букле
+      </div>
+    </div>
+  );
+}
+
+function FvLib() {
+  const ITEMS = [
+    ["Люстра «Ямато»", "12 410 ₽", "linear-gradient(135deg,#C9A75E,#8D6017)", "-5deg", 0],
+    ["Бра «Комодо»", "10 380 ₽", "linear-gradient(135deg,#8C9A88,#5E6B5B)", "3deg", 26],
+    ["Столик SF-23", "18 000 ₽", "linear-gradient(135deg,#B78B74,#8F5B41)", "-2deg", 52],
+  ];
+  return (
+    <div style={{ position: "relative", width: "min(280px,100%)", height: 150 }}>
+      {ITEMS.map(([n, p, bg, rot, left], i) => (
+        <div key={n} style={{ ...mockCardCss, position: "absolute", left: left + "%", top: i * 14, width: 132, padding: 10, transform: `rotate(${rot})`, zIndex: i }}>
+          <div style={{ height: 44, borderRadius: 7, background: bg }} />
+          <div style={{ fontWeight: 600, fontSize: "var(--fs-11)", marginTop: 7, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{n}</div>
+          <div style={mockMono({ fontSize: "var(--fs-10)", color: "var(--spec-meta)", marginTop: 2 })}>{p}</div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function FvToday() {
+  const ROWS = [["Аванс поставщику · диван", "просрочен 2 дня", true], ["Остаток клиенту · кресло", "до 15 июля", false]];
+  return (
+    <div style={{ ...mockCardCss, width: "min(300px,100%)", padding: 14, display: "flex", flexDirection: "column", gap: 10 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
+        <I.calendar size={14} style={{ color: "var(--accent-2-ink)" }} />
+        <span style={{ fontWeight: 600, fontSize: "var(--fs-12)" }}>Сегодня в работе</span>
+      </div>
+      {ROWS.map(([n, when, late]) => (
+        <div key={n} style={{ display: "flex", alignItems: "center", gap: 8, justifyContent: "space-between" }}>
+          <span style={{ fontSize: "var(--fs-11)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{n}</span>
+          <span style={mockMono({ fontSize: "var(--fs-10)", fontWeight: 600, flex: "none", padding: "3px 8px", borderRadius: 99, color: late ? "var(--accent-ink)" : "var(--spec-meta)", background: late ? "var(--accent-tint)" : "var(--hairline)" })}>{when}</span>
+        </div>
+      ))}
+      <div style={{ display: "flex", alignItems: "center", gap: 7, paddingTop: 9, borderTop: "1px solid var(--hairline)" }}>
+        <I.truck size={13} style={{ color: "var(--spec-meta)", flex: "none" }} />
+        <span style={mockMono({ fontSize: "var(--fs-10)", color: "var(--muted)" })}>трек RU284…19 · в пути</span>
+      </div>
+    </div>
+  );
+}
+
+function FvExport() {
+  return (
+    <div style={{ ...mockCardCss, width: "min(240px,100%)", padding: "16px 16px 14px" }}>
+      <div style={{ fontFamily: "var(--font-display)", fontWeight: 600, fontSize: "var(--fs-13)" }}>Смета-комплектация</div>
+      <div style={mockMono({ fontSize: "var(--fs-10)", color: "var(--spec-meta)", marginTop: 2 })}>№ 024 · 38 позиций</div>
+      {[86, 70, 78].map((w, i) => <div key={i} style={{ height: 5, width: w + "%", borderRadius: 3, background: "var(--hairline)", marginTop: i ? 7 : 12 }} />)}
+      <div style={{ display: "flex", gap: 7, marginTop: 14 }}>
+        {["PDF", "Excel", "Закупка"].map((t) => (
+          <span key={t} style={mockMono({ fontSize: "var(--fs-10)", color: "var(--muted)", border: "1px solid var(--hairline)", borderRadius: 7, padding: "4px 9px" })}>{t}</span>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function FeatureGrid({ go }) {
   const ref = useReveal();
+  const CARDS = [
+    ["Смета с двумя ценами", "Себестоимость — вам, цена — клиенту. Наценка по разделам, прибыль на лету.", FvPrice],
+    ["Смета из ссылки", "Вставьте ссылку на товар — название, артикул и цена сами встают строкой сметы.", FvClip],
+    ["Клиентский портал", "Одна ссылка — клиент видит смету, комментирует и согласует по позициям.", FvPortal],
+    ["Библиотека студии", "Проверенные позиции с артикулами и поставщиками — в новую смету одним кликом.", FvLib],
+    ["Закупка под контролем", "Платежи, сроки и трек-номера по всем проектам — на одном столе.", FvToday],
+    ["Три выгрузки", "Рабочая, для клиента и закупочный лист по поставщикам — PDF и Excel.", FvExport],
+  ];
   return (
     <section id="features" style={{ paddingBlock: "clamp(80px,12vh,140px)" }} ref={ref}>
-      <div className="container">
-        <div className="reveal" style={{ maxWidth: 720 }}>
-          <div className="eyebrow" style={{ marginBottom: 18 }}>ВОЗМОЖНОСТИ</div>
-          <h2 className="display" style={{ fontSize: "clamp(34px,4.6vw,64px)" }}>Всё для дизайна<br />в одном приложении</h2>
+      <div className="container reveal">
+        <div style={{ textAlign: "center", maxWidth: 680, marginInline: "auto" }}>
+          <h2 className="display" style={{ fontSize: "clamp(32px,4.6vw,58px)" }}>Собрано для дизайнера интерьера</h2>
+          <p style={{ color: "var(--muted)", fontSize: "var(--fs-16)", marginTop: 16, lineHeight: 1.6 }}>
+            Инструменты, которые ведут проект от первой ссылки до сданного объекта.
+          </p>
+          <div style={{ marginTop: 26, display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap" }}>
+            <button className="btn btn-primary" onClick={() => go && go("auth")}>Начать бесплатно</button>
+            <a className="btn btn-ghost" href="#how">Как это работает</a>
+          </div>
         </div>
-        <div className="bento reveal">
-          {/* большая — Смета с артикулами */}
-          <article className="bento-card b-lg" style={{ gridColumn: "span 2", gridRow: "span 2" }}>
-            <Img src={PHOTOS.living} label="Смета по проекту" style={{ position: "absolute", inset: 0 }} />
-            <div className="bento-shade" />
-            <div className="bento-body">
-              <I.layers size={26} style={{ color: "#FCF6EE" }} />
-              <h3>Смета с артикулами</h3>
-              <p>Готовая спецификация: предметы, количество, цены — сразу на выгрузку клиенту, без ручного Excel.</p>
-            </div>
-            <span className="bento-badge" style={{ background: "rgba(94,107,91,.92)", borderColor: "rgba(94,107,91,.5)", color: "#FCF6EE" }}>Спецификация</span>
-          </article>
-
-          {/* AI-дизайнер */}
-          <article className="bento-card">
-            <div className="bento-body">
-              <I.spark size={24} style={{ color: "var(--accent)" }} />
-              <h3>AI-подбор мебели и света</h3>
-              <p>YandexGPT 5 и GigaChat подбирают предметы под запрос, бюджет и нормы — сразу позициями сметы.</p>
-            </div>
-          </article>
-
-          {/* Проверка эргономики */}
-          <article className="bento-card">
-            <div className="bento-body">
-              <I.ruler size={24} style={{ color: "var(--info)" }} />
-              <h3>Проверка эргономики</h3>
-              <p>Проходы, рабочие зоны, дистанции — движок ловит «летающие диваны» до того, как их увидит клиент.</p>
-            </div>
-          </article>
-
-          {/* Три бюджета / широкая */}
-          <article className="bento-card b-wide" style={{ gridColumn: "span 2" }}>
-            <div className="bento-body" style={{ flexDirection: "row", alignItems: "center", gap: 22 }}>
-              <div style={{ flex: "none", width: 54, height: 54, borderRadius: 14, background: "var(--surface-2)", display: "grid", placeItems: "center", color: "var(--chart)" }}>
-                <I.wallet size={26} />
-              </div>
-              <div>
-                <h3 style={{ marginBottom: 6 }}>Три бюджета в один клик</h3>
-                <p>Эконом · база · премиум — пересборка сметы под уровень клиента, без ручного пересчёта.</p>
-              </div>
-            </div>
-          </article>
+        <div className="feat-grid">
+          {CARDS.map(([title, sub, Vis]) => (
+            <article key={title} className="feat-card">
+              <h3>{title}</h3>
+              <p className="fsub">{sub}</p>
+              <div className="feat-vis"><Vis /></div>
+            </article>
+          ))}
         </div>
+      </div>
+    </section>
+  );
+}
+
+/* --------------------------------------------------------------
+   БЛОК-ЦИТАТА на фото (аналог видео-цитаты Programa «For those of
+   you still using spreadsheets…»). Отдельный голос — НЕ дублирует
+   ни одну реплику из QUOTES SocialProof (иначе одна и та же цитата
+   дважды на странице); честная пометка «пример» — канон 09.07.
+-------------------------------------------------------------- */
+function QuoteBand() {
+  const ref = useReveal();
+  return (
+    <section style={{ paddingBlock: "clamp(40px,6vh,70px)" }} ref={ref}>
+      <div className="container reveal">
+        <figure className="quote-band" style={{ margin: 0 }}>
+          <Img src={PHOTOS.warm} label="" style={{ position: "absolute", inset: 0 }} />
+          <div className="qshade" />
+          <div style={{ position: "relative", zIndex: 2 }}>
+            <blockquote>«Клиент сам отмечает по позициям, что берёт. Больше никаких “скиньте ещё раз в вотсап”.»</blockquote>
+            <figcaption className="mono" style={{ fontSize: "var(--fs-12)", letterSpacing: ".06em" }}>
+              Пётр Н. · дизайнер-декоратор · Нижний Новгород <span style={{ opacity: .6 }}>· пример</span>
+            </figcaption>
+          </div>
+        </figure>
       </div>
     </section>
   );
@@ -641,9 +890,11 @@ function BudgetCalc({ go }) {
 }
 
 window.SpecCategories = SpecCategories;   // используется сборкой лендинга (site-github.jsx)
+window.ClipperDemo = ClipperDemo;
 window.HowItWorks = HowItWorks;
 window.BudgetCalc = BudgetCalc;
-window.Bento = Bento;
+window.FeatureGrid = FeatureGrid;
+window.QuoteBand = QuoteBand;
 window.ClientPortalPromo = ClientPortalPromo;
 window.NewsFeed = NewsFeed;
 window.SocialProof = SocialProof;
