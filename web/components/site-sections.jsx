@@ -140,6 +140,7 @@ function ClipperDemo({ go }) {
   const run = (u) => {
     const h = hostOf(u);
     if (!h) return;
+    clearTimeout(tRef.current); // повторный ввод до срабатывания — гасим прежний таймер, иначе два в полёте дают hit+miss разом
     setBusy(true); setHit(null); setMiss(false);
     // короткая честная пауза — извлечение читается как процесс, а не как подмена инпута
     tRef.current = setTimeout(() => {
@@ -150,9 +151,10 @@ function ClipperDemo({ go }) {
   };
   const tryChip = (c) => { setUrl(c.url); run(c.url); };
 
-  // та же мета-строка, что в смете/PDF/Excel — FFE.ffeMeta (арт · материал · габариты)
+  // мета-строка как в клиентской смете/PDF/портале — client:true прячет артикул
+  // (закупочная деталь): лендинг публичный, канон ffe.js «SKU не клиенту»
   const F = window.LedgerFFE;
-  const meta = hit && F && F.ffeMeta ? [F.ffeMeta({ sku: hit.sku, material: hit.material, dims: hit.dims }, {}), hit.sup].filter(Boolean).join(" · ") : "";
+  const meta = hit && F && F.ffeMeta ? [F.ffeMeta({ sku: hit.sku, material: hit.material, dims: hit.dims }, { client: true }), hit.sup].filter(Boolean).join(" · ") : "";
 
   return (
     <section id="clipper" style={{ paddingBlock: "clamp(70px,10vh,120px)" }} ref={ref}>
@@ -168,7 +170,7 @@ function ClipperDemo({ go }) {
         <div className="glass" style={{ borderRadius: "var(--r-lg)", padding: "clamp(16px,3vw,26px)", maxWidth: 720 }}>
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
             <input type="url" placeholder="https://ссылка-на-товар в магазине" value={url}
-              onChange={(e) => setUrl(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") run(url); }}
+              onChange={(e) => setUrl(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && !busy) run(url); }}
               aria-label="Ссылка на товар для демо-извлечения"
               style={{ flex: "1 1 220px", minWidth: 0, padding: "10px 14px", borderRadius: 10, border: "1px solid var(--hairline)", background: "var(--surface)", color: "var(--text)", fontSize: "var(--fs-14)" }} />
             <button type="button" className="btn btn-primary" style={{ padding: "10px 16px", flex: "none" }} disabled={!url.trim() || busy} onClick={() => run(url)}>
