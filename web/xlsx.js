@@ -135,9 +135,29 @@
     const FFE = window.LedgerFFE || null;
     const apLabel = (it) => (FFE && it.approve && FFE.APPROVE_BY_ID[it.approve] ? FFE.APPROVE_BY_ID[it.approve].label : "");
     const hasAp = !clientMode && !!FFE && rooms.some((r) => r.items.some((it) => apLabel(it)));
+    // FF&E-детали позиции — отдельными колонками (фильтруемо). Конвенция как в UI/PDF:
+    // материал/габариты видны и клиенту, артикул/срок — закупочная деталь (только рабочий файл).
+    const dimsOf = (it) => (FFE && FFE.dimsLabel ? FFE.dimsLabel(it.dims) : "");
+    const hasSku = !clientMode && rooms.some((r) => r.items.some((it) => it.sku));
+    const hasMat = rooms.some((r) => r.items.some((it) => it.material));
+    const hasDims = rooms.some((r) => r.items.some((it) => dimsOf(it)));
+    const hasLead = !clientMode && rooms.some((r) => r.items.some((it) => it.leadWeeks));
+    const ffeHead = [];
+    if (hasSku) ffeHead.push("Артикул");
+    if (hasMat) ffeHead.push("Материал");
+    if (hasDims) ffeHead.push("Габариты");
+    if (hasLead) ffeHead.push("Срок, нед.");
+    const ffeCells = (it) => {
+      const c = [];
+      if (hasSku) c.push(it.sku || "");
+      if (hasMat) c.push(it.material || "");
+      if (hasDims) c.push(dimsOf(it));
+      if (hasLead) c.push(it.leadWeeks || "");
+      return c;
+    };
     const head = ["№", "Помещение", "Раздел"];
     if (hasSup) head.push("Поставщик");
-    head.push("Наименование", "Кол-во");
+    head.push("Наименование", ...ffeHead, "Кол-во");
     if (clientMode) head.push("Цена клиенту, ₽", "Сумма клиенту, ₽");
     else head.push("Цена, ₽", "Сумма, ₽", "Цена клиенту, ₽", "Сумма клиенту, ₽");
     if (hasPD) head.push("Цена от");
@@ -148,7 +168,7 @@
     rooms.forEach((r) => r.items.forEach((it) => {
       const row = [++n, r.name, catOf(it)];
       if (hasSup) row.push(it.sup || "");
-      row.push(it.title, it.qty || 1);
+      row.push(it.title, ...ffeCells(it), it.qty || 1);
       if (clientMode) row.push(unitClient(it), lineClient(it));
       else row.push(it.price, lineCost(it), unitClient(it), lineClient(it));
       if (hasPD) row.push(fmtDateCell(it.priceDate));
@@ -161,29 +181,38 @@
     trow[col("Сумма клиенту, ₽")] = clientTotal;
     all.push(trow);
     const wsA = XLSX.utils.aoa_to_sheet(all);
-    setCols(wsA, head.map((h) => ({ "№": 5, "Помещение": 18, "Раздел": 16, "Поставщик": 20, "Наименование": 46, "Кол-во": 7, "Цена, ₽": 13, "Сумма, ₽": 14, "Цена клиенту, ₽": 15, "Сумма клиенту, ₽": 16, "Цена от": 11, "Клиент решил": 14, "Решение от": 11 }[h] || 12)));
+    setCols(wsA, head.map((h) => ({ "№": 5, "Помещение": 18, "Раздел": 16, "Поставщик": 20, "Наименование": 46, "Артикул": 16, "Материал": 20, "Габариты": 16, "Срок, нед.": 10, "Кол-во": 7, "Цена, ₽": 13, "Сумма, ₽": 14, "Цена клиенту, ₽": 15, "Сумма клиенту, ₽": 16, "Цена от": 11, "Клиент решил": 14, "Решение от": 11 }[h] || 12)));
     const moneyCols = ["Цена, ₽", "Сумма, ₽", "Цена клиенту, ₽", "Сумма клиенту, ₽"].map(col).filter((c) => c >= 0);
     fmtMoneyCols(wsA, moneyCols, 1, all.length - 1);
     wsA["!autofilter"] = { ref: "A1:" + XLSX.utils.encode_col(head.length - 1) + "1" };   // фильтр по шапке — дизайнер крутит сводную как хочет
     XLSX.utils.book_append_sheet(wb, wsA, uniqueSheet("Все позиции"));
 
     /* ---------- Лист на каждую комнату ---------- */
-    const rHead = clientMode
-      ? ["№", "Раздел", "Наименование", "Кол-во", "Цена клиенту, ₽", "Сумма клиенту, ₽"]
-      : ["№", "Раздел", "Наименование", "Кол-во", "Цена, ₽", "Сумма, ₽", "Цена клиенту, ₽", "Сумма клиенту, ₽"];
+    // шапка/индексы строятся по имени (rcol) — те же FF&E-колонки, что в мастер-таблице,
+    // не смещают позиционно денежные колонки и строку итога
+    const rHead = ["№", "Раздел", "Наименование", ...ffeHead, "Кол-во"];
+    if (clientMode) rHead.push("Цена клиенту, ₽", "Сумма клиенту, ₽");
+    else rHead.push("Цена, ₽", "Сумма, ₽", "Цена клиенту, ₽", "Сумма клиенту, ₽");
+    const rcol = (name) => rHead.indexOf(name);
+    const rColW = { "№": 5, "Раздел": 16, "Наименование": 46, "Артикул": 16, "Материал": 20, "Габариты": 16, "Срок, нед.": 10, "Кол-во": 7, "Цена, ₽": 13, "Сумма, ₽": 14, "Цена клиенту, ₽": 15, "Сумма клиенту, ₽": 16 };
+    const rMoneyCols = (clientMode ? ["Цена клиенту, ₽", "Сумма клиенту, ₽"] : ["Цена, ₽", "Сумма, ₽", "Цена клиенту, ₽", "Сумма клиенту, ₽"]).map(rcol);
     rooms.forEach((r) => {
       const rows = [[roomLabel(r)], [], rHead];
       let m = 0;
       r.items.forEach((it) => {
-        const lc = lineCost(it);
-        rows.push(clientMode
-          ? [++m, catOf(it), it.title, it.qty || 1, unitClient(it), lineClient(it)]
-          : [++m, catOf(it), it.title, it.qty || 1, it.price, lc, unitClient(it), lineClient(it)]);
+        const row = [++m, catOf(it), it.title, ...ffeCells(it), it.qty || 1];
+        if (clientMode) row.push(unitClient(it), lineClient(it));
+        else row.push(it.price, lineCost(it), unitClient(it), lineClient(it));
+        rows.push(row);
       });
-      rows.push(clientMode ? ["", "", "Итого по комнате", "", "", roomClient(r)] : ["", "", "Итого по комнате", "", "", roomCost(r), "", roomClient(r)]);
+      const trow = new Array(rHead.length).fill("");
+      trow[rcol("Наименование")] = "Итого по комнате";
+      if (!clientMode) trow[rcol("Сумма, ₽")] = roomCost(r);
+      trow[rcol("Сумма клиенту, ₽")] = roomClient(r);
+      rows.push(trow);
       const ws = XLSX.utils.aoa_to_sheet(rows);
-      setCols(ws, clientMode ? [5, 16, 46, 7, 15, 16] : [5, 16, 46, 7, 13, 14, 15, 16]);
-      fmtMoneyCols(ws, clientMode ? [4, 5] : [4, 5, 6, 7], 2, rows.length - 1);
+      setCols(ws, rHead.map((h) => rColW[h] || 12));
+      fmtMoneyCols(ws, rMoneyCols, 2, rows.length - 1);
       XLSX.utils.book_append_sheet(wb, ws, uniqueSheet(r.name));
     });
 
@@ -232,6 +261,16 @@
     const trackCells = (it) => [(it.track && it.track.number) || "", (it.track && it.track.url) || ""];
     const PAY_HEAD = PAY_IDS.map(payLabel).concat(["Трек-номер", "Ссылка отслеживания"]);
     const PAY_COLW = [16, 18, 16, 18, 16, 30];
+
+    // FF&E-детали позиции — что именно заказывать у поставщика (артикул/материал/габариты/срок).
+    // Только присутствующие поля → пустых колонок в закупочном листе нет.
+    const dimsOf = (it) => (FFE && FFE.dimsLabel ? FFE.dimsLabel(it.dims) : "");
+    const FFE_HEAD = [], FFE_COLW = [], ffeGet = [];
+    if (rooms.some((r) => r.items.some((it) => it.sku))) { FFE_HEAD.push("Артикул"); FFE_COLW.push(16); ffeGet.push((it) => it.sku || ""); }
+    if (rooms.some((r) => r.items.some((it) => it.material))) { FFE_HEAD.push("Материал"); FFE_COLW.push(20); ffeGet.push((it) => it.material || ""); }
+    if (rooms.some((r) => r.items.some((it) => dimsOf(it)))) { FFE_HEAD.push("Габариты"); FFE_COLW.push(16); ffeGet.push((it) => dimsOf(it)); }
+    if (rooms.some((r) => r.items.some((it) => it.leadWeeks))) { FFE_HEAD.push("Срок, нед."); FFE_COLW.push(10); ffeGet.push((it) => it.leadWeeks || ""); }
+    const ffeCells = (it) => ffeGet.map((f) => f(it));
     const setLinks = (ws, links) => links.forEach(([r, c, url]) => {
       const ref = XLSX.utils.encode_cell({ r, c });
       if (ws[ref] && url) ws[ref].l = { Target: url };
@@ -260,39 +299,44 @@
     XLSX.utils.book_append_sheet(wb, wsS, uniqueSheet("Свод закупки"));
 
     /* плоская мастер-таблица — полная картина + обратный импорт */
-    const all = [["№", "Поставщик", "Помещение", "Раздел", "Наименование", "Кол-во", "Цена, ₽", "Сумма, ₽", "Цена от", "Стадия", "С даты", ...PAY_HEAD]];
-    const urlCol = all[0].length - 1; // «Ссылка отслеживания» — последняя колонка шапки, не magic-число
+    const aHead = ["№", "Поставщик", "Помещение", "Раздел", "Наименование", ...FFE_HEAD, "Кол-во", "Цена, ₽", "Сумма, ₽", "Цена от", "Стадия", "С даты", ...PAY_HEAD];
+    const all = [aHead];
+    const urlCol = aHead.length - 1; // «Ссылка отслеживания» — последняя колонка шапки, не magic-число
     const allLinks = [];
     let n = 0;
     names.forEach((nm) => groups[nm].forEach((x) => {
-      all.push([++n, x.it.sup || "", x.room, x.it.cat || "Прочее", x.it.title, x.it.qty || 1, x.it.price, lineCost(x.it), fmtDateCell(x.it.priceDate), stLabel(x.it), stDate(x.it), ...payCells(x.it), ...trackCells(x.it)]);
+      all.push([++n, x.it.sup || "", x.room, x.it.cat || "Прочее", x.it.title, ...ffeCells(x.it), x.it.qty || 1, x.it.price, lineCost(x.it), fmtDateCell(x.it.priceDate), stLabel(x.it), stDate(x.it), ...payCells(x.it), ...trackCells(x.it)]);
       const url = x.it.track && x.it.track.url;
       if (url) allLinks.push([all.length - 1, urlCol, url]);
     }));
-    all.push(["", "", "", "", "ИТОГО ЗАКУПКА", "", "", grand, "", allProgress, "", "", "", "", "", "", ""]);
+    const aTot = new Array(aHead.length).fill("");
+    aTot[aHead.indexOf("Наименование")] = "ИТОГО ЗАКУПКА"; aTot[aHead.indexOf("Сумма, ₽")] = grand; aTot[aHead.indexOf("Стадия")] = allProgress;
+    all.push(aTot);
     const wsA = XLSX.utils.aoa_to_sheet(all);
-    setCols(wsA, [5, 20, 18, 16, 46, 7, 13, 14, 11, 14, 11, ...PAY_COLW]);
-    fmtMoneyCols(wsA, [6, 7], 1, all.length - 1);
+    setCols(wsA, [5, 20, 18, 16, 46, ...FFE_COLW, 7, 13, 14, 11, 14, 11, ...PAY_COLW]);
+    fmtMoneyCols(wsA, [aHead.indexOf("Цена, ₽"), aHead.indexOf("Сумма, ₽")], 1, all.length - 1);
     setLinks(wsA, allLinks);
-    wsA["!autofilter"] = { ref: "A1:Q1" };
+    wsA["!autofilter"] = { ref: "A1:" + XLSX.utils.encode_col(aHead.length - 1) + "1" };
     XLSX.utils.book_append_sheet(wb, wsA, uniqueSheet("Все позиции"));
 
     /* лист на поставщика — рабочий документ для салона/магазина */
     names.forEach((nm) => {
-      const head = ["№", "Помещение", "Раздел", "Наименование", "Кол-во", "Цена, ₽", "Сумма, ₽", "Цена от", "Стадия", "С даты", ...PAY_HEAD];
+      const head = ["№", "Помещение", "Раздел", "Наименование", ...FFE_HEAD, "Кол-во", "Цена, ₽", "Сумма, ₽", "Цена от", "Стадия", "С даты", ...PAY_HEAD];
       const rows = [[nm], [], head];
       const urlColSup = head.length - 1;
       const links = [];
       let m = 0;
       groups[nm].forEach((x) => {
-        rows.push([++m, x.room, x.it.cat || "Прочее", x.it.title, x.it.qty || 1, x.it.price, lineCost(x.it), fmtDateCell(x.it.priceDate), stLabel(x.it), stDate(x.it), ...payCells(x.it), ...trackCells(x.it)]);
+        rows.push([++m, x.room, x.it.cat || "Прочее", x.it.title, ...ffeCells(x.it), x.it.qty || 1, x.it.price, lineCost(x.it), fmtDateCell(x.it.priceDate), stLabel(x.it), stDate(x.it), ...payCells(x.it), ...trackCells(x.it)]);
         const url = x.it.track && x.it.track.url;
         if (url) links.push([rows.length - 1, urlColSup, url]);
       });
-      rows.push(["", "", "", "Итого по поставщику", "", "", supTotal(nm), "", supProgress(nm), "", "", "", "", "", "", ""]);
+      const tr = new Array(head.length).fill("");
+      tr[head.indexOf("Наименование")] = "Итого по поставщику"; tr[head.indexOf("Сумма, ₽")] = supTotal(nm); tr[head.indexOf("Стадия")] = supProgress(nm);
+      rows.push(tr);
       const ws = XLSX.utils.aoa_to_sheet(rows);
-      setCols(ws, [5, 18, 16, 46, 7, 13, 14, 11, 14, 11, ...PAY_COLW]);
-      fmtMoneyCols(ws, [5, 6], 2, rows.length - 1);
+      setCols(ws, [5, 18, 16, 46, ...FFE_COLW, 7, 13, 14, 11, 14, 11, ...PAY_COLW]);
+      fmtMoneyCols(ws, [head.indexOf("Цена, ₽"), head.indexOf("Сумма, ₽")], 2, rows.length - 1);
       setLinks(ws, links);
       XLSX.utils.book_append_sheet(wb, ws, uniqueSheet(nm));
     });
@@ -352,6 +396,20 @@
           };
           const cTrackNum = colOf(head, /трек.?номер/);            // трек-номер отправления (волна C3)
           const cTrackUrl = colOf(head, /ссылка отслежив/);
+          // FF&E-детали позиции (артикул/материал/габариты/срок) — иначе round-trip своей же
+          // выгрузки молча терял бы их. Габариты «80×45×120 см» → {w,d,h} (× или x, «—» = пусто)
+          const cSku = colOf(head, /артикул|sku/);
+          const cMat = colOf(head, /материал|отделк/);
+          const cDims = colOf(head, /габарит|размер/);
+          const cLead = colOf(head, /срок/);
+          const parseDims = (v) => {
+            const s = String(v == null ? "" : v).replace(/см/gi, "").trim();
+            if (!s) return null;
+            const p = s.split(/[×xх*]/).map((x) => x.trim());
+            const val = (x) => (x && x !== "—" && isFinite(parseFloat(x.replace(",", "."))) ? Math.round(parseFloat(x.replace(",", "."))) : "");
+            const d = { w: val(p[0]), d: val(p[1]), h: val(p[2]) };
+            return d.w === "" && d.d === "" && d.h === "" ? null : d;
+          };
           // «ДД.ММ.ГГГГ» → ISO (одна логика для «Цена от» и «Решение от»)
           const isoDate = (v) => { const m = /^(\d{1,2})\.(\d{1,2})\.(\d{4})$/.exec(String(v == null ? "" : v).trim()); return m ? m[3] + "-" + m[2].padStart(2, "0") + "-" + m[1].padStart(2, "0") : ""; };
           // ячейка платежа: «ДД.ММ.ГГГГ [✓]» или «оплачено» без даты (см. payCell в exportProcure)
@@ -395,8 +453,13 @@
             Object.keys(cPayCols).forEach((id) => { if (cPayCols[id] >= 0) { const p = parsePayCell(row[cPayCols[id]]); if (p) payments[id] = p; } });
             const trackNumber = cTrackNum >= 0 ? String(row[cTrackNum] == null ? "" : row[cTrackNum]).trim() : "";
             const trackUrl = cTrackUrl >= 0 ? String(row[cTrackUrl] == null ? "" : row[cTrackUrl]).trim() : "";
+            const sku = cSku >= 0 ? String(row[cSku] == null ? "" : row[cSku]).trim() : "";
+            const material = cMat >= 0 ? String(row[cMat] == null ? "" : row[cMat]).trim() : "";
+            const dims = cDims >= 0 ? parseDims(row[cDims]) : null;
+            const leadWeeks = cLead >= 0 ? Math.round(num(row[cLead])) : 0;
             if (!byRoom.has(roomName)) byRoom.set(roomName, []);
             byRoom.get(roomName).push({ title, cat, price, qty, ...(sup ? { sup } : {}), ...(priceDate ? { priceDate } : {}), ...(status ? { status } : {}),
+              ...(sku ? { sku } : {}), ...(material ? { material } : {}), ...(dims ? { dims } : {}), ...(leadWeeks ? { leadWeeks } : {}),
               ...(approve ? { approve, ...(approveAt ? { approveAt } : {}) } : {}),
               ...(Object.keys(payments).length ? { payments } : {}),
               ...(trackNumber || trackUrl ? { track: { number: trackNumber, url: trackUrl } } : {}) });

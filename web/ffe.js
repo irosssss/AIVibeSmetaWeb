@@ -249,6 +249,20 @@
     return parts.map((x) => (x == null ? "—" : x)).join("×") + " см";
   }
 
+  /* FF&E-подпись позиции для документов (PDF-подстрока, мета в UI): единый источник
+     той же конвенции, что в строке сметы (project-detail.jsx) — «арт. X · материал ·
+     80×45×120 см · N нед.». Материал/габариты видны и клиенту; артикул и срок —
+     закупочная деталь, поэтому в клиентском документе (opts.client) их скрываем. */
+  function ffeMeta(it, opts) {
+    const client = !!(opts && opts.client);
+    return [
+      !client && it.sku ? "арт. " + it.sku : null,
+      it.material || null,
+      dimsLabel(it.dims) || null,
+      !client && it.leadWeeks ? it.leadWeeks + " нед." : null,
+    ].filter(Boolean).join(" · ");
+  }
+
   // сумма строки = цена × кол-во × (1 + запас%)
   const lineTotal = (it) => Math.round(num(it.price, 0) * num(it.qty || 1, 1) * (1 + num(it.wastePct || 0, 0) / 100));
 
@@ -689,7 +703,7 @@
     PAYMENT_KINDS, PAYKIND_BY_ID, blankPayment, blankPayments, blankTrack,
     URGENCY_BUCKETS, URGENCY_BY_ID, urgencyBucket, itemDueItems,
     EXTRA_PRESETS, statusMeta, statusProgress, stampStatus, today, priceFreshness,
-    blankPosition, normalizePosition, dimsLabel, lineTotal,
+    blankPosition, normalizePosition, dimsLabel, ffeMeta, lineTotal,
     blankComment, addComment,
     blankProduct, productFromPosition, positionFromProduct,
     blankExtra, extraAmount, extrasTotal,
