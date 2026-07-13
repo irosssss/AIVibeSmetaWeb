@@ -1985,7 +1985,7 @@ function AddPositionsModal({ excludeId, roomNames, initialTab, initialRoom, onCl
   const [clipErr, setClipErr] = usePD("");
   const [clipHtmlMode, setClipHtmlMode] = usePD(false); // CORS-блок → ручная вставка HTML
   const [clipHtml, setClipHtml] = usePD("");
-  const [clipForm, setClipForm] = usePD(null);          // {title, price, qty, sup, room, note}
+  const [clipForm, setClipForm] = usePD(null);          // {title, price, rrp, qty, sup, room, note}
 
   usePDE(() => {
     // источники: только проекты со сметой по комнатам (каталожные демо-проекты отпадают)
@@ -2014,9 +2014,9 @@ function AddPositionsModal({ excludeId, roomNames, initialTab, initialRoom, onCl
     items: r.items.filter((_, ii) => sel[k(ri, ii)]).map((it) => {
       // копируем только данные позиции (без геометрии комнаты); давность цены:
       // своя пометка позиции сохраняется, иначе — дата проекта-источника
-      const { title, qty, price, cat, sup, priceDate } = it;
+      const { title, qty, price, cat, sup, priceDate, rrp } = it;
       const pd = priceDate || src.stamp;
-      return { title, qty: qty || 1, price, ...(cat ? { cat } : {}), ...(sup ? { sup } : {}), ...(pd ? { priceDate: pd } : {}) };
+      return { title, qty: qty || 1, price, ...(cat ? { cat } : {}), ...(sup ? { sup } : {}), ...(pd ? { priceDate: pd } : {}), ...(rrp ? { rrp } : {}) };
     }),
   })).filter((e) => e.items.length) : [];
   const nSel = chosen.reduce((s, e) => s + e.items.length, 0);
@@ -2032,6 +2032,8 @@ function AddPositionsModal({ excludeId, roomNames, initialTab, initialRoom, onCl
     setClipForm({
       title: f.title || "",
       price: f.price != null ? String(Math.round(f.price)) : "",
+      // розница (RRP-слой, п.17) — извлечённая «старая цена», если санити extractFromHtml её пропустила
+      rrp: f.oldPrice != null && f.oldPrice > 0 ? String(Math.round(f.oldPrice)) : "",
       qty: "1",
       sup: f.supplier || "",
       room: initialRoom || (roomNames && roomNames[0]) || "Гостиная",
@@ -2060,6 +2062,7 @@ function AddPositionsModal({ excludeId, roomNames, initialTab, initialRoom, onCl
     else clipPrefill(ex, "html");
   };
   const clipPrice = clipForm ? Math.round(+clipForm.price || 0) : 0;
+  const clipRrp = clipForm ? Math.round(+clipForm.rrp || 0) : 0;   // розница (RRP-слой, п.17) — необязательна
   const clipQty = clipForm ? Math.max(1, Math.round(+clipForm.qty || 1)) : 1;
   const clipOk = clipForm && clipForm.title.trim() && clipPrice > 0 && clipForm.room.trim();
   const clipAdd = () => {
@@ -2067,6 +2070,7 @@ function AddPositionsModal({ excludeId, roomNames, initialTab, initialRoom, onCl
     const item = {
       title: clipForm.title.trim(), qty: clipQty, price: clipPrice,
       ...(clipForm.sup.trim() ? { sup: clipForm.sup.trim() } : {}),
+      ...(clipRrp > 0 ? { rrp: clipRrp } : {}),
       priceDate: new Date().toISOString().slice(0, 10), // цена свежая — извлечена сейчас
     };
     onAdd([{ name: clipForm.room.trim(), items: [item] }], "по ссылке");
@@ -2159,6 +2163,11 @@ function AddPositionsModal({ excludeId, roomNames, initialTab, initialRoom, onCl
                       <input style={{ ...clipField, marginTop: 4 }} value={clipForm.sup} onChange={(e) => setClipForm((f) => ({ ...f, sup: e.target.value }))} />
                     </label>
                   </div>
+                  {/* розница (RRP-слой, п.17) — клиппер иногда находит зачёркнутую цену магазина; необязательна,
+                      показываем только когда что-то извлеклось или дизайнер сам решит её вписать */}
+                  <label style={{ fontSize: "var(--fs-12)", color: "var(--muted)" }} title="Розничная цена в магазине — клиент увидит свою выгоду от работы с вами">Розница, ₽ (необязательно)
+                    <input style={{ ...clipField, marginTop: 4, fontFamily: "var(--font-mono)" }} type="number" min="0" placeholder="—" value={clipForm.rrp} onChange={(e) => setClipForm((f) => ({ ...f, rrp: e.target.value }))} />
+                  </label>
                   <label style={{ fontSize: "var(--fs-12)", color: "var(--muted)" }}>Комната
                     <input style={{ ...clipField, marginTop: 4 }} list="clip-rooms" value={clipForm.room} onChange={(e) => setClipForm((f) => ({ ...f, room: e.target.value }))} />
                     <datalist id="clip-rooms">{(roomNames || []).map((n) => <option key={n} value={n} />)}</datalist>
