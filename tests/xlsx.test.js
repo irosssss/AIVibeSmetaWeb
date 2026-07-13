@@ -359,3 +359,37 @@ describe("закупочный лист: стадии, платежи, трек 
     expect(res.extras).toBeUndefined();
   });
 });
+
+describe("RRP-слой: розница/выгода в выгрузке и обратном импорте (роадмап п.17)", () => {
+  const rooms = [{ name: "Гостиная", items: [
+    { title: "Диван «Морти»", cat: "Мебель", price: 129000, rrp: 189000, qty: 1 },
+    { title: "Стол", cat: "Мебель", price: 60000, qty: 1 },   // без розницы — ячейки пустые, поля нет
+  ] }];
+
+  it("рабочий режим: rrp — сырая величина, переживает round-trip; колонка розницы не подменяет цену", async () => {
+    const c = calc(rooms, 25);
+    const res = await roundTrip({ project: "RRP", rooms, grand: c.grand, clientTotal: c.clientTotal,
+      markupPct: 25, budget: 500000, mode: "work" });
+    expect(byTitle(res, "Диван «Морти»").rrp).toBe(189000);
+    expect(byTitle(res, "Диван «Морти»").price).toBe(129000);   // «Розница/ед., ₽» не съедена как cPrice
+    expect(byTitle(res, "Стол").rrp).toBeUndefined();
+  });
+
+  it("клиентский режим: розница видна клиенту, клиентские цены не наценяются второй раз", async () => {
+    const c = calc(rooms, 25);
+    const res = await roundTrip({ project: "RRP клиенту", rooms, grand: c.grand, clientTotal: c.clientTotal,
+      markupPct: 25, budget: 500000, mode: "client" });
+    expect(byTitle(res, "Диван «Морти»").rrp).toBe(189000);
+    expect(byTitle(res, "Диван «Морти»").price).toBe(161250);   // unitClient 129000×1.25, наценка не задвоена
+    expect(res.markupPct).toBe(0);                              // клиентский файл — 0% сильнее «Свода»
+  });
+
+  it("rrp + запас: розница в файле сырая, запас не задваивается при переэкспорте", async () => {
+    const rr = [{ name: "К", items: [{ title: "Плитка", price: 1000, rrp: 1500, qty: 10, wastePct: 10 }] }];
+    const c = calc(rr, 0);
+    const res = await roundTrip({ project: "RRP запас", rooms: rr, grand: c.grand, clientTotal: c.clientTotal,
+      markupPct: 0, budget: 0, mode: "work" });
+    expect(byTitle(res, "Плитка").rrp).toBe(1500);
+    expect(FFE.rrpLine(byTitle(res, "Плитка"))).toBe(16500);    // 1500 × 1.10 × 10 — запас считается из полей
+  });
+});

@@ -345,3 +345,35 @@ describe("clip — публичная точка (ветки ok/blocked/no-data)
     expect(r.extracted.fields.price).toBe(44900);
   });
 });
+
+describe("oldPrice → rrp: зачёркнутая «старая цена» магазина (RRP-слой, роадмап п.17)", () => {
+  const ld = (price) => `<script type="application/ld+json">${JSON.stringify({ "@type": "Product", name: "Диван", offers: { price, priceCurrency: "RUB" } })}</script>`;
+  it("<del> с ценой выше текущей становится oldPrice → rrp позиции", () => {
+    const r = CL.extractFromHtml(ld(129000) + "<del>189 000 ₽</del>", "https://x.ru");
+    expect(r.fields.oldPrice).toBe(189000);
+    expect(r.sources.oldPrice).toBe("text");
+    expect(CL.mapToPosition(r).rrp).toBe(189000);
+  });
+  it("санити: «старая» цена не выше текущей — отбрасывается (это не розница до скидки)", () => {
+    expect(CL.extractFromHtml(ld(129000) + "<del>99 000 ₽</del>", "https://x.ru").fields.oldPrice).toBeUndefined();
+    expect(CL.extractFromHtml(ld(129000) + "<del>129 000 ₽</del>", "https://x.ru").fields.oldPrice).toBeUndefined();
+  });
+  it("без текущей цены розница не берётся (сравнить не с чем)", () => {
+    expect(CL.extractFromHtml("<h1>Стол</h1><del>10 000 ₽</del>", "https://x.ru").fields.oldPrice).toBeUndefined();
+  });
+  it("og product:original_price:amount — структурный источник (STRONG)", () => {
+    const h = '<meta property="og:title" content="Люстра"/><meta property="product:price:amount" content="38000"/><meta property="product:original_price:amount" content="52000"/>';
+    const r = CL.extractFromHtml(h, "https://x.ru");
+    expect(r.fields.oldPrice).toBe(52000);
+    expect(r.sources.oldPrice).toBe("og");
+  });
+  it("случайный зачёркнутый текст без денег — не цена", () => {
+    expect(CL.extractFromHtml(ld(1290) + "<del>версия 2024</del>", "https://x.ru").fields.oldPrice).toBeUndefined();
+  });
+  it("mergeIntoPosition: розница заполняет пустое поле позиции и попадает в отчёт filled", () => {
+    const extracted = CL.extractFromHtml(ld(129000) + "<del>189 000 ₽</del>", "https://x.ru");
+    const { next, filled } = CL.mergeIntoPosition({ title: "", price: 0 }, extracted);
+    expect(next.rrp).toBe(189000);
+    expect(filled).toContain("розница");
+  });
+});

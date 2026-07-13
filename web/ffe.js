@@ -196,6 +196,7 @@
       qty:      o.qty != null ? num(o.qty, 1) : 1,  // Количество
       unit:     o.unit || "шт",               // Единица измерения
       price:    o.price != null ? num(o.price, 0) : 0, // Цена за единицу, ₽ (себестоимость)
+      rrp:      o.rrp != null && o.rrp !== "" ? num(o.rrp, 0) : "", // Розница за единицу (RRP), ₽ — база «выгоды клиента» (роадмап п.17); "" = не задана, слоя нет
       // канон схемы позиции — `sup` (сид, редактор supOf/setSup, PDF, xlsx, портал, закупка);
       // `supplier` принимаем как legacy-алиас входа (клиппер-экстракция, старые записи),
       // но НЕ эмитим — единое имя убирает класс багов «поставщик спрятался под другим полем»
@@ -232,6 +233,7 @@
     const p = blankPosition(raw);
     p.qty = Math.max(1, Math.round(num(p.qty, 1)));
     p.price = Math.max(0, Math.round(num(p.price, 0)));
+    if (p.rrp !== "") p.rrp = Math.max(0, Math.round(num(p.rrp, 0)));
     if (p.leadWeeks !== "") p.leadWeeks = Math.max(0, Math.round(num(p.leadWeeks, 0)));
     if (p.wastePct !== "") p.wastePct = Math.max(0, Math.round(num(p.wastePct, 0)));
     ["w", "d", "h"].forEach((k) => { if (p.dims[k] !== "") p.dims[k] = Math.max(0, Math.round(num(p.dims[k], 0))); });
@@ -273,6 +275,12 @@
   // строки = цена/шт × кол-во» — иначе колонки «Цена»/«Сумма» в Excel/PDF не бьются
   const costUnit = (it) => Math.round(num(it.price, 0) * (1 + num(it.wastePct || 0, 0) / 100));
   const lineTotal = (it) => costUnit(it) * num(it.qty || 1, 1);
+
+  // розница за единицу (RRP) с тем же запасом/отходом, что costUnit: покупая в магазине,
+  // клиент оплачивал бы и запас — сравнение «розница vs цена дизайнера» симметрично.
+  // Округление тем же принципом: цена/ед. один раз, строка = цена × кол-во
+  const rrpUnit = (it) => Math.round(num(it.rrp, 0) * (1 + num(it.wastePct || 0, 0) / 100));
+  const rrpLine = (it) => rrpUnit(it) * num(it.qty || 1, 1);
 
   /* ----------------------------- БИБЛИОТЕКА ТОВАРОВ СТУДИИ (волна B1, бенчмарк Programa) -----------------------------
      Мастер-запись товара студии — то, что дизайнер подбирает снова и снова (диван,
@@ -345,7 +353,17 @@
     const extrasBase = client - discountAmt;
     const extrasAmt = extrasTotal(extras, extrasBase);
     const totalClient = client - discountAmt + delivery + install + extrasAmt;
-    return { catOf, pctOf, costUnit, unitClient, lineClient, client, discount, discountAmt, delivery, install, extras, extrasAmt, totalClient };
+    // RRP-слой (роадмап п.17): выгода клиента = розница − клиентская цена, СТРОГО по позициям
+    // с заданной розницей (позиции без rrp сравнивать не с чем — в обе суммы не входят).
+    // Скидку/сборы не подмешиваем: выгода — построчная витрина ДО общескидочной математики.
+    // Отрицательная выгода не обнуляется здесь (UI/выгрузки сами решают, что показывать) —
+    // иначе итог «выгоды» врал бы, суммируя только удобные строки
+    const lineSavings = (it) => (num(it.rrp, 0) > 0 ? rrpLine(it) - lineClient(it) : 0);
+    let rrpTotal = 0, rrpBase = 0;
+    rooms.forEach((r) => (r.items || []).forEach((it) => { if (num(it.rrp, 0) > 0) { rrpTotal += rrpLine(it); rrpBase += lineClient(it); } }));
+    const savings = rrpTotal - rrpBase;
+    return { catOf, pctOf, costUnit, unitClient, lineClient, client, discount, discountAmt, delivery, install, extras, extrasAmt, totalClient,
+      rrpUnit, rrpLine, lineSavings, rrpTotal, savings };
   }
 
   /* ----------------------------- УСЛУГИ И СБОРЫ (доставка/монтаж/налог) -----------------------------
@@ -718,7 +736,7 @@
     PAYMENT_KINDS, PAYKIND_BY_ID, blankPayment, blankPayments, blankTrack,
     URGENCY_BUCKETS, URGENCY_BY_ID, urgencyBucket, itemDueItems,
     EXTRA_PRESETS, statusMeta, statusProgress, stampStatus, today, priceFreshness,
-    blankPosition, normalizePosition, dimsLabel, ffeMeta, qtyLabel, costUnit, lineTotal,
+    blankPosition, normalizePosition, dimsLabel, ffeMeta, qtyLabel, costUnit, lineTotal, rrpUnit, rrpLine,
     blankComment, addComment,
     blankProduct, productFromPosition, positionFromProduct,
     blankExtra, extraAmount, extrasTotal,

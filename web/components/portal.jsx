@@ -155,7 +155,11 @@ function ClientPortal({ shareId }) {
                           {qty} × {fmtMoney(cp.unitClient(it))}{it.cat ? " · " + it.cat : ""}
                         </div>
                       </div>
-                      <span className="mono" style={{ fontSize: "var(--fs-14)", fontWeight: 700, whiteSpace: "nowrap", color: "var(--accent-2-ink)" }}>{fmtMoney(cp.lineClient(it))}</span>
+                      {/* RRP-слой (п.17): под ценой — выгода клиента от розницы (только положительная, витрина) */}
+                      <span className="mono" style={{ display: "inline-flex", flexDirection: "column", alignItems: "flex-end", fontSize: "var(--fs-14)", fontWeight: 700, whiteSpace: "nowrap", color: "var(--accent-2-ink)" }}>
+                        {fmtMoney(cp.lineClient(it))}
+                        {cp.lineSavings(it) > 0 && <span style={{ fontSize: "var(--fs-11)", fontWeight: 500 }}>выгода {fmtMoney(cp.lineSavings(it))}</span>}
+                      </span>
                     </div>
                     {/* решение клиента */}
                     <div role="group" aria-label={"Ваше решение по позиции «" + it.title + "»"} style={{ display: "flex", gap: 7, marginTop: 10, flexWrap: "wrap" }}>
@@ -198,6 +202,12 @@ function ClientPortal({ shareId }) {
           <span style={{ fontWeight: 800, fontFamily: "var(--font-display)", fontSize: "var(--fs-15)" }}>Итого</span>
           <span className="mono" style={{ fontWeight: 600, fontSize: "var(--fs-24)", letterSpacing: "-0.01em" }}>{fmtMoney(cp.totalClient)}</span>
         </div>
+        {/* RRP-слой (п.17): выгода от розницы — те же числа, что в смете дизайнера/PDF/Excel */}
+        {cp.savings > 0 && (
+          <div className="mono" style={{ marginTop: 8, paddingTop: 8, borderTop: "1px solid var(--hairline-2)", fontSize: "var(--fs-11)", color: "var(--accent-2-ink)" }}>
+            Розница в магазинах {fmtMoney(cp.rrpTotal)} — ваша выгода {fmtMoney(cp.savings)}
+          </div>
+        )}
       </div>
 
       <p style={{ textAlign: "center", color: "var(--muted)", fontSize: "var(--fs-12)", marginTop: 22, lineHeight: 1.6 }}>

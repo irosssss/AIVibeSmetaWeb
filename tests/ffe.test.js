@@ -249,3 +249,39 @@ describe("комментарии-треды на позиции (волна A3)"
     expect(FFE.addPortalComment("shr_missing", 0, 0, "client", "х")).toBe(null);
   });
 });
+
+describe("RRP-слой: розница и выгода клиента (роадмап п.17)", () => {
+  it("rrp в схеме: пусто = не задана; нормализация — целое ≥0, терпимый парсер денег", () => {
+    expect(FFE.blankPosition({}).rrp).toBe("");
+    expect(FFE.normalizePosition({ title: "X", price: 100 }).rrp).toBe("");
+    expect(FFE.normalizePosition({ title: "X", price: 100, rrp: "189 000 ₽" }).rrp).toBe(189000);
+    expect(FFE.normalizePosition({ title: "X", price: 100, rrp: -5 }).rrp).toBe(0);
+  });
+  it("rrpUnit/rrpLine учитывают запас/отход симметрично costUnit (клиент платил бы за запас и в рознице)", () => {
+    const it_ = { price: 1000, rrp: 1500, qty: 2, wastePct: 10 };
+    expect(FFE.rrpUnit(it_)).toBe(1650);   // 1500 × 1.10, округление цены/ед.
+    expect(FFE.rrpLine(it_)).toBe(3300);   // × кол-во
+    expect(FFE.rrpLine({ price: 1000, qty: 3 })).toBe(0);   // без rrp — нуль, не NaN
+  });
+  it("clientPricing: выгода = розница − клиентская цена, строго по позициям с rrp", () => {
+    const rooms = [{ items: [
+      { title: "A", price: 100000, rrp: 160000, qty: 1 },
+      { title: "B", price: 50000, qty: 2 },   // без rrp — в rrpTotal/savings не входит
+    ] }];
+    const cp = FFE.clientPricing({ rooms, markup: 25 });
+    expect(cp.lineSavings(rooms[0].items[0])).toBe(35000);   // 160000 − 125000
+    expect(cp.lineSavings(rooms[0].items[1])).toBe(0);
+    expect(cp.rrpTotal).toBe(160000);
+    expect(cp.savings).toBe(35000);
+  });
+  it("розница ниже клиентской цены — выгода отрицательная (математика не клипует, решают UI/выгрузки)", () => {
+    const cp = FFE.clientPricing({ rooms: [{ items: [{ title: "A", price: 100000, rrp: 110000, qty: 1 }] }], markup: 25 });
+    expect(cp.savings).toBe(-15000);   // клиенту 125000 > розницы 110000
+  });
+  it("выгода с запасом и наценкой раздела — та же цепочка округлений, что у клиентской цены", () => {
+    const it_ = { title: "Плитка", price: 1000, rrp: 1500, qty: 10, wastePct: 10, cat: "Отделка" };
+    const cp = FFE.clientPricing({ rooms: [{ items: [it_] }], markup: 25, catMarkup: { "Отделка": 10 } });
+    // costUnit 1100 → unitClient 1210 (раздел +10%); rrpUnit 1650; выгода/ед. 440 × 10
+    expect(cp.lineSavings(it_)).toBe(4400);
+  });
+});

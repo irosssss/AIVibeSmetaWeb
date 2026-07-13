@@ -57,6 +57,13 @@
     const unitClient = (it) => Math.round(costUnit(it) * (1 + pctOf(it) / 100));    // округляется цена/шт,
     const lineClient = (it) => unitClient(it) * (it.qty || 1);                     // сумма = цена × кол-во — как в UI, документ бьётся
     const hasCatMk = !!catMarkupPct && Object.keys(catMarkupPct).length > 0;
+    // RRP-слой (роадмап п.17): розница/выгода клиента — та же математика, что FFE.clientPricing
+    // (только позиции с заданной розницей; FFE.rrpLine учитывает запас, как costUnit)
+    let rrpTotal = 0, rrpBase = 0;
+    if (FFE && FFE.rrpLine) (rooms || []).forEach((r) => (r.items || []).forEach((it) => {
+      if (+it.rrp > 0) { rrpTotal += FFE.rrpLine(it); rrpBase += lineClient(it); }
+    }));
+    const savings = rrpTotal - rrpBase;
     const content = [
       { columns: [ { text: "Design Ledger", style: "logo" }, { text: "Смета-комплектация", alignment: "right", style: "muted", margin: [0, 6, 0, 0] } ] },
       { canvas: [{ type: "line", x1: 0, y1: 0, x2: 515, y2: 0, lineWidth: 1, lineColor: "#B7502C" }], margin: [0, 8, 0, 0] },
@@ -93,6 +100,10 @@
       if (installCost > 0) totalRows.push({ text: "Монтаж и сборка: +" + money(installCost), alignment: "right", fontSize: 10.5 });
       extrasList.forEach((ex) => { const a = FFE && FFE.extraAmount ? FFE.extraAmount(ex, (clientTotal || 0) - discountAmt) : 0; if (a > 0) totalRows.push({ text: ex.label + ": +" + money(a), alignment: "right", fontSize: 10.5 }); });
       totalRows.push({ text: "Итого: " + money(totalClient), alignment: "right", style: "total", margin: [0, 3, 0, 0] });
+      if (savings > 0) {   // выгода от розницы — витрина для клиента, только положительная
+        totalRows.push({ text: "Розница в магазинах (RRP): " + money(rrpTotal), alignment: "right", fontSize: 9.5, color: PDF.muted, margin: [0, 5, 0, 0] });
+        totalRows.push({ text: "Ваша выгода: " + money(savings), alignment: "right", fontSize: 10.5, bold: true, color: PDF.ok });
+      }
       content.push({ columns: [ { text: "", width: "*" }, { stack: totalRows, margin: [0, 6, 0, 0] } ] });
     } else {
       const over = grand > budget;
@@ -104,6 +115,10 @@
       if (installCost > 0) totalRows.push({ text: "Монтаж и сборка: +" + money(installCost), alignment: "right", fontSize: 10.5 });
       extrasList.forEach((ex) => { const a = FFE && FFE.extraAmount ? FFE.extraAmount(ex, (clientTotal || 0) - discountAmt) : 0; if (a > 0) totalRows.push({ text: ex.label + ": +" + money(a), alignment: "right", fontSize: 10.5 }); });
       totalRows.push({ text: "Итого для клиента: " + money(totalClient), alignment: "right", style: "total", margin: [0, 3, 0, 0] });
+      if (savings > 0) {   // та же витрина выгоды и в рабочей версии — дизайнер видит аргумент клиенту
+        totalRows.push({ text: "Розница в магазинах (RRP): " + money(rrpTotal), alignment: "right", fontSize: 9.5, color: PDF.muted, margin: [0, 5, 0, 0] });
+        totalRows.push({ text: "Выгода клиента: " + money(savings), alignment: "right", fontSize: 10.5, bold: true, color: PDF.ok });
+      }
       content.push({ columns: [
         { text: over ? "Превышение бюджета на " + money(grand - budget) : "В рамках бюджета (" + money(budget) + ")", color: over ? PDF.warn : PDF.ok, fontSize: 10, margin: [0, 6, 0, 0] },
         { stack: totalRows, margin: [0, 6, 0, 0] },
