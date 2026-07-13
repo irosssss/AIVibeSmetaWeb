@@ -563,6 +563,9 @@ function RoomSpecOverlay({ data, nav, onClose, onSaved }) {
   const [versions, setVersions] = usePD(() => (FFE && data.id ? FFE.loadVersions(data.id) : []));
   usePDE(() => { if (FFE && savedId) FFE.saveVersions(savedId, versions); }, [versions, savedId]);
   const approved = versions.find((v) => v.status === "approved");
+  // K2: единственный сигнал «смету вообще показывали клиенту» — есть версия с активной
+  // ссылкой-шарой; funnelStage использует это, чтобы отличить «Черновик» от «На согласовании»
+  const hasActiveShare = versions.some((v) => v.shareId);
   const openVersions = () => {
     if (!savedId) { toast("Сначала сохраните смету — версии привязаны к проекту.", "warn", 5000); return; }
     setVersionsOpen(true);
@@ -846,7 +849,7 @@ function RoomSpecOverlay({ data, nav, onClose, onSaved }) {
                     <span className="rs-unit" style={{ width: 88, textAlign: "right" }}>Цена/ед.</span>
                     {mode === "work" && <span style={{ width: 100, textAlign: "right" }}>Себест.</span>}
                     <span style={{ width: 104, textAlign: "right" }}>Клиенту</span>
-                    {mode === "work" && FFE && <span className="rs-ap" style={{ width: 122, textAlign: "right" }}>Клиент решил</span>}
+                    {mode === "work" && FFE && <span className="rs-ap" style={{ width: 122, textAlign: "right" }}>Статус</span>}
                     {mode === "work" && <span style={{ width: 26 }} aria-hidden="true" />}
                   </div>
                   <div style={{ display: "flex", flexDirection: "column" }}>
@@ -890,20 +893,11 @@ function RoomSpecOverlay({ data, nav, onClose, onSaved }) {
                           {fmtMoney(lineClient(it))}
                           {cp.lineSavings(it) > 0 && <span style={{ fontSize: "var(--fs-10)", fontWeight: 500, color: "var(--accent-2-ink)" }}>выгода {fmtMoney(cp.lineSavings(it))}</span>}
                         </span>
-                        {mode === "work" && FFE && (() => {
-                          const aid = apOf(it), m = FFE.approveMeta(aid);
-                          return (
-                            <span className="rs-ap" style={{ display: "inline-flex", alignItems: "center", justifyContent: "flex-end", gap: 6, width: 122, flex: "none", alignSelf: "center" }}
-                              title={"Решение клиента: " + m.label + (it.approveAt ? " — " + fmtDateRu(it.approveAt) : "")}>
-                              <span aria-hidden="true" style={{ width: 8, height: 8, borderRadius: "50%", background: m.color, flex: "none" }} />
-                              <select className="fld" value={aid} aria-label={"Решение клиента по позиции «" + it.title + "»"}
-                                onChange={(e) => setApprove(ri, i, e.target.value)}
-                                style={{ width: 108, flex: "none", padding: "5px 6px", fontSize: "var(--fs-12)" }}>
-                                {FFE.APPROVE_STATUSES.map((s) => <option key={s.id} value={s.id}>{s.label}</option>)}
-                              </select>
-                            </span>
-                          );
-                        })()}
+                        {mode === "work" && FFE && (
+                          <FunnelChip it={it} hasActiveShare={hasActiveShare}
+                            onChangeApprove={(id) => setApprove(ri, i, id)}
+                            onOpenProcure={() => setMode("procure")} />
+                        )}
                         {mode === "work" && (
                           <button className="icon-btn xs" aria-label={"Редактировать позицию «" + it.title + "»"} aria-expanded={!!editing} title="Редактировать позицию"
                             onClick={() => setEditPos(editing ? null : { ri, ii: i })}
@@ -1701,6 +1695,41 @@ function CommentThreadCard({ group, onReply }) {
         <button type="submit" className="btn btn-ghost" style={{ padding: "6px 12px", fontSize: "var(--fs-12)", flex: "none" }} disabled={!draft.trim()}>Ответить</button>
       </form>
     </div>
+  );
+}
+
+/* ---------------- ЕДИНЫЙ СТАТУС-ЧИП СТРОКИ (K2, паттерн Programa «один дропдаун») ----------------
+   Сводит решение клиента (approve) и стадию закупки (status) в одну колонку вместо
+   двух раздельных панелей смета/закупка — FFE.funnelStage считает, какая половина
+   актуальна. До заказа — редактируемый селект (то же поведение, что раньше «Клиент
+   решил», просто с точным словом «Черновик»/«На согласовании» вместо общего «Ждёт
+   решения»); с ordered+ — read-only бейдж реальной стадии закупки, клик уводит
+   в «Закупку» (там правится полная 8-стадийная лестница + даты/платежи/трек). */
+function FunnelChip({ it, hasActiveShare, onChangeApprove, onOpenProcure }) {
+  const FFE = window.LedgerFFE;
+  const stage = FFE.funnelStage(it, hasActiveShare);
+  if (stage.locked) {
+    return (
+      <button type="button" className="mono rs-ap" onClick={onOpenProcure}
+        title={"Стадия закупки: " + stage.label + " — открыть «Закупку»"}
+        style={{ display: "inline-flex", alignItems: "center", justifyContent: "flex-end", gap: 6, width: 122, flex: "none", alignSelf: "center",
+          background: "none", border: "none", cursor: "pointer", padding: 0, color: "var(--text)", fontSize: "var(--fs-12)" }}>
+        <span aria-hidden="true" style={{ width: 8, height: 8, borderRadius: "50%", background: stage.color, flex: "none" }} />
+        {stage.label}
+      </button>
+    );
+  }
+  const aid = FFE.APPROVE_BY_ID[it.approve] ? it.approve : "pending";
+  return (
+    <span className="rs-ap" style={{ display: "inline-flex", alignItems: "center", justifyContent: "flex-end", gap: 6, width: 122, flex: "none", alignSelf: "center" }}
+      title={"Статус: " + stage.label + (it.approveAt ? " — " + fmtDateRu(it.approveAt) : "")}>
+      <span aria-hidden="true" style={{ width: 8, height: 8, borderRadius: "50%", background: stage.color, flex: "none" }} />
+      <select className="fld" value={aid} aria-label={"Статус позиции «" + it.title + "»"}
+        onChange={(e) => onChangeApprove(e.target.value)}
+        style={{ width: 108, flex: "none", padding: "5px 6px", fontSize: "var(--fs-12)" }}>
+        {FFE.APPROVE_STATUSES.map((s) => <option key={s.id} value={s.id}>{s.id === "pending" ? (hasActiveShare ? "На согласовании" : "Черновик") : s.label}</option>)}
+      </select>
+    </span>
   );
 }
 
