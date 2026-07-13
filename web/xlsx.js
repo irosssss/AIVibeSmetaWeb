@@ -37,7 +37,7 @@
   //       "client" — только цена клиента, без себестоимости/наценки/бюджета;
   //       "procure" — закупочный лист: только себестоимость, свод и лист на поставщика.
   // catMarkupPct: {раздел: %} — свои наценки поверх базовой markupPct (как на экране сметы).
-  function exportRoomSpec({ project, area, rooms, grand, markupPct, catMarkupPct, clientTotal, discountPct, deliveryCost, installCost, budget, mode }) {
+  function exportRoomSpec({ project, area, rooms, grand, markupPct, catMarkupPct, clientTotal, discountPct, deliveryCost, installCost, extras, budget, mode }) {
     if (!window.XLSX) { (window.toast ? toast("Excel-библиотека ещё загружается — попробуйте через секунду.", "info") : 0); return false; }
     rooms = rooms || [];
     if (mode === "procure") return exportProcure({ project, area, rooms, grand, budget });
@@ -46,7 +46,10 @@
     const fresh = FFE && FFE.priceFreshness ? FFE.priceFreshness(rooms) : null;
     // итог структурой: скидка округляется до рубля от подытога — та же формула, что в UI/PDF
     const discountAmt = Math.round((clientTotal || 0) * (discountPct || 0) / 100);
-    const totalClient = (clientTotal || 0) - discountAmt + (deliveryCost || 0) + (installCost || 0);
+    // доп. сборы (доставка/монтаж/НДС/кастом) — та же база (товары после скидки), что в UI/PDF
+    const extrasList = Array.isArray(extras) ? extras : [];
+    const extrasAmt = FFE && FFE.extrasTotal ? FFE.extrasTotal(extrasList, (clientTotal || 0) - discountAmt) : 0;
+    const totalClient = (clientTotal || 0) - discountAmt + (deliveryCost || 0) + (installCost || 0) + extrasAmt;
     const catOf = (it) => it.cat || "Прочее";
     const pctOf = (it) => (catMarkupPct && catMarkupPct[catOf(it)] != null ? catMarkupPct[catOf(it)] : (markupPct || 0));
     const hasCatMk = !!catMarkupPct && Object.keys(catMarkupPct).length > 0;
@@ -104,7 +107,7 @@
       { const ri = push(["Подытог — себестоимость (фабрика)", grand]); mc.push([ri, 1]); }
       { const ri = push(["Наценка дизайнера" + (hasCatMk ? " (по разделам)" : " (+" + (markupPct || 0) + "%)"), clientTotal - grand]); mc.push([ri, 1]); }
     }
-    if (!clientMode || discountAmt > 0 || deliveryCost > 0 || installCost > 0) {
+    if (!clientMode || discountAmt > 0 || deliveryCost > 0 || installCost > 0 || extrasAmt > 0) {
       const ri = push([clientMode ? "Подытог" : "Подытог для клиента", clientTotal]); mc.push([ri, 1]);
     }
     if (discountAmt > 0) { const ri = push(["Скидка клиенту (−" + discountPct + "%)", -discountAmt]); mc.push([ri, 1]); }
@@ -121,9 +124,28 @@
       push([(fresh.checked === fresh.total ? "Цены проверены не позднее" : "Цены проверены у " + fresh.checked + " из " + fresh.total + " позиций — не позднее")
         + " " + fmtDateCell(fresh.oldest) + (fresh.stale ? " (" + fresh.days + " дн. назад — рекомендуем перепроверить)" : "")]);
     }
+    // доп. сборы — ОТДЕЛЬНАЯ секция со своим маркером, физически в самом низу листа (после
+    // «Итога»/бюджета/свежести цен): импорт распознаёт её независимо от разбора «Итога»,
+    // не пересекается с состоянием того парсера (см. importRoomSpec) — «Бюджет проекта» и
+    // «Итог» такие же 2-ячеечные строки [метка, сумма], поэтому секции обязаны не смешиваться.
+    // Тип/процент — В ОТДЕЛЬНОЙ колонке (не суффиксом в тексте метки): свободный label
+    // кастомного фикс-сбора мог бы случайно закончиться на «(N%)» и на импорте ложно
+    // прочитаться как percent-сбор с чужим значением вместо фикс. суммы (найдено ревью).
+    // В рабочем режиме строка не опускается даже при сумме 0 (это ИМЕНЕК-список, не
+    // скаляр как скидка/доставка — пропуск строки стирает саму позицию сбора при
+    // реимпорте, не просто прячет её); в клиентском — как discount/delivery/install,
+    // нулевые сборы клиенту не показываем.
+    const extrasRows = extrasList
+      .filter((ex) => !clientMode || (FFE && FFE.extraAmount ? FFE.extraAmount(ex, clientTotal - discountAmt) : 0) > 0)
+      .map((ex) => [ex.label, ex.kind === "percent" ? ex.value + "%" : "", FFE && FFE.extraAmount ? FFE.extraAmount(ex, clientTotal - discountAmt) : 0]);
+    if (extrasRows.length) {
+      push([]);
+      push(["Доп. сборы"]);
+      extrasRows.forEach((row) => { const ri = push(row); mc.push([ri, 2]); });
+    }
 
     const wsS = XLSX.utils.aoa_to_sheet(svod);
-    setCols(wsS, clientMode ? [42, 16] : [42, 16, 16, 11]);
+    setCols(wsS, clientMode ? [42, 16, 16] : [42, 16, 16, 11]);   // 3-я колонка — секция «Доп. сборы» (тип/%, ₽), нужна и клиенту
     fmtMoney(wsS, mc);
     XLSX.utils.book_append_sheet(wb, wsS, uniqueSheet("Свод"));
 
@@ -512,9 +534,10 @@
           // бы как строка доставки, а «Свод закупки» (другая книга, row[1] там — количество
           // позиций, не деньги) — как рабочий «Свод».
           let markupPct, discountPct, deliveryCost, installCost, catMarkupPct;
+          const extrasArr = [];
           const svodSn = wb.SheetNames.find((sn) => /^свод/i.test(sn));
           if (svodSn) {
-            let inCat = false, inItog = false;
+            let inCat = false, inItog = false, inExtras = false;
             const catOv = {};
             XLSX.utils.sheet_to_json(wb.Sheets[svodSn], { header: 1, blankrows: false }).forEach((row) => {
               if (!Array.isArray(row) || !row[0]) return;
@@ -524,7 +547,22 @@
               // маркер и подмял бы своей меткой все строки после себя. У «Итога» ровно
               // одна ячейка (push(["Итог"])); у заголовка «По разделам» вторая ячейка —
               // текст («Себестоимость»/«Сумма»), у строки раздела — всегда число (сумма).
-              if (label === "Итог" && row.length === 1) { inItog = true; inCat = false; return; }
+              if (label === "Итог" && row.length === 1) { inItog = true; inCat = false; inExtras = false; return; }
+              // «Доп. сборы» — СВОЯ секция, физически после «Итога» (см. exportRoomSpec):
+              // разбирается независимо от inItog/inCat, никогда не пересекается с их состоянием
+              if (label === "Доп. сборы" && row.length === 1) { inExtras = true; inItog = false; inCat = false; return; }
+              if (inExtras) {
+                // тип/процент — В ОТДЕЛЬНОЙ колонке row[1] («N%» или пусто для фикс.), НЕ
+                // суффиксом в тексте метки: кастомный фикс-сбор со свободным label, случайно
+                // заканчивающимся на «(N%)», иначе ложно прочитался бы как percent-сбор
+                const pctCell = /^(\d+(?:[.,]\d+)?)%$/.exec(String(row[1] == null ? "" : row[1]).trim());
+                const kind = pctCell ? "percent" : "fixed";
+                const value = pctCell ? parseFloat(pctCell[1].replace(",", ".")) : num(row[2]);
+                extrasArr.push(window.LedgerFFE && window.LedgerFFE.blankExtra
+                  ? window.LedgerFFE.blankExtra({ label, kind, value })
+                  : { id: "extra_" + extrasArr.length, label, kind, value });
+                return;
+              }
               if (label === "По разделам" && typeof row[1] === "string") { inCat = true; return; }
               // якорь «, %» на конце — иначе матчится и строка «Итога» с наценкой В РУБЛЯХ
               // («Наценка дизайнера (+35%)»), а не только строка-заголовок с процентом
@@ -558,6 +596,7 @@
             ...(deliveryCost != null ? { deliveryCost } : {}),
             ...(installCost != null ? { installCost } : {}),
             ...(catMarkupPct ? { catMarkupPct } : {}),
+            ...(extrasArr.length ? { extras: extrasArr } : {}),
           });
         } catch (err) { reject(err); }
       };

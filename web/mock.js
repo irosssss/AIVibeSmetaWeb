@@ -394,7 +394,7 @@
       create: async (patch = {}) => {                                            // → POST /api/markup-profiles
         await delay(150);
         const defMarkup = (window.LedgerFFE && window.LedgerFFE.DEFAULT_MARKUP_PCT) || 25;
-        const row = { id: "mp_" + Date.now(), name: "Мой стандарт", markupPct: defMarkup, catMarkupPct: {}, discountPct: 0, deliveryCost: 0, installCost: 0, ...patch, createdAt: today() };
+        const row = { id: "mp_" + Date.now(), name: "Мой стандарт", markupPct: defMarkup, catMarkupPct: {}, discountPct: 0, deliveryCost: 0, installCost: 0, extras: [], ...patch, createdAt: today() };
         db.markupProfiles.push(row);
         LS.set("markupProfiles", db.markupProfiles);
         return clone(row);

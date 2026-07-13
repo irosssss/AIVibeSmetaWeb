@@ -975,5 +975,5 @@ function Donut({ data, size = 168 }) {
 
 Object.assign(window, {
   Logo, Icon, I, Img, Lottie, useReveal, motionOK, useCountUp, CountUpOnView, fmt, fmtMoney, AreaChart, BarList, Donut, Switch, SegTabs, OverlayHead, SmetaTotal,
-  RS_ROW, PriceAgeChip, fmtCommentAt, CommentBubble, StatusPill, SearchField, PageHead, EmptyState, KpiCard, ChartCard, ChartSkel,
+  RS_ROW, PriceAgeChip, fmtCommentAt, CommentBubble, StatusPill, SearchField, PageHead, EmptyState, KpiCard, ChartCard, ChartSkel, MenuPop,
 });

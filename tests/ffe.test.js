@@ -129,6 +129,26 @@ describe("clientPricing — инвариант клиентских цен (по
     expect(cp.discountAmt).toBe(320);      // 10% от 3200
     expect(cp.totalClient).toBe(7880);     // 3200 − 320 + 3000 + 2000
   });
+  it("доп. сборы (extras): percent-сборы считаются от одной и той же базы, не каскадом", () => {
+    const snap = {
+      rooms: [{ name: "A", items: [
+        { title: "X", price: 1000, qty: 2, cat: "Мебель" },
+        { title: "Y", price: 500, qty: 1, cat: "Декор" },
+      ] }],
+      markup: 25, catMarkup: { "Декор": 40 }, discount: 10, delivery: 3000, install: 2000,
+      extras: [
+        { id: "e1", label: "Налог / НДС", kind: "percent", value: 20 },
+        { id: "e2", label: "Сервис", kind: "percent", value: 10 },
+        { id: "e3", label: "Упаковка", kind: "fixed", value: 1000 },
+      ],
+    };
+    const cp = FFE.clientPricing(snap);
+    // база — client(3200) − discountAmt(320) = 2880, ОДНА и та же для обоих percent-сборов
+    // (если бы считали каскадом, e2 брал бы базу 2880+576=3456 → 346, а не 288)
+    expect(cp.extrasAmt).toBe(576 + 288 + 1000);   // 1864
+    expect(cp.totalClient).toBe(3200 - 320 + 3000 + 2000 + 1864);   // 9744
+    expect(cp.extras).toBe(snap.extras);   // возвращается как есть, для портала/UI
+  });
   it("без раздела — базовая наценка; пустой снимок = 0", () => {
     const cp = FFE.clientPricing({ rooms: [{ items: [{ title: "Z", price: 100, qty: 1 }] }], markup: 20 });
     expect(cp.unitClient({ price: 100 })).toBe(120);

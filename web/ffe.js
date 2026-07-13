@@ -324,13 +324,14 @@
      lineClient/client + discountAmt/totalClient) — чтобы клиентский портал (волна A2)
      считал итог ТЕМИ ЖЕ числами, что видит дизайнер. Правило округления то же: округляем
      ЦЕНУ ЗА ШТУКУ, сумма строки = цена × кол-во. snap = снимок версии
-     {rooms, markup, catMarkup, discount, delivery, install}. */
+     {rooms, markup, catMarkup, discount, delivery, install, extras}. */
   function clientPricing(snap) {
     const s = snap || {};
     const rooms = Array.isArray(s.rooms) ? s.rooms : [];
     const markup = +s.markup || 0;
     const catMarkup = s.catMarkup || {};
     const discount = +s.discount || 0, delivery = +s.delivery || 0, install = +s.install || 0;
+    const extras = Array.isArray(s.extras) ? s.extras : [];
     const catOf = (it) => it.cat || "Прочее";
     const pctOf = (cat) => (catMarkup[cat] != null ? catMarkup[cat] : markup);
     // наценка — поверх себестоимости С УЧЁТОМ запаса/отхода (costUnit), не поверх сырой
@@ -339,8 +340,12 @@
     const lineClient = (it) => unitClient(it) * (it.qty || 1);
     const client = rooms.reduce((a, r) => a + (r.items || []).reduce((x, it) => x + lineClient(it), 0), 0);
     const discountAmt = Math.round(client * discount / 100);
-    const totalClient = client - discountAmt + delivery + install;
-    return { catOf, pctOf, costUnit, unitClient, lineClient, client, discount, discountAmt, delivery, install, totalClient };
+    // сборы (доставка/монтаж/НДС/кастомные, волна услуг) — % считаем от одной и той же базы
+    // (товары после скидки, ДО доставки/монтажа/др. сборов — не каскадом друг на друга)
+    const extrasBase = client - discountAmt;
+    const extrasAmt = extrasTotal(extras, extrasBase);
+    const totalClient = client - discountAmt + delivery + install + extrasAmt;
+    return { catOf, pctOf, costUnit, unitClient, lineClient, client, discount, discountAmt, delivery, install, extras, extrasAmt, totalClient };
   }
 
   /* ----------------------------- УСЛУГИ И СБОРЫ (доставка/монтаж/налог) -----------------------------

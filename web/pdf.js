@@ -37,7 +37,7 @@
   //       "client" — только цена клиента, без себестоимости/наценки/бюджета;
   //       "procure" — закупочный лист: группировка по поставщикам, только себестоимость.
   // catMarkupPct: {раздел: %} — свои наценки поверх базовой markupPct (как на экране сметы).
-  function exportRoomSpec({ project, area, rooms, grand, markupPct, catMarkupPct, clientTotal, discountPct, deliveryCost, installCost, budget, mode, studioName, studioContact }) {
+  function exportRoomSpec({ project, area, rooms, grand, markupPct, catMarkupPct, clientTotal, discountPct, deliveryCost, installCost, extras, budget, mode, studioName, studioContact }) {
     if (!window.pdfMake) { (window.toast ? toast("PDF-модуль ещё загружается — попробуйте через секунду.", "info") : 0); return false; }
     if (mode === "procure") return exportProcurePDF({ project, area, rooms: rooms || [], grand, budget, studioName, studioContact });
     const clientMode = mode === "client";
@@ -46,7 +46,10 @@
     const fmtD = (d) => { const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(d || "")); return m ? m[3] + "." + m[2] + "." + m[1] : ""; };
     // итог структурой: скидка округляется до рубля от подытога — та же формула, что в UI/Excel
     const discountAmt = Math.round((clientTotal || 0) * (discountPct || 0) / 100);
-    const totalClient = (clientTotal || 0) - discountAmt + (deliveryCost || 0) + (installCost || 0);
+    // доп. сборы (доставка/монтаж/НДС/кастом) — та же база (товары после скидки), что в UI/Excel
+    const extrasList = Array.isArray(extras) ? extras : [];
+    const extrasAmt = FFE && FFE.extrasTotal ? FFE.extrasTotal(extrasList, (clientTotal || 0) - discountAmt) : 0;
+    const totalClient = (clientTotal || 0) - discountAmt + (deliveryCost || 0) + (installCost || 0) + extrasAmt;
     const pctOf = (it) => { const c = it.cat || "Прочее"; return catMarkupPct && catMarkupPct[c] != null ? catMarkupPct[c] : (markupPct || 0); };
     // себестоимость учитывает запас/отход (FFE.costUnit — тот же источник, что в UI/Excel)
     const costUnit = (it) => (FFE && FFE.costUnit ? FFE.costUnit(it) : it.price);
@@ -84,10 +87,11 @@
     // итог структурой: подытог → скидка → наценка → доставка/монтаж → ИТОГО (нулевые строки опускаем)
     const totalRows = [];
     if (clientMode) {
-      if (discountAmt > 0 || deliveryCost > 0 || installCost > 0) totalRows.push({ text: "Подытог: " + money(clientTotal), alignment: "right", fontSize: 10.5 });
+      if (discountAmt > 0 || deliveryCost > 0 || installCost > 0 || extrasAmt > 0) totalRows.push({ text: "Подытог: " + money(clientTotal), alignment: "right", fontSize: 10.5 });
       if (discountAmt > 0) totalRows.push({ text: "Скидка (−" + discountPct + "%): −" + money(discountAmt), alignment: "right", fontSize: 10.5 });
       if (deliveryCost > 0) totalRows.push({ text: "Доставка: +" + money(deliveryCost), alignment: "right", fontSize: 10.5 });
       if (installCost > 0) totalRows.push({ text: "Монтаж и сборка: +" + money(installCost), alignment: "right", fontSize: 10.5 });
+      extrasList.forEach((ex) => { const a = FFE && FFE.extraAmount ? FFE.extraAmount(ex, (clientTotal || 0) - discountAmt) : 0; if (a > 0) totalRows.push({ text: ex.label + ": +" + money(a), alignment: "right", fontSize: 10.5 }); });
       totalRows.push({ text: "Итого: " + money(totalClient), alignment: "right", style: "total", margin: [0, 3, 0, 0] });
       content.push({ columns: [ { text: "", width: "*" }, { stack: totalRows, margin: [0, 6, 0, 0] } ] });
     } else {
@@ -98,6 +102,7 @@
       if (discountAmt > 0) totalRows.push({ text: "Скидка клиенту (−" + discountPct + "%): −" + money(discountAmt), alignment: "right", fontSize: 10.5 });
       if (deliveryCost > 0) totalRows.push({ text: "Доставка: +" + money(deliveryCost), alignment: "right", fontSize: 10.5 });
       if (installCost > 0) totalRows.push({ text: "Монтаж и сборка: +" + money(installCost), alignment: "right", fontSize: 10.5 });
+      extrasList.forEach((ex) => { const a = FFE && FFE.extraAmount ? FFE.extraAmount(ex, (clientTotal || 0) - discountAmt) : 0; if (a > 0) totalRows.push({ text: ex.label + ": +" + money(a), alignment: "right", fontSize: 10.5 }); });
       totalRows.push({ text: "Итого для клиента: " + money(totalClient), alignment: "right", style: "total", margin: [0, 3, 0, 0] });
       content.push({ columns: [
         { text: over ? "Превышение бюджета на " + money(grand - budget) : "В рамках бюджета (" + money(budget) + ")", color: over ? PDF.warn : PDF.ok, fontSize: 10, margin: [0, 6, 0, 0] },

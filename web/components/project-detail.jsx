@@ -67,7 +67,7 @@ function ProjectDetail({ id, nav, onClose }) {
   if (nav === "") return <ProjectOverview key={data.id || "overview"} data={data} onClose={onClose} />;
   // W4.2: «Настройки» — детали проекта (не режим выгрузки сметы), отдельная от RoomSpecOverlay ветка
   if (nav === "settings") return <ProjectSettings key={data.id || "settings"} data={data} onClose={onClose} onSaved={applyPatch} />;
-  return <RoomSpecOverlay key={data.id || "imported"} data={data} nav={nav} onClose={onClose} />;
+  return <RoomSpecOverlay key={data.id || "imported"} data={data} nav={nav} onClose={onClose} onSaved={applyPatch} />;
 }
 
 /* W5.1: «К комнате ▾» — прыжок по секциям длинной сметы (паттерн Programa «View section»):
@@ -127,13 +127,19 @@ function CartMetric({ v, cap, tone }) {
 
 /* ---------------- СМЕТА-КОМПЛЕКТАЦИЯ ПО КОМНАТАМ (реальный дизайн-проект) ----------------
    nav — раздел из сайдбара проекта (волна W1): '' смета · client · procure · versions */
-function RoomSpecOverlay({ data, nav, onClose }) {
+function RoomSpecOverlay({ data, nav, onClose, onSaved }) {
   const [markup, setMarkup] = usePD(data.markupPct != null ? data.markupPct : PD_DEFAULT_MARKUP);
   const [catMarkup, setCatMarkup] = usePD(data.catMarkupPct || {});  // {раздел: %} — своя наценка поверх базовой (пусто = наследует)
   const [catOpen, setCatOpen] = usePD(false);
   const [discount, setDiscount] = usePD(data.discountPct || 0);      // скидка клиенту, % от подытога
   const [delivery, setDelivery] = usePD(data.deliveryCost || 0);     // доставка, ₽ (транзитом, без наценки)
   const [install, setInstall] = usePD(data.installCost || 0);        // монтаж и сборка, ₽
+  const [extras, setExtras] = usePD(data.extras || []);              // доп. сборы (доставка/монтаж/НДС/кастом) — {id,label,kind,value}
+  const [addExtraOpen, setAddExtraOpen] = usePD(false);               // меню «+ Добавить сбор» (пресеты + «Другое»)
+  const [addCustomOpen, setAddCustomOpen] = usePD(false);             // инлайн-форма кастомного сбора
+  const [customLabel, setCustomLabel] = usePD("");
+  const [customKind, setCustomKind] = usePD("fixed");
+  useMenu(addExtraOpen, () => setAddExtraOpen(false), "pd-add-extra");
   const [mode, setMode] = usePD("work");   // режим выгрузки: "work" (рабочая) / "client" (для клиента) / "procure" (закупка)
   const [cartOpen, setCartOpen] = usePD(false);   // Д4 (W6): раскладка липкого итога (паттерн Programa Financial-полосы)
   const [rooms, setRooms] = usePD(data.rooms || []);  // позиции редактируемы: копии из прошлых проектов, шаблоны, поставщики
@@ -169,6 +175,7 @@ function RoomSpecOverlay({ data, nav, onClose }) {
     setDiscount(p.discountPct || 0);
     setDelivery(p.deliveryCost || 0);
     setInstall(p.installCost || 0);
+    setExtras(p.extras || []);
     toast("Применён стандарт «" + p.name + "»");
   };
   const saveProfile = (e) => {
@@ -176,7 +183,7 @@ function RoomSpecOverlay({ data, nav, onClose }) {
     const name = profName.trim();
     if (!name || profSaving) return;
     setProfSaving(true);
-    LedgerAPI.markupProfiles.create({ name, markupPct: markup, catMarkupPct: catMarkup, discountPct: discount, deliveryCost: delivery, installCost: install })
+    LedgerAPI.markupProfiles.create({ name, markupPct: markup, catMarkupPct: catMarkup, discountPct: discount, deliveryCost: delivery, installCost: install, extras })
       .then((row) => { setProfiles((ps) => [...ps, row]); setProfName(""); setProfSaving(false); toast("Стандарт «" + row.name + "» сохранён"); });
   };
   const removeProfile = async (p) => {
@@ -190,27 +197,30 @@ function RoomSpecOverlay({ data, nav, onClose }) {
      состояния (тех же полей, что несёт patch ниже); dirty — плоское сравнение на
      каждый рендер (JSON.stringify недорог на размере сметы, а useMemo здесь дал бы
      ложный «неизменившийся» результат — deps не видят мутацию ref после сохранения). */
-  const pdSnap = (m, cm, d, dl, ins, rm) => JSON.stringify({ m, cm, d, dl, ins, rm });
+  const pdSnap = (m, cm, d, dl, ins, ex, rm) => JSON.stringify({ m, cm, d, dl, ins, ex, rm });
   const savedSnapRef = usePDR(pdSnap(
     data.markupPct != null ? data.markupPct : PD_DEFAULT_MARKUP, data.catMarkupPct || {},
-    data.discountPct || 0, data.deliveryCost || 0, data.installCost || 0, data.rooms || []));
-  const dirty = pdSnap(markup, catMarkup, discount, delivery, install, rooms) !== savedSnapRef.current;
+    data.discountPct || 0, data.deliveryCost || 0, data.installCost || 0, data.extras || [], data.rooms || []));
+  const dirty = pdSnap(markup, catMarkup, discount, delivery, install, extras, rooms) !== savedSnapRef.current;
   const savingRef = usePDR(null);   // промис уже идущего сохранения — вторая правка не должна коротить мимо него Promise.resolve()
   const saveRoom = () => {
     if (savingRef.current) return savingRef.current;
     setRoomSaving(true);
-    const snap = pdSnap(markup, catMarkup, discount, delivery, install, rooms);
+    const snap = pdSnap(markup, catMarkup, discount, delivery, install, extras, rooms);
     const done = () => { savedSnapRef.current = snap; savingRef.current = null; setRoomSaving(false); setRoomSaved(true); setTimeout(() => setRoomSaved(false), 1700); };
-    const patch = { markupPct: markup, catMarkupPct: catMarkup, discountPct: discount, deliveryCost: delivery, installCost: install, rooms, items: itemsCount };
+    const patch = { markupPct: markup, catMarkupPct: catMarkup, discountPct: discount, deliveryCost: delivery, installCost: install, extras, rooms, items: itemsCount };
     const p = savedId
-      ? LedgerAPI.projects.update(savedId, patch).then(done)
+      // родитель (ProjectDetail) держит СВОЮ копию data, фетчнутую один раз при монтировании —
+      // без onSaved(updated) Обзор/шапка после сохранения показывали бы устаревшие итоги
+      // (в частности, только что добавленные сборы) до полной перезагрузки
+      ? LedgerAPI.projects.update(savedId, patch).then((updated) => { if (onSaved) onSaved(updated); done(); })
       // импортированная из Excel смета не привязана к проекту — создаём его,
       // иначе «Сохранено» врало бы, а наценки терялись при закрытии оверлея
       : LedgerAPI.projects.create({
           name: data.name || "Смета из Excel", room: data.generated ? "Черновик по площади" : "Комплектация из Excel", style: "",
           area: data.area, budget: data.budget || 0,
           summaryShort: data.summaryShort, ...patch,
-        }).then((p2) => { setSavedId(p2.id); toast("Смета сохранена в «Мои проекты»"); done(); });
+        }).then((p2) => { setSavedId(p2.id); if (onSaved) onSaved(p2); toast("Смета сохранена в «Мои проекты»"); done(); });
     savingRef.current = p;
     return p;
   };
@@ -507,15 +517,18 @@ function RoomSpecOverlay({ data, nav, onClose }) {
     const n = products.length;
     toast("Добавлено " + n + " " + plural(n, ["позиция", "позиции", "позиций"]) + " из библиотеки. Не забудьте сохранить смету.");
   };
-  // итог структурой: подытог (client) → скидка → доставка/монтаж → ИТОГО.
+  // итог структурой: подытог (client) → скидка → доставка/монтаж/сборы → ИТОГО.
   // Скидка округляется до рубля от подытога — та же формула в PDF/Excel (инвариант выгрузок)
   const discountAmt = Math.round(client * discount / 100);
+  // сборы (доставка/монтаж/НДС/кастом) — % считаем от той же базы, что ffe.js clientPricing
+  // (товары после скидки, не каскадом друг на друга); FFE.extrasTotal — единый источник
+  const extrasAmt = FFE.extrasTotal(extras, client - discountAmt);
   // производные наценки/маржи — ОДНО место для липкой полосы (Д4) и блока «Итог сметы»
   // (W6-ревью: формулы были скопированы, правка «наценки по разделам» разъехалась бы)
   const markupAmt = client - grand;
   const markupLabel = ovrCount > 0 ? "≈ +" + effPct + "%" : "+" + markup + "%";
-  const margin = client - discountAmt - grand;   // транзитные доставка/монтаж в марже не участвуют
-  const totalClient = client - discountAmt + delivery + install;
+  const margin = client - discountAmt - grand;   // транзитные доставка/монтаж/сборы в марже не участвуют
+  const totalClient = client - discountAmt + delivery + install + extrasAmt;
   // эргономика по комнатам: там, где в РД есть план расстановки (plan+layout); мои нормы учитываются.
   // До прихода settings не считаем — иначе первый кадр показан по канону и «мигает» при загрузке моих норм
   const effNorms = settings ? { ...(settings.normsOverride || {}), enabled: settings.enabledNorms || {} } : undefined;
@@ -524,7 +537,7 @@ function RoomSpecOverlay({ data, nav, onClose }) {
     : [];
   const ergoWarns = ergo.reduce((s, e) => s + e.res.warns, 0);
   const ergoSkipped = rooms.length - ergo.length;
-  const specArgs = () => ({ project: data.name, area: data.area, rooms, grand, markupPct: markup, catMarkupPct: catMarkup, clientTotal: client, discountPct: discount, deliveryCost: delivery, installCost: install, budget: data.budget, mode, studioName, studioContact });
+  const specArgs = () => ({ project: data.name, area: data.area, rooms, grand, markupPct: markup, catMarkupPct: catMarkup, clientTotal: client, discountPct: discount, deliveryCost: delivery, installCost: install, extras, budget: data.budget, mode, studioName, studioContact });
   const exportPDF = () => { if (window.LedgerPDF && LedgerPDF.exportRoomSpec) withLib("pdf", () => LedgerPDF.exportRoomSpec(specArgs())); };
   const exportXLSX = () => { if (window.LedgerXLSX) withLib("xlsx", () => LedgerXLSX.exportRoomSpec(specArgs())); };
 
@@ -549,7 +562,7 @@ function RoomSpecOverlay({ data, nav, onClose }) {
       createdAt: new Date().toISOString(),
       total: grand, clientTotal: totalClient, positions: itemsCount,
       status: "draft", statusAt: "", note: "",
-      snapshot: JSON.parse(JSON.stringify({ rooms, markup, catMarkup, discount, delivery, install })),
+      snapshot: JSON.parse(JSON.stringify({ rooms, markup, catMarkup, discount, delivery, install, extras })),
     }, ...prev]);
   };
   const restoreVersion = (v) => {
@@ -557,7 +570,7 @@ function RoomSpecOverlay({ data, nav, onClose }) {
     setRooms(Array.isArray(s.rooms) ? s.rooms : []);
     if (typeof s.markup === "number") setMarkup(s.markup);
     setCatMarkup(s.catMarkup || {});
-    setDiscount(s.discount || 0); setDelivery(s.delivery || 0); setInstall(s.install || 0);
+    setDiscount(s.discount || 0); setDelivery(s.delivery || 0); setInstall(s.install || 0); setExtras(s.extras || []);
     setEditPos(null);
     closeVersions();   // не голый setVersionsOpen(false): роут /versions обязан сброситься, иначе пункт сайдбара «Версии» мёртв (hash уже равен цели — hashchange не случится)
     toast("Версия «" + v.label + "» загружена в рабочую смету. Не забудьте сохранить.");
@@ -1055,7 +1068,7 @@ function RoomSpecOverlay({ data, nav, onClose }) {
                   </div>
                 </React.Fragment>
               )}
-              {(mode === "work" || discountAmt > 0 || delivery > 0 || install > 0) && (
+              {(mode === "work" || discountAmt > 0 || delivery > 0 || install > 0 || extrasAmt > 0) && (
                 <div style={{ ...RS_ROW, borderTop: "1px solid var(--hairline-2)" }}>
                   <span style={{ fontWeight: 600 }}>{mode === "work" ? "Подытог для клиента" : "Подытог"}</span>
                   <span className="mono rs-val" style={{ fontWeight: 600 }}>{fmtMoney(client)}</span>
@@ -1109,12 +1122,76 @@ function RoomSpecOverlay({ data, nav, onClose }) {
                     </span>
                     <span id="rs-inst-val" className="mono rs-val" style={{ color: install > 0 ? undefined : "var(--faint)" }}>{install > 0 ? "+" + fmtMoney(install) : "—"}</span>
                   </div>
+                  {/* доп. сборы (доставка/монтаж/НДС/кастом) — редактируемый список поверх Доставки/Монтажа выше */}
+                  {extras.map((ex) => {
+                    const exAmt = FFE.extraAmount(ex, client - discountAmt);
+                    return (
+                      <div key={ex.id} style={{ ...RS_ROW, borderTop: "1px solid var(--hairline-2)" }}>
+                        <span style={{ color: "var(--muted)", display: "inline-flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                          {ex.label}
+                          <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
+                            <input className="fld" type="number" min="0" max={ex.kind === "percent" ? 100 : 1000000} step={ex.kind === "percent" ? 1 : 500} inputMode="numeric"
+                              value={ex.value || ""} placeholder="0" aria-label={ex.label + ", " + (ex.kind === "percent" ? "%" : "₽")}
+                              onKeyDown={(e) => { if (!e.ctrlKey && !e.metaKey && ["e", "E", "+", "-", ".", ","].includes(e.key)) e.preventDefault(); }}
+                              onChange={(e) => { const v = e.target.value; const cap = ex.kind === "percent" ? 100 : 1000000; const n = v === "" ? 0 : Math.max(0, Math.min(cap, Math.round(+v))); if (!isNaN(n)) setExtras((xs) => xs.map((x) => (x.id === ex.id ? { ...x, value: n } : x))); }}
+                              style={{ width: ex.kind === "percent" ? 56 : 88, padding: "5px 8px", fontSize: "var(--fs-12)", fontFamily: "var(--font-mono)", textAlign: "right" }} />
+                            <span className="mono" style={{ fontSize: "var(--fs-11)", color: "var(--spec-meta)" }}>{ex.kind === "percent" ? "%" : "₽"}</span>
+                          </span>
+                          <button type="button" className="icon-btn xs" aria-label={"Удалить сбор «" + ex.label + "»"} title="Удалить сбор"
+                            onClick={() => setExtras((xs) => xs.filter((x) => x.id !== ex.id))} style={{ color: "var(--spec-meta)" }}>
+                            <I.close size={12} />
+                          </button>
+                        </span>
+                        <span className="mono rs-val" style={{ color: exAmt > 0 ? undefined : "var(--faint)" }}>{exAmt > 0 ? "+" + fmtMoney(exAmt) : "—"}</span>
+                      </div>
+                    );
+                  })}
+                  <div style={{ ...RS_ROW, borderTop: "1px solid var(--hairline-2)" }}>
+                    {addCustomOpen ? (
+                      <span style={{ display: "inline-flex", alignItems: "center", gap: 6, flexWrap: "wrap", width: "100%" }}>
+                        <input className="fld" value={customLabel} placeholder="Название сбора" autoFocus onChange={(e) => setCustomLabel(e.target.value)}
+                          style={{ width: 140, padding: "5px 8px", fontSize: "var(--fs-12)" }} />
+                        <select className="fld" value={customKind} aria-label="Тип сбора" onChange={(e) => setCustomKind(e.target.value)} style={{ padding: "5px 6px", fontSize: "var(--fs-12)" }}>
+                          <option value="fixed">₽</option>
+                          <option value="percent">%</option>
+                        </select>
+                        <button type="button" className="btn btn-ghost" style={{ padding: "4px 10px", fontSize: "var(--fs-12)" }}
+                          disabled={!customLabel.trim()}
+                          onClick={() => { setExtras((xs) => [...xs, FFE.blankExtra({ label: customLabel, kind: customKind, value: 0 })]); setCustomLabel(""); setCustomKind("fixed"); setAddCustomOpen(false); }}>
+                          Добавить
+                        </button>
+                        <button type="button" className="icon-btn xs" aria-label="Отменить добавление сбора" onClick={() => { setAddCustomOpen(false); setCustomLabel(""); }}><I.close size={12} /></button>
+                      </span>
+                    ) : (
+                      <span className="pd-add-extra" style={{ position: "relative", display: "inline-flex" }}>
+                        <button type="button" className="btn btn-ghost" aria-haspopup="menu" aria-expanded={addExtraOpen}
+                          style={{ padding: "4px 10px", fontSize: "var(--fs-12)", color: "var(--muted)" }} onClick={() => setAddExtraOpen((o) => !o)}>
+                          + Добавить сбор
+                        </button>
+                        <MenuPop open={addExtraOpen} label="Добавить сбор">
+                          {FFE.EXTRA_PRESETS.map((p) => (
+                            <button key={p.key} role="menuitem" className="menu-item" onClick={() => { setExtras((xs) => [...xs, FFE.blankExtra(p)]); setAddExtraOpen(false); }}>{p.label}</button>
+                          ))}
+                          <button role="menuitem" className="menu-item" onClick={() => { setAddExtraOpen(false); setAddCustomOpen(true); }}>Другое…</button>
+                        </MenuPop>
+                      </span>
+                    )}
+                  </div>
                 </React.Fragment>
               ) : (
                 <React.Fragment>
                   {discountAmt > 0 && <div style={{ ...RS_ROW, borderTop: "1px solid var(--hairline-2)" }}><span style={{ color: "var(--muted)" }}>Скидка −{discount}%</span><span className="mono rs-val">−{fmtMoney(discountAmt)}</span></div>}
                   {delivery > 0 && <div style={{ ...RS_ROW, borderTop: "1px solid var(--hairline-2)" }}><span style={{ color: "var(--muted)" }}>Доставка</span><span className="mono rs-val">+{fmtMoney(delivery)}</span></div>}
                   {install > 0 && <div style={{ ...RS_ROW, borderTop: "1px solid var(--hairline-2)" }}><span style={{ color: "var(--muted)" }}>Монтаж и сборка</span><span className="mono rs-val">+{fmtMoney(install)}</span></div>}
+                  {extras.map((ex) => {
+                    const exAmt = FFE.extraAmount(ex, client - discountAmt);
+                    return exAmt > 0 ? (
+                      <div key={ex.id} style={{ ...RS_ROW, borderTop: "1px solid var(--hairline-2)" }}>
+                        <span style={{ color: "var(--muted)" }}>{ex.label}</span>
+                        <span className="mono rs-val">+{fmtMoney(exAmt)}</span>
+                      </div>
+                    ) : null;
+                  })}
                 </React.Fragment>
               )}
               {/* ИТОГО — жирная чертёжная линия + крупный mono */}
@@ -1201,7 +1278,7 @@ function RoomSpecOverlay({ data, nav, onClose }) {
                         <CartMetric v={"+" + fmtMoney(markupAmt)} cap={"наценка " + markupLabel} />
                         {discountAmt > 0 && <CartMetric v={"−" + fmtMoney(discountAmt)} cap={"скидка " + discount + "%"} tone="var(--accent-ink)" />}
                         <CartMetric v={fmtMoney(margin)} cap="ваша маржа" tone={marginTone} />
-                        {(delivery > 0 || install > 0) && <CartMetric v={fmtMoney(delivery + install)} cap="доставка и монтаж · вне наценки" />}
+                        {(delivery > 0 || install > 0 || extrasAmt > 0) && <CartMetric v={fmtMoney(delivery + install + extrasAmt)} cap="доставка/монтаж/сборы · вне наценки" />}
                       </span>
                     ) : (
                       <span className="glass mono" style={{ padding: "7px 12px", borderRadius: 99, fontSize: "var(--fs-12)", fontWeight: 500, color: "var(--muted)" }}>
@@ -2140,13 +2217,13 @@ function projectMetrics(data) {
   const rooms = (data && data.rooms) || [];
   const markup = data.markupPct != null ? data.markupPct : PD_DEFAULT_MARKUP;
   const catMarkup = data.catMarkupPct || {};
-  const discount = data.discountPct || 0, delivery = data.deliveryCost || 0, install = data.installCost || 0;
+  const discount = data.discountPct || 0, delivery = data.deliveryCost || 0, install = data.installCost || 0, extras = data.extras || [];
   const items = rooms.flatMap((r) => r.items || []);
   const itemsCount = items.length;
   // себестоимость включает запас/отход (FFE.lineTotal) — тем же costUnit, что и Смета
   // (RoomSpecOverlay), иначе profit = client − grand завышался бы на стоимость запаса
   const grand = items.reduce((s, it) => s + (FFE ? FFE.lineTotal(it) : (it.price || 0) * (it.qty || 1)), 0);
-  const pricing = FFE ? FFE.clientPricing({ rooms, markup, catMarkup, discount, delivery, install })
+  const pricing = FFE ? FFE.clientPricing({ rooms, markup, catMarkup, discount, delivery, install, extras })
     : { client: 0, discountAmt: 0, totalClient: 0 };
   const profit = pricing.client - pricing.discountAmt - grand;  // доставка/монтаж — транзит (без наценки), в профит не входят
   // согласование клиента по позициям (то же правило: отсутствие поля = «ждёт»)
