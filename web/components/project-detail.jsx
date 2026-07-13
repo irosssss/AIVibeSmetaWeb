@@ -2367,8 +2367,13 @@ function projectMetrics(data) {
   const pricing = FFE ? FFE.clientPricing({ rooms, markup, catMarkup, discount, delivery, install, extras })
     : { client: 0, discountAmt: 0, totalClient: 0 };
   const profit = pricing.client - pricing.discountAmt - grand;  // доставка/монтаж — транзит (без наценки), в профит не входят
-  // согласование клиента по позициям (то же правило: отсутствие поля = «ждёт»)
+  // согласование клиента по позициям (то же правило: отсутствие поля = «ждёт»);
+  // K5b: возвраты (пересмотр/отклонено) считаем отдельно — «клиент вернул» требует
+  // действия ДИЗАЙНЕРА, смешивать с «клиент ещё не смотрел» нечестно (Programa
+  // различает тем же сабстатусом «No rejected items» под Pending approval)
   const apOk = FFE ? items.filter((it) => FFE.APPROVE_BY_ID[it.approve] && it.approve === "ok").length : 0;
+  const apRevise = FFE ? items.filter((it) => it.approve === "revise").length : 0;
+  const apRejected = FFE ? items.filter((it) => it.approve === "rejected").length : 0;
   const apWaiting = itemsCount - apOk;
   // стадии закупки: заказано..установлено = «в работе», принято = закрыто; просрочка — по датам стадий/платежей
   let inWork = 0, accepted = 0, overdue = 0;
@@ -2383,7 +2388,7 @@ function projectMetrics(data) {
   const share = versions.find((v) => v.shareId) || null;   // портал клиента выпущен, если у версии есть shareId
   const photos = items.map((it) => it.img).filter(Boolean);
   return { itemsCount, grand, client: pricing.client, totalClient: pricing.totalClient, profit,
-    apOk, apWaiting, inWork, accepted, overdue, fresh, versions, approved, share, photos, roomsCount: rooms.length };
+    apOk, apRevise, apRejected, apWaiting, inWork, accepted, overdue, fresh, versions, approved, share, photos, roomsCount: rooms.length };
 }
 
 /* тумбнейл документа: коллаж 2×2 из фото позиций (паттерн Programa); нет фото —
@@ -2532,7 +2537,11 @@ function ProjectOverview({ data, onClose }) {
             <div className="ov-kpis" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 14, marginBottom: 34 }}>
               <OvKpi label="Позиции" value={m.itemsCount} onClick={() => goSection("smeta")}
                 title="Открыть смету"
+                // K5b: возвраты клиента первыми — «на пересмотр/отклонено» требует действия дизайнера,
+                // «ждут решения» — только терпения; смешивать их в одну цифру нечестно
                 sub={m.itemsCount === 0 ? "добавьте первую позицию"
+                  : (m.apRevise + m.apRejected) > 0
+                    ? [m.apRevise ? m.apRevise + " на пересмотр" : null, m.apRejected ? m.apRejected + " отклонено" : null, m.apOk + " согласовано"].filter(Boolean).join(" · ")
                   : m.apWaiting > 0 ? m.apWaiting + " ждут решения · " + m.apOk + " согласовано"
                   : "все " + m.apOk + " согласованы"}
                 subTone={m.itemsCount > 0 && m.apWaiting > 0 ? "var(--accent-ink)" : m.itemsCount > 0 ? "var(--accent-2-ink)" : undefined} />
