@@ -61,8 +61,11 @@
     const roomCost = (r) => r.items.reduce((s, it) => s + lineCost(it), 0);
     const roomClient = (r) => r.items.reduce((s, it) => s + lineClient(it), 0);
     // RRP-слой (роадмап п.17): построчная выгода клиента от розницы — та же математика, что
-    // FFE.clientPricing/UI/PDF (rrpLine учитывает запас); в ячейки идёт только положительная
-    // выгода (витрина), в колонку «Розница/ед.» — СЫРАЯ rrp без запаса, как «Цена, ₽» идёт
+    // FFE.clientPricing/UI/PDF (rrpLine учитывает запас). В ячейку «Выгода» идёт NET-величина
+    // по каждой позиции с заданной rrp — в т.ч. ≤0, если наценка вывела клиентскую цену выше
+    // розницы: тогда столбец сходится со своим «Итого» (net). Клип строк до >0 завышал бы
+    // столбец относительно честного итога (найдено ревью — UI/портал прячут ≤0, но там нет
+    // столбца-с-итогом). В колонку «Розница/ед.» — СЫРАЯ rrp без запаса, как «Цена, ₽» идёт
     // сырой price: иначе round-trip наложил бы запас второй раз при переимпорте
     const lineSavings = (it) => (+it.rrp > 0 && FFE && FFE.rrpLine ? FFE.rrpLine(it) - lineClient(it) : 0);
     let rrpTotal = 0, rrpBase = 0;
@@ -223,7 +226,7 @@
       if (hasUnit) row.push(unitCell(it));
       if (clientMode) row.push(unitClient(it), lineClient(it));
       else row.push(it.price, lineCost(it), unitClient(it), lineClient(it));
-      if (hasRrp) { const sv = lineSavings(it); row.push(+it.rrp > 0 ? it.rrp : "", sv > 0 ? sv : ""); }
+      if (hasRrp) { const sv = lineSavings(it); row.push(+it.rrp > 0 ? it.rrp : "", +it.rrp > 0 ? sv : ""); }
       if (hasPD) row.push(fmtDateCell(it.priceDate));
       if (hasAp) row.push(apLabel(it), fmtDateCell(it.approveAt));
       all.push(row);
@@ -260,15 +263,16 @@
         if (hasUnit) row.push(unitCell(it));
         if (clientMode) row.push(unitClient(it), lineClient(it));
         else row.push(it.price, lineCost(it), unitClient(it), lineClient(it));
-        if (hasRrp) { const sv = lineSavings(it); row.push(+it.rrp > 0 ? it.rrp : "", sv > 0 ? sv : ""); }
+        if (hasRrp) { const sv = lineSavings(it); row.push(+it.rrp > 0 ? it.rrp : "", +it.rrp > 0 ? sv : ""); }
         rows.push(row);
       });
       const trow = new Array(rHead.length).fill("");
       trow[rcol("Наименование")] = "Итого по комнате";
       if (!clientMode) trow[rcol("Сумма, ₽")] = roomCost(r);
       trow[rcol("Сумма клиенту, ₽")] = roomClient(r);
-      // итог выгоды — net (с отрицательными строками), как «Итого по позициям» мастер-таблицы:
-      // клип по строкам завысил бы итог относительно честной суммы
+      // итог выгоды — net (строки тоже net, в т.ч. ≤0): столбец сходится со своим «Итого»,
+      // как в мастер-таблице. Показываем итог только при rs>0 (витрина), но per-row ячейки
+      // остаются net — иначе видимый столбец завышал бы честную сумму
       if (hasRrp) { const rs = r.items.reduce((s, it) => s + lineSavings(it), 0); if (rs > 0) trow[rcol("Выгода, ₽")] = rs; }
       rows.push(trow);
       const ws = XLSX.utils.aoa_to_sheet(rows);
