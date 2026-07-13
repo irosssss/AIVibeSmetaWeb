@@ -148,6 +148,8 @@ function RoomSpecOverlay({ data, nav, onClose, onSaved }) {
   const [addOpen, setAddOpen] = usePD(null);
   const [roomSaved, setRoomSaved] = usePD(false);
   const [roomSaving, setRoomSaving] = usePD(false);   // guard: двойной клик «Сохранить» не должен создать проект-дубль
+  const [poBusy, setPoBusy] = usePD(false);   // guard: двойной клик «Заказ (PDF)» не должен скачать документ дважды (withLib без своей блокировки)
+  const poBusyRef = usePDR(false);   // синхронный замок для той же гонки, что savingRef у «Сохранить»: два click() в один тик React ещё не перерендерил disabled
   const [savedId, setSavedId] = usePD(data.id || null);
   const [settings, setSettings] = usePD(null);   // мои нормы — для проверки эргономики по комнатам
   usePDE(() => { LedgerAPI.settings.get().then(setSettings); }, []);
@@ -990,12 +992,16 @@ function RoomSpecOverlay({ data, nav, onClose, onSaved }) {
                         {/* K5d: заказ поставщику (PO) — документ на ОДНОГО поставщика из его группы;
                            контакты в шапке документа — из адресной книги (K5a) по имени */}
                         {g.name !== NO_SUP && g.rows.length > 0 && (
-                          <button className="btn-ws" style={{ alignSelf: "center" }}
+                          <button className="btn-ws" style={{ alignSelf: "center" }} disabled={poBusy}
                             title={"Сформировать заказ поставщику «" + g.name + "» (PDF): позиции группы, закупочные цены, контакты из адресной книги"}
-                            onClick={() => { if (window.LedgerPDF) withLib("pdf", () => LedgerPDF.exportPurchaseOrder({
-                              project: data.name, supplierName: g.name,
-                              card: FFE && FFE.supplierMatch ? FFE.supplierMatch(supBook, g.name) : null,
-                              rows: g.rows, studioName, studioContact })); }}>
+                            onClick={() => {
+                              if (poBusyRef.current || !window.LedgerPDF) return;
+                              poBusyRef.current = true; setPoBusy(true);
+                              withLib("pdf", () => LedgerPDF.exportPurchaseOrder({
+                                project: data.name, supplierName: g.name,
+                                card: FFE && FFE.supplierMatch ? FFE.supplierMatch(supBook, g.name) : null,
+                                rows: g.rows, studioName, studioContact })).then(() => { poBusyRef.current = false; setPoBusy(false); });
+                            }}>
                             <I.download size={14} />Заказ (PDF)
                           </button>
                         )}
