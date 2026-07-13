@@ -61,6 +61,26 @@
   const APPROVE_BY_ID = Object.fromEntries(APPROVE_STATUSES.map((s) => [s.id, s]));
   const approveMeta = (id) => APPROVE_BY_ID[id] || APPROVE_BY_ID.pending;
 
+  /* Единая воронка строки (K2, паттерн Programa «один дропдаун статуса» — Draft/
+     Client review/approved → Procurement: Ordered…): сводит решение клиента (approve)
+     и стадию закупки (status) в ОДИН чип вместо двух раздельных панелей смета/закупка.
+     Как только закупка ушла дальше «Согласовано» (ordered+), реальная стадия закупки
+     важнее решения клиента — оно уже сыграло роль, чип становится read-only бейджем
+     реальной стадии. До заказа — решение клиента; «pending» без решения различаем на
+     «Черновик»/«На согласовании» по hasActiveShare (единственный внешний сигнал, что
+     смету вообще показывали клиенту — approve сам по себе «не отправлено» от
+     «отправлено, ждём ответа» не отличает, hasActiveShare считает вызывающая сторона
+     из versions.some(v => v.shareId)). Чистая функция — approve/status не пишет. */
+  function funnelStage(it, hasActiveShare) {
+    const st = statusMeta(it.status);
+    if (st.order >= STATUS_BY_ID.ordered.order) return { id: "status:" + it.status, label: st.label, color: st.color, locked: true };
+    const ap = APPROVE_BY_ID[it.approve] ? it.approve : "pending";
+    if (ap !== "pending") { const m = APPROVE_BY_ID[ap]; return { id: ap, label: m.label, color: m.color, locked: false }; }
+    return hasActiveShare
+      ? { id: "pending", label: "На согласовании", color: "var(--info)", locked: false }
+      : { id: "pending", label: "Черновик", color: "var(--faint)", locked: false };
+  }
+
   /* Платёжные даты закупки (волна C1, бенчмарк Programa) — 4 даты на позицию,
      независимое от стадии закупки измерение: деньги двигаются не синхронно
      с товаром (аванс платят до заказа, остаток — после доставки/монтажа).
@@ -797,7 +817,7 @@
     PROJ_STATUSES, PROJ_STATUS_COLOR, PROJ_STAGE_NEXT,
     FFE_CATEGORIES, FFE_UNITS, FFE_STATUSES, STATUS_LABEL, STATUS_BY_ID, DEFAULT_STATUS,
     DEFAULT_MARKUP_PCT,
-    APPROVE_STATUSES, APPROVE_BY_ID, approveMeta,
+    APPROVE_STATUSES, APPROVE_BY_ID, approveMeta, funnelStage,
     PAYMENT_KINDS, PAYKIND_BY_ID, blankPayment, blankPayments, blankTrack,
     URGENCY_BUCKETS, URGENCY_BY_ID, urgencyBucket, itemDueItems,
     EXTRA_PRESETS, statusMeta, statusProgress, stampStatus, today, priceFreshness,

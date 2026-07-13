@@ -339,3 +339,32 @@ describe("assignDocCodes — авто док-коды позиций (K1, пат
     expect(FFE.docCodePrefix("")).toBe("ПЗ");              // не задан
   });
 });
+
+describe("funnelStage — единый статус-чип строки (K2, паттерн Programa «один дропдаун»)", () => {
+  it("нет решения, шара не создана → «Черновик»", () => {
+    const s = FFE.funnelStage({ status: "specified" }, false);
+    expect(s).toMatchObject({ id: "pending", label: "Черновик", locked: false });
+  });
+  it("нет решения, шара создана → «На согласовании»", () => {
+    const s = FFE.funnelStage({ status: "specified" }, true);
+    expect(s).toMatchObject({ id: "pending", label: "На согласовании", locked: false });
+  });
+  it("approve=ok → «Согласовано» (тот же label, что APPROVE_STATUSES), даже без активной шары", () => {
+    const s = FFE.funnelStage({ status: "specified", approve: "ok" }, false);
+    expect(s).toMatchObject({ id: "ok", label: "Согласовано", locked: false });
+  });
+  it("approve=revise/rejected — свои лейблы, не коллапсируют в «На согласовании»", () => {
+    expect(FFE.funnelStage({ status: "specified", approve: "revise" }, true)).toMatchObject({ id: "revise", label: "На пересмотр" });
+    expect(FFE.funnelStage({ status: "specified", approve: "rejected" }, true)).toMatchObject({ id: "rejected", label: "Отклонено" });
+  });
+  it("status=approved (стадия закупки 2) — approve всё ещё главный, стадия не «заперта»", () => {
+    const s = FFE.funnelStage({ status: "approved", approve: "ok" }, true);
+    expect(s).toMatchObject({ id: "ok", locked: false });
+  });
+  it("status достиг ordered+ — стадия закупки побеждает решение клиента и запирает чип", () => {
+    const s = FFE.funnelStage({ status: "ordered", approve: "ok" }, true);
+    expect(s).toMatchObject({ label: "Заказано", locked: true });
+    // дальше по пайплайну — тоже locked, реальный лейбл стадии, а не общее «Заказано»
+    expect(FFE.funnelStage({ status: "shipped" }, true)).toMatchObject({ label: "Отгружено", locked: true });
+  });
+});
