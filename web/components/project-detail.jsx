@@ -161,6 +161,10 @@ function RoomSpecOverlay({ data, nav, onClose, onSaved }) {
   const reloadLibrary = () => LedgerAPI.library.list().then(setLibrary);
   usePDE(() => { reloadLibrary(); }, []);
   const [pickerRoom, setPickerRoom] = usePD(null);   // индекс комнаты с открытым пикером библиотеки | null
+  // адресная книга поставщиков (K5a): контакты подтягиваются к позициям по имени (supplierMatch)
+  const [supBook, setSupBook] = usePD([]);
+  const reloadSupBook = () => LedgerAPI.suppliers.list().then(setSupBook);
+  usePDE(() => { reloadSupBook(); }, []);
 
   /* --- профили наценки «мой стандарт» (роадмап п.4): применить одним кликом
      на новый проект или сохранить текущую настройку под именем --- */
@@ -520,6 +524,16 @@ function RoomSpecOverlay({ data, nav, onClose, onSaved }) {
     }
     LedgerAPI.library.create(FFE.productFromPosition(pos)).then(() => {
       reloadLibrary(); toast("«" + title + "» добавлен в библиотеку студии.");
+    });
+  };
+  // K5a: поставщик позиции → карточка адресной книги (паттерн saveToLibrary; дедуп по имени —
+  // supplierMatch, той же функцией, что находит карточку для контакт-чипа)
+  const saveToSupBook = (name) => {
+    const n = String(name || "").trim();
+    if (!FFE || !n) return;
+    if (FFE.supplierMatch(supBook, n)) { toast("«" + n + "» уже есть в адресной книге."); return; }
+    LedgerAPI.suppliers.create({ name: n }).then(() => {
+      reloadSupBook(); toast("«" + n + "» добавлен в адресную книгу. Контакты заполните в Мастерской → Поставщики.");
     });
   };
   const addLibToRoom = (ri, products) => {
@@ -919,6 +933,7 @@ function RoomSpecOverlay({ data, nav, onClose, onSaved }) {
                         const adjIdx = (dir) => { const j = i + dir; return j >= 0 && j < r.items.length ? j : null; };
                         return (
                           <PosEditor item={it} cats={cats} sups={supList} library={library} onToLibrary={saveToLibrary}
+                            supBook={supBook} onToSupBook={saveToSupBook}
                             markup={markup} catMarkup={catMarkup} codeHint={codeOf(ri, i)}
                             posNav={{ index: i, total: r.items.length, prev: adjIdx(-1), next: adjIdx(1),
                               go: (j, draft) => { if (draft) savePos(ri, i, draft); setEditPos({ ri, ii: j }); } }}
@@ -934,7 +949,8 @@ function RoomSpecOverlay({ data, nav, onClose, onSaved }) {
                     <div style={{ padding: "8px 0 2px", fontSize: "var(--fs-12)", color: "var(--muted)" }}>Все позиции комнаты согласованы клиентом ✓</div>
                   )}
                   {mode === "work" && (editPos && editPos.ri === ri && editPos.ii === -1
-                    ? <PosEditor isNew cats={cats} sups={supList} library={library} onToLibrary={saveToLibrary} markup={markup} catMarkup={catMarkup}
+                    ? <PosEditor isNew cats={cats} sups={supList} library={library} onToLibrary={saveToLibrary}
+                        supBook={supBook} onToSupBook={saveToSupBook} markup={markup} catMarkup={catMarkup}
                         onCancel={() => setEditPos(null)} onSave={(d) => savePos(ri, -1, d)} />
                     : <div style={{ display: "flex", gap: 8, marginTop: 10, flexWrap: "wrap" }}>
                         {/* Д1 (W6): инлайн-панель добавления в контексте комнаты — паттерн Programa
@@ -962,8 +978,12 @@ function RoomSpecOverlay({ data, nav, onClose, onSaved }) {
                 {supGroups.map((g) => (
                   <div key={g.name} className="glass" style={{ borderRadius: "var(--r-lg)", padding: "16px 18px" }}>
                     <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 12, marginBottom: 8, flexWrap: "wrap" }}>
-                      <span style={{ fontWeight: 800, fontFamily: "var(--font-display)", fontSize: "var(--fs-16)", color: g.name === NO_SUP ? "var(--muted)" : undefined }}>
-                        {g.name}<span style={{ color: "var(--faint)", fontWeight: 500, fontSize: "var(--fs-13)" }}> · {g.rows.length} {plural(g.rows.length, ["позиция", "позиции", "позиций"])}</span>
+                      <span style={{ display: "flex", alignItems: "baseline", gap: 10, minWidth: 0, flexWrap: "wrap" }}>
+                        <span style={{ fontWeight: 800, fontFamily: "var(--font-display)", fontSize: "var(--fs-16)", color: g.name === NO_SUP ? "var(--muted)" : undefined }}>
+                          {g.name}<span style={{ color: "var(--faint)", fontWeight: 500, fontSize: "var(--fs-13)" }}> · {g.rows.length} {plural(g.rows.length, ["позиция", "позиции", "позиций"])}</span>
+                        </span>
+                        {/* K5a: контакты поставщика из адресной книги — прямо там, где дизайнер звонит/пишет по заказу */}
+                        {g.name !== NO_SUP && <SupplierContactChip book={supBook} name={g.name} />}
                       </span>
                       <span style={{ display: "flex", alignItems: "baseline", gap: 12 }}>
                         {FFE && <span className="mono" title="Средний прогресс стадий закупки позиций поставщика" style={{ fontSize: "var(--fs-11)", color: "var(--spec-meta)" }}>готовность {Math.round(rowsProgress(g.rows) * 100)}%</span>}
@@ -1749,7 +1769,7 @@ function FunnelChip({ it, hasActiveShare, onChangeApprove, onOpenProcure }) {
    деньги нормализуются до целых рублей, расчёты идут прежним конвейером
    (инвариант UI=PDF=Excel не трогаем). Enter — сохранить, Esc — закрыть
    редактор (не оверлей: stopPropagation до window-слушателя). */
-function PosEditor({ item, cats, sups, isNew, onSave, onDelete, onCancel, library, onToLibrary, posNav, markup, catMarkup, codeHint }) {
+function PosEditor({ item, cats, sups, isNew, onSave, onDelete, onCancel, library, onToLibrary, supBook, onToSupBook, posNav, markup, catMarkup, codeHint }) {
   const dm = (item && item.dims) || {};
   const s = (v) => (v == null || v === "" ? "" : String(v));
   const [d, setD] = usePD({
@@ -1884,6 +1904,20 @@ function PosEditor({ item, cats, sups, isNew, onSave, onDelete, onCancel, librar
             </label>
             <label style={lab}>Поставщик
               <input style={fld} list="pe-sup-list" value={d.sup} placeholder="точка закупки" onChange={(e) => setD((x) => ({ ...x, sup: e.target.value }))} />
+              {/* K5a: контакты из адресной книги под полем; карточки нет — кнопка создать (паттерн «В библиотеку») */}
+              {(() => {
+                const nm = (d.sup || "").trim();
+                const F2 = window.LedgerFFE;
+                if (!nm || !F2 || !F2.supplierMatch) return null;
+                if (F2.supplierMatch(supBook, nm)) return <span style={{ display: "block", marginTop: 4, overflow: "hidden" }}><SupplierContactChip book={supBook} name={nm} /></span>;
+                return onToSupBook ? (
+                  <button type="button" onClick={() => onToSupBook(nm)}
+                    style={{ display: "inline-flex", alignItems: "center", gap: 4, marginTop: 4, fontSize: "var(--fs-11)", color: "var(--info)" }}
+                    title="Создать карточку поставщика в адресной книге — контакты заполните в Мастерской → Поставщики">
+                    <I.plus size={11} />В адресную книгу
+                  </button>
+                ) : null;
+              })()}
             </label>
             <label style={lab} title="Запас на подрезку/бой — для плитки, краски и т.п.">Запас, %
               <input style={{ ...fld, fontFamily: "var(--font-mono)" }} type="number" min="0" step="1" inputMode="numeric" value={d.wastePct} placeholder="0" onChange={(e) => setD((x) => ({ ...x, wastePct: e.target.value }))} />
@@ -1970,7 +2004,8 @@ function PosEditor({ item, cats, sups, isNew, onSave, onDelete, onCancel, librar
       </div>
       {/* редактор открыт один за раз — id datalist'ов не коллидируют */}
       <datalist id="pe-cat-list">{cats.map((c) => <option key={c} value={c} />)}</datalist>
-      <datalist id="pe-sup-list">{sups.map((s) => <option key={s} value={s} />)}</datalist>
+      {/* K5a: подсказки — использованные в смете + вся адресная книга (без дублей, книга после) */}
+      <datalist id="pe-sup-list">{[...sups, ...(supBook || []).map((b) => b.name).filter((n) => n && !sups.includes(n))].map((s) => <option key={s} value={s} />)}</datalist>
       <datalist id="pe-lib-list">{lib.map((p) => <option key={p.id} value={p.title} />)}</datalist>
     </div>
   );

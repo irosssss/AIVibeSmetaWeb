@@ -145,6 +145,7 @@
   db.settings = LS.get("settings", { normsOverride: {}, enabledNorms: {}, studioName: "", studioCity: "", studioPhone: "", studioEmail: "", studioTaxId: "" });
   db.styles   = LS.get("styles", SEED_STYLES);
   db.library  = LS.get("library", []);   // библиотека товаров студии (волна B1) — пустая до первого товара
+  db.suppliers = LS.get("suppliers", []); // адресная книга поставщиков (K5a) — пустая до первой карточки
   db.markupProfiles = LS.get("markupProfiles", []);   // сохранённые профили наценки — пусто до первого «мой стандарт»
   const _lsProjects = LS.get("projects", null); if (_lsProjects) db.projects = _lsProjects;
   const _lsFav = LS.get("favorites", null); if (_lsFav) db.favorites = _lsFav;
@@ -382,6 +383,43 @@
         await delay(120);
         db.library = db.library.filter((p) => p.id !== id);
         LS.set("library", db.library);
+        return { ok: true };
+      },
+    },
+
+    /* — Адресная книга поставщиков (K5a, паттерн Programa Address Book):
+         карточки контактов централизованно; позиция сметы продолжает хранить
+         поставщика строкой `sup`, карточка находится ПО ИМЕНИ (LedgerFFE.supplierMatch).
+         Нормализация схемы — LedgerFFE.blankSupplier (как library ↔ blankProduct). — */
+    suppliers: {
+      list: async () => { await delay(120); return clone(db.suppliers); },       // → GET /api/suppliers
+      get: async (id) => { await delay(70); return clone(db.suppliers.find((s) => s.id === id)); },
+      create: async (patch = {}) => {                                            // → POST /api/suppliers
+        await delay(150);
+        const F = window.LedgerFFE;
+        const body = F && F.blankSupplier ? F.blankSupplier(patch) : patch;
+        // случайный суффикс против коллизии Date.now() при двух созданиях в одну мс (урок markupProfiles/K4)
+        const row = { id: "spl_" + Date.now() + "_" + Math.random().toString(36).slice(2, 8), ...body, createdAt: today(), updatedAt: today() };
+        db.suppliers.push(row);
+        LS.set("suppliers", db.suppliers);
+        return clone(row);
+      },
+      update: async (id, patch) => {                                             // → PATCH /api/suppliers/:id
+        await delay(130);
+        const i = db.suppliers.findIndex((s) => s.id === id);
+        if (i >= 0) {
+          const F = window.LedgerFFE;
+          const prev = db.suppliers[i];
+          const body = F && F.blankSupplier ? F.blankSupplier({ ...prev, ...patch }) : { ...prev, ...patch };
+          db.suppliers[i] = { ...prev, ...body, updatedAt: today() };
+          LS.set("suppliers", db.suppliers);
+        }
+        return clone(db.suppliers[i]);
+      },
+      remove: async (id) => {                                                    // → DELETE /api/suppliers/:id
+        await delay(120);
+        db.suppliers = db.suppliers.filter((s) => s.id !== id);
+        LS.set("suppliers", db.suppliers);
         return { ok: true };
       },
     },
