@@ -129,11 +129,58 @@ describe("clientPricing — инвариант клиентских цен (по
     expect(cp.discountAmt).toBe(320);      // 10% от 3200
     expect(cp.totalClient).toBe(7880);     // 3200 − 320 + 3000 + 2000
   });
+  it("доп. сборы (extras): percent-сборы считаются от одной и той же базы, не каскадом", () => {
+    const snap = {
+      rooms: [{ name: "A", items: [
+        { title: "X", price: 1000, qty: 2, cat: "Мебель" },
+        { title: "Y", price: 500, qty: 1, cat: "Декор" },
+      ] }],
+      markup: 25, catMarkup: { "Декор": 40 }, discount: 10, delivery: 3000, install: 2000,
+      extras: [
+        { id: "e1", label: "Налог / НДС", kind: "percent", value: 20 },
+        { id: "e2", label: "Сервис", kind: "percent", value: 10 },
+        { id: "e3", label: "Упаковка", kind: "fixed", value: 1000 },
+      ],
+    };
+    const cp = FFE.clientPricing(snap);
+    // база — client(3200) − discountAmt(320) = 2880, ОДНА и та же для обоих percent-сборов
+    // (если бы считали каскадом, e2 брал бы базу 2880+576=3456 → 346, а не 288)
+    expect(cp.extrasAmt).toBe(576 + 288 + 1000);   // 1864
+    expect(cp.totalClient).toBe(3200 - 320 + 3000 + 2000 + 1864);   // 9744
+    expect(cp.extras).toBe(snap.extras);   // возвращается как есть, для портала/UI
+  });
   it("без раздела — базовая наценка; пустой снимок = 0", () => {
     const cp = FFE.clientPricing({ rooms: [{ items: [{ title: "Z", price: 100, qty: 1 }] }], markup: 20 });
     expect(cp.unitClient({ price: 100 })).toBe(120);
     expect(cp.totalClient).toBe(120);
     expect(FFE.clientPricing({}).totalClient).toBe(0);
+  });
+  it("запас/отход (wastePct): наценка — поверх себестоимости с запасом, не поверх сырой цены", () => {
+    const it_ = { title: "Плитка", price: 1000, qty: 2, wastePct: 10, cat: "Отделка" };
+    const cp = FFE.clientPricing({ rooms: [{ items: [it_] }], markup: 0 });
+    expect(FFE.costUnit(it_)).toBe(1100);           // 1000 × 1.10
+    expect(cp.costUnit(it_)).toBe(1100);
+    expect(cp.unitClient(it_)).toBe(1100);          // наценка 0% — клиент платит ровно себестоимость с запасом
+    expect(cp.lineClient(it_)).toBe(2200);          // 1100 × 2
+    expect(FFE.lineTotal(it_)).toBe(2200);
+    const cpMarkup = FFE.clientPricing({ rooms: [{ items: [it_] }], markup: 25 });
+    expect(cpMarkup.unitClient(it_)).toBe(1375);    // 1100 × 1.25 — наценка поверх запаса
+    expect(cpMarkup.lineClient(it_)).toBe(2750);
+  });
+  it("wastePct=0/отсутствует — не меняет прежнее поведение", () => {
+    const it_ = { title: "X", price: 1000, qty: 1 };
+    expect(FFE.costUnit(it_)).toBe(1000);
+    expect(FFE.lineTotal(it_)).toBe(1000);
+  });
+});
+
+describe("qtyLabel — подпись количества с единицей измерения", () => {
+  it("шт → ×N (без единицы), прочие единицы → ×N ед.", () => {
+    expect(FFE.qtyLabel({ qty: 2, unit: "шт" })).toBe("×2");
+    expect(FFE.qtyLabel({ qty: 2 })).toBe("×2");            // unit отсутствует = шт
+    expect(FFE.qtyLabel({ qty: 50, unit: "м²" })).toBe("×50 м²");
+    expect(FFE.qtyLabel({ qty: 3, unit: "пог.м" })).toBe("×3 пог.м");
+    expect(FFE.qtyLabel({ unit: "компл" })).toBe("×1 компл");   // qty по умолчанию 1
   });
 });
 

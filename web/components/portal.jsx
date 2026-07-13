@@ -188,6 +188,12 @@ function ClientPortal({ shareId }) {
         {cp.discountAmt > 0 && <div style={{ ...RS_ROW, borderTop: "1px solid var(--hairline-2)" }}><span style={{ color: "var(--muted)" }}>Скидка −{cp.discount}%</span><span className="mono" style={{ color: "var(--accent-ink)" }}>−{fmtMoney(cp.discountAmt)}</span></div>}
         {cp.delivery > 0 && <div style={{ ...RS_ROW, borderTop: "1px solid var(--hairline-2)" }}><span style={{ color: "var(--muted)" }}>Доставка</span><span className="mono">{fmtMoney(cp.delivery)}</span></div>}
         {cp.install > 0 && <div style={{ ...RS_ROW, borderTop: "1px solid var(--hairline-2)" }}><span style={{ color: "var(--muted)" }}>Сборка и монтаж</span><span className="mono">{fmtMoney(cp.install)}</span></div>}
+        {(cp.extras || []).map((ex) => {
+          const exAmt = F.extraAmount(ex, cp.client - cp.discountAmt);
+          return exAmt > 0 ? (
+            <div key={ex.id} style={{ ...RS_ROW, borderTop: "1px solid var(--hairline-2)" }}><span style={{ color: "var(--muted)" }}>{ex.label}</span><span className="mono">{fmtMoney(exAmt)}</span></div>
+          ) : null;
+        })}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", paddingTop: 12, marginTop: 8, borderTop: "2px solid var(--text)" }}>
           <span style={{ fontWeight: 800, fontFamily: "var(--font-display)", fontSize: "var(--fs-15)" }}>Итого</span>
           <span className="mono" style={{ fontWeight: 600, fontSize: "var(--fs-24)", letterSpacing: "-0.01em" }}>{fmtMoney(cp.totalClient)}</span>

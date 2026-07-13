@@ -37,20 +37,26 @@
   //       "client" — только цена клиента, без себестоимости/наценки/бюджета;
   //       "procure" — закупочный лист: только себестоимость, свод и лист на поставщика.
   // catMarkupPct: {раздел: %} — свои наценки поверх базовой markupPct (как на экране сметы).
-  function exportRoomSpec({ project, area, rooms, grand, markupPct, catMarkupPct, clientTotal, discountPct, deliveryCost, installCost, budget, mode }) {
+  function exportRoomSpec({ project, area, rooms, grand, markupPct, catMarkupPct, clientTotal, discountPct, deliveryCost, installCost, extras, budget, mode }) {
     if (!window.XLSX) { (window.toast ? toast("Excel-библиотека ещё загружается — попробуйте через секунду.", "info") : 0); return false; }
     rooms = rooms || [];
     if (mode === "procure") return exportProcure({ project, area, rooms, grand, budget });
     const clientMode = mode === "client";
-    const fresh = window.LedgerFFE && window.LedgerFFE.priceFreshness ? window.LedgerFFE.priceFreshness(rooms) : null;
+    const FFE = window.LedgerFFE || null;
+    const fresh = FFE && FFE.priceFreshness ? FFE.priceFreshness(rooms) : null;
     // итог структурой: скидка округляется до рубля от подытога — та же формула, что в UI/PDF
     const discountAmt = Math.round((clientTotal || 0) * (discountPct || 0) / 100);
-    const totalClient = (clientTotal || 0) - discountAmt + (deliveryCost || 0) + (installCost || 0);
+    // доп. сборы (доставка/монтаж/НДС/кастом) — та же база (товары после скидки), что в UI/PDF
+    const extrasList = Array.isArray(extras) ? extras : [];
+    const extrasAmt = FFE && FFE.extrasTotal ? FFE.extrasTotal(extrasList, (clientTotal || 0) - discountAmt) : 0;
+    const totalClient = (clientTotal || 0) - discountAmt + (deliveryCost || 0) + (installCost || 0) + extrasAmt;
     const catOf = (it) => it.cat || "Прочее";
     const pctOf = (it) => (catMarkupPct && catMarkupPct[catOf(it)] != null ? catMarkupPct[catOf(it)] : (markupPct || 0));
     const hasCatMk = !!catMarkupPct && Object.keys(catMarkupPct).length > 0;
-    const lineCost = (it) => it.price * (it.qty || 1);
-    const unitClient = (it) => Math.round(it.price * (1 + pctOf(it) / 100));        // округляется цена/шт,
+    // себестоимость учитывает запас/отход (FFE.costUnit — тот же источник, что в UI/PDF)
+    const costUnit = (it) => (FFE && FFE.costUnit ? FFE.costUnit(it) : it.price);
+    const lineCost = (it) => costUnit(it) * (it.qty || 1);
+    const unitClient = (it) => Math.round(costUnit(it) * (1 + pctOf(it) / 100));    // округляется цена/шт,
     const lineClient = (it) => unitClient(it) * (it.qty || 1);                      // сумма = цена × кол-во — колонки бьются арифметически
     const roomCost = (r) => r.items.reduce((s, it) => s + lineCost(it), 0);
     const roomClient = (r) => r.items.reduce((s, it) => s + lineClient(it), 0);
@@ -101,7 +107,7 @@
       { const ri = push(["Подытог — себестоимость (фабрика)", grand]); mc.push([ri, 1]); }
       { const ri = push(["Наценка дизайнера" + (hasCatMk ? " (по разделам)" : " (+" + (markupPct || 0) + "%)"), clientTotal - grand]); mc.push([ri, 1]); }
     }
-    if (!clientMode || discountAmt > 0 || deliveryCost > 0 || installCost > 0) {
+    if (!clientMode || discountAmt > 0 || deliveryCost > 0 || installCost > 0 || extrasAmt > 0) {
       const ri = push([clientMode ? "Подытог" : "Подытог для клиента", clientTotal]); mc.push([ri, 1]);
     }
     if (discountAmt > 0) { const ri = push(["Скидка клиенту (−" + discountPct + "%)", -discountAmt]); mc.push([ri, 1]); }
@@ -118,9 +124,28 @@
       push([(fresh.checked === fresh.total ? "Цены проверены не позднее" : "Цены проверены у " + fresh.checked + " из " + fresh.total + " позиций — не позднее")
         + " " + fmtDateCell(fresh.oldest) + (fresh.stale ? " (" + fresh.days + " дн. назад — рекомендуем перепроверить)" : "")]);
     }
+    // доп. сборы — ОТДЕЛЬНАЯ секция со своим маркером, физически в самом низу листа (после
+    // «Итога»/бюджета/свежести цен): импорт распознаёт её независимо от разбора «Итога»,
+    // не пересекается с состоянием того парсера (см. importRoomSpec) — «Бюджет проекта» и
+    // «Итог» такие же 2-ячеечные строки [метка, сумма], поэтому секции обязаны не смешиваться.
+    // Тип/процент — В ОТДЕЛЬНОЙ колонке (не суффиксом в тексте метки): свободный label
+    // кастомного фикс-сбора мог бы случайно закончиться на «(N%)» и на импорте ложно
+    // прочитаться как percent-сбор с чужим значением вместо фикс. суммы (найдено ревью).
+    // В рабочем режиме строка не опускается даже при сумме 0 (это ИМЕНЕК-список, не
+    // скаляр как скидка/доставка — пропуск строки стирает саму позицию сбора при
+    // реимпорте, не просто прячет её); в клиентском — как discount/delivery/install,
+    // нулевые сборы клиенту не показываем.
+    const extrasRows = extrasList
+      .filter((ex) => !clientMode || (FFE && FFE.extraAmount ? FFE.extraAmount(ex, clientTotal - discountAmt) : 0) > 0)
+      .map((ex) => [ex.label, ex.kind === "percent" ? ex.value + "%" : "", FFE && FFE.extraAmount ? FFE.extraAmount(ex, clientTotal - discountAmt) : 0]);
+    if (extrasRows.length) {
+      push([]);
+      push(["Доп. сборы"]);
+      extrasRows.forEach((row) => { const ri = push(row); mc.push([ri, 2]); });
+    }
 
     const wsS = XLSX.utils.aoa_to_sheet(svod);
-    setCols(wsS, clientMode ? [42, 16] : [42, 16, 16, 11]);
+    setCols(wsS, clientMode ? [42, 16, 16] : [42, 16, 16, 11]);   // 3-я колонка — секция «Доп. сборы» (тип/%, ₽), нужна и клиенту
     fmtMoney(wsS, mc);
     XLSX.utils.book_append_sheet(wb, wsS, uniqueSheet("Свод"));
 
@@ -132,7 +157,7 @@
     const hasSup = !clientMode && rooms.some((r) => r.items.some((it) => it.sup));
     const hasPD = !clientMode && rooms.some((r) => r.items.some((it) => it.priceDate));
     // согласование по позициям (волна A1): решения клиента — внутренняя кухня, только рабочий файл
-    const FFE = window.LedgerFFE || null;
+    // (FFE уже объявлен выше — формула себестоимости/наценки)
     const apLabel = (it) => (FFE && it.approve && FFE.APPROVE_BY_ID[it.approve] ? FFE.APPROVE_BY_ID[it.approve].label : "");
     const hasAp = !clientMode && !!FFE && rooms.some((r) => r.items.some((it) => apLabel(it)));
     // FF&E-детали позиции — отдельными колонками (фильтруемо). Конвенция как в UI/PDF:
@@ -142,22 +167,30 @@
     const hasMat = rooms.some((r) => r.items.some((it) => it.material));
     const hasDims = rooms.some((r) => r.items.some((it) => dimsOf(it)));
     const hasLead = !clientMode && rooms.some((r) => r.items.some((it) => it.leadWeeks));
+    // единица измерения — рядом с кол-вом, видна и клиенту (в отличие от артикула/срока/запаса);
+    // колонку показываем только если есть позиции не в «шт»
+    const hasUnit = rooms.some((r) => r.items.some((it) => it.unit && it.unit !== "шт"));
+    const unitCell = (it) => it.unit || "шт";
+    const hasWaste = !clientMode && rooms.some((r) => r.items.some((it) => it.wastePct));
     const ffeHead = [];
     if (hasSku) ffeHead.push("Артикул");
     if (hasMat) ffeHead.push("Материал");
     if (hasDims) ffeHead.push("Габариты");
     if (hasLead) ffeHead.push("Срок, нед.");
+    if (hasWaste) ffeHead.push("Запас, %");
     const ffeCells = (it) => {
       const c = [];
       if (hasSku) c.push(it.sku || "");
       if (hasMat) c.push(it.material || "");
       if (hasDims) c.push(dimsOf(it));
       if (hasLead) c.push(it.leadWeeks || "");
+      if (hasWaste) c.push(it.wastePct || "");
       return c;
     };
     const head = ["№", "Помещение", "Раздел"];
     if (hasSup) head.push("Поставщик");
     head.push("Наименование", ...ffeHead, "Кол-во");
+    if (hasUnit) head.push("Ед.");
     if (clientMode) head.push("Цена клиенту, ₽", "Сумма клиенту, ₽");
     else head.push("Цена, ₽", "Сумма, ₽", "Цена клиенту, ₽", "Сумма клиенту, ₽");
     if (hasPD) head.push("Цена от");
@@ -169,6 +202,7 @@
       const row = [++n, r.name, catOf(it)];
       if (hasSup) row.push(it.sup || "");
       row.push(it.title, ...ffeCells(it), it.qty || 1);
+      if (hasUnit) row.push(unitCell(it));
       if (clientMode) row.push(unitClient(it), lineClient(it));
       else row.push(it.price, lineCost(it), unitClient(it), lineClient(it));
       if (hasPD) row.push(fmtDateCell(it.priceDate));
@@ -181,7 +215,7 @@
     trow[col("Сумма клиенту, ₽")] = clientTotal;
     all.push(trow);
     const wsA = XLSX.utils.aoa_to_sheet(all);
-    setCols(wsA, head.map((h) => ({ "№": 5, "Помещение": 18, "Раздел": 16, "Поставщик": 20, "Наименование": 46, "Артикул": 16, "Материал": 20, "Габариты": 16, "Срок, нед.": 10, "Кол-во": 7, "Цена, ₽": 13, "Сумма, ₽": 14, "Цена клиенту, ₽": 15, "Сумма клиенту, ₽": 16, "Цена от": 11, "Клиент решил": 14, "Решение от": 11 }[h] || 12)));
+    setCols(wsA, head.map((h) => ({ "№": 5, "Помещение": 18, "Раздел": 16, "Поставщик": 20, "Наименование": 46, "Артикул": 16, "Материал": 20, "Габариты": 16, "Срок, нед.": 10, "Запас, %": 10, "Кол-во": 7, "Ед.": 8, "Цена, ₽": 13, "Сумма, ₽": 14, "Цена клиенту, ₽": 15, "Сумма клиенту, ₽": 16, "Цена от": 11, "Клиент решил": 14, "Решение от": 11 }[h] || 12)));
     const moneyCols = ["Цена, ₽", "Сумма, ₽", "Цена клиенту, ₽", "Сумма клиенту, ₽"].map(col).filter((c) => c >= 0);
     fmtMoneyCols(wsA, moneyCols, 1, all.length - 1);
     wsA["!autofilter"] = { ref: "A1:" + XLSX.utils.encode_col(head.length - 1) + "1" };   // фильтр по шапке — дизайнер крутит сводную как хочет
@@ -191,16 +225,18 @@
     // шапка/индексы строятся по имени (rcol) — те же FF&E-колонки, что в мастер-таблице,
     // не смещают позиционно денежные колонки и строку итога
     const rHead = ["№", "Раздел", "Наименование", ...ffeHead, "Кол-во"];
+    if (hasUnit) rHead.push("Ед.");
     if (clientMode) rHead.push("Цена клиенту, ₽", "Сумма клиенту, ₽");
     else rHead.push("Цена, ₽", "Сумма, ₽", "Цена клиенту, ₽", "Сумма клиенту, ₽");
     const rcol = (name) => rHead.indexOf(name);
-    const rColW = { "№": 5, "Раздел": 16, "Наименование": 46, "Артикул": 16, "Материал": 20, "Габариты": 16, "Срок, нед.": 10, "Кол-во": 7, "Цена, ₽": 13, "Сумма, ₽": 14, "Цена клиенту, ₽": 15, "Сумма клиенту, ₽": 16 };
+    const rColW = { "№": 5, "Раздел": 16, "Наименование": 46, "Артикул": 16, "Материал": 20, "Габариты": 16, "Срок, нед.": 10, "Запас, %": 10, "Кол-во": 7, "Ед.": 8, "Цена, ₽": 13, "Сумма, ₽": 14, "Цена клиенту, ₽": 15, "Сумма клиенту, ₽": 16 };
     const rMoneyCols = (clientMode ? ["Цена клиенту, ₽", "Сумма клиенту, ₽"] : ["Цена, ₽", "Сумма, ₽", "Цена клиенту, ₽", "Сумма клиенту, ₽"]).map(rcol);
     rooms.forEach((r) => {
       const rows = [[roomLabel(r)], [], rHead];
       let m = 0;
       r.items.forEach((it) => {
         const row = [++m, catOf(it), it.title, ...ffeCells(it), it.qty || 1];
+        if (hasUnit) row.push(unitCell(it));
         if (clientMode) row.push(unitClient(it), lineClient(it));
         else row.push(it.price, lineCost(it), unitClient(it), lineClient(it));
         rows.push(row);
@@ -227,15 +263,16 @@
      Только себестоимость — наценки и клиентских цен в закупочном документе нет. */
   function exportProcure({ project, area, rooms, grand, budget }) {
     const NO_SUP = "Поставщик не указан";
+    // стадии закупки (словарь — web/ffe.js; при недоступном модуле колонки пустые)
+    const FFE = window.LedgerFFE || null;
     const supOf = (it) => (it.sup || "").trim() || NO_SUP;
-    const lineCost = (it) => it.price * (it.qty || 1);
+    // себестоимость учитывает запас/отход — сколько реально заказывать у поставщика
+    const lineCost = (it) => (FFE && FFE.lineTotal ? FFE.lineTotal(it) : it.price * (it.qty || 1));
     const groups = {};
     rooms.forEach((r) => r.items.forEach((it) => { const key = supOf(it); (groups[key] = groups[key] || []).push({ it, room: r.name }); }));
     const supTotal = (name) => groups[name].reduce((s, x) => s + lineCost(x.it), 0);
     const names = Object.keys(groups).sort((a, b) => (a === NO_SUP ? 1 : b === NO_SUP ? -1 : supTotal(b) - supTotal(a)));
 
-    // стадии закупки (словарь — web/ffe.js; при недоступном модуле колонки пустые)
-    const FFE = window.LedgerFFE || null;
     const stId = (it) => (FFE && FFE.STATUS_BY_ID[it.status] ? it.status : "specified");
     const stLabel = (it) => (FFE ? FFE.statusMeta(stId(it)).label : "");
     const stDate = (it) => fmtDateCell(it.statusDates && it.statusDates[stId(it)]);
@@ -270,7 +307,13 @@
     if (rooms.some((r) => r.items.some((it) => it.material))) { FFE_HEAD.push("Материал"); FFE_COLW.push(20); ffeGet.push((it) => it.material || ""); }
     if (rooms.some((r) => r.items.some((it) => dimsOf(it)))) { FFE_HEAD.push("Габариты"); FFE_COLW.push(16); ffeGet.push((it) => dimsOf(it)); }
     if (rooms.some((r) => r.items.some((it) => it.leadWeeks))) { FFE_HEAD.push("Срок, нед."); FFE_COLW.push(10); ffeGet.push((it) => it.leadWeeks || ""); }
+    if (rooms.some((r) => r.items.some((it) => it.wastePct))) { FFE_HEAD.push("Запас, %"); FFE_COLW.push(10); ffeGet.push((it) => it.wastePct || ""); }
     const ffeCells = (it) => ffeGet.map((f) => f(it));
+    // единица измерения — рядом с кол-вом (не в FFE-блоке, тот идёт до кол-ва)
+    const hasUnitP = rooms.some((r) => r.items.some((it) => it.unit && it.unit !== "шт"));
+    const unitH = hasUnitP ? ["Ед."] : [];
+    const unitCol = hasUnitP ? [8] : [];
+    const unitC = (it) => hasUnitP ? [it.unit || "шт"] : [];
     const setLinks = (ws, links) => links.forEach(([r, c, url]) => {
       const ref = XLSX.utils.encode_cell({ r, c });
       if (ws[ref] && url) ws[ref].l = { Target: url };
@@ -299,13 +342,13 @@
     XLSX.utils.book_append_sheet(wb, wsS, uniqueSheet("Свод закупки"));
 
     /* плоская мастер-таблица — полная картина + обратный импорт */
-    const aHead = ["№", "Поставщик", "Помещение", "Раздел", "Наименование", ...FFE_HEAD, "Кол-во", "Цена, ₽", "Сумма, ₽", "Цена от", "Стадия", "С даты", ...PAY_HEAD];
+    const aHead = ["№", "Поставщик", "Помещение", "Раздел", "Наименование", ...FFE_HEAD, "Кол-во", ...unitH, "Цена, ₽", "Сумма, ₽", "Цена от", "Стадия", "С даты", ...PAY_HEAD];
     const all = [aHead];
     const urlCol = aHead.length - 1; // «Ссылка отслеживания» — последняя колонка шапки, не magic-число
     const allLinks = [];
     let n = 0;
     names.forEach((nm) => groups[nm].forEach((x) => {
-      all.push([++n, x.it.sup || "", x.room, x.it.cat || "Прочее", x.it.title, ...ffeCells(x.it), x.it.qty || 1, x.it.price, lineCost(x.it), fmtDateCell(x.it.priceDate), stLabel(x.it), stDate(x.it), ...payCells(x.it), ...trackCells(x.it)]);
+      all.push([++n, x.it.sup || "", x.room, x.it.cat || "Прочее", x.it.title, ...ffeCells(x.it), x.it.qty || 1, ...unitC(x.it), x.it.price, lineCost(x.it), fmtDateCell(x.it.priceDate), stLabel(x.it), stDate(x.it), ...payCells(x.it), ...trackCells(x.it)]);
       const url = x.it.track && x.it.track.url;
       if (url) allLinks.push([all.length - 1, urlCol, url]);
     }));
@@ -313,7 +356,7 @@
     aTot[aHead.indexOf("Наименование")] = "ИТОГО ЗАКУПКА"; aTot[aHead.indexOf("Сумма, ₽")] = grand; aTot[aHead.indexOf("Стадия")] = allProgress;
     all.push(aTot);
     const wsA = XLSX.utils.aoa_to_sheet(all);
-    setCols(wsA, [5, 20, 18, 16, 46, ...FFE_COLW, 7, 13, 14, 11, 14, 11, ...PAY_COLW]);
+    setCols(wsA, [5, 20, 18, 16, 46, ...FFE_COLW, 7, ...unitCol, 13, 14, 11, 14, 11, ...PAY_COLW]);
     fmtMoneyCols(wsA, [aHead.indexOf("Цена, ₽"), aHead.indexOf("Сумма, ₽")], 1, all.length - 1);
     setLinks(wsA, allLinks);
     wsA["!autofilter"] = { ref: "A1:" + XLSX.utils.encode_col(aHead.length - 1) + "1" };
@@ -321,13 +364,13 @@
 
     /* лист на поставщика — рабочий документ для салона/магазина */
     names.forEach((nm) => {
-      const head = ["№", "Помещение", "Раздел", "Наименование", ...FFE_HEAD, "Кол-во", "Цена, ₽", "Сумма, ₽", "Цена от", "Стадия", "С даты", ...PAY_HEAD];
+      const head = ["№", "Помещение", "Раздел", "Наименование", ...FFE_HEAD, "Кол-во", ...unitH, "Цена, ₽", "Сумма, ₽", "Цена от", "Стадия", "С даты", ...PAY_HEAD];
       const rows = [[nm], [], head];
       const urlColSup = head.length - 1;
       const links = [];
       let m = 0;
       groups[nm].forEach((x) => {
-        rows.push([++m, x.room, x.it.cat || "Прочее", x.it.title, ...ffeCells(x.it), x.it.qty || 1, x.it.price, lineCost(x.it), fmtDateCell(x.it.priceDate), stLabel(x.it), stDate(x.it), ...payCells(x.it), ...trackCells(x.it)]);
+        rows.push([++m, x.room, x.it.cat || "Прочее", x.it.title, ...ffeCells(x.it), x.it.qty || 1, ...unitC(x.it), x.it.price, lineCost(x.it), fmtDateCell(x.it.priceDate), stLabel(x.it), stDate(x.it), ...payCells(x.it), ...trackCells(x.it)]);
         const url = x.it.track && x.it.track.url;
         if (url) links.push([rows.length - 1, urlColSup, url]);
       });
@@ -335,7 +378,7 @@
       tr[head.indexOf("Наименование")] = "Итого по поставщику"; tr[head.indexOf("Сумма, ₽")] = supTotal(nm); tr[head.indexOf("Стадия")] = supProgress(nm);
       rows.push(tr);
       const ws = XLSX.utils.aoa_to_sheet(rows);
-      setCols(ws, [5, 18, 16, 46, ...FFE_COLW, 7, 13, 14, 11, 14, 11, ...PAY_COLW]);
+      setCols(ws, [5, 18, 16, 46, ...FFE_COLW, 7, ...unitCol, 13, 14, 11, 14, 11, ...PAY_COLW]);
       fmtMoneyCols(ws, [head.indexOf("Цена, ₽"), head.indexOf("Сумма, ₽")], 2, rows.length - 1);
       setLinks(ws, links);
       XLSX.utils.book_append_sheet(wb, ws, uniqueSheet(nm));
@@ -402,6 +445,9 @@
           const cMat = colOf(head, /материал|отделк/);
           const cDims = colOf(head, /габарит|размер/);
           const cLead = colOf(head, /срок/);
+          const cWaste = colOf(head, /запас|отход|waste/);
+          const cUnit = colOf(head, /^ед\.?$|ед\.?\s*изм|единиц|unit/);   // \b не годится — кириллица не ASCII-word
+          const KNOWN_UNITS = (window.LedgerFFE && window.LedgerFFE.FFE_UNITS) || ["шт"];   // белый список единиц
           const parseDims = (v) => {
             const s = String(v == null ? "" : v).replace(/см/gi, "").trim();
             if (!s) return null;
@@ -438,7 +484,8 @@
             const qty = cQty >= 0 ? (num(row[cQty]) || 1) : 1;
             // цену округляем до рубля: дробные копейки ломали бы инвариант «строки бьются» в UI/PDF/Excel
             let price = colPrice >= 0 ? Math.round(num(row[colPrice])) : 0;
-            if (!price && colSum >= 0) price = Math.round(num(row[colSum]) / qty);
+            let priceFromSum = false;
+            if (!price && colSum >= 0) { price = Math.round(num(row[colSum]) / qty); priceFromSum = true; }
             const roomName = (cRoom >= 0 ? String(row[cRoom] == null ? "" : row[cRoom]).trim() : "") || "Без помещения";
             const cat = cCat >= 0 ? String(row[cCat] == null ? "" : row[cCat]).trim() : "";
             const sup = cSup >= 0 ? String(row[cSup] == null ? "" : row[cSup]).trim() : "";
@@ -457,9 +504,17 @@
             const material = cMat >= 0 ? String(row[cMat] == null ? "" : row[cMat]).trim() : "";
             const dims = cDims >= 0 ? parseDims(row[cDims]) : null;
             const leadWeeks = cLead >= 0 ? Math.round(num(row[cLead])) : 0;
+            const wastePct = cWaste >= 0 ? Math.max(0, Math.round(num(row[cWaste]))) : 0;
+            // цена, выведенная из «Суммы», уже включает запас (Сумма = цена×кол×(1+запас%));
+            // вычитаем его обратно, иначе FFE.lineTotal наложит запас второй раз при переэкспорте
+            if (priceFromSum && wastePct > 0) price = Math.round(price / (1 + wastePct / 100));
+            // единица — только из словаря FFE_UNITS; чужое «шт.»/«kg»/«рулон» → дефолт «шт» (не тащим мусор,
+            // иначе select в PosEditor не покажет её и рассинхронится с сохранённым значением)
+            let unit = cUnit >= 0 ? String(row[cUnit] == null ? "" : row[cUnit]).trim() : "";
+            if (unit && !KNOWN_UNITS.includes(unit)) unit = "";
             if (!byRoom.has(roomName)) byRoom.set(roomName, []);
             byRoom.get(roomName).push({ title, cat, price, qty, ...(sup ? { sup } : {}), ...(priceDate ? { priceDate } : {}), ...(status ? { status } : {}),
-              ...(sku ? { sku } : {}), ...(material ? { material } : {}), ...(dims ? { dims } : {}), ...(leadWeeks ? { leadWeeks } : {}),
+              ...(sku ? { sku } : {}), ...(material ? { material } : {}), ...(dims ? { dims } : {}), ...(leadWeeks ? { leadWeeks } : {}), ...(wastePct ? { wastePct } : {}), ...(unit && unit !== "шт" ? { unit } : {}),
               ...(approve ? { approve, ...(approveAt ? { approveAt } : {}) } : {}),
               ...(Object.keys(payments).length ? { payments } : {}),
               ...(trackNumber || trackUrl ? { track: { number: trackNumber, url: trackUrl } } : {}) });
@@ -467,7 +522,7 @@
 
           const rooms = [...byRoom.entries()].map(([name, items]) => ({ name, items }));
           const itemsCount = rooms.reduce((s, r) => s + r.items.length, 0);
-          const total = rooms.reduce((s, r) => s + r.items.reduce((a, it) => a + it.price * (it.qty || 1), 0), 0);
+          const total = rooms.reduce((s, r) => s + r.items.reduce((a, it) => a + (window.LedgerFFE && window.LedgerFFE.lineTotal ? window.LedgerFFE.lineTotal(it) : it.price * (it.qty || 1)), 0), 0);
           const baseName = String(file.name || "Импорт").replace(/\.[^.]+$/, "");
 
           // «Свод» — наценка/скидка/доставка/монтаж/наценки по разделам живут только там
@@ -479,9 +534,10 @@
           // бы как строка доставки, а «Свод закупки» (другая книга, row[1] там — количество
           // позиций, не деньги) — как рабочий «Свод».
           let markupPct, discountPct, deliveryCost, installCost, catMarkupPct;
+          const extrasArr = [];
           const svodSn = wb.SheetNames.find((sn) => /^свод/i.test(sn));
           if (svodSn) {
-            let inCat = false, inItog = false;
+            let inCat = false, inItog = false, inExtras = false;
             const catOv = {};
             XLSX.utils.sheet_to_json(wb.Sheets[svodSn], { header: 1, blankrows: false }).forEach((row) => {
               if (!Array.isArray(row) || !row[0]) return;
@@ -491,7 +547,22 @@
               // маркер и подмял бы своей меткой все строки после себя. У «Итога» ровно
               // одна ячейка (push(["Итог"])); у заголовка «По разделам» вторая ячейка —
               // текст («Себестоимость»/«Сумма»), у строки раздела — всегда число (сумма).
-              if (label === "Итог" && row.length === 1) { inItog = true; inCat = false; return; }
+              if (label === "Итог" && row.length === 1) { inItog = true; inCat = false; inExtras = false; return; }
+              // «Доп. сборы» — СВОЯ секция, физически после «Итога» (см. exportRoomSpec):
+              // разбирается независимо от inItog/inCat, никогда не пересекается с их состоянием
+              if (label === "Доп. сборы" && row.length === 1) { inExtras = true; inItog = false; inCat = false; return; }
+              if (inExtras) {
+                // тип/процент — В ОТДЕЛЬНОЙ колонке row[1] («N%» или пусто для фикс.), НЕ
+                // суффиксом в тексте метки: кастомный фикс-сбор со свободным label, случайно
+                // заканчивающимся на «(N%)», иначе ложно прочитался бы как percent-сбор
+                const pctCell = /^(\d+(?:[.,]\d+)?)%$/.exec(String(row[1] == null ? "" : row[1]).trim());
+                const kind = pctCell ? "percent" : "fixed";
+                const value = pctCell ? parseFloat(pctCell[1].replace(",", ".")) : num(row[2]);
+                extrasArr.push(window.LedgerFFE && window.LedgerFFE.blankExtra
+                  ? window.LedgerFFE.blankExtra({ label, kind, value })
+                  : { id: "extra_" + extrasArr.length, label, kind, value });
+                return;
+              }
               if (label === "По разделам" && typeof row[1] === "string") { inCat = true; return; }
               // якорь «, %» на конце — иначе матчится и строка «Итога» с наценкой В РУБЛЯХ
               // («Наценка дизайнера (+35%)»), а не только строка-заголовок с процентом
@@ -525,6 +596,7 @@
             ...(deliveryCost != null ? { deliveryCost } : {}),
             ...(installCost != null ? { installCost } : {}),
             ...(catMarkupPct ? { catMarkupPct } : {}),
+            ...(extrasArr.length ? { extras: extrasArr } : {}),
           });
         } catch (err) { reject(err); }
       };
