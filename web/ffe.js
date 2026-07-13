@@ -276,15 +276,21 @@
   /* FF&E-подпись позиции для документов (PDF-подстрока, мета в UI): единый источник
      той же конвенции, что в строке сметы (project-detail.jsx) — «арт. X · материал ·
      80×45×120 см · N нед.». Материал/габариты видны и клиенту; артикул и срок —
-     закупочная деталь, поэтому в клиентском документе (opts.client) их скрываем. */
+     закупочная деталь, поэтому в клиентском документе (opts.client) их скрываем по
+     умолчанию. K3: showSku/showLead/showWaste — точечный override дефолта (портал
+     передаёт их из тумблеров приватности шары, см. SHARE_VISIBILITY_FIELDS ниже). */
   function ffeMeta(it, opts) {
-    const client = !!(opts && opts.client);
+    const o = opts || {};
+    const client = !!o.client;
+    const showSku = o.showSku != null ? o.showSku : !client;
+    const showLead = o.showLead != null ? o.showLead : !client;
+    const showWaste = o.showWaste != null ? o.showWaste : !client;
     return [
-      !client && it.sku ? "арт. " + it.sku : null,
+      showSku && it.sku ? "арт. " + it.sku : null,
       it.material || null,
       dimsLabel(it.dims) || null,
-      !client && it.leadWeeks ? it.leadWeeks + " нед." : null,
-      !client && it.wastePct ? "запас " + it.wastePct + "%" : null,
+      showLead && it.leadWeeks ? it.leadWeeks + " нед." : null,
+      showWaste && it.wastePct ? "запас " + it.wastePct + "%" : null,
     ].filter(Boolean).join(" · ");
   }
 
@@ -663,6 +669,19 @@
     }
     return "shr_" + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
   };
+  /* K3: приватность шары — обобщение канона «SKU не клиенту» (см. ffeMeta выше) до
+     модели «поле видимости по аудитории» (§4 бенчмарка Programa). Все поля по
+     умолчанию ВЫКЛ — как и было жёстко раньше, тумблеры делают это настраиваемым,
+     не меняя поведение уже созданных шар без явного действия дизайнера. Цена и итог
+     сюда сознательно НЕ входят: без них клиент не может согласовать смету — это не
+     «доп. деталь», а суть портала (отличие от публичной Programa-ссылки для браузинга). */
+  const SHARE_VISIBILITY_FIELDS = [
+    { id: "supplier", label: "Поставщик" },
+    { id: "sku", label: "Артикул" },
+    { id: "url", label: "Ссылка на товар" },
+    { id: "details", label: "Срок поставки и запас" },
+  ];
+  function defaultShareVisibility() { return { supplier: false, sku: false, url: false, details: false }; }
   function createPortalShare(o) {
     const src = o || {};
     const rec = {
@@ -676,6 +695,7 @@
       // ИНН намеренно не сюда — он для будущих счетов (волна D), не для клиентского портала
       studioCity: str(src.studioCity), studioPhone: str(src.studioPhone), studioEmail: str(src.studioEmail),
       snapshot: JSON.parse(JSON.stringify(src.snapshot || {})),
+      visibility: Object.assign(defaultShareVisibility(), src.visibility || {}),
       createdAt: new Date().toISOString(),
       respondedAt: null,
     };
@@ -685,6 +705,15 @@
   function loadPortalShare(shareId) {
     try { const raw = localStorage.getItem(PKEY(shareId)); const r = raw ? JSON.parse(raw) : null; return r && r.shareId ? r : null; }
     catch { return null; }
+  }
+  // дизайнер меняет тумблеры уже после публикации ссылки (Programa-паттерн — правится
+  // в любой момент, ссылка не перевыпускается); patch мержится частично поверх дефолта
+  function setShareVisibility(shareId, patch) {
+    const rec = loadPortalShare(shareId);
+    if (!rec) return null;
+    rec.visibility = Object.assign(defaultShareVisibility(), rec.visibility || {}, patch || {});
+    try { localStorage.setItem(PKEY(shareId), JSON.stringify(rec)); } catch {}
+    return rec;
   }
   // клиент ставит решение по позиции снимка (ri, ii); "pending"/мусор = снять поле
   function setPortalApprove(shareId, ri, ii, approveId) {
@@ -831,5 +860,6 @@
     VERSION_STATUSES, vStatusMeta, loadVersions, saveVersions, clearVersions, makeSnapshot,
     clientPricing, createPortalShare, loadPortalShare, setPortalApprove, addPortalComment,
     notePortalVisit, portalEventsFromShare, suggestAlternatives, collectGaps,
+    SHARE_VISIBILITY_FIELDS, defaultShareVisibility, setShareVisibility,
   };
 })();

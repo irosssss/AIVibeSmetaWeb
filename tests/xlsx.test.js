@@ -241,6 +241,41 @@ describe("FF&E-детали позиции: артикул/материал/га
   });
 });
 
+describe("K3: режим «Спецификация» — экспорт без денег вообще (строже клиентского)", () => {
+  const rooms = [{ name: "Гостиная", items: [
+    { title: "Диван «Морти»", cat: "Мебель", price: 164900, qty: 1, sku: "MT-2200", material: "велюр, олива",
+      dims: { w: 220, d: 95, h: 78 }, leadWeeks: 8, wastePct: 10, sup: "Линея", rrp: 200000 },
+  ] }];
+  let wb, name;
+
+  beforeAll(() => {
+    captured = null;
+    expect(X.exportRoomSpec({ project: "Спека", rooms, grand: 0, clientTotal: 0, markupPct: 30, budget: 0, mode: "spec" })).toBe(true);
+    ({ wb, name } = captured);
+  });
+
+  it("«Все позиции» — ни одной денежной/закупочно-финансовой колонки; артикул/срок/запас остаются (в отличие от клиентского)", () => {
+    const aoa = XLSXReal.utils.sheet_to_json(wb.Sheets["Все позиции"], { header: 1 });
+    const head = aoa[0];
+    ["Цена, ₽", "Сумма, ₽", "Цена клиенту, ₽", "Сумма клиенту, ₽", "Розница/ед., ₽", "Выгода, ₽", "Поставщик", "Клиент решил", "Цена от"].forEach((h) => {
+      expect(head).not.toContain(h);
+    });
+    ["Артикул", "Срок, нед.", "Запас, %", "Материал", "Габариты", "Код"].forEach((h) => {
+      expect(head).toContain(h);
+    });
+  });
+
+  it("«Свод» — без единой суммы, только количество позиций по помещениям", () => {
+    const aoa = XLSXReal.utils.sheet_to_json(wb.Sheets["Свод"], { header: 1 });
+    expect(JSON.stringify(aoa)).not.toMatch(/Себестоимость|Наценка|ИТОГО|Подытог/);
+    expect(aoa.some((row) => row[0] === "Итого позиций")).toBe(true);
+  });
+
+  it("суффикс имени файла — «-specifikaciya», не путается с рабочим/клиентским", () => {
+    expect(name).toMatch(/-specifikaciya\.xlsx$/);
+  });
+});
+
 /* импорт рукотворного/чужого файла (строим лист напрямую, минуя exportRoomSpec) —
    проверяем защиту от мусорных данных на входе */
 async function importAoa(aoa, sheetName) {

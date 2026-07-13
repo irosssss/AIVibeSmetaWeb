@@ -669,7 +669,7 @@ function RoomSpecOverlay({ data, nav, onClose, onSaved }) {
   const modeToS2 = (m) => (m === "work" ? "smeta" : m);   // единственное место маппинга режим→сегмент адреса (W2: смета на 'smeta', '' — Обзор)
   usePDE(() => {
     if (nav == null) return;
-    if (nav === "client" || nav === "procure") { setMode(nav); setVersionsOpen(false); }
+    if (nav === "client" || nav === "procure" || nav === "spec") { setMode(nav); setVersionsOpen(false); }
     else if (nav === "versions") {
       if (savedId) setVersionsOpen(true);
       else { toast("Сначала сохраните смету — версии привязаны к проекту.", "warn", 5000); wsSyncNav("smeta"); }
@@ -725,8 +725,8 @@ function RoomSpecOverlay({ data, nav, onClose, onSaved }) {
               )}
             </div>
 
-            {/* наценка дизайнера: базовая на всё + свои проценты по разделам (в закупке не участвует) */}
-            {mode !== "procure" && <div className="glass" style={{ borderRadius: "var(--r-lg)", padding: "16px 20px", marginBottom: 22, maxWidth: 640 }}>
+            {/* наценка дизайнера: базовая на всё + свои проценты по разделам (в закупке и спецификации — без денег — не участвует) */}
+            {mode !== "procure" && mode !== "spec" && <div className="glass" style={{ borderRadius: "var(--r-lg)", padding: "16px 20px", marginBottom: 22, maxWidth: 640 }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
                 <span style={{ fontWeight: 700, fontSize: "var(--fs-14)" }}>Наценка дизайнера{ovrCount > 0 && <span style={{ fontWeight: 500, fontSize: "var(--fs-12)", color: "var(--muted)" }}> · базовая</span>}</span>
                 <span className="mono" style={{ fontWeight: 600, fontSize: "var(--fs-16)", color: "var(--accent-ink)" }}>+{markup}%</span>
@@ -837,7 +837,9 @@ function RoomSpecOverlay({ data, nav, onClose, onSaved }) {
                     </span>
                     <span style={{ display: "flex", alignItems: "baseline", gap: 12 }}>
                       {mode === "work" && <span className="mono" style={{ fontSize: "var(--fs-13)", color: "var(--muted)" }}>{fmtMoney(roomTotal(r))}</span>}
-                      <span className="mono" style={{ fontWeight: 600, fontSize: "var(--fs-15)", color: mode === "work" ? "var(--accent-2)" : "var(--text)" }}>{fmtMoney(roomClient(r))}</span>
+                      {mode === "spec"
+                        ? <span className="mono" style={{ fontSize: "var(--fs-13)", color: "var(--muted)" }}>{r.items.length + " " + plural(r.items.length, ["позиция", "позиции", "позиций"])}</span>
+                        : <span className="mono" style={{ fontWeight: 600, fontSize: "var(--fs-15)", color: mode === "work" ? "var(--accent-2)" : "var(--text)" }}>{fmtMoney(roomClient(r))}</span>}
                     </span>
                   </div>
                   {/* шапка колонок */}
@@ -846,9 +848,9 @@ function RoomSpecOverlay({ data, nav, onClose, onSaved }) {
                     <span style={{ flex: 1 }}>Позиция</span>
                     <span className="rs-cat" style={{ width: 78, textAlign: "right" }}>Раздел</span>
                     <span style={{ width: 62, textAlign: "right" }}>Кол</span>
-                    <span className="rs-unit" style={{ width: 88, textAlign: "right" }}>Цена/ед.</span>
+                    {mode !== "spec" && <span className="rs-unit" style={{ width: 88, textAlign: "right" }}>Цена/ед.</span>}
                     {mode === "work" && <span style={{ width: 100, textAlign: "right" }}>Себест.</span>}
-                    <span style={{ width: 104, textAlign: "right" }}>Клиенту</span>
+                    {mode !== "spec" && <span style={{ width: 104, textAlign: "right" }}>Клиенту</span>}
                     {mode === "work" && FFE && <span className="rs-ap" style={{ width: 122, textAlign: "right" }}>Статус</span>}
                     {mode === "work" && <span style={{ width: 26 }} aria-hidden="true" />}
                   </div>
@@ -874,25 +876,29 @@ function RoomSpecOverlay({ data, nav, onClose, onSaved }) {
                             // мета-строка FF&E-деталей под названием: материал/габариты видны и клиенту,
                             // артикул/срок — только в рабочей (закупочная деталь). dimsLabel — общий хелпер ffe.js
                             const dl = FFE && FFE.dimsLabel ? FFE.dimsLabel(it.dims) : "";
+                            // спецификация (K3) — те же закупочные детали, что в рабочей: без денег, но не «для клиента» урезано
+                            const fullMeta = mode === "work" || mode === "spec";
                             const parts = [
-                              mode === "work" && it.sku ? "арт. " + it.sku : null,
+                              fullMeta && it.sku ? "арт. " + it.sku : null,
                               it.material || null,
                               dl || null,
-                              mode === "work" && it.leadWeeks ? it.leadWeeks + " нед." : null,
-                              mode === "work" && it.wastePct ? "запас " + it.wastePct + "%" : null,
+                              fullMeta && it.leadWeeks ? it.leadWeeks + " нед." : null,
+                              fullMeta && it.wastePct ? "запас " + it.wastePct + "%" : null,
                             ].filter(Boolean);
                             return parts.length ? <div className="mono" style={{ fontSize: "var(--fs-10)", color: "var(--spec-meta)", marginTop: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{parts.join(" · ")}</div> : null;
                           })()}
                         </span>
                         <span className="rs-cat" style={{ color: "var(--spec-meta)", whiteSpace: "nowrap", fontSize: "var(--fs-12)", width: 78, textAlign: "right", overflow: "hidden", textOverflow: "ellipsis" }}>{catOf(it)}</span>
                         <span className="mono" style={{ color: "var(--spec-meta)", whiteSpace: "nowrap", width: 62, textAlign: "right", fontSize: "var(--fs-12)", overflow: "hidden", textOverflow: "ellipsis" }}>{FFE.qtyLabel(it)}</span>
-                        <span className="mono rs-unit" style={{ color: "var(--spec-meta)", whiteSpace: "nowrap", width: 88, textAlign: "right", fontSize: "var(--fs-12)" }}>{fmtMoney(mode === "client" ? unitClient(it) : it.price)}</span>
+                        {mode !== "spec" && <span className="mono rs-unit" style={{ color: "var(--spec-meta)", whiteSpace: "nowrap", width: 88, textAlign: "right", fontSize: "var(--fs-12)" }}>{fmtMoney(mode === "client" ? unitClient(it) : it.price)}</span>}
                         {mode === "work" && <span className="mono" style={{ color: "var(--muted)", whiteSpace: "nowrap", width: 100, textAlign: "right" }}>{fmtMoney(lineCost(it))}</span>}
-                        {/* RRP-слой (п.17): под суммой клиенту — выгода от розницы (только положительная, витрина) */}
-                        <span className="mono" style={{ display: "inline-flex", flexDirection: "column", alignItems: "flex-end", fontWeight: 600, whiteSpace: "nowrap", width: 104, textAlign: "right", color: mode === "work" ? "var(--accent-2)" : "var(--text)" }}>
-                          {fmtMoney(lineClient(it))}
-                          {cp.lineSavings(it) > 0 && <span style={{ fontSize: "var(--fs-10)", fontWeight: 500, color: "var(--accent-2-ink)" }}>выгода {fmtMoney(cp.lineSavings(it))}</span>}
-                        </span>
+                        {/* RRP-слой (п.17): под суммой клиенту — выгода от розницы (только положительная, витрина); спецификация — без денег вообще */}
+                        {mode !== "spec" && (
+                          <span className="mono" style={{ display: "inline-flex", flexDirection: "column", alignItems: "flex-end", fontWeight: 600, whiteSpace: "nowrap", width: 104, textAlign: "right", color: mode === "work" ? "var(--accent-2)" : "var(--text)" }}>
+                            {fmtMoney(lineClient(it))}
+                            {cp.lineSavings(it) > 0 && <span style={{ fontSize: "var(--fs-10)", fontWeight: 500, color: "var(--accent-2-ink)" }}>выгода {fmtMoney(cp.lineSavings(it))}</span>}
+                          </span>
+                        )}
                         {mode === "work" && FFE && (
                           <FunnelChip it={it} hasActiveShare={hasActiveShare}
                             onChangeApprove={(id) => setApprove(ri, i, id)}
@@ -1065,8 +1071,8 @@ function RoomSpecOverlay({ data, nav, onClose, onSaved }) {
               </div>
             )}
 
-            {/* итог документа: подытог → скидка → наценка → доставка/монтаж → ИТОГО (роадмап #6) */}
-            {mode !== "procure" && <div key={"totwork-" + mode} className="glass view-enter" style={{ borderRadius: "var(--r-lg)", padding: "16px 20px", marginTop: 18, maxWidth: 560, marginLeft: "auto" }}>
+            {/* итог документа: подытог → скидка → наценка → доставка/монтаж → ИТОГО (роадмап #6); спецификация — без денег, весь блок скрыт */}
+            {mode !== "procure" && mode !== "spec" && <div key={"totwork-" + mode} className="glass view-enter" style={{ borderRadius: "var(--r-lg)", padding: "16px 20px", marginTop: 18, maxWidth: 560, marginLeft: "auto" }}>
               <div className="mono" style={{ fontSize: "var(--fs-10)", letterSpacing: ".08em", textTransform: "uppercase", color: "var(--spec-meta)", paddingBottom: 8, borderBottom: "1px solid var(--hairline)" }}>Итог сметы</div>
               {mode === "work" && (
                 <React.Fragment>
@@ -1274,13 +1280,17 @@ function RoomSpecOverlay({ data, nav, onClose, onSaved }) {
           )}
 
           {/* итог (sticky); в пустой смете (0 комнат) не рендерим — полупрозрачная полоса
-             перекрывала бы кнопку «Добавить первую комнату» пустого состояния (elementFromPoint) */}
+             перекрывала бы кнопку «Добавить первую комнату» пустого состояния (elementFromPoint).
+             Панель несёт не только сумму, но и переключатель режимов + экспорт/сохранение — поэтому
+             в спецификации (K3, без денег) остаётся сама панель, скрыта только сумма (SmetaTotal). */}
           {rooms.length > 0 && <div className="pd-cart">
             <div style={{ display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
               {/* без aria-live: сумму при драге озвучивает aria-valuetext слайдера; live — только статус бюджета */}
               {/* статус — с суммой бюджета: на ≤560px чип шапки скрыт, и это единственная цифра бюджета */}
-              <SmetaTotal amount={mode === "procure" ? grand : totalClient}
-                caption={<React.Fragment>{mode === "procure" ? "итого закупка" : "итого клиенту"} · {itemsCount} {plural(itemsCount, ["позиция", "позиции", "позиций"])} · <span role="status" aria-atomic="true">{over ? <span style={{ color: "var(--accent-ink)" }}>закупка сверх бюджета {fmtMoney(data.budget)}</span> : <span style={{ color: "var(--accent-2)" }}>закупка в бюджете {fmtMoney(data.budget)}</span>}</span></React.Fragment>} />
+              {mode === "spec"
+                ? <span className="mono" style={{ fontSize: "var(--fs-13)", color: "var(--muted)" }}>{itemsCount} {plural(itemsCount, ["позиция", "позиции", "позиций"])}</span>
+                : <SmetaTotal amount={mode === "procure" ? grand : totalClient}
+                    caption={<React.Fragment>{mode === "procure" ? "итого закупка" : "итого клиенту"} · {itemsCount} {plural(itemsCount, ["позиция", "позиции", "позиций"])} · <span role="status" aria-atomic="true">{over ? <span style={{ color: "var(--accent-ink)" }}>закупка сверх бюджета {fmtMoney(data.budget)}</span> : <span style={{ color: "var(--accent-2)" }}>закупка в бюджете {fmtMoney(data.budget)}</span>}</span></React.Fragment>} />}
               {mode === "work" && (() => {
                 // Д4 (W6): раскладка итога по образцу Financial-полосы Programa — свёрнуто
                 // наценка + маржа (ключевой взгляд дизайнера), кнопка ›/‹ разворачивает
@@ -1317,6 +1327,7 @@ function RoomSpecOverlay({ data, nav, onClose, onSaved }) {
                 <SegTabs className="spec-mode" cap="Выгрузка" ariaLabel="Режим выгрузки" value={mode} onChange={changeMode}
                   items={[
                     { id: "work", label: "Рабочая", title: "Рабочая смета: себестоимость, наценка и цена клиента" },
+                    { id: "spec", label: "Спецификация", title: "Спецификация без денег: артикул, материал, габариты, срок — для подрядчика или печати" },
                     { id: "client", label: "Для клиента", title: "Для клиента: только итоговая цена, без себестоимости и наценки" },
                     { id: "procure", label: "Закупка", title: "Закупочный лист: только себестоимость, группировка по поставщикам, в Excel — лист на поставщика" },
                   ]} />

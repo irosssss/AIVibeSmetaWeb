@@ -41,6 +41,9 @@
     if (!window.pdfMake) { (window.toast ? toast("PDF-модуль ещё загружается — попробуйте через секунду.", "info") : 0); return false; }
     if (mode === "procure") return exportProcurePDF({ project, area, rooms: rooms || [], grand, budget, studioName, studioContact });
     const clientMode = mode === "client";
+    // K3: спецификация — без денег вообще (не «клиентская», это внутренний/подрядчический
+    // документ), поэтому meta ниже полная (ffeMeta({client: clientMode}) уже даёт client=false)
+    const specMode = mode === "spec";
     const FFE = window.LedgerFFE || null;
     // док-коды позиций (K1) — проставляем производно тем же assignDocCodes, что UI/Excel/портал
     if (FFE && FFE.assignDocCodes) rooms = FFE.assignDocCodes(rooms || []);
@@ -78,26 +81,32 @@
       const subClient = r.items.reduce((s, it) => s + lineClient(it), 0);
       content.push({ text: r.name + (r.area ? "   ·   " + r.area + " м²" : ""), style: "h2", margin: [0, 12, 0, 4] });
       content.push({
-        table: { headerRows: 0, widths: ["*", 60, 32, "auto"], body: r.items.map((it) => {
+        table: { headerRows: 0, widths: specMode ? ["*", 60, 32] : ["*", 60, 32, "auto"], body: r.items.map((it) => {
           // FF&E-детали (артикул/материал/габариты/срок) — подстрокой под названием, той же
-          // конвенцией, что в UI: артикул/срок только в рабочей версии (ffeMeta(client))
+          // конвенцией, что в UI: артикул/срок только в рабочей версии и в спецификации
+          // (ffeMeta(client) — client=clientMode, для specMode это уже false → полная мета)
           const meta = FFE && FFE.ffeMeta ? FFE.ffeMeta(it, { client: clientMode }) : "";
           // код позиции (K1) — серым перед названием, виден и клиенту (в отличие от артикула)
           const titleLine = it.code ? { text: [{ text: it.code + "   ", color: PDF.muted, fontSize: 8 }, { text: it.title }] } : { text: it.title };
-          return [
-          meta ? { stack: [titleLine, { text: meta, fontSize: 8, color: PDF.muted, margin: [0, 1, 0, 0] }] } : titleLine,
-          { text: it.cat || "Прочее", color: PDF.muted, fontSize: 9 },
-          { text: FFE && FFE.qtyLabel ? FFE.qtyLabel(it) : "×" + (it.qty || 1), alignment: "right", fontSize: 9, color: PDF.muted },
-          { text: money(clientMode ? lineClient(it) : lineCost(it)), alignment: "right" },
-        ]; }) },
+          const row = [
+            meta ? { stack: [titleLine, { text: meta, fontSize: 8, color: PDF.muted, margin: [0, 1, 0, 0] }] } : titleLine,
+            { text: it.cat || "Прочее", color: PDF.muted, fontSize: 9 },
+            { text: FFE && FFE.qtyLabel ? FFE.qtyLabel(it) : "×" + (it.qty || 1), alignment: "right", fontSize: 9, color: PDF.muted },
+          ];
+          if (!specMode) row.push({ text: money(clientMode ? lineClient(it) : lineCost(it)), alignment: "right" });
+          return row;
+        }) },
         layout: { hLineWidth: () => 0.5, hLineColor: () => "#EFEAE4", vLineWidth: () => 0, paddingTop: () => 3.5, paddingBottom: () => 3.5 },
       });
-      content.push({ columns: [ { text: "", width: "*" }, { text: "Итого по комнате: " + money(clientMode ? subClient : sub), alignment: "right", bold: true, fontSize: 10.5, margin: [0, 4, 0, 0] } ] });
+      if (!specMode) content.push({ columns: [ { text: "", width: "*" }, { text: "Итого по комнате: " + money(clientMode ? subClient : sub), alignment: "right", bold: true, fontSize: 10.5, margin: [0, 4, 0, 0] } ] });
     });
     content.push({ canvas: [{ type: "line", x1: 0, y1: 0, x2: 515, y2: 0, lineWidth: 0.5, lineColor: "#E5E0DA" }], margin: [0, 14, 0, 8] });
-    // итог структурой: подытог → скидка → наценка → доставка/монтаж → ИТОГО (нулевые строки опускаем)
+    // итог структурой: подытог → скидка → наценка → доставка/монтаж → ИТОГО (нулевые строки опускаем);
+    // спецификация (K3) — без денег вообще, весь блок итога пропускаем
     const totalRows = [];
-    if (clientMode) {
+    if (specMode) {
+      // без содержимого — блок итога целиком пропущен
+    } else if (clientMode) {
       if (discountAmt > 0 || deliveryCost > 0 || installCost > 0 || extrasAmt > 0) totalRows.push({ text: "Подытог: " + money(clientTotal), alignment: "right", fontSize: 10.5 });
       if (discountAmt > 0) totalRows.push({ text: "Скидка (−" + discountPct + "%): −" + money(discountAmt), alignment: "right", fontSize: 10.5 });
       if (deliveryCost > 0) totalRows.push({ text: "Доставка: +" + money(deliveryCost), alignment: "right", fontSize: 10.5 });
@@ -128,14 +137,14 @@
         { stack: totalRows, margin: [0, 6, 0, 0] },
       ] });
     }
-    if (fresh) {
+    if (fresh && !specMode) {
       content.push({
         text: (fresh.checked === fresh.total ? "Цены проверены не позднее " : "Цены проверены у " + fresh.checked + " из " + fresh.total + " позиций — не позднее ")
           + fmtD(fresh.oldest) + (fresh.stale ? " (" + fresh.days + " дн. назад — рекомендуем перепроверить)" : ""),
         fontSize: 8, color: fresh.stale ? PDF.warn : PDF.foot, margin: [0, 10, 0, 0],
       });
     }
-    content.push({ text: "Комплектация (мебель, техника, сантехника, свет, текстиль). Ремонтные работы и отделочные материалы — отдельной сметой. Цены — рыночный ориентир. Документ сформирован в Design Ledger.", style: "foot", margin: [0, 16, 0, 0] });
+    content.push({ text: "Комплектация (мебель, техника, сантехника, свет, текстиль). Ремонтные работы и отделочные материалы — отдельной сметой." + (specMode ? "" : " Цены — рыночный ориентир.") + " Документ сформирован в Design Ledger.", style: "foot", margin: [0, 16, 0, 0] });
 
     const doc = {
       pageMargins: [40, 46, 40, 44],
@@ -143,7 +152,7 @@
       styles: PDF_STYLES,
       defaultStyle: PDF_DEFAULT,
     };
-    const suffix = clientMode ? "-klientu" : "-rabochaya";
+    const suffix = specMode ? "-specifikaciya" : clientMode ? "-klientu" : "-rabochaya";
     window.pdfMake.createPdf(doc).download("smeta-" + String(project || "designledger").replace(/\s+/g, "-").toLowerCase() + suffix + ".pdf");
     return true;
   }

@@ -122,6 +122,9 @@ function ClientPortal({ shareId }) {
   }
 
   const snap = rec.snapshot || {};
+  // K3: тумблеры приватности шары — старые ссылки без rec.visibility получают дефолт
+  // (всё выкл), т.е. ведут себя ровно как раньше, когда тумблеров не было
+  const vis = Object.assign(F.defaultShareVisibility ? F.defaultShareVisibility() : {}, rec.visibility || {});
   // док-коды позиций (K1) — тем же assignDocCodes, что смета/PDF/Excel; коды сходятся везде
   const rawRooms = Array.isArray(snap.rooms) ? snap.rooms : [];
   const rooms = F.assignDocCodes ? F.assignDocCodes(rawRooms) : rawRooms;
@@ -161,8 +164,16 @@ function ClientPortal({ shareId }) {
   const renderItem = (r, ri, it, ii) => {
     const cur = apOf(it);
     const qty = it.qty || 1;
-    // FF&E-детали для клиента (материал/габариты; артикул/срок ffeMeta(client) не отдаёт)
-    const ffe = F && F.ffeMeta ? F.ffeMeta(it, { client: true }) : "";
+    // FF&E-детали для клиента: материал/габариты всегда, артикул/срок/запас — по тумблерам
+    // приватности шары (K3), поставщик и ссылка на товар — отдельно (не через ffeMeta)
+    const ffe = F && F.ffeMeta ? F.ffeMeta(it, { client: true, showSku: vis.sku, showLead: vis.details, showWaste: vis.details }) : "";
+    const metaTxt = [ffe, vis.supplier && it.sup ? it.sup : ""].filter(Boolean).join(" · ");
+    const urlLink = vis.url && it.url ? (
+      <a className="mono" href={it.url} target="_blank" rel="noreferrer"
+        style={{ display: "inline-flex", alignItems: "center", gap: 3, fontSize: "var(--fs-11)", color: "var(--info)", marginTop: 2 }}>
+        Ссылка на товар <I.arrow size={11} />
+      </a>
+    ) : null;
     const codeTitle = (
       <React.Fragment>
         {it.code && <span className="mono" style={{ color: "var(--spec-meta)", fontWeight: 500, marginRight: 7 }}>{it.code}</span>}
@@ -196,7 +207,8 @@ function ClientPortal({ shareId }) {
           </div>
           <div style={{ padding: "12px 14px", display: "flex", flexDirection: "column", gap: 5, flex: 1 }}>
             <div style={{ fontSize: "var(--fs-14)", fontWeight: 600, lineHeight: 1.35 }}>{codeTitle}</div>
-            {ffe && <div className="mono" style={{ fontSize: "var(--fs-11)", color: "var(--spec-meta)", overflowWrap: "anywhere" }}>{ffe}</div>}
+            {metaTxt && <div className="mono" style={{ fontSize: "var(--fs-11)", color: "var(--spec-meta)", overflowWrap: "anywhere" }}>{metaTxt}</div>}
+            {urlLink}
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 8, marginTop: 4 }}>
               <span className="mono" style={{ fontSize: "var(--fs-12)", color: "var(--spec-meta)" }}>{qty} × {fmtMoney(cp.unitClient(it))}</span>
               <span className="mono" style={{ fontSize: "var(--fs-15)", fontWeight: 700, color: "var(--accent-2-ink)" }}>{fmtMoney(cp.lineClient(it))}</span>
@@ -218,7 +230,8 @@ function ClientPortal({ shareId }) {
               : <span style={{ width: 46, flex: "none" }} aria-hidden="true" />)}
             <div style={{ minWidth: 0 }}>
               <div style={{ fontSize: "var(--fs-14)", fontWeight: 600 }}>{codeTitle}</div>
-              {ffe && <div className="mono" style={{ fontSize: "var(--fs-11)", color: "var(--spec-meta)", marginTop: 2, overflowWrap: "anywhere" }}>{ffe}</div>}
+              {metaTxt && <div className="mono" style={{ fontSize: "var(--fs-11)", color: "var(--spec-meta)", marginTop: 2, overflowWrap: "anywhere" }}>{metaTxt}</div>}
+              {urlLink}
               <div className="mono" style={{ fontSize: "var(--fs-12)", color: "var(--spec-meta)", marginTop: 2 }}>
                 {qty} × {fmtMoney(cp.unitClient(it))}{it.cat ? " · " + it.cat : ""}
               </div>
@@ -342,7 +355,16 @@ function ClientPortal({ shareId }) {
 
 /* ---------------- ССЫЛКА ДЛЯ КЛИЕНТА (модалка дизайнера) ---------------- */
 function ShareLinkModal({ share, onClose }) {
+  const F = window.LedgerFFE || null;
   const [copied, setCopied] = useP(false);
+  // K3: тумблеры приватности — правятся в любой момент, ссылка не перевыпускается
+  // (паттерн Programa); локальный стейт синхронный с localStorage через setShareVisibility
+  const [vis, setVis] = useP(() => Object.assign(F && F.defaultShareVisibility ? F.defaultShareVisibility() : {}, share.visibility || {}));
+  const toggleVis = (id) => {
+    const next = { ...vis, [id]: !vis[id] };
+    setVis(next);
+    if (F && F.setShareVisibility) F.setShareVisibility(share.shareId, { [id]: next[id] });
+  };
   const link = location.origin + location.pathname + "#portal/" + share.shareId;
   const copy = async () => {
     try { await navigator.clipboard.writeText(link); setCopied(true); setTimeout(() => setCopied(false), 1800); }
@@ -365,6 +387,25 @@ function ShareLinkModal({ share, onClose }) {
         <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
           <a className="btn btn-ghost" href={link} target="_blank" rel="noopener noreferrer" style={{ padding: "8px 14px", fontSize: "var(--fs-13)" }}><I.arrow size={14} />Открыть портал</a>
         </div>
+        {/* K3: тумблеры приватности — поле видимости по аудитории (обобщение канона
+           «SKU не клиенту»), всё выкл по умолчанию; цена и итог не тумблер — суть портала */}
+        {F && F.SHARE_VISIBILITY_FIELDS && (
+          <div style={{ borderTop: "1px solid var(--hairline)", paddingTop: 14 }}>
+            <div style={{ fontWeight: 600, fontSize: "var(--fs-13)", marginBottom: 9 }}>Что дополнительно видит клиент</div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              {F.SHARE_VISIBILITY_FIELDS.map((f) => (
+                <label key={f.id} style={{ display: "flex", alignItems: "center", gap: 9, fontSize: "var(--fs-13)", cursor: "pointer" }}>
+                  <input type="checkbox" checked={!!vis[f.id]} onChange={() => toggleVis(f.id)}
+                    style={{ width: 15, height: 15, accentColor: "var(--accent-2)", flex: "none" }} />
+                  {f.label}
+                </label>
+              ))}
+            </div>
+            <div style={{ fontSize: "var(--fs-11)", color: "var(--faint)", marginTop: 9, lineHeight: 1.5 }}>
+              Цена и итог видны клиенту всегда — без них он не сможет согласовать смету. Материал и габариты видны по умолчанию.
+            </div>
+          </div>
+        )}
         <div style={{ fontSize: "var(--fs-12)", color: "var(--faint)", lineHeight: 1.55, display: "flex", gap: 9, alignItems: "flex-start", marginTop: 2 }}>
           <I.info size={15} style={{ color: "var(--accent)", flex: "none", marginTop: 1 }} />
           <span>Пока это демо-ссылка — она работает в этом браузере. Доступ клиента с его устройства подключится вместе с доменом студии и облаком (Worker + KV), без изменений в интерфейсе.</span>
