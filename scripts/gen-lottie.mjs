@@ -87,7 +87,7 @@ function comp(nm, w, h, op, build, fr = 60) {
   const ctx = { ind: 0, op };
   const L = makeLayer(ctx);
   const layers = build(L, ctx);
-  return { v: "5.9.0", fr, ip: 0, op, w, h, nm, ddd: 0, assets: [], layers, meta: { g: "AIVibe", a: "AIVibe Atelier" } };
+  return { v: "5.9.0", fr, ip: 0, op, w, h, nm, ddd: 0, assets: [], layers, meta: { g: "Ledger", a: "Ledger Atelier" } };
 }
 
 /* convenience: a stroked (optionally trimmed) line-art group */
@@ -190,6 +190,138 @@ function stepSpec() {
   });
 }
 
+/* шаг 04 «PDF клиенту»: лист документа + бумажный самолётик улетает
+   по дуге вправо-вверх (то, что смета УХОДИТ клиенту — глагол шага) */
+function stepSend() {
+  const S = 120, OP = 150;
+  return comp("stepSend", S, S, OP, (L) => {
+    const layers = [];
+    const reset = anim([{ t: 0, s: [100], e: "settle" }, { t: 118, s: [100], e: "settle" }, { t: OP, s: [0] }]);
+    // лист (смета) слева
+    layers.push(L([strokeGroup([rect(44, 62, 40, 56, 5)], { color: C.terra, w: 3.0, trimE: anim([{ t: 0, s: [0], e: "settle" }, { t: 28, s: [100] }]) })], { nm: "doc", ks: { o: reset } }));
+    // 2 строки на листе
+    [50, 64].forEach((y, i) => {
+      layers.push(L([strokeGroup([shPath([[32, y], [56, y]])], { color: C.olive, w: 2.8, trimE: anim([{ t: 18 + i * 12, s: [0], e: "settle" }, { t: 34 + i * 12, s: [100] }]) })], { nm: "ln" + i, ks: { o: reset } }));
+    });
+    // пунктирная траектория к адресату
+    layers.push(L([strokeGroup([shPath([[58, 54], [78, 40], [96, 32]], false, [[[0, 0], [8, -4]], [[-6, 5], [6, -4]], [[-7, 2], [0, 0]]])], { color: C.ochre, w: 2.2, o: 70, trimE: anim([{ t: 46, s: [0], e: "settle" }, { t: 76, s: [100], e: "settle" }, { t: 100, s: [100], e: "settle" }, { t: OP, s: [100] }]) })], {
+      nm: "trail",
+      ks: { o: anim([{ t: 46, s: [0], e: "settle" }, { t: 56, s: [70], e: "settle" }, { t: 112, s: [70], e: "settle" }, { t: 140, s: [0] }]) },
+    }));
+    // самолётик (заливка терракота) летит по траектории с лёгким креном
+    const plane = [shPath([[0, -5], [16, 0], [0, 5], [4, 0]], true)];
+    layers.push(L([fillGroup(plane, { color: C.terra })], {
+      nm: "plane",
+      ks: {
+        o: anim([{ t: 40, s: [0], e: "pop" }, { t: 50, s: [100], e: "settle" }, { t: 104, s: [100], e: "settle" }, { t: 122, s: [0] }]),
+        p: anim([{ t: 40, s: [56, 56, 0], e: "travel" }, { t: 104, s: [98, 30, 0], e: "settle" }, { t: OP, s: [98, 30, 0] }]),
+        r: anim([{ t: 40, s: [-6], e: "travel" }, { t: 104, s: [-24], e: "settle" }, { t: OP, s: [-24] }]),
+      },
+    }));
+    return layers;
+  });
+}
+
+/* шаг 05 «Согласование»: реплика-облако рисуется, внутри поп-галочка
+   «согласовано», снизу — ответная мини-реплика (диалог без созвонов) */
+function stepApprove() {
+  const S = 120, OP = 150;
+  return comp("stepApprove", S, S, OP, (L) => {
+    const layers = [];
+    const reset = anim([{ t: 0, s: [100], e: "settle" }, { t: 118, s: [100], e: "settle" }, { t: OP, s: [0] }]);
+    // облако реплики с хвостиком
+    const bubble = [
+      rect(58, 50, 58, 42, 12),
+      shPath([[40, 70], [34, 82], [52, 71]]),
+    ];
+    layers.push(L([strokeGroup(bubble, { color: C.terra, w: 3.0, trimE: anim([{ t: 0, s: [0], e: "settle" }, { t: 36, s: [100] }]) })], { nm: "bubble", ks: { o: reset } }));
+    // галочка внутри — поп с overshoot (момент «клиент согласовал»)
+    layers.push(L([strokeGroup([shPath([[46, 50], [55, 59], [72, 41]])], { color: C.olive, w: 3.6 })], {
+      nm: "check",
+      ks: {
+        o: anim([{ t: 40, s: [0], e: "pop" }, { t: 54, s: [100], e: "settle" }, { t: 118, s: [100], e: "settle" }, { t: OP, s: [0] }]),
+        s: anim([{ t: 40, s: [60, 60, 100], e: "pop" }, { t: 56, s: [100, 100, 100], e: "settle" }, { t: OP, s: [100, 100, 100] }]),
+        a: [58, 50, 0], p: [58, 50, 0],
+      },
+    }));
+    // ответная мини-реплика (охра) появляется справа-снизу
+    layers.push(L([strokeGroup([rect(88, 88, 28, 20, 8)], { color: C.ochre, w: 2.6 })], {
+      nm: "reply",
+      ks: { o: anim([{ t: 66, s: [0], e: "pop" }, { t: 80, s: [100], e: "settle" }, { t: 118, s: [100], e: "settle" }, { t: OP, s: [0] }]) },
+    }));
+    // три точки набора в мини-реплике
+    layers.push(L([fillGroup([ellipse(80, 88, 4, 4), ellipse(88, 88, 4, 4), ellipse(96, 88, 4, 4)], { color: C.ochre })], {
+      nm: "dots",
+      ks: { o: anim([{ t: 78, s: [0], e: "settle" }, { t: 92, s: [80], e: "settle" }, { t: 118, s: [80], e: "settle" }, { t: OP, s: [0] }]) },
+    }));
+    return layers;
+  });
+}
+
+/* шаг 06 «Закупка · сроки»: грузовик line-art, колёса, дорожные штрихи
+   бегут навстречу — доставка В ПУТИ (движение без смещения сцены) */
+function stepProcure() {
+  const S = 120, OP = 150;
+  return comp("stepProcure", S, S, OP, (L) => {
+    const layers = [];
+    const reset = anim([{ t: 0, s: [100], e: "settle" }, { t: 118, s: [100], e: "settle" }, { t: OP, s: [0] }]);
+    // кузов + кабина (одна draw-on группа)
+    const body = [
+      rect(46, 58, 44, 32, 3),
+      shPath([[68, 50], [84, 50], [92, 60], [92, 74], [68, 74]]),
+    ];
+    layers.push(L([strokeGroup(body, { color: C.terra, w: 3.0, trimE: anim([{ t: 0, s: [0], e: "settle" }, { t: 36, s: [100] }]) })], { nm: "truck", ks: { o: reset } }));
+    // колёса — поп после кузова
+    const wheels = [ellipse(38, 78, 13, 13), ellipse(80, 78, 13, 13)];
+    layers.push(L([strokeGroup(wheels, { color: C.olive, w: 3.0 })], {
+      nm: "wheels",
+      ks: { o: anim([{ t: 30, s: [0], e: "pop" }, { t: 44, s: [100], e: "settle" }, { t: 118, s: [100], e: "settle" }, { t: OP, s: [0] }]) },
+    }));
+    // дорожные штрихи бегут влево (петля движения) — охра, полупрозрачные
+    [0, 1, 2].forEach((i) => {
+      layers.push(L([strokeGroup([shPath([[0, 94], [14, 94]])], { color: C.ochre, w: 2.6, o: 70 })], {
+        nm: "dash" + i,
+        ks: {
+          o: anim([{ t: 44, s: [0], e: "settle" }, { t: 54, s: [70], e: "settle" }, { t: 112, s: [70], e: "settle" }, { t: 134, s: [0] }]),
+          p: anim([{ t: 44 + i * 8, s: [96 - i * 34, 0, 0], e: "linear" }, { t: 116 + i * 8, s: [16 - i * 34, 0, 0] }]),
+        },
+      }));
+    });
+    return layers;
+  });
+}
+
+/* шаг 07 «Сдача проекта»: пакет документов опускается в архивный лоток,
+   лоток закрывается галочкой — проект сдан, история сохранена */
+function stepHandoff() {
+  const S = 120, OP = 150;
+  return comp("stepHandoff", S, S, OP, (L) => {
+    const layers = [];
+    const reset = anim([{ t: 0, s: [100], e: "settle" }, { t: 118, s: [100], e: "settle" }, { t: OP, s: [0] }]);
+    // архивный лоток (открытая коробка)
+    const tray = [shPath([[30, 68], [30, 92], [90, 92], [90, 68]]), shPath([[24, 68], [96, 68]])];
+    layers.push(L([strokeGroup(tray, { color: C.terra, w: 3.0, trimE: anim([{ t: 0, s: [0], e: "settle" }, { t: 30, s: [100] }]) })], { nm: "tray", ks: { o: reset } }));
+    // документ (олива) опускается в лоток и «утапливается»
+    layers.push(L([strokeGroup([rect(60, 0, 30, 36, 4), shPath([[50, -8], [70, -8]]), shPath([[50, 0], [70, 0]])], { color: C.olive, w: 2.8 })], {
+      nm: "doc",
+      ks: {
+        o: anim([{ t: 26, s: [0], e: "settle" }, { t: 38, s: [100], e: "settle" }, { t: 84, s: [100], e: "settle" }, { t: 100, s: [0] }]),
+        p: anim([{ t: 26, s: [0, 34, 0], e: "travel" }, { t: 84, s: [0, 66, 0], e: "settle" }, { t: OP, s: [0, 66, 0] }]),
+      },
+    }));
+    // галочка сдачи — поп на лотке после «утапливания» документа
+    layers.push(L([strokeGroup([shPath([[50, 80], [58, 87], [72, 71]])], { color: C.terra, w: 3.6 })], {
+      nm: "done",
+      ks: {
+        o: anim([{ t: 88, s: [0], e: "pop" }, { t: 102, s: [100], e: "settle" }, { t: 118, s: [100], e: "settle" }, { t: OP, s: [0] }]),
+        s: anim([{ t: 88, s: [60, 60, 100], e: "pop" }, { t: 104, s: [100, 100, 100], e: "settle" }, { t: OP, s: [100, 100, 100] }]),
+        a: [60, 80, 0], p: [60, 80, 0],
+      },
+    }));
+    return layers;
+  });
+}
+
 /* =====================================================================
    LOADER — «AI собирает смету». Скан сверху-вниз заполняет строки,
    итог-бар заполняется последним. Бесшовная петля (fade-reset).
@@ -233,6 +365,10 @@ const anims = {
   stepMeasure: stepMeasure(),
   stepAI: stepAI(),
   stepSpec: stepSpec(),
+  stepSend: stepSend(),
+  stepApprove: stepApprove(),
+  stepProcure: stepProcure(),
+  stepHandoff: stepHandoff(),
   loader: loader(),
 };
 
@@ -241,13 +377,19 @@ const meta = {
   stepMeasure: { loop: true },
   stepAI: { loop: true },
   stepSpec: { loop: true },
+  stepSend: { loop: true },
+  stepApprove: { loop: true },
+  stepProcure: { loop: true },
+  stepHandoff: { loop: true },
   loader: { loop: true },
 };
 
+// глобалы Ledger* (ребренд Фаза 2, 12.07) — плеер ui.jsx читает window.LedgerLottie;
+// старое имя AIVibeLottie здесь ломало бы приложение при регенерации
 const out =
   "/* AUTO-GENERATED by scripts/gen-lottie.mjs — НЕ править руками, правь генератор и перезапусти `node scripts/gen-lottie.mjs`. */\n" +
-  "window.AIVibeLottie = " + JSON.stringify(anims) + ";\n" +
-  "window.AIVibeLottieMeta = " + JSON.stringify(meta) + ";\n";
+  "window.LedgerLottie = " + JSON.stringify(anims) + ";\n" +
+  "window.LedgerLottieMeta = " + JSON.stringify(meta) + ";\n";
 
 // по умолчанию пишем рядом с репо: scripts/ → ../web/lottie-assets.js
 const target = process.argv[2] || new URL("../web/lottie-assets.js", import.meta.url);
