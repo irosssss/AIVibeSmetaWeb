@@ -66,6 +66,34 @@ function PortalCommentThread({ comments, onSend }) {
   );
 }
 
+/* K5c: фото-бокс карточки галереи с листанием мультифото — большое фото + ряд
+   мини-тумбнейлов ([главное, ...доп.], клик меняет большое). Отдельный компонент,
+   потому что renderItem — функция, а не компонент (стейту листания нужен хук). */
+function PortalPhotoBox({ it }) {
+  const all = [it.img, ...(Array.isArray(it.images) ? it.images : [])].filter(Boolean);
+  const [cur, setCur] = useP(0);
+  const shown = all[Math.min(cur, all.length - 1)] || it.img;
+  return (
+    <React.Fragment>
+      <div style={{ position: "relative", aspectRatio: "4 / 3", background: "var(--surface-2)", overflow: "hidden" }}>
+        <Img src={shown} label="" style={{ position: "absolute", inset: 0 }} />
+      </div>
+      {all.length > 1 && (
+        <div style={{ display: "flex", gap: 6, padding: "8px 10px 0" }} role="group" aria-label="Фото позиции">
+          {all.map((u, i) => (
+            <button key={i} type="button" onClick={() => setCur(i)} aria-pressed={i === cur}
+              aria-label={"Фото " + (i + 1) + " из " + all.length}
+              style={{ width: 40, height: 40, flex: "none", borderRadius: 7, overflow: "hidden", padding: 0, cursor: "pointer",
+                border: i === cur ? "2px solid var(--accent-2)" : "1px solid var(--hairline)", opacity: i === cur ? 1 : 0.75 }}>
+              <Img src={u} label="" radius={5} />
+            </button>
+          ))}
+        </div>
+      )}
+    </React.Fragment>
+  );
+}
+
 function PortalWrap({ children }) {
   return (
     <div className="minh-screen" style={{ background: "var(--bg-base)" }}>
@@ -202,9 +230,8 @@ function ClientPortal({ shareId }) {
     if (view === "gallery") {
       return (
         <div key={ii} className="glass" style={{ borderRadius: 12, overflow: "hidden", border: "1px solid var(--hairline)", display: "flex", flexDirection: "column" }}>
-          <div style={{ position: "relative", aspectRatio: "4 / 3", background: "var(--surface-2)", overflow: "hidden" }}>
-            <Img src={it.img} label="" style={{ position: "absolute", inset: 0 }} />
-          </div>
+          {/* K5c: мультифото — большое фото + мини-тумбнейлы листания (если фото больше одного) */}
+          <PortalPhotoBox it={it} />
           <div style={{ padding: "12px 14px", display: "flex", flexDirection: "column", gap: 5, flex: 1 }}>
             <div style={{ fontSize: "var(--fs-14)", fontWeight: 600, lineHeight: 1.35 }}>{codeTitle}</div>
             {metaTxt && <div className="mono" style={{ fontSize: "var(--fs-11)", color: "var(--spec-meta)", overflowWrap: "anywhere" }}>{metaTxt}</div>}

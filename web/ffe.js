@@ -230,7 +230,10 @@
         d: dims.d != null && dims.d !== "" ? num(dims.d, 0) : "",
         h: dims.h != null && dims.h !== "" ? num(dims.h, 0) : "",
       },
-      img:      str(o.img),                    // Фото (URL)
+      img:      str(o.img),                    // Фото (URL) — ГЛАВНОЕ фото: его читают строка/портал/обзор
+      // K5c: доп. ракурсы (мультифото, паттерн Programa со звёздочкой primary). img остаётся
+      // главным — ни один читатель it.img не меняется; «сделать главным» = swap img ↔ images[i]
+      images:   Array.isArray(o.images) ? o.images.map(str).map((s) => s.trim()).filter(Boolean) : [],
       leadWeeks: o.leadWeeks != null && o.leadWeeks !== "" ? num(o.leadWeeks, 0) : "", // Срок поставки, недель
       wastePct: o.wastePct != null && o.wastePct !== "" ? num(o.wastePct, 0) : "", // Запас/отход, % (для материалов: плитка, краска…)
       status:   STATUS_BY_ID[o.status] ? o.status : DEFAULT_STATUS, // Текущая стадия закупки

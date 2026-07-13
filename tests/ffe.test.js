@@ -111,6 +111,23 @@ describe("мапперы позиция ↔ товар библиотеки", ()
   });
 });
 
+describe("images — мультифото позиции (K5c: img = главное, images[] = доп. ракурсы)", () => {
+  it("normalizePosition: массив тримится и чистится от пустых, не-массив/отсутствие → []", () => {
+    const p = FFE.normalizePosition({ title: "Диван", price: 1000, img: "a.jpg", images: [" b.jpg ", "", "c.jpg", null] });
+    expect(p.img).toBe("a.jpg");                       // главное фото не тронуто
+    expect(p.images).toEqual(["b.jpg", "c.jpg"]);
+    expect(FFE.normalizePosition({ title: "X", price: 1, images: "не массив" }).images).toEqual([]);
+    expect(FFE.normalizePosition({ title: "X", price: 1 }).images).toEqual([]);
+  });
+  it("старые позиции без images проходят нормализацию без изменений остальной схемы", () => {
+    const old = { title: "Кресло", price: 58000, qty: 1, img: "x.jpg", sku: "AR-118" };
+    const p = FFE.normalizePosition(old);
+    expect(p.images).toEqual([]);
+    expect(p.img).toBe("x.jpg");
+    expect(p.sku).toBe("AR-118");
+  });
+});
+
 describe("blankSupplier/supplierMatch — адресная книга поставщиков (K5a)", () => {
   it("blankSupplier нормализует строки, принимает sup-алиас, отбрасывает чужие поля", () => {
     const s = FFE.blankSupplier({ name: "  Линея  ", contact: "Иван", email: "i@lineya.ru", phone: "+7 900", url: "https://lineya.ru", city: "Москва", note: "скидка 10%", qty: 5, price: 100 });
