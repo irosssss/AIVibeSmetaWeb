@@ -230,6 +230,65 @@
     return true;
   }
 
+  /* Заказ поставщику — PO (K5d, бенчмарк Programa Purchase Orders): документ на
+     ОДНОГО поставщика из позиций его группы в «Закупке». Контакты поставщика —
+     из адресной книги (K5a, supplierMatch по имени; без карточки — только имя).
+     Цены — закупочные (себестоимость с запасом, те же lineTotal/qtyLabel, что
+     закупочный лист — конвенция «сколько реально заказывать»). Без номера-счётчика:
+     реестр PO со статусами — осознанно не в v1, документ датируется днём выгрузки. */
+  function exportPurchaseOrder({ project, supplierName, card, rows, studioName, studioContact }) {
+    if (!window.pdfMake) { (window.toast ? toast("PDF-модуль ещё загружается — попробуйте через секунду.", "info") : 0); return false; }
+    const FFE = window.LedgerFFE || null;
+    const lineCost = (it) => (FFE && FFE.lineTotal ? FFE.lineTotal(it) : it.price * (it.qty || 1));
+    const list = Array.isArray(rows) ? rows : [];
+    const total = list.reduce((s, x) => s + lineCost(x.it), 0);
+    const today = new Date();
+    const dateRu = today.toLocaleDateString("ru-RU", { day: "numeric", month: "long", year: "numeric" });
+    // контакты поставщика из карточки адресной книги — блок «Кому»
+    const supLines = card ? [card.contact, card.email, card.phone, card.city].filter(Boolean) : [];
+    const content = [
+      { columns: [ { text: "Design Ledger", style: "logo" }, { text: "Заказ поставщику", alignment: "right", style: "muted", margin: [0, 6, 0, 0] } ] },
+      { canvas: [{ type: "line", x1: 0, y1: 0, x2: 515, y2: 0, lineWidth: 1, lineColor: "#B7502C" }], margin: [0, 8, 0, 0] },
+      { text: supplierName || "Поставщик", style: "h1", margin: [0, 14, 0, 2] },
+      ...(supLines.length ? [{ text: supLines.join(" · "), fontSize: 9.5, color: PDF.sub, margin: [0, 0, 0, 2] }] : []),
+      { text: "Заказ от " + dateRu + " · проект «" + (project || "Проект") + "»", style: "muted", margin: [0, 0, 0, 6] },
+      // кто заказывает — студия с контактами для подтверждения
+      ...studioHeaderBlock(studioName ? "Заказчик: " + studioName : "", studioContact),
+      { text: " ", fontSize: 4 },
+      {
+        table: { headerRows: 1, widths: [34, "*", 70, 30, "auto"], body: [
+          [
+            { text: "Код", style: "th" }, { text: "Позиция", style: "th" }, { text: "Помещение", style: "th" },
+            { text: "Кол", style: "th", alignment: "right" }, { text: "Сумма", style: "th", alignment: "right" },
+          ],
+          ...list.map((x) => {
+            // FF&E-детали полностью (артикул/материал/габариты/срок/запас) — что именно изготовить/поставить
+            const meta = FFE && FFE.ffeMeta ? FFE.ffeMeta(x.it, {}) : "";
+            const titleCell = meta
+              ? { stack: [{ text: x.it.title }, { text: meta, fontSize: 8, color: PDF.muted, margin: [0, 1, 0, 0] }] }
+              : { text: x.it.title };
+            return [
+              { text: x.it.code || "", fontSize: 8, color: PDF.muted, margin: [0, 2, 0, 0] },
+              titleCell,
+              { text: x.room || "", color: PDF.muted, fontSize: 9 },
+              { text: FFE && FFE.qtyLabel ? FFE.qtyLabel(x.it) : "×" + (x.it.qty || 1), alignment: "right", fontSize: 9, color: PDF.muted },
+              { text: money(lineCost(x.it)), alignment: "right" },
+            ];
+          }),
+        ] },
+        layout: { hLineWidth: () => 0.5, hLineColor: () => "#EFEAE4", vLineWidth: () => 0, paddingTop: () => 3.5, paddingBottom: () => 3.5 },
+      },
+      { canvas: [{ type: "line", x1: 0, y1: 0, x2: 515, y2: 0, lineWidth: 0.5, lineColor: "#E5E0DA" }], margin: [0, 12, 0, 6] },
+      { text: "Итого по заказу: " + money(total), alignment: "right", style: "total", margin: [0, 4, 0, 0] },
+      { text: "Просим подтвердить наличие, стоимость и сроки поставки по позициям заказа" + (studioContact ? " — контакты студии выше" : "") + ". Цены указаны закупочные, по данным студии на дату заказа.", fontSize: 9, color: PDF.sub, margin: [0, 14, 0, 0], lineHeight: 1.3 },
+      { text: "Документ сформирован в Design Ledger.", style: "foot", margin: [0, 12, 0, 0] },
+    ];
+    const doc = { pageMargins: [40, 46, 40, 44], content, styles: PDF_STYLES, defaultStyle: PDF_DEFAULT };
+    const slug = (s) => String(s || "").replace(/\s+/g, "-").toLowerCase();
+    window.pdfMake.createPdf(doc).download("zakaz-" + slug(supplierName || "postavshchik") + "-" + slug(project || "designledger") + ".pdf");
+    return true;
+  }
+
   /* Протокол согласования (волна A4, бенчмарк Programa): все решения клиента по
      позициям + переписка + таймстампы, одной кнопкой из версии сметы. Источник —
      снимок портал-шары, если версия отправлялась клиенту (то же, что видит клиент
@@ -304,5 +363,5 @@
     return true;
   }
 
-  window.LedgerPDF = { exportRoomSpec, exportApprovalProtocol };
+  window.LedgerPDF = { exportRoomSpec, exportApprovalProtocol, exportPurchaseOrder };
 })();

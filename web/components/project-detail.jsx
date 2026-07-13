@@ -987,6 +987,18 @@ function RoomSpecOverlay({ data, nav, onClose, onSaved }) {
                         {g.name !== NO_SUP && <SupplierContactChip book={supBook} name={g.name} />}
                       </span>
                       <span style={{ display: "flex", alignItems: "baseline", gap: 12 }}>
+                        {/* K5d: заказ поставщику (PO) — документ на ОДНОГО поставщика из его группы;
+                           контакты в шапке документа — из адресной книги (K5a) по имени */}
+                        {g.name !== NO_SUP && g.rows.length > 0 && (
+                          <button className="btn-ws" style={{ alignSelf: "center" }}
+                            title={"Сформировать заказ поставщику «" + g.name + "» (PDF): позиции группы, закупочные цены, контакты из адресной книги"}
+                            onClick={() => { if (window.LedgerPDF) withLib("pdf", () => LedgerPDF.exportPurchaseOrder({
+                              project: data.name, supplierName: g.name,
+                              card: FFE && FFE.supplierMatch ? FFE.supplierMatch(supBook, g.name) : null,
+                              rows: g.rows, studioName, studioContact })); }}>
+                            <I.download size={14} />Заказ (PDF)
+                          </button>
+                        )}
                         {FFE && <span className="mono" title="Средний прогресс стадий закупки позиций поставщика" style={{ fontSize: "var(--fs-11)", color: "var(--spec-meta)" }}>готовность {Math.round(rowsProgress(g.rows) * 100)}%</span>}
                         <span className="mono" style={{ fontWeight: 600, fontSize: "var(--fs-15)" }}>{fmtMoney(g.total)}</span>
                       </span>
