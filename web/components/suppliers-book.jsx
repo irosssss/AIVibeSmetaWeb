@@ -94,7 +94,7 @@ function SupplierCard({ s, onEdit, onRemove }) {
       {(meta || s.note) && (
         <div style={{ fontSize: "var(--fs-12)", color: "var(--muted)", lineHeight: 1.5, display: "flex", flexDirection: "column", gap: 2 }}>
           {meta && <span style={{ overflowWrap: "anywhere" }}>{meta}</span>}
-          {s.note && <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", color: "var(--faint)" }}>{s.note}</span>}
+          {s.note && <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", color: "var(--muted)" }}>{s.note}</span>}
         </div>
       )}
 
@@ -145,7 +145,7 @@ function SupplierEditor({ draft, onClose, onSaved }) {
           <input className="fld" value={d.name} autoFocus aria-invalid={nameErr ? "true" : undefined}
             onChange={(e) => { set({ name: e.target.value }); if (nameErr) setNameErr(""); }} placeholder="Например: Фабрика мягкой мебели" />
           {nameErr && <span className="fld-err" role="alert"><I.info size={14} />{nameErr}</span>}
-          <span style={{ display: "block", fontSize: "var(--fs-12)", color: "var(--faint)", marginTop: 5, lineHeight: 1.5 }}>
+          <span style={{ display: "block", fontSize: "var(--fs-12)", color: "var(--muted)", marginTop: 5, lineHeight: 1.5 }}>
             Название связывает карточку с позициями сметы (поле «Поставщик») — пишите одинаково там и тут.
           </span>
         </SplFld>
@@ -198,7 +198,7 @@ function SupplierContactChip({ book, name }) {
   if (!meta) return null;
   return (
     <span className="mono" title={"Из адресной книги: " + card.name}
-      style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: "var(--fs-11)", color: "var(--info)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+      style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: "var(--fs-12)", color: "var(--info)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
       <I.user size={12} style={{ flex: "none" }} />{meta}
     </span>
   );

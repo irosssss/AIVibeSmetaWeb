@@ -983,7 +983,7 @@ function RoomSpecOverlay({ data, nav, onClose, onSaved }) {
                     <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 12, marginBottom: 8, flexWrap: "wrap" }}>
                       <span style={{ display: "flex", alignItems: "baseline", gap: 10, minWidth: 0, flexWrap: "wrap" }}>
                         <span style={{ fontWeight: 800, fontFamily: "var(--font-display)", fontSize: "var(--fs-16)", color: g.name === NO_SUP ? "var(--muted)" : undefined }}>
-                          {g.name}<span style={{ color: "var(--faint)", fontWeight: 500, fontSize: "var(--fs-13)" }}> · {g.rows.length} {plural(g.rows.length, ["позиция", "позиции", "позиций"])}</span>
+                          {g.name}<span style={{ color: "var(--muted)", fontWeight: 500, fontSize: "var(--fs-13)" }}> · {g.rows.length} {plural(g.rows.length, ["позиция", "позиции", "позиций"])}</span>
                         </span>
                         {/* K5a: контакты поставщика из адресной книги — прямо там, где дизайнер звонит/пишет по заказу */}
                         {g.name !== NO_SUP && <SupplierContactChip book={supBook} name={g.name} />}
@@ -1091,7 +1091,7 @@ function RoomSpecOverlay({ data, nav, onClose, onSaved }) {
                 <div className="mono" style={{ fontSize: "var(--fs-10)", letterSpacing: ".08em", textTransform: "uppercase", color: "var(--spec-meta)", paddingBottom: 8, borderBottom: "1px solid var(--hairline)" }}>Итог закупки</div>
                 {supGroups.map((g) => (
                   <div key={g.name} style={{ ...RS_ROW, borderTop: "1px solid var(--hairline-2)" }}>
-                    <span style={{ color: g.name === NO_SUP ? "var(--faint)" : "var(--muted)" }}>{g.name}</span>
+                    <span style={{ color: "var(--muted)" }}>{g.name}</span>
                     <span className="mono rs-val">{fmtMoney(g.total)}</span>
                   </div>
                 ))}
@@ -2737,7 +2737,7 @@ function ProjectSettings({ data, onClose, onSaved }) {
               </label>
 
               <label style={fld}>
-                <span style={lbl}>Описание <span style={{ color: "var(--faint)", fontWeight: 400 }}>(показывается в Обзоре)</span></span>
+                <span style={lbl}>Описание <span style={{ color: "var(--muted)", fontWeight: 400 }}>(показывается в Обзоре)</span></span>
                 <textarea className="fld" rows={3} value={summaryShort} onChange={(e) => setSummaryShort(e.target.value)}
                   placeholder="Пара предложений о проекте — увидите на Обзоре и на портале" style={{ resize: "vertical", minHeight: 74 }} aria-label="Описание" />
               </label>

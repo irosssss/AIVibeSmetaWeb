@@ -201,7 +201,7 @@ function QuizStep({ q, ans, onPick }) {
                   {st.palette.map((c, i) => <span key={i} style={{ flex: 1, background: c }} />)}
                 </div>
                 <div style={{ fontWeight: 700, fontSize: "var(--fs-14)", marginTop: 11 }}>{o.v}</div>
-                <div style={{ color: "var(--faint)", fontSize: "var(--fs-12)", marginTop: 3 }}>{st.mood}</div>
+                <div style={{ color: "var(--muted)", fontSize: "var(--fs-12)", marginTop: 3 }}>{st.mood}</div>
                 {on && <span className="quiz-pal-check"><I.check size={13} /></span>}
               </button>
             );
@@ -287,7 +287,7 @@ function QuizResult({ result, budget, room }) {
 function Stat({ label, value }) {
   return (
     <div>
-      <div style={{ color: "var(--faint)", fontSize: "var(--fs-12)", marginBottom: 3 }}>{label}</div>
+      <div style={{ color: "var(--muted)", fontSize: "var(--fs-12)", marginBottom: 3 }}>{label}</div>
       <div style={{ fontWeight: 700, fontSize: "var(--fs-15)" }}>{value}</div>
     </div>
   );
