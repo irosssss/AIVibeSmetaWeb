@@ -77,7 +77,8 @@ function Img({ src, alt, label, style, className, radius, priority }) {
   const [err, setErr] = useState(false);
   const base = { display: "block", width: "100%", height: "100%", objectFit: "cover", borderRadius: radius, ...style };
   if (err || !src) {
-    return <div className={"ph " + (className || "")} style={{ ...base, objectFit: undefined }}>{label || "изображение"}</div>;
+    // label="" — осознанно пустая плашка (декоративный слот); только отсутствующий label → дефолт-подпись
+    return <div className={"ph " + (className || "")} style={{ ...base, objectFit: undefined }}>{label != null ? label : "изображение"}</div>;
   }
   // priority — для LCP-картинок (hero): eager + fetchpriority, в паре с <link rel="preload">
   return <img src={src} alt={alt || label || ""} loading={priority ? "eager" : "lazy"} fetchpriority={priority ? "high" : undefined}

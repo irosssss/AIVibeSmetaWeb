@@ -290,6 +290,7 @@ function RoomSpecOverlay({ data, nav, onClose }) {
       // d.* приходят из PosEditor.draft() (sku/url/material тримнуты, dims/leadWeeks — число или "")
       if (d.sku) next.sku = d.sku; else delete next.sku;
       if (d.url) next.url = d.url; else delete next.url;
+      if (d.img) next.img = d.img; else delete next.img;
       if (d.material) next.material = d.material; else delete next.material;
       if (d.leadWeeks !== "") next.leadWeeks = d.leadWeeks; else delete next.leadWeeks;
       if (d.wastePct !== "") next.wastePct = d.wastePct; else delete next.wastePct;
@@ -812,6 +813,7 @@ function RoomSpecOverlay({ data, nav, onClose }) {
                   </div>
                   {/* шапка колонок */}
                   <div className="mono" style={{ display: "flex", alignItems: "baseline", gap: 10, padding: "2px 0 6px", fontSize: "var(--fs-10)", letterSpacing: ".06em", textTransform: "uppercase", color: "var(--spec-meta)", borderBottom: "1px solid var(--hairline)" }}>
+                    {r.items.some((p) => p.img) && <span style={{ width: 38, flex: "none" }} aria-hidden="true" />}{/* слот тумбнейла — только если в комнате есть фото (иначе строки не теряют ширину) */}
                     <span style={{ flex: 1 }}>Позиция</span>
                     <span className="rs-cat" style={{ width: 78, textAlign: "right" }}>Раздел</span>
                     <span style={{ width: 62, textAlign: "right" }}>Кол</span>
@@ -830,6 +832,12 @@ function RoomSpecOverlay({ data, nav, onClose }) {
                       <React.Fragment key={i}>
                       <div className={flashPos && flashPos.ri === ri && flashPos.ii === i ? "row-flash" : undefined}
                         style={{ display: "flex", alignItems: "baseline", gap: 10, padding: "7px 0", borderTop: i ? "1px solid var(--hairline-2)" : "none", fontSize: "var(--fs-13)" }}>
+                        {/* ведущий тумбнейл фото (паттерн Programa, плотность наша) — слот 38px зарезервирован
+                           для выравнивания, но рамку/фото рисуем ТОЛЬКО когда фото есть: иначе пустой слот
+                           (не «сетка коробок», flash строки просвечивает); alignSelf center при baseline-строке */}
+                        {r.items.some((p) => p.img) && (it.img
+                          ? <span style={{ width: 38, height: 38, flex: "none", alignSelf: "center", borderRadius: 8, overflow: "hidden", border: "1px solid var(--hairline)" }} aria-hidden="true"><Img src={it.img} label="" radius={8} /></span>
+                          : <span style={{ width: 38, flex: "none" }} aria-hidden="true" />)}
                         <span style={{ flex: 1, minWidth: 0, color: "var(--text)", lineHeight: 1.4 }}>
                           {it.title}{mode === "work" && it.priceDate && <React.Fragment>{" "}<PriceAgeChip d={it.priceDate} note={pastCopyNote(it.priceDate)} /></React.Fragment>}
                           {(() => {
@@ -932,6 +940,7 @@ function RoomSpecOverlay({ data, nav, onClose }) {
                       </span>
                     </div>
                     <div className="mono" style={{ display: "flex", alignItems: "baseline", gap: 10, padding: "2px 0 6px", fontSize: "var(--fs-10)", letterSpacing: ".06em", textTransform: "uppercase", color: "var(--spec-meta)", borderBottom: "1px solid var(--hairline)" }}>
+                      {g.rows.some((x) => x.it.img) && <span style={{ width: 38, flex: "none" }} aria-hidden="true" />}{/* слот тумбнейла — только если в группе есть фото */}
                       <span style={{ flex: 1 }}>Позиция</span>
                       <span className="rs-cat" style={{ width: 104, textAlign: "right" }}>Помещение</span>
                       <span style={{ width: 62, textAlign: "right" }}>Кол</span>
@@ -947,6 +956,9 @@ function RoomSpecOverlay({ data, nav, onClose }) {
                         return (
                           <React.Fragment key={x.ri + ":" + x.ii}>
                           <div className={"rs-prow" + (flashSup && flashSup.ri === x.ri && flashSup.ii === x.ii ? " row-flash" : "")} style={{ display: "flex", alignItems: "baseline", gap: 10, padding: "7px 0", borderTop: i ? "1px solid var(--hairline-2)" : "none", fontSize: "var(--fs-13)" }}>
+                            {g.rows.some((y) => y.it.img) && (x.it.img
+                              ? <span style={{ width: 38, height: 38, flex: "none", alignSelf: "center", borderRadius: 8, overflow: "hidden", border: "1px solid var(--hairline)" }} aria-hidden="true"><Img src={x.it.img} label="" radius={8} /></span>
+                              : <span style={{ width: 38, flex: "none" }} aria-hidden="true" />)}
                             <span style={{ flex: 1, minWidth: 0, color: "var(--text)", lineHeight: 1.4, overflowWrap: "anywhere" }}>
                               {x.it.title}
                               {x.it.priceDate && <React.Fragment>{" "}<PriceAgeChip d={x.it.priceDate} note={pastCopyNote(x.it.priceDate)} /></React.Fragment>}
@@ -1598,6 +1610,7 @@ function PosEditor({ item, cats, sups, isNew, onSave, onDelete, onCancel, librar
     // FF&E-поля (проф-уровень спецификации) — редактируются на вкладке «Основное»
     sku: (item && item.sku) || "",
     url: (item && item.url) || "",
+    img: (item && item.img) || "",
     material: (item && item.material) || "",
     dimW: s(dm.w), dimD: s(dm.d), dimH: s(dm.h),
     leadWeeks: s(item && item.leadWeeks),
@@ -1616,7 +1629,7 @@ function PosEditor({ item, cats, sups, isNew, onSave, onDelete, onCancel, librar
   const draft = () => ({
     title: d.title.trim(), qty, price, cat: d.cat.trim(), sup: d.sup.trim(),
     unit: d.unit, wastePct,
-    sku: d.sku.trim(), url: d.url.trim(), material: d.material.trim(),
+    sku: d.sku.trim(), url: d.url.trim(), img: d.img.trim(), material: d.material.trim(),
     dims: { w: nOrEmpty(d.dimW), d: nOrEmpty(d.dimD), h: nOrEmpty(d.dimH) },
     leadWeeks: nOrEmpty(d.leadWeeks),
   });
@@ -1624,7 +1637,7 @@ function PosEditor({ item, cats, sups, isNew, onSave, onDelete, onCancel, librar
   // W5.3: правил ли пользователь поля (для prev/next: изменённый валидный черновик сохраняем перед переходом)
   const dirty = !!item && (d.title.trim() !== item.title || qty !== (item.qty || 1) || price !== item.price
     || d.cat.trim() !== (item.cat || "") || d.sup.trim() !== (item.sup || "") || d.wastePct !== s(item.wastePct) || d.unit !== (item.unit || "шт")
-    || d.sku.trim() !== (item.sku || "") || d.url.trim() !== (item.url || "") || d.material.trim() !== (item.material || "")
+    || d.sku.trim() !== (item.sku || "") || d.url.trim() !== (item.url || "") || d.img.trim() !== (item.img || "") || d.material.trim() !== (item.material || "")
     || d.dimW !== s(dm.w) || d.dimD !== s(dm.d) || d.dimH !== s(dm.h) || d.leadWeeks !== s(item.leadWeeks));
   // живой итог на вкладке «Финансы» — считаем ровно тем же FFE.clientPricing, что UI/PDF/
   // Excel/портал (единый источник формулы: запас в costUnit → наценка раздела поверх →
@@ -1748,6 +1761,14 @@ function PosEditor({ item, cats, sups, isNew, onSave, onDelete, onCancel, librar
           <label style={lab}>Ссылка на товар
             <input style={{ ...fld, fontFamily: "var(--font-mono)", fontSize: "var(--fs-12)" }} type="url" inputMode="url" value={d.url} placeholder="https://…" onChange={(e) => setD((x) => ({ ...x, url: e.target.value }))} />
           </label>
+          <div style={{ display: "flex", gap: 10, alignItems: "flex-end" }}>
+            <label style={{ ...lab, flex: 1 }}>Фото (URL)
+              <input style={{ ...fld, fontFamily: "var(--font-mono)", fontSize: "var(--fs-12)" }} type="url" inputMode="url" value={d.img} placeholder="https://…jpg" onChange={(e) => setD((x) => ({ ...x, img: e.target.value }))} />
+            </label>
+            <div style={{ width: 56, height: 56, flex: "none", borderRadius: 8, overflow: "hidden", border: "1px solid var(--hairline)" }} aria-hidden="true">
+              <Img src={d.img.trim()} label="фото" radius={8} />
+            </div>
+          </div>
           <div className="pe-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 96px", gap: 10, alignItems: "end" }}>
             <label style={lab}>Ширина, см
               <input style={{ ...fld, fontFamily: "var(--font-mono)" }} type="number" min="0" step="1" inputMode="numeric" value={d.dimW} onChange={(e) => setD((x) => ({ ...x, dimW: e.target.value }))} />
