@@ -304,6 +304,7 @@ function RoomSpecOverlay({ data, nav, onClose, onSaved }) {
       if (d.unit && d.unit !== "шт") next.unit = d.unit; else delete next.unit;   // дефолт «шт» не храним
       // FF&E-детали: пустые не храним (delete), чтобы позиция не таскала "" по схеме;
       // d.* приходят из PosEditor.draft() (sku/url/material тримнуты, dims/leadWeeks — число или "")
+      if (d.code) next.code = d.code; else delete next.code;   // ручной док-код = override; пусто = авто по разделу (assignDocCodes)
       if (d.sku) next.sku = d.sku; else delete next.sku;
       if (d.url) next.url = d.url; else delete next.url;
       if (d.img) next.img = d.img; else delete next.img;
@@ -412,6 +413,11 @@ function RoomSpecOverlay({ data, nav, onClose, onSaved }) {
   const grand = rooms.reduce((s, r) => s + roomTotal(r), 0);
   const client = cp.client;
   const itemsCount = rooms.reduce((s, r) => s + r.items.length, 0);
+  // док-коды позиций (K1): вычисляем производно от rooms (пул по разделу + ручной override
+  // в it.code), не мигрируя сохранённое — тот же assignDocCodes зовут PDF/Excel/портал,
+  // коды сходятся везде. codeOf(ri, i) — эффективный код строки для рендера.
+  const docCoded = FFE && FFE.assignDocCodes ? FFE.assignDocCodes(rooms) : rooms;
+  const codeOf = (ri, i) => (docCoded[ri] && docCoded[ri].items[i] && docCoded[ri].items[i].code) || "";
   const over = grand > data.budget;
   // паспорт свежести цен (роадмап «Стол комплектатора» шаг C1) — та же честная нижняя граница, что уходит в PDF/Excel
   const fresh = window.LedgerFFE && window.LedgerFFE.priceFreshness ? window.LedgerFFE.priceFreshness(rooms) : null;
@@ -859,6 +865,7 @@ function RoomSpecOverlay({ data, nav, onClose, onSaved }) {
                           ? <span style={{ width: 38, height: 38, flex: "none", alignSelf: "center", borderRadius: 8, overflow: "hidden", border: "1px solid var(--hairline)" }} aria-hidden="true"><Img src={it.img} label="" radius={8} /></span>
                           : <span style={{ width: 38, flex: "none" }} aria-hidden="true" />)}
                         <span style={{ flex: 1, minWidth: 0, color: "var(--text)", lineHeight: 1.4 }}>
+                          {codeOf(ri, i) && <span className="mono" style={{ color: "var(--spec-meta)", fontSize: "var(--fs-11)", marginRight: 7 }}>{codeOf(ri, i)}</span>}
                           {it.title}{mode === "work" && it.priceDate && <React.Fragment>{" "}<PriceAgeChip d={it.priceDate} note={pastCopyNote(it.priceDate)} /></React.Fragment>}
                           {(() => {
                             // мета-строка FF&E-деталей под названием: материал/габариты видны и клиенту,
@@ -912,7 +919,7 @@ function RoomSpecOverlay({ data, nav, onClose, onSaved }) {
                         const adjIdx = (dir) => { const j = i + dir; return j >= 0 && j < r.items.length ? j : null; };
                         return (
                           <PosEditor item={it} cats={cats} sups={supList} library={library} onToLibrary={saveToLibrary}
-                            markup={markup} catMarkup={catMarkup}
+                            markup={markup} catMarkup={catMarkup} codeHint={codeOf(ri, i)}
                             posNav={{ index: i, total: r.items.length, prev: adjIdx(-1), next: adjIdx(1),
                               go: (j, draft) => { if (draft) savePos(ri, i, draft); setEditPos({ ri, ii: j }); } }}
                             onCancel={() => setEditPos(null)} onSave={(d) => savePos(ri, i, d)} onDelete={() => removePos(ri, i)} />
@@ -1702,7 +1709,7 @@ function CommentThreadCard({ group, onReply }) {
    деньги нормализуются до целых рублей, расчёты идут прежним конвейером
    (инвариант UI=PDF=Excel не трогаем). Enter — сохранить, Esc — закрыть
    редактор (не оверлей: stopPropagation до window-слушателя). */
-function PosEditor({ item, cats, sups, isNew, onSave, onDelete, onCancel, library, onToLibrary, posNav, markup, catMarkup }) {
+function PosEditor({ item, cats, sups, isNew, onSave, onDelete, onCancel, library, onToLibrary, posNav, markup, catMarkup, codeHint }) {
   const dm = (item && item.dims) || {};
   const s = (v) => (v == null || v === "" ? "" : String(v));
   const [d, setD] = usePD({
@@ -1715,6 +1722,7 @@ function PosEditor({ item, cats, sups, isNew, onSave, onDelete, onCancel, librar
     sup: (item && item.sup) || "",
     wastePct: s(item && item.wastePct),
     // FF&E-поля (проф-уровень спецификации) — редактируются на вкладке «Основное»
+    code: (item && item.code) || "",   // док-код (пусто = авто по разделу)
     sku: (item && item.sku) || "",
     url: (item && item.url) || "",
     img: (item && item.img) || "",
@@ -1737,7 +1745,7 @@ function PosEditor({ item, cats, sups, isNew, onSave, onDelete, onCancel, librar
   const draft = () => ({
     title: d.title.trim(), qty, price, cat: d.cat.trim(), sup: d.sup.trim(),
     unit: d.unit, wastePct, rrp,
-    sku: d.sku.trim(), url: d.url.trim(), img: d.img.trim(), material: d.material.trim(),
+    code: d.code.trim(), sku: d.sku.trim(), url: d.url.trim(), img: d.img.trim(), material: d.material.trim(),
     dims: { w: nOrEmpty(d.dimW), d: nOrEmpty(d.dimD), h: nOrEmpty(d.dimH) },
     leadWeeks: nOrEmpty(d.leadWeeks),
   });
@@ -1745,7 +1753,7 @@ function PosEditor({ item, cats, sups, isNew, onSave, onDelete, onCancel, librar
   // W5.3: правил ли пользователь поля (для prev/next: изменённый валидный черновик сохраняем перед переходом)
   const dirty = !!item && (d.title.trim() !== item.title || qty !== (item.qty || 1) || price !== item.price
     || d.cat.trim() !== (item.cat || "") || d.sup.trim() !== (item.sup || "") || d.wastePct !== s(item.wastePct) || d.rrp !== s(item.rrp) || d.unit !== (item.unit || "шт")
-    || d.sku.trim() !== (item.sku || "") || d.url.trim() !== (item.url || "") || d.img.trim() !== (item.img || "") || d.material.trim() !== (item.material || "")
+    || d.code.trim() !== (item.code || "") || d.sku.trim() !== (item.sku || "") || d.url.trim() !== (item.url || "") || d.img.trim() !== (item.img || "") || d.material.trim() !== (item.material || "")
     || d.dimW !== s(dm.w) || d.dimD !== s(dm.d) || d.dimH !== s(dm.h) || d.leadWeeks !== s(item.leadWeeks));
   // живой итог на вкладке «Финансы» — считаем ровно тем же FFE.clientPricing, что UI/PDF/
   // Excel/портал (единый источник формулы: запас в costUnit → наценка раздела поверх →
@@ -1868,9 +1876,14 @@ function PosEditor({ item, cats, sups, isNew, onSave, onDelete, onCancel, librar
 
       {tab === "main" && (
         <div className="view-enter" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          <label style={lab}>Раздел
-            <input style={fld} list="pe-cat-list" value={d.cat} placeholder="Прочее" onChange={(e) => setD((x) => ({ ...x, cat: e.target.value }))} />
-          </label>
+          <div className="pe-grid" style={{ display: "grid", gridTemplateColumns: "1fr 120px", gap: 10 }}>
+            <label style={lab}>Раздел
+              <input style={fld} list="pe-cat-list" value={d.cat} placeholder="Прочее" onChange={(e) => setD((x) => ({ ...x, cat: e.target.value }))} />
+            </label>
+            <label style={lab} title="Код позиции для спецификации и чертежей (напр. МБ-01). Пусто — присвоится автоматически по разделу.">Код
+              <input style={{ ...fld, fontFamily: "var(--font-mono)" }} value={d.code} placeholder={codeHint || "авто"} maxLength={16} onChange={(e) => setD((x) => ({ ...x, code: e.target.value }))} />
+            </label>
+          </div>
           <div className="pe-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
             <label style={lab}>Артикул
               <input style={fld} value={d.sku} placeholder="напр. MIL-3" onChange={(e) => setD((x) => ({ ...x, sku: e.target.value }))} />

@@ -202,6 +202,7 @@
       // но НЕ эмитим — единое имя убирает класс багов «поставщик спрятался под другим полем»
       sup:      str(o.sup || o.supplier),      // Поставщик / фабрика / магазин
       url:      str(o.url),                    // Ссылка на товар (источник клиппера)
+      code:     str(o.code),                   // Док-код позиции «МБ-01» (пусто = авто по разделу; правится вручную) — язык спецификаций, паттерн Programa CH02/TB01
       sku:      str(o.sku),                    // Артикул
       material: str(o.material),              // Отделка / материал
       dims: {                                  // Габариты, см (Ш×Г×В)
@@ -232,6 +233,7 @@
   function normalizePosition(raw) {
     const p = blankPosition(raw);
     p.qty = Math.max(1, Math.round(num(p.qty, 1)));
+    p.code = str(p.code).trim().slice(0, 16);   // док-код — короткий, без ведущих/хвостовых пробелов
     p.price = Math.max(0, Math.round(num(p.price, 0)));
     if (p.rrp !== "") p.rrp = Math.max(0, Math.round(num(p.rrp, 0)));
     if (p.leadWeeks !== "") p.leadWeeks = Math.max(0, Math.round(num(p.leadWeeks, 0)));
@@ -281,6 +283,58 @@
   // Округление тем же принципом: цена/ед. один раз, строка = цена × кол-во
   const rrpUnit = (it) => Math.round(num(it.rrp, 0) * (1 + num(it.wastePct || 0, 0) / 100));
   const rrpLine = (it) => rrpUnit(it) * num(it.qty || 1, 1);
+
+  /* ---- Док-коды позиций (волна K1, паттерн Programa CH02/TB01) ----
+     Короткий человекочитаемый код на позицию: префикс по разделу + номер по порядку.
+     Язык спецификаций дизайнера («см. чертёж, поз. МБ-02»). Виден и клиенту (в отличие
+     от артикула) — как в публичной смете Programa. */
+  // двухбуквенный префикс известных разделов; свободный ввод → первые буквы слов
+  const DOC_CODE_PREFIX = {
+    "Мебель": "МБ", "Мягкая мебель": "ММ", "Кухня": "КХ", "Техника": "ТХ",
+    "Сантехника": "СН", "Освещение": "СВ", "Свет": "СВ", "Текстиль": "ТК",
+    "Декор": "ДК", "Хранение": "ХР", "Отделка": "ОТ", "Прочее": "ПР",
+  };
+  function docCodePrefix(cat) {
+    const c = str(cat).trim();
+    if (DOC_CODE_PREFIX[c]) return DOC_CODE_PREFIX[c];
+    const words = c.split(/\s+/).filter((w) => /[А-Яа-яЁёA-Za-z]/.test(w));
+    if (!words.length) return "ПЗ";   // «позиция» — раздел не задан/не буквенный
+    const p = words.length >= 2 ? (words[0][0] + words[1][0]) : words[0].slice(0, 2);
+    return p.toUpperCase();
+  }
+  // распарсить код «МБ-01»/«МБ 1»/«A12» → {prefix, num} (для резервирования ручных кодов)
+  function parseDocCode(code) {
+    const m = /^([^\d\s-]+)[\s-]*(\d+)$/.exec(str(code).trim());
+    return m ? { prefix: m[1].toUpperCase(), num: parseInt(m[2], 10) } : null;
+  }
+  /* Заполнить пустые коды позиций по порядку документа, уважая заданные вручную
+     (ручной код = override, его номер зарезервирован — авто его пропускают).
+     Чистая, идемпотентная: повторный проход тот же результат. Возвращает НОВЫЙ rooms
+     (позиции — копии с проставленным .code). Единый источник для UI/PDF/Excel/портала —
+     каждый выход зовёт assignDocCodes на своих rooms, коды сходятся без координации. */
+  function assignDocCodes(rooms) {
+    if (!Array.isArray(rooms)) return rooms;
+    const used = {};   // prefix -> Set(занятые номера)
+    const setOf = (p) => (used[p] || (used[p] = new Set()));
+    rooms.forEach((r) => (r && r.items || []).forEach((it) => {
+      const pc = it && parseDocCode(it.code);
+      if (pc) setOf(pc.prefix).add(pc.num);
+    }));
+    const counter = {};   // prefix -> последний выданный номер (пол для поиска)
+    return rooms.map((r) => !r ? r : ({
+      ...r,
+      items: (r.items || []).map((it) => {
+        if (!it) return it;
+        if (str(it.code).trim()) return { ...it, code: str(it.code).trim() };
+        const pref = docCodePrefix(it.cat);
+        const set = setOf(pref);
+        let n = counter[pref] || 0;
+        do { n += 1; } while (set.has(n));
+        counter[pref] = n; set.add(n);
+        return { ...it, code: pref + "-" + String(n).padStart(2, "0") };
+      }),
+    }));
+  }
 
   /* ----------------------------- БИБЛИОТЕКА ТОВАРОВ СТУДИИ (волна B1, бенчмарк Programa) -----------------------------
      Мастер-запись товара студии — то, что дизайнер подбирает снова и снова (диван,
@@ -748,6 +802,7 @@
     URGENCY_BUCKETS, URGENCY_BY_ID, urgencyBucket, itemDueItems,
     EXTRA_PRESETS, statusMeta, statusProgress, stampStatus, today, priceFreshness,
     blankPosition, normalizePosition, dimsLabel, ffeMeta, qtyLabel, costUnit, lineTotal, rrpUnit, rrpLine,
+    docCodePrefix, assignDocCodes,
     blankComment, addComment,
     blankProduct, productFromPosition, positionFromProduct,
     blankExtra, extraAmount, extrasTotal,

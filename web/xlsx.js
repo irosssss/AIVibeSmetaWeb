@@ -43,6 +43,7 @@
     if (mode === "procure") return exportProcure({ project, area, rooms, grand, budget });
     const clientMode = mode === "client";
     const FFE = window.LedgerFFE || null;
+    if (FFE && FFE.assignDocCodes) rooms = FFE.assignDocCodes(rooms);   // док-коды (K1) — тем же источником, что UI/PDF/портал
     const fresh = FFE && FFE.priceFreshness ? FFE.priceFreshness(rooms) : null;
     // итог структурой: скидка округляется до рубля от подытога — та же формула, что в UI/PDF
     const discountAmt = Math.round((clientTotal || 0) * (discountPct || 0) / 100);
@@ -192,7 +193,10 @@
     // розница/выгода (RRP-слой) — витрина ДЛЯ клиента, видна в обоих режимах, когда rrp задана.
     // В заголовке колонки нет слова «цена» — иначе импортёр принял бы розницу за себестоимость
     const hasRrp = rooms.some((r) => r.items.some((it) => +it.rrp > 0));
+    // док-код (K1) — виден и клиенту (как в публичной смете Programa), первым в блоке FF&E
+    const hasDoc = rooms.some((r) => r.items.some((it) => it.code));
     const ffeHead = [];
+    if (hasDoc) ffeHead.push("Код");
     if (hasSku) ffeHead.push("Артикул");
     if (hasMat) ffeHead.push("Материал");
     if (hasDims) ffeHead.push("Габариты");
@@ -200,6 +204,7 @@
     if (hasWaste) ffeHead.push("Запас, %");
     const ffeCells = (it) => {
       const c = [];
+      if (hasDoc) c.push(it.code || "");
       if (hasSku) c.push(it.sku || "");
       if (hasMat) c.push(it.material || "");
       if (hasDims) c.push(dimsOf(it));
@@ -238,7 +243,7 @@
     if (hasRrp && savings > 0) trow[col("Выгода, ₽")] = savings;
     all.push(trow);
     const wsA = XLSX.utils.aoa_to_sheet(all);
-    setCols(wsA, head.map((h) => ({ "№": 5, "Помещение": 18, "Раздел": 16, "Поставщик": 20, "Наименование": 46, "Артикул": 16, "Материал": 20, "Габариты": 16, "Срок, нед.": 10, "Запас, %": 10, "Кол-во": 7, "Ед.": 8, "Цена, ₽": 13, "Сумма, ₽": 14, "Цена клиенту, ₽": 15, "Сумма клиенту, ₽": 16, "Розница/ед., ₽": 14, "Выгода, ₽": 12, "Цена от": 11, "Клиент решил": 14, "Решение от": 11 }[h] || 12)));
+    setCols(wsA, head.map((h) => ({ "№": 5, "Помещение": 18, "Раздел": 16, "Поставщик": 20, "Наименование": 46, "Код": 10, "Артикул": 16, "Материал": 20, "Габариты": 16, "Срок, нед.": 10, "Запас, %": 10, "Кол-во": 7, "Ед.": 8, "Цена, ₽": 13, "Сумма, ₽": 14, "Цена клиенту, ₽": 15, "Сумма клиенту, ₽": 16, "Розница/ед., ₽": 14, "Выгода, ₽": 12, "Цена от": 11, "Клиент решил": 14, "Решение от": 11 }[h] || 12)));
     const moneyCols = ["Цена, ₽", "Сумма, ₽", "Цена клиенту, ₽", "Сумма клиенту, ₽", "Розница/ед., ₽", "Выгода, ₽"].map(col).filter((c) => c >= 0);
     fmtMoneyCols(wsA, moneyCols, 1, all.length - 1);
     wsA["!autofilter"] = { ref: "A1:" + XLSX.utils.encode_col(head.length - 1) + "1" };   // фильтр по шапке — дизайнер крутит сводную как хочет
@@ -253,7 +258,7 @@
     else rHead.push("Цена, ₽", "Сумма, ₽", "Цена клиенту, ₽", "Сумма клиенту, ₽");
     if (hasRrp) rHead.push("Розница/ед., ₽", "Выгода, ₽");
     const rcol = (name) => rHead.indexOf(name);
-    const rColW = { "№": 5, "Раздел": 16, "Наименование": 46, "Артикул": 16, "Материал": 20, "Габариты": 16, "Срок, нед.": 10, "Запас, %": 10, "Кол-во": 7, "Ед.": 8, "Цена, ₽": 13, "Сумма, ₽": 14, "Цена клиенту, ₽": 15, "Сумма клиенту, ₽": 16, "Розница/ед., ₽": 14, "Выгода, ₽": 12 };
+    const rColW = { "№": 5, "Раздел": 16, "Наименование": 46, "Код": 10, "Артикул": 16, "Материал": 20, "Габариты": 16, "Срок, нед.": 10, "Запас, %": 10, "Кол-во": 7, "Ед.": 8, "Цена, ₽": 13, "Сумма, ₽": 14, "Цена клиенту, ₽": 15, "Сумма клиенту, ₽": 16, "Розница/ед., ₽": 14, "Выгода, ₽": 12 };
     const rMoneyCols = (clientMode ? ["Цена клиенту, ₽", "Сумма клиенту, ₽"] : ["Цена, ₽", "Сумма, ₽", "Цена клиенту, ₽", "Сумма клиенту, ₽"]).concat(hasRrp ? ["Розница/ед., ₽", "Выгода, ₽"] : []).map(rcol);
     rooms.forEach((r) => {
       const rows = [[roomLabel(r)], [], rHead];
@@ -470,6 +475,7 @@
           const cTrackUrl = colOf(head, /ссылка отслежив/);
           // FF&E-детали позиции (артикул/материал/габариты/срок) — иначе round-trip своей же
           // выгрузки молча терял бы их. Габариты «80×45×120 см» → {w,d,h} (× или x, «—» = пусто)
+          const cDoc = colOf(head, /^код/);   // док-код (K1); якорь ^код — не цепляет будущие «…код»
           const cSku = colOf(head, /артикул|sku/);
           const cMat = colOf(head, /материал|отделк/);
           const cDims = colOf(head, /габарит|размер/);
@@ -532,6 +538,7 @@
             Object.keys(cPayCols).forEach((id) => { if (cPayCols[id] >= 0) { const p = parsePayCell(row[cPayCols[id]]); if (p) payments[id] = p; } });
             const trackNumber = cTrackNum >= 0 ? String(row[cTrackNum] == null ? "" : row[cTrackNum]).trim() : "";
             const trackUrl = cTrackUrl >= 0 ? String(row[cTrackUrl] == null ? "" : row[cTrackUrl]).trim() : "";
+            const code = cDoc >= 0 ? String(row[cDoc] == null ? "" : row[cDoc]).trim() : "";
             const sku = cSku >= 0 ? String(row[cSku] == null ? "" : row[cSku]).trim() : "";
             const material = cMat >= 0 ? String(row[cMat] == null ? "" : row[cMat]).trim() : "";
             const dims = cDims >= 0 ? parseDims(row[cDims]) : null;
@@ -548,7 +555,7 @@
             if (unit && !KNOWN_UNITS.includes(unit)) unit = "";
             if (!byRoom.has(roomName)) byRoom.set(roomName, []);
             byRoom.get(roomName).push({ title, cat, price, qty, ...(sup ? { sup } : {}), ...(priceDate ? { priceDate } : {}), ...(status ? { status } : {}),
-              ...(sku ? { sku } : {}), ...(material ? { material } : {}), ...(dims ? { dims } : {}), ...(leadWeeks ? { leadWeeks } : {}), ...(wastePct ? { wastePct } : {}), ...(rrp ? { rrp } : {}), ...(unit && unit !== "шт" ? { unit } : {}),
+              ...(code ? { code } : {}), ...(sku ? { sku } : {}), ...(material ? { material } : {}), ...(dims ? { dims } : {}), ...(leadWeeks ? { leadWeeks } : {}), ...(wastePct ? { wastePct } : {}), ...(rrp ? { rrp } : {}), ...(unit && unit !== "шт" ? { unit } : {}),
               ...(approve ? { approve, ...(approveAt ? { approveAt } : {}) } : {}),
               ...(Object.keys(payments).length ? { payments } : {}),
               ...(trackNumber || trackUrl ? { track: { number: trackNumber, url: trackUrl } } : {}) });

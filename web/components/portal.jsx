@@ -11,6 +11,24 @@
    ============================================================ */
 const { useState: useP, useEffect: usePE } = React;
 
+/* относительное время с минутами/часами для шапки портала «Обновлено N назад»
+   (K1, паттерн Programa «Last Updated N minutes ago»). Вход — ISO-строка
+   (rec.createdAt = момент публикации снимка). fmtRelDays (ui.jsx) даёт только дни. */
+function fmtRelTime(iso) {
+  const t = Date.parse(iso || "");
+  if (!t) return "";
+  const sec = Math.floor((Date.now() - t) / 1000);
+  if (sec < 60) return "только что";
+  const min = Math.floor(sec / 60);
+  if (min < 60) return min + " " + plural(min, ["минуту", "минуты", "минут"]) + " назад";
+  const hr = Math.floor(min / 60);
+  if (hr < 24) return hr + " " + plural(hr, ["час", "часа", "часов"]) + " назад";
+  const day = Math.floor(hr / 24);
+  if (day < 30) return day + " " + plural(day, ["день", "дня", "дней"]) + " назад";
+  const mon = Math.floor(day / 30);
+  return mon + " " + plural(mon, ["месяц", "месяца", "месяцев"]) + " назад";
+}
+
 /* три решения клиента (pending = не ответил). Цвета — из словаря A1. */
 const PORTAL_CHOICES = [
   { id: "ok", label: "Согласовать", color: "var(--accent-2)" },
@@ -64,6 +82,7 @@ function ClientPortal({ shareId }) {
   // живой доступ (A2): гидрация с сервера — чужое устройство получает шару по ссылке,
   // своё — подтягивает свежие ответы; пока грузится, не пугаем «ссылка недействительна»
   const [hydrating, setHydrating] = useP(live);
+  const [view, setView] = useP("list");   // K1: Список / Галерея (галерея — крупные фото сеткой)
   usePE(() => {
     if (!live) return;
     let alive = true;
@@ -103,8 +122,11 @@ function ClientPortal({ shareId }) {
   }
 
   const snap = rec.snapshot || {};
-  const rooms = Array.isArray(snap.rooms) ? snap.rooms : [];
+  // док-коды позиций (K1) — тем же assignDocCodes, что смета/PDF/Excel; коды сходятся везде
+  const rawRooms = Array.isArray(snap.rooms) ? snap.rooms : [];
+  const rooms = F.assignDocCodes ? F.assignDocCodes(rawRooms) : rawRooms;
   const cp = F.clientPricing(snap);
+  const anyPhoto = rooms.some((r) => (r.items || []).some((it) => it.img));
   const itemsCount = rooms.reduce((s, r) => s + (r.items || []).length, 0);
   const apOf = (it) => (F.APPROVE_BY_ID[it.approve] ? it.approve : "pending");
   const okCount = rooms.reduce((s, r) => s + (r.items || []).filter((it) => apOf(it) === "ok").length, 0);
@@ -119,13 +141,114 @@ function ClientPortal({ shareId }) {
     const updated = F.addPortalComment(shareId, ri, ii, "client", text);
     if (updated) setRec({ ...updated });
   };
+  // K1: клиент скачивает смету PDF — та же клиентская выгрузка, что в кабинете (mode:"client",
+  // без себестоимости), аргументы = specArgs дизайнера, собранные из снимка портал-шары
+  const exportClientPDF = () => {
+    if (!(window.LedgerPDF && window.LedgerPDF.exportRoomSpec)) { if (window.toast) toast("PDF-модуль ещё загружается — попробуйте через секунду.", "info"); return; }
+    const run = window.withLib || ((k, fn) => fn());
+    run("pdf", () => window.LedgerPDF.exportRoomSpec({
+      project: rec.projectName || "Смета комплектации", area: "", rooms, grand: 0,
+      markupPct: snap.markup, catMarkupPct: snap.catMarkup || {}, clientTotal: cp.client,
+      discountPct: snap.discount || 0, deliveryCost: snap.delivery || 0, installCost: snap.install || 0,
+      extras: snap.extras || [], budget: 0, mode: "client",
+      studioName: rec.studioName || "",
+      studioContact: [rec.studioCity, rec.studioPhone, rec.studioEmail].filter(Boolean).join(" · "),
+    }));
+  };
+
+  // K1: одна позиция — общий рендер для «Списка» и «Галереи» (решения+комментарии те же,
+  // меняется только раскладка). Код позиции — серым перед названием, виден клиенту.
+  const renderItem = (r, ri, it, ii) => {
+    const cur = apOf(it);
+    const qty = it.qty || 1;
+    // FF&E-детали для клиента (материал/габариты; артикул/срок ffeMeta(client) не отдаёт)
+    const ffe = F && F.ffeMeta ? F.ffeMeta(it, { client: true }) : "";
+    const codeTitle = (
+      <React.Fragment>
+        {it.code && <span className="mono" style={{ color: "var(--spec-meta)", fontWeight: 500, marginRight: 7 }}>{it.code}</span>}
+        {it.title}
+      </React.Fragment>
+    );
+    const decisions = (
+      <div role="group" aria-label={"Ваше решение по позиции «" + it.title + "»"} style={{ display: "flex", gap: 7, marginTop: 10, flexWrap: "wrap" }}>
+        {PORTAL_CHOICES.map((c) => {
+          const on = cur === c.id;
+          return (
+            <button key={c.id} onClick={() => respond(ri, ii, c.id)} aria-pressed={on}
+              style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "6px 12px", borderRadius: 99, fontSize: "var(--fs-12)", fontWeight: 700,
+                border: "1px solid " + (on ? c.color : "var(--hairline)"),
+                background: on ? c.color : "transparent",
+                color: on ? "var(--on-accent)" : "var(--muted)",
+                transition: "background var(--dur-fast), border-color var(--dur-fast), color var(--dur-fast)" }}>
+              {on && <I.check size={13} />}{c.label}
+            </button>
+          );
+        })}
+      </div>
+    );
+    const thread = <PortalCommentThread comments={it.comments || []} onSend={(text) => comment(ri, ii, text)} />;
+
+    if (view === "gallery") {
+      return (
+        <div key={ii} className="glass" style={{ borderRadius: 12, overflow: "hidden", border: "1px solid var(--hairline)", display: "flex", flexDirection: "column" }}>
+          <div style={{ position: "relative", aspectRatio: "4 / 3", background: "var(--surface-2)", overflow: "hidden" }}>
+            <Img src={it.img} label="" style={{ position: "absolute", inset: 0 }} />
+          </div>
+          <div style={{ padding: "12px 14px", display: "flex", flexDirection: "column", gap: 5, flex: 1 }}>
+            <div style={{ fontSize: "var(--fs-14)", fontWeight: 600, lineHeight: 1.35 }}>{codeTitle}</div>
+            {ffe && <div className="mono" style={{ fontSize: "var(--fs-11)", color: "var(--spec-meta)", overflowWrap: "anywhere" }}>{ffe}</div>}
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 8, marginTop: 4 }}>
+              <span className="mono" style={{ fontSize: "var(--fs-12)", color: "var(--spec-meta)" }}>{qty} × {fmtMoney(cp.unitClient(it))}</span>
+              <span className="mono" style={{ fontSize: "var(--fs-15)", fontWeight: 700, color: "var(--accent-2-ink)" }}>{fmtMoney(cp.lineClient(it))}</span>
+            </div>
+            {cp.lineSavings(it) > 0 && <div className="mono" style={{ fontSize: "var(--fs-11)", color: "var(--accent-2-ink)", textAlign: "right" }}>выгода {fmtMoney(cp.lineSavings(it))}</div>}
+            {decisions}
+            {thread}
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <div key={ii} style={{ padding: "12px 0", borderTop: ii ? "1px solid var(--hairline-2)" : "none" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 12 }}>
+          <div style={{ display: "flex", gap: 12, minWidth: 0 }}>
+            {anyPhoto && (it.img
+              ? <span style={{ width: 46, height: 46, flex: "none", borderRadius: 8, overflow: "hidden", border: "1px solid var(--hairline)" }} aria-hidden="true"><Img src={it.img} label="" radius={8} /></span>
+              : <span style={{ width: 46, flex: "none" }} aria-hidden="true" />)}
+            <div style={{ minWidth: 0 }}>
+              <div style={{ fontSize: "var(--fs-14)", fontWeight: 600 }}>{codeTitle}</div>
+              {ffe && <div className="mono" style={{ fontSize: "var(--fs-11)", color: "var(--spec-meta)", marginTop: 2, overflowWrap: "anywhere" }}>{ffe}</div>}
+              <div className="mono" style={{ fontSize: "var(--fs-12)", color: "var(--spec-meta)", marginTop: 2 }}>
+                {qty} × {fmtMoney(cp.unitClient(it))}{it.cat ? " · " + it.cat : ""}
+              </div>
+            </div>
+          </div>
+          {/* RRP-слой (п.17): под ценой — выгода клиента от розницы (только положительная, витрина) */}
+          <span className="mono" style={{ display: "inline-flex", flexDirection: "column", alignItems: "flex-end", fontSize: "var(--fs-14)", fontWeight: 700, whiteSpace: "nowrap", color: "var(--accent-2-ink)" }}>
+            {fmtMoney(cp.lineClient(it))}
+            {cp.lineSavings(it) > 0 && <span style={{ fontSize: "var(--fs-11)", fontWeight: 500 }}>выгода {fmtMoney(cp.lineSavings(it))}</span>}
+          </span>
+        </div>
+        {decisions}
+        {thread}
+      </div>
+    );
+  };
 
   return (
     <PortalWrap>
       {/* шапка студии — брендинг портала (волна A5): имя студии дизайнера над платформенным лого */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, flexWrap: "wrap", marginBottom: 8 }}>
         <Logo size={24} />
-        <span style={{ fontSize: "var(--fs-12)", fontWeight: 700, letterSpacing: ".04em", textTransform: "uppercase", color: "var(--muted)" }}>Смета на согласование</span>
+        <span style={{ display: "flex", alignItems: "center", gap: 14 }}>
+          <span style={{ fontSize: "var(--fs-12)", fontWeight: 700, letterSpacing: ".04em", textTransform: "uppercase", color: "var(--muted)" }}>Смета на согласование</span>
+          {itemsCount > 0 && (
+            <button className="btn btn-ghost" style={{ padding: "7px 14px", fontSize: "var(--fs-12)", flex: "none" }} onClick={exportClientPDF} title="Скачать смету в PDF">
+              <I.download size={14} />Скачать PDF
+            </button>
+          )}
+        </span>
       </div>
       {rec.studioName && <div style={{ fontSize: "var(--fs-13)", fontWeight: 700, color: "var(--accent-ink)", marginTop: 14 }}>{rec.studioName}</div>}
       {/* контакты студии (волна W4.1) — снимок на момент публикации ссылки, как и studioName */}
@@ -139,6 +262,10 @@ function ClientPortal({ shareId }) {
         {itemsCount} {plural(itemsCount, ["позиция", "позиции", "позиций"])} · итог {fmtMoney(cp.totalClient)}
         {okCount > 0 ? " · согласовано " + okCount + " из " + itemsCount : ""}
       </p>
+      {/* K1 (паттерн Programa «Last Updated N ago»): свежесть снимка сметы = момент публикации ссылки */}
+      {fmtRelTime(rec.createdAt) && (
+        <div className="mono" style={{ fontSize: "var(--fs-11)", color: "var(--spec-meta)", marginTop: 3 }}>Обновлено {fmtRelTime(rec.createdAt)}</div>
+      )}
       {itemsCount > 0 && (
         <div style={{ marginTop: 10, maxWidth: 340 }}>
           <div className="budget-bar" style={{ height: 6 }}>
@@ -154,6 +281,15 @@ function ClientPortal({ shareId }) {
         <span>Отметьте по каждой позиции решение — <b>согласовать</b>, <b>на пересмотр</b> или <b>отклонить</b> — и, если нужно, напишите комментарий дизайнеру. Ответы сохраняются автоматически. Это демо-ссылка (работает в этом браузере); доступ с другого устройства подключится вместе с доменом студии.</span>
       </div>
 
+      {/* K1: переключатель Список / Галерея (паттерн Programa List/Grid) — только если есть фото */}
+      {anyPhoto && itemsCount > 0 && (
+        <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 12 }}>
+          <SegTabs className="spec-mode" ariaLabel="Вид сметы"
+            items={[{ id: "list", label: "Список" }, { id: "gallery", label: "Галерея" }]}
+            value={view} onChange={setView} />
+        </div>
+      )}
+
       {/* комнаты и позиции */}
       <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
         {rooms.map((r, ri) => (
@@ -162,50 +298,13 @@ function ClientPortal({ shareId }) {
               <h2 style={{ fontSize: "var(--fs-16)", fontWeight: 800, fontFamily: "var(--font-display)" }}>{r.name || "Помещение"}</h2>
               <span className="mono" style={{ fontSize: "var(--fs-12)", color: "var(--spec-meta)" }}>{fmtMoney((r.items || []).reduce((s, it) => s + cp.lineClient(it), 0))}</span>
             </div>
-            <div style={{ display: "flex", flexDirection: "column" }}>
-              {(r.items || []).map((it, ii) => {
-                const cur = apOf(it);
-                const qty = it.qty || 1;
-                // FF&E-детали для клиента (материал/габариты; артикул/срок — закупочная
-                // кухня, ffeMeta(client) их не отдаёт) — конвенция та же, что UI/PDF/Excel
-                const ffe = F && F.ffeMeta ? F.ffeMeta(it, { client: true }) : "";
-                return (
-                  <div key={ii} style={{ padding: "12px 0", borderTop: ii ? "1px solid var(--hairline-2)" : "none" }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 12 }}>
-                      <div style={{ minWidth: 0 }}>
-                        <div style={{ fontSize: "var(--fs-14)", fontWeight: 600 }}>{it.title}</div>
-                        {ffe && <div className="mono" style={{ fontSize: "var(--fs-11)", color: "var(--spec-meta)", marginTop: 2, overflowWrap: "anywhere" }}>{ffe}</div>}
-                        <div className="mono" style={{ fontSize: "var(--fs-12)", color: "var(--spec-meta)", marginTop: 2 }}>
-                          {qty} × {fmtMoney(cp.unitClient(it))}{it.cat ? " · " + it.cat : ""}
-                        </div>
-                      </div>
-                      {/* RRP-слой (п.17): под ценой — выгода клиента от розницы (только положительная, витрина) */}
-                      <span className="mono" style={{ display: "inline-flex", flexDirection: "column", alignItems: "flex-end", fontSize: "var(--fs-14)", fontWeight: 700, whiteSpace: "nowrap", color: "var(--accent-2-ink)" }}>
-                        {fmtMoney(cp.lineClient(it))}
-                        {cp.lineSavings(it) > 0 && <span style={{ fontSize: "var(--fs-11)", fontWeight: 500 }}>выгода {fmtMoney(cp.lineSavings(it))}</span>}
-                      </span>
-                    </div>
-                    {/* решение клиента */}
-                    <div role="group" aria-label={"Ваше решение по позиции «" + it.title + "»"} style={{ display: "flex", gap: 7, marginTop: 10, flexWrap: "wrap" }}>
-                      {PORTAL_CHOICES.map((c) => {
-                        const on = cur === c.id;
-                        return (
-                          <button key={c.id} onClick={() => respond(ri, ii, c.id)} aria-pressed={on}
-                            style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "6px 12px", borderRadius: 99, fontSize: "var(--fs-12)", fontWeight: 700,
-                              border: "1px solid " + (on ? c.color : "var(--hairline)"),
-                              background: on ? c.color : "transparent",
-                              color: on ? "var(--on-accent)" : "var(--muted)",
-                              transition: "background var(--dur-fast), border-color var(--dur-fast), color var(--dur-fast)" }}>
-                            {on && <I.check size={13} />}{c.label}
-                          </button>
-                        );
-                      })}
-                    </div>
-                    <PortalCommentThread comments={it.comments || []} onSend={(text) => comment(ri, ii, text)} />
-                  </div>
-                );
-              })}
-            </div>
+            {view === "gallery"
+              ? <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(210px, 1fr))", gap: 14 }}>
+                  {(r.items || []).map((it, ii) => renderItem(r, ri, it, ii))}
+                </div>
+              : <div style={{ display: "flex", flexDirection: "column" }}>
+                  {(r.items || []).map((it, ii) => renderItem(r, ri, it, ii))}
+                </div>}
           </div>
         ))}
       </div>
