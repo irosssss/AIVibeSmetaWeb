@@ -25,10 +25,30 @@ function ProductsLibrary() {
   const [rows, setRows] = useL(null);
   const [edit, setEdit] = useL(null);   // редактируемый/создаваемый товар (draft) | null
   const [q, setQ] = useL("");
+  const [seeding, setSeeding] = useL(false);
   const reload = () => LedgerAPI.library.list().then(setRows);
   useLE(() => { reload(); }, []);
 
   const createNew = () => setEdit(libBlankDraft());
+  // K4: наполнить пустую библиотеку демо-товарами (Programa «Add demo products»).
+  // Создаём ПОСЛЕДОВАТЕЛЬНО, а не Promise.all: library.create штампует id = "lib_"+Date.now(),
+  // параллельные вызовы в одну миллисекунду дали бы одинаковый id (коллизия) — await по одному
+  // разводит их по времени. Кнопка живёт только в пустом состоянии → повторный сид исключён.
+  const seedDemo = async () => {
+    if (seeding) return;
+    const demo = (window.LedgerFFE && window.LedgerFFE.DEMO_LIBRARY_PRODUCTS) || [];
+    if (!demo.length) return;
+    setSeeding(true);
+    try {
+      for (const p of demo) await LedgerAPI.library.create(p);
+      await reload();
+      toast("Добавлено демо-товаров: " + demo.length + ". Отредактируйте или удалите — это ваши записи.");
+    } catch (e) {
+      toast("Не удалось добавить демо-товары — попробуйте ещё раз.", "warn");
+    } finally {
+      setSeeding(false);
+    }
+  };
   const remove = async (id) => {
     const p = (rows || []).find((x) => x.id === id);
     const ok = await confirmDialog({ title: "Удалить товар?", text: "«" + ((p && p.title) || "Товар") + "» исчезнет из библиотеки. В уже собранных сметах позиции останутся — они независимые копии.", confirmLabel: "Удалить товар" });
@@ -52,7 +72,15 @@ function ProductsLibrary() {
       {rows && all.length === 0 && (
         <EmptyState icon="layers" title="В библиотеке пока пусто"
           text="Добавьте товары, которые подбираете из проекта в проект. Они начнут подставляться в сметы по названию и появятся в пикере комнаты. Можно собрать библиотеку и постепенно — кнопкой «В библиотеку» на позициях готовой сметы."
-          action={<button className="btn btn-primary" onClick={createNew}><I.plus size={17} />Создать первый товар</button>} />
+          action={
+            <div style={{ display: "flex", gap: 10, flexWrap: "wrap", justifyContent: "center" }}>
+              <button className="btn btn-primary" onClick={createNew}><I.plus size={17} />Создать первый товар</button>
+              {/* K4: быстрый старт — наполнить демо-набором, чтобы увидеть, как товар живёт в библиотеке и смете */}
+              <button className="btn btn-ghost" onClick={seedDemo} disabled={seeding}>
+                <I.layers size={16} />{seeding ? "Добавляем…" : "Добавить демо-товары"}
+              </button>
+            </div>
+          } />
       )}
 
       {rows && all.length > 0 && (

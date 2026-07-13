@@ -387,6 +387,25 @@
       feedSku:   str(o.feedSku),                 // Артикул фида фабрик (волна B4, мостик) — пусто, пока фида нет
     };
   }
+  /* Демо-товары для пустой библиотеки (K4, паттерн Programa «Add demo products»):
+     один клик наполняет пустой реестр реалистичными записями, чтобы новый дизайнер
+     сразу увидел, КАК товар выглядит в библиотеке и что он подставляет в смету, вместо
+     пустого экрана с одним «создать вручную». Восемь позиций по разным разделам
+     (мебель/мягкая/свет/сантехника/декор/текстиль) с поставщиком, артикулом и
+     габаритами — витрина всех полей карточки. Цены — рыночный ориентир, средний
+     сегмент (как в сид-проектах). Схему нормализует blankProduct на library.create;
+     priceDate ставит сам API (сегодня). «Поставщики» — обобщённые, не реальные бренды. */
+  const DEMO_LIBRARY_PRODUCTS = [
+    { title: "Диван 3-местный, велюр", cat: "Мягкая мебель", price: 164900, sup: "Фабрика мягкой мебели", article: "SF-3200", dims: { w: 220, d: 95, h: 78 } },
+    { title: "Кресло с деревянным каркасом", cat: "Мягкая мебель", price: 58000, sup: "Фабрика мягкой мебели", article: "AR-118", dims: { w: 74, d: 80, h: 82 } },
+    { title: "Обеденный стол, дуб массив", cat: "Мебель", price: 92000, sup: "Столярная мастерская", article: "TB-160", dims: { w: 160, d: 90, h: 75 } },
+    { title: "Люстра подвесная, латунь", cat: "Освещение", price: 38000, sup: "Салон света", article: "LM-05", dims: { w: 60, d: 60, h: 45 } },
+    { title: "Торшер на треноге", cat: "Освещение", price: 21500, sup: "Салон света", article: "FL-22" },
+    { title: "Смеситель для раковины", cat: "Сантехника", price: 18900, sup: "Салон сантехники", article: "MX-77" },
+    { title: "Ковёр шерстяной, ручная работа", cat: "Декор", price: 46000, sup: "Ковровый дом", article: "RG-240" },
+    { title: "Шторы льняные, комплект", cat: "Текстиль", price: 24000, sup: "Текстильная мастерская", article: "CT-01" },
+  ];
+
   // позиция сметы → мастер-запись (собрать библиотеку из реальной работы); дата
   // проверки цены переезжает вместе с позицией — сбор в библиотеку не «освежает» цену
   const productFromPosition = (it) => {
@@ -853,7 +872,7 @@
     blankPosition, normalizePosition, dimsLabel, ffeMeta, qtyLabel, costUnit, lineTotal, rrpUnit, rrpLine,
     docCodePrefix, assignDocCodes,
     blankComment, addComment,
-    blankProduct, productFromPosition, positionFromProduct,
+    blankProduct, productFromPosition, positionFromProduct, DEMO_LIBRARY_PRODUCTS,
     blankExtra, extraAmount, extrasTotal,
     BENCHMARK, estimateBudget, generateEstimate, setPendingDraft, takePendingDraft,
     loadEstimate, saveEstimate, clearEstimate,

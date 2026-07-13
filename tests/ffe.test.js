@@ -111,6 +111,26 @@ describe("мапперы позиция ↔ товар библиотеки", ()
   });
 });
 
+describe("DEMO_LIBRARY_PRODUCTS — сид демо-товаров пустой библиотеки (K4)", () => {
+  it("непустой набор, каждая запись чисто нормализуется через blankProduct (защита от опечатки в сид-данных)", () => {
+    const demo = FFE.DEMO_LIBRARY_PRODUCTS;
+    expect(Array.isArray(demo)).toBe(true);
+    expect(demo.length).toBeGreaterThanOrEqual(6);
+    demo.forEach((raw) => {
+      const p = FFE.blankProduct(raw);
+      expect(p.title.length).toBeGreaterThan(0);          // название обязательно (иначе товар-призрак)
+      expect(p.cat.length).toBeGreaterThan(0);            // раздел задан (не свалится в «Прочее» по опечатке)
+      expect(Number.isInteger(p.price)).toBe(true);       // цена — целое ₽ после нормализации
+      expect(p.price).toBeGreaterThan(0);                 // демо с нулевой ценой бессмысленно
+      ["w", "d", "h"].forEach((k) => { if (p.dims[k] !== "") expect(p.dims[k]).toBeGreaterThanOrEqual(0); });
+    });
+  });
+  it("разделы демо-набора — из известных категорий (витрина разных разделов, а не один)", () => {
+    const cats = new Set(FFE.DEMO_LIBRARY_PRODUCTS.map((p) => FFE.blankProduct(p).cat));
+    expect(cats.size).toBeGreaterThanOrEqual(4);          // минимум 4 разных раздела для наглядности
+  });
+});
+
 describe("clientPricing — инвариант клиентских цен (портал = клиентский режим сметы)", () => {
   it("базовая наценка + оверрайд раздела + скидка/доставка/монтаж", () => {
     const snap = {
