@@ -1461,6 +1461,17 @@ function VersionsModal({ versions, current, onSave, onRestore, onSetStatus, onPa
   const [cmtOpenId, setCmtOpenId] = usePD(null);   // id версии, у которой раскрыты комментарии-треды
   const [cmtTick, setCmtTick] = usePD(0);          // бампается после ответа студии — форсирует перечитать shareId из хранилища
   const [altList, setAltList] = usePD(null);       // Ч2: отклонённые позиции версии для модалки аналогов | null
+  // живой портал (A2): при открытии «Версий» подтягиваем свежие шары с сервера —
+  // ответы клиента с ЕГО устройства иначе не доехали бы до кабинета (кэш локальный).
+  // Бамп cmtTick форсирует перечитать кэш после гидрации; без API — no-op
+  usePDE(() => {
+    const PAPI = window.LedgerPortalAPI;
+    if (!PAPI || !PAPI.remote()) return;
+    let alive = true;
+    Promise.all(versions.filter((v) => v.shareId).map((v) => PAPI.hydrate(v.shareId)))
+      .then(() => { if (alive) setCmtTick((t) => t + 1); });
+    return () => { alive = false; };
+  }, []);
   const fmtDT = (iso) => (iso && iso.length >= 10 ? iso.slice(8, 10) + "." + iso.slice(5, 7) + "." + iso.slice(0, 4) : "");
   const commentsCount = (sh) => (sh && sh.snapshot && Array.isArray(sh.snapshot.rooms)
     ? sh.snapshot.rooms.reduce((s, r) => s + (r.items || []).reduce((x, it) => x + ((it.comments || []).length), 0), 0) : 0);

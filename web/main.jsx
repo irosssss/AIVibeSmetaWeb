@@ -43,6 +43,7 @@ import "./engine.js";
 import "./pdf.js";
 import "./xlsx.js";
 import "./ffe.js";
+import "./portal-api.js";   // сетевой слой портала — патчит portal-функции LedgerFFE, грузить сразу после ffe.js
 import "./clipper.js";
 import "./lottie-assets.js";
 

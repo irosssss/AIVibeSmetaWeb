@@ -58,12 +58,36 @@ function PortalWrap({ children }) {
 
 function ClientPortal({ shareId }) {
   const F = window.LedgerFFE || null;
+  const PAPI = window.LedgerPortalAPI || null;
+  const live = !!(PAPI && PAPI.remote());
   const [rec, setRec] = useP(() => (F ? F.loadPortalShare(shareId) : null));
+  // живой доступ (A2): гидрация с сервера — чужое устройство получает шару по ссылке,
+  // своё — подтягивает свежие ответы; пока грузится, не пугаем «ссылка недействительна»
+  const [hydrating, setHydrating] = useP(live);
+  usePE(() => {
+    if (!live) return;
+    let alive = true;
+    PAPI.hydrate(shareId)
+      .then((r) => { if (alive && r) setRec({ ...r }); })
+      .finally(() => { if (alive) setHydrating(false); });
+    return () => { alive = false; };
+  }, [shareId]);
   usePE(() => { document.title = "Design Ledger · Смета на согласование"; }, []);
   // Ч4 «клиент открыл» (адаптация ченджлога Programa): каждый заход по ссылке — визит;
-  // rec в стейт не переливаем — счётчик клиенту не показывается, лишний ререндер не нужен
-  usePE(() => { if (F && rec) F.notePortalVisit(shareId); }, [shareId]);
+  // rec в стейт не переливаем — счётчик клиенту не показывается, лишний ререндер не нужен.
+  // Зависимость от «rec появился»: на чужом устройстве запись есть только после гидрации
+  usePE(() => { if (F && rec) F.notePortalVisit(shareId); }, [shareId, rec ? 1 : 0]);
 
+  if (hydrating && !rec) {
+    return (
+      <PortalWrap>
+        <div style={{ textAlign: "center", paddingTop: "12vh" }}>
+          <Logo size={26} />
+          <p style={{ color: "var(--muted)", fontSize: "var(--fs-15)", marginTop: 24 }}>Загружаем смету…</p>
+        </div>
+      </PortalWrap>
+    );
+  }
   if (!F || !rec) {
     return (
       <PortalWrap>
