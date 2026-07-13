@@ -207,20 +207,26 @@ function RoomSpecOverlay({ data, nav, onClose, onSaved }) {
     if (savingRef.current) return savingRef.current;
     setRoomSaving(true);
     const snap = pdSnap(markup, catMarkup, discount, delivery, install, extras, rooms);
-    const done = () => { savedSnapRef.current = snap; savingRef.current = null; setRoomSaving(false); setRoomSaved(true); setTimeout(() => setRoomSaved(false), 1700); };
+    const done = (pid) => {
+      savedSnapRef.current = snap; savingRef.current = null; setRoomSaving(false); setRoomSaved(true); setTimeout(() => setRoomSaved(false), 1700);
+      // сайдбар кабинета (cabinet.jsx WsSidebar) держит СВОЮ копию proj.rooms, фетчнутую
+      // по [projId] — первое сохранение сметы (rooms 0→>0) иначе не подхватится без
+      // смены projId; тот же событийный мост, что и aivibe:project-renamed
+      window.dispatchEvent(new CustomEvent("aivibe:project-rooms-changed", { detail: { id: pid, rooms: rooms.length > 0 } }));
+    };
     const patch = { markupPct: markup, catMarkupPct: catMarkup, discountPct: discount, deliveryCost: delivery, installCost: install, extras, rooms, items: itemsCount };
     const p = savedId
       // родитель (ProjectDetail) держит СВОЮ копию data, фетчнутую один раз при монтировании —
       // без onSaved(updated) Обзор/шапка после сохранения показывали бы устаревшие итоги
       // (в частности, только что добавленные сборы) до полной перезагрузки
-      ? LedgerAPI.projects.update(savedId, patch).then((updated) => { if (onSaved) onSaved(updated); done(); })
+      ? LedgerAPI.projects.update(savedId, patch).then((updated) => { if (onSaved) onSaved(updated); done(savedId); })
       // импортированная из Excel смета не привязана к проекту — создаём его,
       // иначе «Сохранено» врало бы, а наценки терялись при закрытии оверлея
       : LedgerAPI.projects.create({
           name: data.name || "Смета из Excel", room: data.generated ? "Черновик по площади" : "Комплектация из Excel", style: "",
           area: data.area, budget: data.budget || 0,
           summaryShort: data.summaryShort, ...patch,
-        }).then((p2) => { setSavedId(p2.id); if (onSaved) onSaved(p2); toast("Смета сохранена в «Мои проекты»"); done(); });
+        }).then((p2) => { setSavedId(p2.id); if (onSaved) onSaved(p2); toast("Смета сохранена в «Мои проекты»"); done(p2.id); });
     savingRef.current = p;
     return p;
   };

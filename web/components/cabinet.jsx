@@ -241,7 +241,9 @@ function Cabinet({ user, onLogout, go }) {
   useCE(() => {
     if (!projId) { setProj(null); return; }
     let alive = true;
-    LedgerAPI.projects.get(projId).then((d) => { if (alive) setProj(d && d.id ? { id: d.id, name: d.name, rooms: !!d.rooms } : null); });
+    // !!d.rooms был бы всегда true — .get() всегда отдаёт rooms как массив
+    // (пустой сид-фолбэк для новых проектов, project-data.js), а [] тоже truthy
+    LedgerAPI.projects.get(projId).then((d) => { if (alive) setProj(d && d.id ? { id: d.id, name: d.name, rooms: !!(d.rooms && d.rooms.length) } : null); });
     return () => { alive = false; };
   }, [projId]);
   // «Настройки» проекта (волна W4.2) переименовывают, пока сайдбар уже держит своё имя
@@ -251,6 +253,14 @@ function Cabinet({ user, onLogout, go }) {
     const onRenamed = (e) => { if (e.detail && e.detail.id === projId) setProj((p) => (p ? { ...p, name: e.detail.name } : p)); };
     window.addEventListener("aivibe:project-renamed", onRenamed);
     return () => window.removeEventListener("aivibe:project-renamed", onRenamed);
+  }, [projId]);
+  // то же для proj.rooms: первое сохранение сметы (RoomSpecOverlay.saveRoom) не меняет
+  // projId, поэтому без моста сайдбар показывал бы плоский пункт «Проект» вместо
+  // 4 стадий до закрытия/переоткрытия проекта
+  useCE(() => {
+    const onRoomsChanged = (e) => { if (e.detail && e.detail.id === projId) setProj((p) => (p ? { ...p, rooms: !!e.detail.rooms } : p)); };
+    window.addEventListener("aivibe:project-rooms-changed", onRoomsChanged);
+    return () => window.removeEventListener("aivibe:project-rooms-changed", onRoomsChanged);
   }, [projId]);
 
   // Д3 (W6): пишем «Недавнее» для ⌘K — открытый проект важнее вкладки-контейнера.
