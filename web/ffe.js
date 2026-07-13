@@ -362,6 +362,37 @@
     }));
   }
 
+  /* ----------------------------- АДРЕСНАЯ КНИГА ПОСТАВЩИКОВ (K5a, паттерн Programa Address Book) -----------------------------
+     Поставщик как сущность: карточка контактов (компания, контактное лицо, email,
+     телефон, сайт, город, заметка) в центральном реестре (LedgerAPI.suppliers).
+     КЛЮЧЕВОЕ РЕШЕНИЕ СВЯЗИ: позиция сметы ПРОДОЛЖАЕТ хранить поставщика строкой `sup`
+     (обратная совместимость: старые сметы, Excel round-trip, группировки закупки —
+     ничего не мигрирует), а карточка находится ПО ИМЕНИ (supplierMatch, регистр/пробелы
+     нетерпимы). Карточка добавляет контакты ПОВЕРХ строки — как справочник, не замена.
+     Известные ограничения v1 (осознанно): переименование карточки не переписывает
+     `sup` в сметах (связь по старому имени теряется — позиции остаются со строкой);
+     удаление карточки позиции не трогает (строка живёт дальше, исчезают только
+     контакты) — правило целостности «реестр поверх строк, а не строки поверх реестра». */
+  function blankSupplier(over) {
+    const o = over || {};
+    return {
+      name:    str(o.name || o.sup),   // Название (компания/фабрика/магазин) — ключ связи с sup позиций
+      contact: str(o.contact),         // Контактное лицо
+      email:   str(o.email),
+      phone:   str(o.phone),
+      url:     str(o.url),             // Сайт / страница каталога
+      city:    str(o.city),
+      note:    str(o.note),
+    };
+  }
+  // карточка по имени из sup-строки позиции: связь нетерпима к регистру и краевым
+  // пробелам («Линея» = « линея »), но НЕ нечёткая — «Линея Мебель» это другой поставщик
+  function supplierMatch(list, name) {
+    const key = str(name).trim().toLowerCase();
+    if (!key) return null;
+    return (Array.isArray(list) ? list : []).find((s) => str(s && s.name).trim().toLowerCase() === key) || null;
+  }
+
   /* ----------------------------- БИБЛИОТЕКА ТОВАРОВ СТУДИИ (волна B1, бенчмарк Programa) -----------------------------
      Мастер-запись товара студии — то, что дизайнер подбирает снова и снова (диван,
      смеситель, люстра). Живёт отдельно от сметы (localStorage, LedgerAPI.library),
@@ -873,6 +904,7 @@
     docCodePrefix, assignDocCodes,
     blankComment, addComment,
     blankProduct, productFromPosition, positionFromProduct, DEMO_LIBRARY_PRODUCTS,
+    blankSupplier, supplierMatch,
     blankExtra, extraAmount, extrasTotal,
     BENCHMARK, estimateBudget, generateEstimate, setPendingDraft, takePendingDraft,
     loadEstimate, saveEstimate, clearEstimate,

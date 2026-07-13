@@ -111,6 +111,25 @@ describe("мапперы позиция ↔ товар библиотеки", ()
   });
 });
 
+describe("blankSupplier/supplierMatch — адресная книга поставщиков (K5a)", () => {
+  it("blankSupplier нормализует строки, принимает sup-алиас, отбрасывает чужие поля", () => {
+    const s = FFE.blankSupplier({ name: "  Линея  ", contact: "Иван", email: "i@lineya.ru", phone: "+7 900", url: "https://lineya.ru", city: "Москва", note: "скидка 10%", qty: 5, price: 100 });
+    expect(s).toEqual({ name: "Линея", contact: "Иван", email: "i@lineya.ru", phone: "+7 900", url: "https://lineya.ru", city: "Москва", note: "скидка 10%" });
+    expect(FFE.blankSupplier({ sup: "Дубрава" }).name).toBe("Дубрава");   // алиас sup → name (маппинг с позиции)
+    expect(FFE.blankSupplier().name).toBe("");
+  });
+  it("supplierMatch находит карточку по имени: регистр и краевые пробелы нетерпимы, нечёткости нет", () => {
+    const book = [{ name: "Линея", email: "a@b.ru" }, { name: "Фабрика мягкой мебели" }];
+    expect(FFE.supplierMatch(book, "линея").email).toBe("a@b.ru");
+    expect(FFE.supplierMatch(book, "  ЛИНЕЯ  ").email).toBe("a@b.ru");
+    expect(FFE.supplierMatch(book, "Линея Мебель")).toBe(null);   // другой поставщик — не подстрока
+    expect(FFE.supplierMatch(book, "")).toBe(null);
+    expect(FFE.supplierMatch(book, "   ")).toBe(null);
+    expect(FFE.supplierMatch(null, "Линея")).toBe(null);          // реестр ещё не загружен — не падаем
+    expect(FFE.supplierMatch([{ name: null }, { name: "Линея" }], "линея").name).toBe("Линея"); // битая запись не роняет поиск
+  });
+});
+
 describe("DEMO_LIBRARY_PRODUCTS — сид демо-товаров пустой библиотеки (K4)", () => {
   it("непустой набор, каждая запись чисто нормализуется через blankProduct (защита от опечатки в сид-данных)", () => {
     const demo = FFE.DEMO_LIBRARY_PRODUCTS;

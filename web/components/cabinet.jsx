@@ -152,7 +152,7 @@ function AuthScreen({ onAuthed, go }) {
 
 /* конфиг сайдбара студии; Мастерская — группа с под-пунктами (те же адреса, что были) */
 const WS_ICONS = { today: "sun", projects: "layers", workshop: "sliders", procure: "truck", favorites: "heart", profile: "user" };
-const WS_SUB_ICONS = { styles: "spark", products: "sofa", norms: "ruler" };
+const WS_SUB_ICONS = { styles: "spark", products: "sofa", suppliers: "truck", norms: "ruler" };
 /* разделы открытого проекта (s2 адреса); только для смет-комплектаций (data.rooms).
    W2: «Обзор» — лицо проекта и новый дефолт посадки (s2=''), смета переехала на
    'smeta' (паттерн Programa «клик по проекту = обзор, не сразу таблица»). */
@@ -385,7 +385,7 @@ function WsSidebar({ user, onLogout, go, tab, onTab, proj, projS2, onNewProject,
    Редакторы недельного ритма (библиотека стилей, правила эргономики) собраны
    в один раздел — топбар остаётся языку петли дня. Каждый редактор рендерит
    свою шапку сам, здесь только переключатель и sub-роут #cabinet/workshop/{sub}. */
-const WS_SUBS = [{ id: "styles", label: "Мои стили" }, { id: "products", label: "Товары" }, { id: "norms", label: "Нормы" }];
+const WS_SUBS = [{ id: "styles", label: "Мои стили" }, { id: "products", label: "Товары" }, { id: "suppliers", label: "Поставщики" }, { id: "norms", label: "Нормы" }];
 function Workshop() {
   const [sub, setSub] = useC(() => { const s = parseRoute().sub; return WS_SUBS.some((x) => x.id === s) ? s : "styles"; });
   const change = (s) => { setSub(s); setRoute("cabinet", "workshop", s); };
@@ -399,7 +399,7 @@ function Workshop() {
     <div>
       {/* на десктопе разделы Мастерской ведёт сайдбар (W1); сег-табы остаются мобильной навигацией */}
       <SegTabs className="pd-seg ws-dup-tabs" items={WS_SUBS} value={sub} onChange={change} ariaLabel="Раздел мастерской" style={{ marginBottom: 22 }} />
-      {sub === "norms" ? <NormsSettings /> : sub === "products" ? <ProductsLibrary /> : <StylesLibrary />}
+      {sub === "norms" ? <NormsSettings /> : sub === "products" ? <ProductsLibrary /> : sub === "suppliers" ? <SuppliersBook /> : <StylesLibrary />}
     </div>
   );
 }

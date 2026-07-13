@@ -59,6 +59,7 @@ import "./components/project-detail.jsx";
 import "./components/norms-editor.jsx";
 import "./components/style-editor.jsx";
 import "./components/library-editor.jsx";
+import "./components/suppliers-book.jsx";
 import "./components/admin.jsx";
 import "./components/admin-views.jsx";
 import "./components/portal.jsx";
