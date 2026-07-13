@@ -42,6 +42,8 @@
     rooms = rooms || [];
     if (mode === "procure") return exportProcure({ project, area, rooms, grand, budget });
     const clientMode = mode === "client";
+    // K3: спецификация — без денег вообще (строже клиентского: там ещё остаётся цена клиенту)
+    const specMode = mode === "spec";
     const FFE = window.LedgerFFE || null;
     if (FFE && FFE.assignDocCodes) rooms = FFE.assignDocCodes(rooms);   // док-коды (K1) — тем же источником, что UI/PDF/портал
     const fresh = FFE && FFE.priceFreshness ? FFE.priceFreshness(rooms) : null;
@@ -91,6 +93,12 @@
     push(["Design Ledger — смета-комплектация"]);
     push([project || "Проект", "", area ? area + " м²" : ""]);
     push([]);
+    if (specMode) {
+      // K3: спецификация — без денег вообще, «Свод» сокращается до количества позиций по помещениям
+      push(["По помещениям", "Позиций"]);
+      rooms.forEach((r) => push([roomLabel(r), r.items.length]));
+      push(["Итого позиций", rooms.reduce((s, r) => s + r.items.length, 0)]);
+    } else {
     if (!clientMode) { push([hasCatMk ? "Наценка дизайнера (базовая), %" : "Наценка дизайнера, %", markupPct || 0]); push([]); }   // процент, не деньги
 
     push(clientMode ? ["По помещениям", "Сумма"] : ["По помещениям", "Себестоимость", "Для клиента"]);
@@ -161,9 +169,10 @@
       push(["Доп. сборы"]);
       extrasRows.forEach((row) => { const ri = push(row); mc.push([ri, 2]); });
     }
+    }
 
     const wsS = XLSX.utils.aoa_to_sheet(svod);
-    setCols(wsS, clientMode ? [42, 16, 16] : [42, 16, 16, 11]);   // 3-я колонка — секция «Доп. сборы» (тип/%, ₽), нужна и клиенту
+    setCols(wsS, specMode ? [42, 12] : clientMode ? [42, 16, 16] : [42, 16, 16, 11]);   // 3-я колонка — секция «Доп. сборы» (тип/%, ₽), нужна и клиенту
     fmtMoney(wsS, mc);
     XLSX.utils.book_append_sheet(wb, wsS, uniqueSheet("Свод"));
 
@@ -172,12 +181,14 @@
     // обратном импорте «Цена, ₽» приняли бы за себестоимость и наценили второй раз.
     // Поставщик и давность цены — внутренняя кухня: только в рабочем файле и только
     // когда данные есть (импортёр находит колонки по заголовку — состав не фиксирован)
-    const hasSup = !clientMode && rooms.some((r) => r.items.some((it) => it.sup));
-    const hasPD = !clientMode && rooms.some((r) => r.items.some((it) => it.priceDate));
+    // K3: поставщик/дата цены/решение клиента — закупочно-финансовая внутренняя кухня,
+    // в спецификацию (без денег, для подрядчика/печати) тоже не идут — только рабочий файл
+    const hasSup = !clientMode && !specMode && rooms.some((r) => r.items.some((it) => it.sup));
+    const hasPD = !clientMode && !specMode && rooms.some((r) => r.items.some((it) => it.priceDate));
     // согласование по позициям (волна A1): решения клиента — внутренняя кухня, только рабочий файл
     // (FFE уже объявлен выше — формула себестоимости/наценки)
     const apLabel = (it) => (FFE && it.approve && FFE.APPROVE_BY_ID[it.approve] ? FFE.APPROVE_BY_ID[it.approve].label : "");
-    const hasAp = !clientMode && !!FFE && rooms.some((r) => r.items.some((it) => apLabel(it)));
+    const hasAp = !clientMode && !specMode && !!FFE && rooms.some((r) => r.items.some((it) => apLabel(it)));
     // FF&E-детали позиции — отдельными колонками (фильтруемо). Конвенция как в UI/PDF:
     // материал/габариты видны и клиенту, артикул/срок — закупочная деталь (только рабочий файл).
     const dimsOf = (it) => (FFE && FFE.dimsLabel ? FFE.dimsLabel(it.dims) : "");
@@ -190,9 +201,10 @@
     const hasUnit = rooms.some((r) => r.items.some((it) => it.unit && it.unit !== "шт"));
     const unitCell = (it) => it.unit || "шт";
     const hasWaste = !clientMode && rooms.some((r) => r.items.some((it) => it.wastePct));
-    // розница/выгода (RRP-слой) — витрина ДЛЯ клиента, видна в обоих режимах, когда rrp задана.
-    // В заголовке колонки нет слова «цена» — иначе импортёр принял бы розницу за себестоимость
-    const hasRrp = rooms.some((r) => r.items.some((it) => +it.rrp > 0));
+    // розница/выгода (RRP-слой) — витрина ДЛЯ клиента, видна в обоих режимах, когда rrp задана;
+    // в спецификации (K3) — тоже деньги, не идёт. В заголовке колонки нет слова «цена» —
+    // иначе импортёр принял бы розницу за себестоимость
+    const hasRrp = !specMode && rooms.some((r) => r.items.some((it) => +it.rrp > 0));
     // док-код (K1) — виден и клиенту (как в публичной смете Programa), первым в блоке FF&E
     const hasDoc = rooms.some((r) => r.items.some((it) => it.code));
     const ffeHead = [];
@@ -216,7 +228,8 @@
     if (hasSup) head.push("Поставщик");
     head.push("Наименование", ...ffeHead, "Кол-во");
     if (hasUnit) head.push("Ед.");
-    if (clientMode) head.push("Цена клиенту, ₽", "Сумма клиенту, ₽");
+    if (specMode) { /* K3: без цен вообще */ }
+    else if (clientMode) head.push("Цена клиенту, ₽", "Сумма клиенту, ₽");
     else head.push("Цена, ₽", "Сумма, ₽", "Цена клиенту, ₽", "Сумма клиенту, ₽");
     if (hasRrp) head.push("Розница/ед., ₽", "Выгода, ₽");
     if (hasPD) head.push("Цена от");
@@ -229,7 +242,8 @@
       if (hasSup) row.push(it.sup || "");
       row.push(it.title, ...ffeCells(it), it.qty || 1);
       if (hasUnit) row.push(unitCell(it));
-      if (clientMode) row.push(unitClient(it), lineClient(it));
+      if (specMode) { /* K3: без цен вообще */ }
+      else if (clientMode) row.push(unitClient(it), lineClient(it));
       else row.push(it.price, lineCost(it), unitClient(it), lineClient(it));
       if (hasRrp) { const sv = lineSavings(it); row.push(+it.rrp > 0 ? it.rrp : "", +it.rrp > 0 ? sv : ""); }
       if (hasPD) row.push(fmtDateCell(it.priceDate));
@@ -237,10 +251,12 @@
       all.push(row);
     }));
     const trow = new Array(head.length).fill("");
-    trow[col("Наименование")] = "Итого по позициям";
-    if (!clientMode) trow[col("Сумма, ₽")] = grand;
-    trow[col("Сумма клиенту, ₽")] = clientTotal;
-    if (hasRrp && savings > 0) trow[col("Выгода, ₽")] = savings;
+    trow[col("Наименование")] = specMode ? "Итого позиций: " + n : "Итого по позициям";
+    if (!specMode) {
+      if (!clientMode) trow[col("Сумма, ₽")] = grand;
+      trow[col("Сумма клиенту, ₽")] = clientTotal;
+      if (hasRrp && savings > 0) trow[col("Выгода, ₽")] = savings;
+    }
     all.push(trow);
     const wsA = XLSX.utils.aoa_to_sheet(all);
     setCols(wsA, head.map((h) => ({ "№": 5, "Помещение": 18, "Раздел": 16, "Поставщик": 20, "Наименование": 46, "Код": 10, "Артикул": 16, "Материал": 20, "Габариты": 16, "Срок, нед.": 10, "Запас, %": 10, "Кол-во": 7, "Ед.": 8, "Цена, ₽": 13, "Сумма, ₽": 14, "Цена клиенту, ₽": 15, "Сумма клиенту, ₽": 16, "Розница/ед., ₽": 14, "Выгода, ₽": 12, "Цена от": 11, "Клиент решил": 14, "Решение от": 11 }[h] || 12)));
@@ -254,31 +270,35 @@
     // не смещают позиционно денежные колонки и строку итога
     const rHead = ["№", "Раздел", "Наименование", ...ffeHead, "Кол-во"];
     if (hasUnit) rHead.push("Ед.");
-    if (clientMode) rHead.push("Цена клиенту, ₽", "Сумма клиенту, ₽");
+    if (specMode) { /* K3: без цен вообще */ }
+    else if (clientMode) rHead.push("Цена клиенту, ₽", "Сумма клиенту, ₽");
     else rHead.push("Цена, ₽", "Сумма, ₽", "Цена клиенту, ₽", "Сумма клиенту, ₽");
     if (hasRrp) rHead.push("Розница/ед., ₽", "Выгода, ₽");
     const rcol = (name) => rHead.indexOf(name);
     const rColW = { "№": 5, "Раздел": 16, "Наименование": 46, "Код": 10, "Артикул": 16, "Материал": 20, "Габариты": 16, "Срок, нед.": 10, "Запас, %": 10, "Кол-во": 7, "Ед.": 8, "Цена, ₽": 13, "Сумма, ₽": 14, "Цена клиенту, ₽": 15, "Сумма клиенту, ₽": 16, "Розница/ед., ₽": 14, "Выгода, ₽": 12 };
-    const rMoneyCols = (clientMode ? ["Цена клиенту, ₽", "Сумма клиенту, ₽"] : ["Цена, ₽", "Сумма, ₽", "Цена клиенту, ₽", "Сумма клиенту, ₽"]).concat(hasRrp ? ["Розница/ед., ₽", "Выгода, ₽"] : []).map(rcol);
+    const rMoneyCols = (specMode ? [] : clientMode ? ["Цена клиенту, ₽", "Сумма клиенту, ₽"] : ["Цена, ₽", "Сумма, ₽", "Цена клиенту, ₽", "Сумма клиенту, ₽"]).concat(hasRrp ? ["Розница/ед., ₽", "Выгода, ₽"] : []).map(rcol);
     rooms.forEach((r) => {
       const rows = [[roomLabel(r)], [], rHead];
       let m = 0;
       r.items.forEach((it) => {
         const row = [++m, catOf(it), it.title, ...ffeCells(it), it.qty || 1];
         if (hasUnit) row.push(unitCell(it));
-        if (clientMode) row.push(unitClient(it), lineClient(it));
+        if (specMode) { /* K3: без цен вообще */ }
+        else if (clientMode) row.push(unitClient(it), lineClient(it));
         else row.push(it.price, lineCost(it), unitClient(it), lineClient(it));
         if (hasRrp) { const sv = lineSavings(it); row.push(+it.rrp > 0 ? it.rrp : "", +it.rrp > 0 ? sv : ""); }
         rows.push(row);
       });
       const trow = new Array(rHead.length).fill("");
-      trow[rcol("Наименование")] = "Итого по комнате";
-      if (!clientMode) trow[rcol("Сумма, ₽")] = roomCost(r);
-      trow[rcol("Сумма клиенту, ₽")] = roomClient(r);
-      // итог выгоды — net (строки тоже net, в т.ч. ≤0): столбец сходится со своим «Итого»,
-      // как в мастер-таблице. Показываем итог только при rs>0 (витрина), но per-row ячейки
-      // остаются net — иначе видимый столбец завышал бы честную сумму
-      if (hasRrp) { const rs = r.items.reduce((s, it) => s + lineSavings(it), 0); if (rs > 0) trow[rcol("Выгода, ₽")] = rs; }
+      trow[rcol("Наименование")] = specMode ? "Итого по комнате: " + m : "Итого по комнате";
+      if (!specMode) {
+        if (!clientMode) trow[rcol("Сумма, ₽")] = roomCost(r);
+        trow[rcol("Сумма клиенту, ₽")] = roomClient(r);
+        // итог выгоды — net (строки тоже net, в т.ч. ≤0): столбец сходится со своим «Итого»,
+        // как в мастер-таблице. Показываем итог только при rs>0 (витрина), но per-row ячейки
+        // остаются net — иначе видимый столбец завышал бы честную сумму
+        if (hasRrp) { const rs = r.items.reduce((s, it) => s + lineSavings(it), 0); if (rs > 0) trow[rcol("Выгода, ₽")] = rs; }
+      }
       rows.push(trow);
       const ws = XLSX.utils.aoa_to_sheet(rows);
       setCols(ws, rHead.map((h) => rColW[h] || 12));
@@ -286,7 +306,7 @@
       XLSX.utils.book_append_sheet(wb, ws, uniqueSheet(r.name));
     });
 
-    const suffix = clientMode ? "-klientu" : "-rabochaya";
+    const suffix = specMode ? "-specifikaciya" : clientMode ? "-klientu" : "-rabochaya";
     XLSX.writeFile(wb, "smeta-" + String(project || "designledger").replace(/\s+/g, "-").toLowerCase() + suffix + ".xlsx");
     return true;
   }
