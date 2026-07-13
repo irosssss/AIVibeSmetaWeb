@@ -22,9 +22,9 @@ const STEPS = [
   { n: "01", icon: I.ruler,  lot: "stepMeasure", tag: "Источник",              title: "Вставьте ссылку на товар или фото комнаты", text: "Клиппер затянет товар с сайта фабрики — с ценой и артикулом, или начните с фото комнаты. Без обмеров и 3D-программ." },
   { n: "02", icon: I.spark,  lot: "stepAI",      tag: "Позиция в смете",       title: "Design Ledger добавляет позицию в смету", text: "Каждая ссылка или фото — сразу строка спецификации: артикул, фото, цена фабрики. Эргономика проверяется рядом, без отдельного шага." },
   { n: "03", icon: I.layers, lot: "stepSpec",    tag: "Наценка · две цены",    title: "Наценка — и в документе уже две цены", text: "Регулятор наценки пересчитывает цену клиенту и вашу прибыль на лету. Себестоимость видите только вы." },
-  { n: "04", icon: I.send,   lot: "stepSend",    tag: "PDF клиенту",           title: "Смета уходит клиенту — без себестоимости", text: "Клиентская выгрузка PDF или Excel показывает только его цену. Рабочая версия с наценкой остаётся у вас." },
+  { n: "04", icon: I.send,   lot: "stepSend",    tag: "PDF клиенту",           title: "Смета уходит клиенту — без себестоимости", text: "Клиентская выгрузка PDF или Excel показывает только его цену. Рабочая версия с наценкой остаётся у вас." },
   { n: "05", icon: I.chat,   lot: "stepApprove", tag: "Согласование",          title: "Клиент согласовывает прямо в смете", text: "Комментарии по позициям и статус согласования — в общей ссылке, без созвонов и вотсапа." },
-  { n: "06", icon: I.truck,  lot: "stepProcure", tag: "Закупка · сроки",       title: "Закупка идёт по датам — ничего не теряется", text: "Стадии заказ → отгрузка → доставка → монтаж, платежи клиенту и поставщику по датам, трек-номера отправлений — видно на одном столе комплектатора." },
+  { n: "06", icon: I.truck,  lot: "stepProcure", tag: "Закупка · сроки",       title: "Закупка идёт по датам — ничего не теряется", text: "Стадии заказ → отгрузка → доставка → монтаж, платежи клиенту и поставщику по датам, трек-номера отправлений — видно на одном столе комплектатора." },
   { n: "07", icon: I.download, lot: "stepHandoff", tag: "Сдача проекта",       title: "Сдаёте проект — клиент получает документы", text: "Протокол согласования, спецификация, закупочный лист — единым пакетом. Проект уходит в архив, история остаётся в кабинете." },
 ];
 /* глиф шага: Lottie line-art на бумажном квадрате (играет по видимости),
@@ -162,61 +162,86 @@ function ClipperDemo({ go }) {
         <div className="catsec-head">
           <div>
             <div className="eyebrow">клиппер · попробуйте без регистрации</div>
-            <h2 className="display" style={{ fontSize: "clamp(30px,4vw,50px)", marginTop: 14 }}>Смета начинается со ссылки</h2>
+            <h2 className="display" style={{ fontSize: "clamp(30px,4vw,50px)", marginTop: 14 }}>Смета начинается со&nbsp;ссылки</h2>
           </div>
           <p style={{ color: "var(--muted)", maxWidth: 340, fontSize: "var(--fs-14)" }}>Вставьте ссылку на товар — получите готовую строку сметы: название, артикул, габариты, цена. Ровно так позиции попадают в смету в кабинете.</p>
         </div>
 
-        <div className="glass" style={{ borderRadius: "var(--r-lg)", padding: "clamp(16px,3vw,26px)", maxWidth: 720 }}>
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-            <input type="url" placeholder="https://ссылка-на-товар в магазине" value={url}
-              onChange={(e) => setUrl(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && !busy) run(url); }}
-              aria-label="Ссылка на товар для демо-извлечения"
-              style={{ flex: "1 1 220px", minWidth: 0, padding: "10px 14px", borderRadius: 10, border: "1px solid var(--hairline)", background: "var(--surface)", color: "var(--text)", fontSize: "var(--fs-14)" }} />
-            <button type="button" className="btn btn-primary" style={{ padding: "10px 16px", flex: "none" }} disabled={!url.trim() || busy} onClick={() => run(url)}>
-              {busy ? <span className="spin" style={{ width: 15, height: 15 }} /> : <I.spark size={15} />}Извлечь
-            </button>
-          </div>
-
-          {/* магазины-примеры — клик сразу извлекает */}
-          <div style={{ display: "flex", gap: 7, flexWrap: "wrap", marginTop: 12 }}>
-            {CLIP_DEMO_CATALOG.map((c) => (
-              <button key={c.host} type="button" onClick={() => tryChip(c)} disabled={busy}
-                className="mono" style={{ fontSize: "var(--fs-11)", padding: "5px 11px", borderRadius: 99, border: "1px solid var(--hairline)", background: "transparent", color: "var(--muted)", cursor: "pointer" }}>
-                {c.chip}
-              </button>
-            ))}
-          </div>
-
-          {miss && (
-            <div className="find warn" style={{ fontSize: "var(--fs-13)", lineHeight: 1.5, marginTop: 14 }}>
-              <span className="fi"><I.info size={14} /></span>
-              <span>Демо отвечает по сохранённым примерам — попробуйте один из магазинов выше. В кабинете клиппер извлекает по живой ссылке любого магазина.</span>
-            </div>
-          )}
-
-          {hit && (
-            <div style={{ border: "1px solid var(--hairline)", borderRadius: 12, padding: "14px 16px", marginTop: 14 }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, marginBottom: 8 }}>
-                <span className="mono" style={{ fontSize: "var(--fs-10)", fontWeight: 700, letterSpacing: ".06em", textTransform: "uppercase", color: "var(--accent-2-ink)", padding: "3px 9px", borderRadius: 99, background: "var(--accent-2-tint)" }}>Позиция извлечена</span>
-                <span className="mono" style={{ fontSize: "var(--fs-10)", letterSpacing: ".06em", textTransform: "uppercase", color: "var(--spec-meta)" }}>пример</span>
-              </div>
-              <div style={{ fontSize: "var(--fs-15)", fontWeight: 600, lineHeight: 1.35 }}>{hit.title}</div>
-              {meta && <div className="mono" style={{ fontSize: "var(--fs-11)", color: "var(--spec-meta)", marginTop: 4, overflowWrap: "anywhere" }}>{meta}</div>}
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 10, marginTop: 10, flexWrap: "wrap" }}>
-                <span className="mono" style={{ fontSize: "var(--fs-18)", fontWeight: 600 }}>{fmtMoney(hit.price)}</span>
-                <span style={{ fontSize: "var(--fs-12)", color: "var(--muted)" }}>{hit.cat} · 1 шт</span>
-              </div>
-              <button type="button" className="btn btn-primary" style={{ marginTop: 14 }} onClick={() => go && go("auth")}>
-                Добавить в смету — бесплатно<I.arrow size={15} />
+        <div className="glass clip-grid" style={{ borderRadius: "var(--r-lg)", padding: "clamp(16px,3vw,26px)" }}>
+          <div style={{ display: "flex", flexDirection: "column" }}>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              <input type="url" placeholder="https://ссылка-на-товар в магазине" value={url}
+                onChange={(e) => setUrl(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && !busy) run(url); }}
+                aria-label="Ссылка на товар для демо-извлечения"
+                style={{ flex: "1 1 220px", minWidth: 0, padding: "10px 14px", borderRadius: 10, border: "1px solid var(--hairline)", background: "var(--surface)", color: "var(--text)", fontSize: "var(--fs-14)" }} />
+              <button type="button" className="btn btn-primary" style={{ padding: "10px 16px", flex: "none" }} disabled={!url.trim() || busy} onClick={() => run(url)}>
+                {busy ? <span className="spin" style={{ width: 15, height: 15 }} /> : <I.spark size={15} />}Извлечь
               </button>
             </div>
-          )}
 
-          {/* честность (канон 09.07): демо — на сохранённых страницах, не живой фетч */}
-          <p className="mono" style={{ fontSize: "var(--fs-11)", color: "var(--spec-meta)", letterSpacing: ".04em", lineHeight: 1.55, marginTop: 14 }}>
-            Демо отвечает по сохранённым страницам реальных магазинов — как пример. Извлечение по живой ссылке — в кабинете.
-          </p>
+            {/* магазины-примеры — клик сразу извлекает */}
+            <div style={{ display: "flex", gap: 7, flexWrap: "wrap", marginTop: 12 }}>
+              {CLIP_DEMO_CATALOG.map((c) => (
+                <button key={c.host} type="button" onClick={() => tryChip(c)} disabled={busy}
+                  className="mono" style={{ fontSize: "var(--fs-11)", padding: "5px 11px", borderRadius: 99, border: "1px solid var(--hairline)", background: "transparent", color: "var(--muted)", cursor: "pointer" }}>
+                  {c.chip}
+                </button>
+              ))}
+            </div>
+
+            {/* честность (канон 09.07): демо — на сохранённых страницах, не живой фетч */}
+            <p className="mono" style={{ fontSize: "var(--fs-11)", color: "var(--spec-meta)", letterSpacing: ".04em", lineHeight: 1.55, marginTop: "auto", paddingTop: 14 }}>
+              Демо отвечает по сохранённым страницам реальных магазинов — как пример. Извлечение по живой ссылке — в кабинете.
+            </p>
+          </div>
+
+          {/* правая колонка — результат: пустое состояние → скелетон → позиция */}
+          <div aria-live="polite">
+            {busy && (
+              <div style={{ border: "1px solid var(--hairline)", borderRadius: 12, padding: "14px 16px" }} aria-hidden="true">
+                <div className="skel" style={{ height: 20, width: "38%", borderRadius: 6 }} />
+                <div className="skel" style={{ height: 14, width: "84%", borderRadius: 6, marginTop: 12 }} />
+                <div className="skel" style={{ height: 12, width: "58%", borderRadius: 6, marginTop: 8 }} />
+                <div className="skel" style={{ height: 22, width: "32%", borderRadius: 6, marginTop: 16 }} />
+              </div>
+            )}
+
+            {!busy && miss && (
+              <div className="find warn" style={{ fontSize: "var(--fs-13)", lineHeight: 1.5 }}>
+                <span className="fi"><I.info size={14} /></span>
+                <span>Демо отвечает по сохранённым примерам — попробуйте один из магазинов слева. В кабинете клиппер извлекает по живой ссылке любого магазина.</span>
+              </div>
+            )}
+
+            {!busy && hit && (
+              <div style={{ border: "1px solid var(--hairline)", borderRadius: 12, padding: "14px 16px" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, marginBottom: 8 }}>
+                  <span className="mono" style={{ fontSize: "var(--fs-10)", fontWeight: 700, letterSpacing: ".06em", textTransform: "uppercase", color: "var(--accent-2-ink)", padding: "3px 9px", borderRadius: 99, background: "var(--accent-2-tint)" }}>Позиция извлечена</span>
+                  <span className="mono" style={{ fontSize: "var(--fs-10)", letterSpacing: ".06em", textTransform: "uppercase", color: "var(--spec-meta)" }}>пример</span>
+                </div>
+                <div style={{ fontSize: "var(--fs-15)", fontWeight: 600, lineHeight: 1.35 }}>{hit.title}</div>
+                {meta && <div className="mono" style={{ fontSize: "var(--fs-11)", color: "var(--spec-meta)", marginTop: 4, overflowWrap: "anywhere" }}>{meta}</div>}
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 10, marginTop: 10, flexWrap: "wrap" }}>
+                  <span className="mono" style={{ fontSize: "var(--fs-18)", fontWeight: 600 }}>{fmtMoney(hit.price)}</span>
+                  <span style={{ fontSize: "var(--fs-12)", color: "var(--muted)" }}>{hit.cat} · 1 шт</span>
+                </div>
+                <button type="button" className="btn btn-primary" style={{ marginTop: 14 }} onClick={() => go && go("auth")}>
+                  Добавить в смету — бесплатно<I.arrow size={15} />
+                </button>
+              </div>
+            )}
+
+            {!busy && !hit && !miss && (
+              <div style={{ height: "100%", minHeight: 180, border: "1px dashed var(--hairline)", borderRadius: 12, display: "grid", placeItems: "center", padding: 20 }}>
+                <div style={{ textAlign: "center", maxWidth: 280 }}>
+                  <I.scan size={22} style={{ color: "var(--spec-meta)" }} />
+                  <p className="mono" style={{ fontSize: "var(--fs-12)", color: "var(--spec-meta)", lineHeight: 1.6, marginTop: 10 }}>
+                    Здесь появится готовая строка сметы — вставьте ссылку или выберите магазин
+                  </p>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </section>
@@ -346,7 +371,7 @@ function PayoffCalc() {
     <section id="payoff" style={{ paddingBlock: "clamp(60px,9vh,110px)" }} ref={ref}>
       <div className="container reveal">
         <div className="eyebrow jade" style={{ marginBottom: 18 }}>ОКУПАЕМОСТЬ</div>
-        <h2 className="display" style={{ fontSize: "clamp(30px,4vw,50px)", maxWidth: 720 }}>Подписка окупается одним проектом</h2>
+        <h2 className="display" style={{ fontSize: "clamp(30px,4vw,50px)", maxWidth: 720 }}>Подписка окупается одним&nbsp;проектом</h2>
         <p style={{ color: "var(--muted)", maxWidth: 520, fontSize: "var(--fs-15)", marginTop: 16 }}>
           Design Ledger — не расход на софт, а инструмент, которым вы зарабатываете наценку. Посчитайте на своём проекте.
         </p>
@@ -408,7 +433,7 @@ function SocialProof() {
     <section id="designers" style={{ paddingBlock: "clamp(60px,9vh,110px)" }} ref={ref}>
       <div className="container reveal">
         <div className="eyebrow jade" style={{ marginBottom: 18 }}>ДИЗАЙНЕРЫ О СМЕТЕ</div>
-        <h2 className="display" style={{ fontSize: "clamp(30px,4vw,50px)", maxWidth: 700 }}>Считают в Design Ledger — отправляют клиенту</h2>
+        <h2 className="display" style={{ fontSize: "clamp(30px,4vw,50px)", maxWidth: 700 }}>Считают в&nbsp;Design Ledger — отправляют клиенту</h2>
 
         {/* честная метка (реш. владельца 09.07): продукт — прототип, соц-доказательства
            показаны как пример, а не как факт. Ставим до метрик и голосов, чтобы ничто
@@ -463,23 +488,45 @@ const PRICING_FAQ = [
    тот же приём, что чинит .nav-sheet (styles.css). */
 function PricingFaq() {
   const [open, setOpen] = useS2(null);
+  // тихая карточка справа: сводка гарантий из ответов FAQ — правая половина
+  // колонки не пустует, а снимает возражения даже без раскрытия аккордеона
+  const PRINCIPLES = [
+    "Отмена в любой момент — без долгих обязательств",
+    "Проекты не удаляются даже при понижении тарифа",
+    "Функции сметы одинаковы на всех тарифах",
+  ];
   return (
-    <div style={{ maxWidth: 720, marginTop: "clamp(48px,7vh,84px)" }}>
-      <div className="eyebrow" style={{ marginBottom: 8 }}>ВОПРОСЫ О ЦЕНЕ</div>
+    <div className="faq-wrap">
       <div>
-        {PRICING_FAQ.map(([q, a], i) => {
-          const isOpen = open === i;
-          return (
-            <div key={q} className="faq-item">
-              <button type="button" className="faq-q" aria-expanded={isOpen} aria-controls={`faq-a-${i}`} onClick={() => setOpen(isOpen ? null : i)}>
-                {q}
-                <I.arrow size={16} style={{ flex: "none", color: "var(--muted)", transition: "transform var(--dur-base) var(--ease)", transform: isOpen ? "rotate(-90deg)" : "rotate(90deg)" }} />
-              </button>
-              <div className="faq-a" id={`faq-a-${i}`} data-open={isOpen ? "1" : "0"}><div><p>{a}</p></div></div>
-            </div>
-          );
-        })}
+        <div className="eyebrow" style={{ marginBottom: 8 }}>ВОПРОСЫ О ЦЕНЕ</div>
+        <div>
+          {PRICING_FAQ.map(([q, a], i) => {
+            const isOpen = open === i;
+            return (
+              <div key={q} className="faq-item">
+                <button type="button" className="faq-q" aria-expanded={isOpen} aria-controls={`faq-a-${i}`} onClick={() => setOpen(isOpen ? null : i)}>
+                  {q}
+                  <I.arrow size={16} style={{ flex: "none", color: "var(--muted)", transition: "transform var(--dur-base) var(--ease)", transform: isOpen ? "rotate(-90deg)" : "rotate(90deg)" }} />
+                </button>
+                <div className="faq-a" id={`faq-a-${i}`} data-open={isOpen ? "1" : "0"}><div><p>{a}</p></div></div>
+              </div>
+            );
+          })}
+        </div>
       </div>
+      <aside className="glass" style={{ borderRadius: "var(--r-lg)", padding: "24px 26px", display: "flex", flexDirection: "column", gap: 16 }}>
+        <div style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: "var(--fs-18)" }}>Без звёздочек — буквально</div>
+        <ul role="list" style={{ listStyle: "none", margin: 0, padding: 0, display: "flex", flexDirection: "column", gap: 12 }}>
+          {PRINCIPLES.map((t) => (
+            <li key={t} style={{ display: "flex", gap: 10, alignItems: "flex-start", fontSize: "var(--fs-14)", color: "var(--muted)", lineHeight: 1.5 }}>
+              <I.check size={15} style={{ color: "var(--accent-2)", flex: "none", marginTop: 2 }} />{t}
+            </li>
+          ))}
+        </ul>
+        <p className="mono" style={{ fontSize: "var(--fs-12)", color: "var(--spec-meta)", lineHeight: 1.6, marginTop: "auto", paddingTop: 4 }}>
+          на вопросы до старта отвечает автор продукта — не бот и не саппорт-скрипт
+        </p>
+      </aside>
     </div>
   );
 }
@@ -497,7 +544,7 @@ function Pricing({ go }) {
         <div className="catsec-head">
           <div>
             <div className="eyebrow">ТАРИФЫ</div>
-            <h2 className="display" style={{ fontSize: "clamp(30px,4vw,50px)", marginTop: 14 }}>Честные цены, без звёздочек</h2>
+            <h2 className="display" style={{ fontSize: "clamp(30px,4vw,50px)", marginTop: 14 }}>Честные цены, без&nbsp;звёздочек</h2>
           </div>
           <p style={{ color: "var(--muted)", maxWidth: 340, fontSize: "var(--fs-14)" }}>Первая смета — бесплатно и без карты. Считаем по активным проектам: сданные уходят в архив и лимита не занимают.</p>
         </div>
@@ -736,7 +783,7 @@ function ClientPortalPromo() {
       <div className="container reveal calc-grid">
         <div>
           <div className="eyebrow info" style={{ marginBottom: 18 }}>КЛИЕНТСКИЙ ПОРТАЛ</div>
-          <h2 className="display" style={{ fontSize: "clamp(30px,4vw,50px)" }}>Клиент видит смету — без вашего Excel и созвонов</h2>
+          <h2 className="display" style={{ fontSize: "clamp(30px,4vw,50px)" }}>Клиент видит смету — без&nbsp;вашего Excel и&nbsp;созвонов</h2>
           <p style={{ color: "var(--text)", fontWeight: 600, marginTop: 14, fontSize: "var(--fs-16)" }}>Меньше сообщений в вотсапе. Больше ясности клиенту.</p>
           <p style={{ color: "var(--muted)", maxWidth: 460, fontSize: "var(--fs-14)", marginTop: 10, lineHeight: 1.6 }}>
             Отправьте ссылку на портал вместо PDF в переписке. Клиент видит только свою цену, комментирует прямо на позиции и подтверждает выбор — а вы получаете протокол согласования одним PDF.
@@ -782,7 +829,7 @@ function NewsFeed() {
         <div className="reveal" style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", flexWrap: "wrap", gap: 20, marginBottom: 44 }}>
           <div>
             <div className="eyebrow info" style={{ marginBottom: 18 }}>ЖУРНАЛ</div>
-            <h2 className="display" style={{ fontSize: "clamp(32px,4.2vw,58px)" }}>Новости дизайна</h2>
+            <h2 className="display" style={{ fontSize: "clamp(30px,4vw,50px)" }}>Новости дизайна</h2>
           </div>
           <a className="btn btn-ghost" href="#" onClick={(e) => e.preventDefault()}>Все материалы <I.arrow size={16} /></a>
         </div>
@@ -837,7 +884,7 @@ function BudgetCalc({ go }) {
     <section id="calc" style={{ paddingBlock: "clamp(60px,9vh,110px)" }} ref={ref}>
       <div className="container reveal">
         <div className="eyebrow" style={{ marginBottom: 18 }}>КАЛЬКУЛЯТОР ПЛОЩАДИ</div>
-        <h2 className="display" style={{ fontSize: "clamp(30px,4vw,50px)", maxWidth: 720 }}>Бюджет комплектации за 20 секунд</h2>
+        <h2 className="display" style={{ fontSize: "clamp(30px,4vw,50px)", maxWidth: 720 }}>Бюджет комплектации за&nbsp;20&nbsp;секунд</h2>
         <p style={{ color: "var(--muted)", maxWidth: 560, fontSize: "var(--fs-15)", marginTop: 16, lineHeight: 1.6 }}>
           Площадь и сегмент — и сразу ориентир бюджета с раскладкой по категориям. Цифры — рыночный бенчмарк ₽/м², не оферта.
         </p>
