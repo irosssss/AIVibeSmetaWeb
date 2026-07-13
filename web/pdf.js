@@ -284,7 +284,10 @@
       { text: "Документ сформирован в Design Ledger.", style: "foot", margin: [0, 12, 0, 0] },
     ];
     const doc = { pageMargins: [40, 46, 40, 44], content, styles: PDF_STYLES, defaultStyle: PDF_DEFAULT };
-    const slug = (s) => String(s || "").replace(/\s+/g, "-").toLowerCase();
+    // supplierName свободный текст (адресная книга/поле «Поставщик») — в отличие от
+    // project (более контролируемого) может содержать «/» и т.п.; вырезаем небезопасные
+    // для имени файла символы, не только пробелы
+    const slug = (s) => String(s || "").replace(/[\\/:*?"<>|]+/g, "").replace(/\s+/g, "-").toLowerCase();
     window.pdfMake.createPdf(doc).download("zakaz-" + slug(supplierName || "postavshchik") + "-" + slug(project || "designledger") + ".pdf");
     return true;
   }
