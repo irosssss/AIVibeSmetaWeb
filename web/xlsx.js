@@ -60,6 +60,17 @@
     const lineClient = (it) => unitClient(it) * (it.qty || 1);                      // сумма = цена × кол-во — колонки бьются арифметически
     const roomCost = (r) => r.items.reduce((s, it) => s + lineCost(it), 0);
     const roomClient = (r) => r.items.reduce((s, it) => s + lineClient(it), 0);
+    // RRP-слой (роадмап п.17): построчная выгода клиента от розницы — та же математика, что
+    // FFE.clientPricing/UI/PDF (rrpLine учитывает запас). В ячейку «Выгода» идёт NET-величина
+    // по каждой позиции с заданной rrp — в т.ч. ≤0, если наценка вывела клиентскую цену выше
+    // розницы: тогда столбец сходится со своим «Итого» (net). Клип строк до >0 завышал бы
+    // столбец относительно честного итога (найдено ревью — UI/портал прячут ≤0, но там нет
+    // столбца-с-итогом). В колонку «Розница/ед.» — СЫРАЯ rrp без запаса, как «Цена, ₽» идёт
+    // сырой price: иначе round-trip наложил бы запас второй раз при переимпорте
+    const lineSavings = (it) => (+it.rrp > 0 && FFE && FFE.rrpLine ? FFE.rrpLine(it) - lineClient(it) : 0);
+    let rrpTotal = 0, rrpBase = 0;
+    if (FFE && FFE.rrpLine) rooms.forEach((r) => r.items.forEach((it) => { if (+it.rrp > 0) { rrpTotal += FFE.rrpLine(it); rrpBase += lineClient(it); } }));
+    const savings = rrpTotal - rrpBase;
     const roomLabel = (r) => r.name + (r.area ? "  ·  " + r.area + " м²" : "");
 
     const wb = XLSX.utils.book_new();
@@ -114,6 +125,12 @@
     if (deliveryCost > 0) { const ri = push(["Доставка", deliveryCost]); mc.push([ri, 1]); }
     if (installCost > 0) { const ri = push(["Монтаж и сборка", installCost]); mc.push([ri, 1]); }
     { const ri = push([clientMode ? "ИТОГО" : "ИТОГО ДЛЯ КЛИЕНТА", totalClient]); mc.push([ri, 1]); }
+    // выгода от розницы (RRP-слой) — витрина, только положительная; метки не пересекаются
+    // с парсером «Итога» импортёра (наценка/скидка/доставка/монтаж), лишние строки он игнорирует
+    if (savings > 0) {
+      { const ri = push(["Розница в магазинах (RRP)", rrpTotal]); mc.push([ri, 1]); }
+      { const ri = push(["Выгода клиента от розницы", savings]); mc.push([ri, 1]); }
+    }
     if (!clientMode) {   // бюджет/себестоимость — внутренняя кухня, в клиентскую версию не выгружаем
       push([]);
       { const ri = push(["Бюджет проекта", budget]); mc.push([ri, 1]); }
@@ -172,6 +189,9 @@
     const hasUnit = rooms.some((r) => r.items.some((it) => it.unit && it.unit !== "шт"));
     const unitCell = (it) => it.unit || "шт";
     const hasWaste = !clientMode && rooms.some((r) => r.items.some((it) => it.wastePct));
+    // розница/выгода (RRP-слой) — витрина ДЛЯ клиента, видна в обоих режимах, когда rrp задана.
+    // В заголовке колонки нет слова «цена» — иначе импортёр принял бы розницу за себестоимость
+    const hasRrp = rooms.some((r) => r.items.some((it) => +it.rrp > 0));
     const ffeHead = [];
     if (hasSku) ffeHead.push("Артикул");
     if (hasMat) ffeHead.push("Материал");
@@ -193,6 +213,7 @@
     if (hasUnit) head.push("Ед.");
     if (clientMode) head.push("Цена клиенту, ₽", "Сумма клиенту, ₽");
     else head.push("Цена, ₽", "Сумма, ₽", "Цена клиенту, ₽", "Сумма клиенту, ₽");
+    if (hasRrp) head.push("Розница/ед., ₽", "Выгода, ₽");
     if (hasPD) head.push("Цена от");
     if (hasAp) head.push("Клиент решил", "Решение от");
     const col = (name) => head.indexOf(name);
@@ -205,6 +226,7 @@
       if (hasUnit) row.push(unitCell(it));
       if (clientMode) row.push(unitClient(it), lineClient(it));
       else row.push(it.price, lineCost(it), unitClient(it), lineClient(it));
+      if (hasRrp) { const sv = lineSavings(it); row.push(+it.rrp > 0 ? it.rrp : "", +it.rrp > 0 ? sv : ""); }
       if (hasPD) row.push(fmtDateCell(it.priceDate));
       if (hasAp) row.push(apLabel(it), fmtDateCell(it.approveAt));
       all.push(row);
@@ -213,10 +235,11 @@
     trow[col("Наименование")] = "Итого по позициям";
     if (!clientMode) trow[col("Сумма, ₽")] = grand;
     trow[col("Сумма клиенту, ₽")] = clientTotal;
+    if (hasRrp && savings > 0) trow[col("Выгода, ₽")] = savings;
     all.push(trow);
     const wsA = XLSX.utils.aoa_to_sheet(all);
-    setCols(wsA, head.map((h) => ({ "№": 5, "Помещение": 18, "Раздел": 16, "Поставщик": 20, "Наименование": 46, "Артикул": 16, "Материал": 20, "Габариты": 16, "Срок, нед.": 10, "Запас, %": 10, "Кол-во": 7, "Ед.": 8, "Цена, ₽": 13, "Сумма, ₽": 14, "Цена клиенту, ₽": 15, "Сумма клиенту, ₽": 16, "Цена от": 11, "Клиент решил": 14, "Решение от": 11 }[h] || 12)));
-    const moneyCols = ["Цена, ₽", "Сумма, ₽", "Цена клиенту, ₽", "Сумма клиенту, ₽"].map(col).filter((c) => c >= 0);
+    setCols(wsA, head.map((h) => ({ "№": 5, "Помещение": 18, "Раздел": 16, "Поставщик": 20, "Наименование": 46, "Артикул": 16, "Материал": 20, "Габариты": 16, "Срок, нед.": 10, "Запас, %": 10, "Кол-во": 7, "Ед.": 8, "Цена, ₽": 13, "Сумма, ₽": 14, "Цена клиенту, ₽": 15, "Сумма клиенту, ₽": 16, "Розница/ед., ₽": 14, "Выгода, ₽": 12, "Цена от": 11, "Клиент решил": 14, "Решение от": 11 }[h] || 12)));
+    const moneyCols = ["Цена, ₽", "Сумма, ₽", "Цена клиенту, ₽", "Сумма клиенту, ₽", "Розница/ед., ₽", "Выгода, ₽"].map(col).filter((c) => c >= 0);
     fmtMoneyCols(wsA, moneyCols, 1, all.length - 1);
     wsA["!autofilter"] = { ref: "A1:" + XLSX.utils.encode_col(head.length - 1) + "1" };   // фильтр по шапке — дизайнер крутит сводную как хочет
     XLSX.utils.book_append_sheet(wb, wsA, uniqueSheet("Все позиции"));
@@ -228,9 +251,10 @@
     if (hasUnit) rHead.push("Ед.");
     if (clientMode) rHead.push("Цена клиенту, ₽", "Сумма клиенту, ₽");
     else rHead.push("Цена, ₽", "Сумма, ₽", "Цена клиенту, ₽", "Сумма клиенту, ₽");
+    if (hasRrp) rHead.push("Розница/ед., ₽", "Выгода, ₽");
     const rcol = (name) => rHead.indexOf(name);
-    const rColW = { "№": 5, "Раздел": 16, "Наименование": 46, "Артикул": 16, "Материал": 20, "Габариты": 16, "Срок, нед.": 10, "Запас, %": 10, "Кол-во": 7, "Ед.": 8, "Цена, ₽": 13, "Сумма, ₽": 14, "Цена клиенту, ₽": 15, "Сумма клиенту, ₽": 16 };
-    const rMoneyCols = (clientMode ? ["Цена клиенту, ₽", "Сумма клиенту, ₽"] : ["Цена, ₽", "Сумма, ₽", "Цена клиенту, ₽", "Сумма клиенту, ₽"]).map(rcol);
+    const rColW = { "№": 5, "Раздел": 16, "Наименование": 46, "Артикул": 16, "Материал": 20, "Габариты": 16, "Срок, нед.": 10, "Запас, %": 10, "Кол-во": 7, "Ед.": 8, "Цена, ₽": 13, "Сумма, ₽": 14, "Цена клиенту, ₽": 15, "Сумма клиенту, ₽": 16, "Розница/ед., ₽": 14, "Выгода, ₽": 12 };
+    const rMoneyCols = (clientMode ? ["Цена клиенту, ₽", "Сумма клиенту, ₽"] : ["Цена, ₽", "Сумма, ₽", "Цена клиенту, ₽", "Сумма клиенту, ₽"]).concat(hasRrp ? ["Розница/ед., ₽", "Выгода, ₽"] : []).map(rcol);
     rooms.forEach((r) => {
       const rows = [[roomLabel(r)], [], rHead];
       let m = 0;
@@ -239,12 +263,17 @@
         if (hasUnit) row.push(unitCell(it));
         if (clientMode) row.push(unitClient(it), lineClient(it));
         else row.push(it.price, lineCost(it), unitClient(it), lineClient(it));
+        if (hasRrp) { const sv = lineSavings(it); row.push(+it.rrp > 0 ? it.rrp : "", +it.rrp > 0 ? sv : ""); }
         rows.push(row);
       });
       const trow = new Array(rHead.length).fill("");
       trow[rcol("Наименование")] = "Итого по комнате";
       if (!clientMode) trow[rcol("Сумма, ₽")] = roomCost(r);
       trow[rcol("Сумма клиенту, ₽")] = roomClient(r);
+      // итог выгоды — net (строки тоже net, в т.ч. ≤0): столбец сходится со своим «Итого»,
+      // как в мастер-таблице. Показываем итог только при rs>0 (витрина), но per-row ячейки
+      // остаются net — иначе видимый столбец завышал бы честную сумму
+      if (hasRrp) { const rs = r.items.reduce((s, it) => s + lineSavings(it), 0); if (rs > 0) trow[rcol("Выгода, ₽")] = rs; }
       rows.push(trow);
       const ws = XLSX.utils.aoa_to_sheet(rows);
       setCols(ws, rHead.map((h) => rColW[h] || 12));
@@ -446,6 +475,9 @@
           const cDims = colOf(head, /габарит|размер/);
           const cLead = colOf(head, /срок/);
           const cWaste = colOf(head, /запас|отход|waste/);
+          // розница (RRP-слой, п.17): в заголовке экспорта нет слова «цена» — не путается
+          // с cPrice ниже; производная колонка «Выгода, ₽» на импорте игнорируется осознанно
+          const cRrp = colOf(head, /розниц|ррц|rrp/);
           const cUnit = colOf(head, /^ед\.?$|ед\.?\s*изм|единиц|unit/);   // \b не годится — кириллица не ASCII-word
           const KNOWN_UNITS = (window.LedgerFFE && window.LedgerFFE.FFE_UNITS) || ["шт"];   // белый список единиц
           const parseDims = (v) => {
@@ -505,6 +537,8 @@
             const dims = cDims >= 0 ? parseDims(row[cDims]) : null;
             const leadWeeks = cLead >= 0 ? Math.round(num(row[cLead])) : 0;
             const wastePct = cWaste >= 0 ? Math.max(0, Math.round(num(row[cWaste]))) : 0;
+            // розница — СЫРАЯ величина за единицу (экспорт пишет it.rrp без запаса — см. exportRoomSpec)
+            const rrp = cRrp >= 0 ? Math.max(0, Math.round(num(row[cRrp]))) : 0;
             // цена, выведенная из «Суммы», уже включает запас (Сумма = цена×кол×(1+запас%));
             // вычитаем его обратно, иначе FFE.lineTotal наложит запас второй раз при переэкспорте
             if (priceFromSum && wastePct > 0) price = Math.round(price / (1 + wastePct / 100));
@@ -514,7 +548,7 @@
             if (unit && !KNOWN_UNITS.includes(unit)) unit = "";
             if (!byRoom.has(roomName)) byRoom.set(roomName, []);
             byRoom.get(roomName).push({ title, cat, price, qty, ...(sup ? { sup } : {}), ...(priceDate ? { priceDate } : {}), ...(status ? { status } : {}),
-              ...(sku ? { sku } : {}), ...(material ? { material } : {}), ...(dims ? { dims } : {}), ...(leadWeeks ? { leadWeeks } : {}), ...(wastePct ? { wastePct } : {}), ...(unit && unit !== "шт" ? { unit } : {}),
+              ...(sku ? { sku } : {}), ...(material ? { material } : {}), ...(dims ? { dims } : {}), ...(leadWeeks ? { leadWeeks } : {}), ...(wastePct ? { wastePct } : {}), ...(rrp ? { rrp } : {}), ...(unit && unit !== "шт" ? { unit } : {}),
               ...(approve ? { approve, ...(approveAt ? { approveAt } : {}) } : {}),
               ...(Object.keys(payments).length ? { payments } : {}),
               ...(trackNumber || trackUrl ? { track: { number: trackNumber, url: trackUrl } } : {}) });

@@ -310,6 +310,7 @@ function RoomSpecOverlay({ data, nav, onClose, onSaved }) {
       if (d.material) next.material = d.material; else delete next.material;
       if (d.leadWeeks !== "") next.leadWeeks = d.leadWeeks; else delete next.leadWeeks;
       if (d.wastePct !== "") next.wastePct = d.wastePct; else delete next.wastePct;
+      if (d.rrp !== "" && d.rrp > 0) next.rrp = d.rrp; else delete next.rrp;   // розница (RRP): 0 = «не задана», слоя нет
       if (d.dims && (d.dims.w !== "" || d.dims.d !== "" || d.dims.h !== "")) next.dims = d.dims; else delete next.dims;
       // цену ввели/поменяли руками — значит проверили сейчас, пометка давности обнуляется
       if (ii === -1 || d.price !== base.price) next.priceDate = todayISO();
@@ -877,7 +878,11 @@ function RoomSpecOverlay({ data, nav, onClose, onSaved }) {
                         <span className="mono" style={{ color: "var(--spec-meta)", whiteSpace: "nowrap", width: 62, textAlign: "right", fontSize: "var(--fs-12)", overflow: "hidden", textOverflow: "ellipsis" }}>{FFE.qtyLabel(it)}</span>
                         <span className="mono rs-unit" style={{ color: "var(--spec-meta)", whiteSpace: "nowrap", width: 88, textAlign: "right", fontSize: "var(--fs-12)" }}>{fmtMoney(mode === "client" ? unitClient(it) : it.price)}</span>
                         {mode === "work" && <span className="mono" style={{ color: "var(--muted)", whiteSpace: "nowrap", width: 100, textAlign: "right" }}>{fmtMoney(lineCost(it))}</span>}
-                        <span className="mono" style={{ fontWeight: 600, whiteSpace: "nowrap", width: 104, textAlign: "right", color: mode === "work" ? "var(--accent-2)" : "var(--text)" }}>{fmtMoney(lineClient(it))}</span>
+                        {/* RRP-слой (п.17): под суммой клиенту — выгода от розницы (только положительная, витрина) */}
+                        <span className="mono" style={{ display: "inline-flex", flexDirection: "column", alignItems: "flex-end", fontWeight: 600, whiteSpace: "nowrap", width: 104, textAlign: "right", color: mode === "work" ? "var(--accent-2)" : "var(--text)" }}>
+                          {fmtMoney(lineClient(it))}
+                          {cp.lineSavings(it) > 0 && <span style={{ fontSize: "var(--fs-10)", fontWeight: 500, color: "var(--accent-2-ink)" }}>выгода {fmtMoney(cp.lineSavings(it))}</span>}
+                        </span>
                         {mode === "work" && FFE && (() => {
                           const aid = apOf(it), m = FFE.approveMeta(aid);
                           return (
@@ -1205,6 +1210,13 @@ function RoomSpecOverlay({ data, nav, onClose, onSaved }) {
                 <span style={{ fontWeight: 800, fontFamily: "var(--font-display)", fontSize: "var(--fs-15)" }}>{mode === "work" ? "Итого для клиента" : "Итого"}</span>
                 <span id="rs-total-val" className="mono rs-val" style={{ fontWeight: 600, fontSize: "var(--fs-24)", letterSpacing: "-0.01em" }} aria-live="off">{fmtMoney(totalClient)}</span>
               </div>
+              {/* RRP-слой (п.17): выгода клиента от розницы — витринная строка под итогом, только когда
+                  суммарная выгода положительна (по позициям с заданной розницей; та же математика в PDF/Excel/портале) */}
+              {cp.savings > 0 && (
+                <div className="mono" style={{ marginTop: 10, paddingTop: 10, borderTop: "1px solid var(--hairline-2)", fontSize: "var(--fs-11)", color: "var(--accent-2-ink)" }}>
+                  Розница в магазинах {fmtMoney(cp.rrpTotal)} — выгода клиента {fmtMoney(cp.savings)}
+                </div>
+              )}
               {/* паспорт свежести цен: та же честная нижняя граница, что уходит в PDF/Excel */}
               {fresh && (
                 <div className="mono" style={{ marginTop: 10, paddingTop: 10, borderTop: "1px solid var(--hairline-2)", fontSize: "var(--fs-11)", color: fresh.stale ? "var(--accent-ink)" : "var(--spec-meta)" }}>
@@ -1688,6 +1700,7 @@ function PosEditor({ item, cats, sups, isNew, onSave, onDelete, onCancel, librar
     qty: String((item && item.qty) || 1),
     unit: (item && item.unit) || "шт",
     price: item ? String(item.price) : "",
+    rrp: s(item && item.rrp),
     sup: (item && item.sup) || "",
     wastePct: s(item && item.wastePct),
     // FF&E-поля (проф-уровень спецификации) — редактируются на вкладке «Основное»
@@ -1709,9 +1722,10 @@ function PosEditor({ item, cats, sups, isNew, onSave, onDelete, onCancel, librar
   // габариты/срок/запас: пустая строка → "" (не 0), число → округляем ≥0
   const nOrEmpty = (v) => { const t = String(v).trim(); return t === "" ? "" : Math.max(0, Math.round(+t || 0)); };
   const wastePct = nOrEmpty(d.wastePct);   // нормализуем один раз — draft/превью/подпись берут отсюда
+  const rrp = nOrEmpty(d.rrp);             // розница (RRP): "" = не задана
   const draft = () => ({
     title: d.title.trim(), qty, price, cat: d.cat.trim(), sup: d.sup.trim(),
-    unit: d.unit, wastePct,
+    unit: d.unit, wastePct, rrp,
     sku: d.sku.trim(), url: d.url.trim(), img: d.img.trim(), material: d.material.trim(),
     dims: { w: nOrEmpty(d.dimW), d: nOrEmpty(d.dimD), h: nOrEmpty(d.dimH) },
     leadWeeks: nOrEmpty(d.leadWeeks),
@@ -1719,7 +1733,7 @@ function PosEditor({ item, cats, sups, isNew, onSave, onDelete, onCancel, librar
   const submit = () => { if (ok) onSave(draft()); };
   // W5.3: правил ли пользователь поля (для prev/next: изменённый валидный черновик сохраняем перед переходом)
   const dirty = !!item && (d.title.trim() !== item.title || qty !== (item.qty || 1) || price !== item.price
-    || d.cat.trim() !== (item.cat || "") || d.sup.trim() !== (item.sup || "") || d.wastePct !== s(item.wastePct) || d.unit !== (item.unit || "шт")
+    || d.cat.trim() !== (item.cat || "") || d.sup.trim() !== (item.sup || "") || d.wastePct !== s(item.wastePct) || d.rrp !== s(item.rrp) || d.unit !== (item.unit || "шт")
     || d.sku.trim() !== (item.sku || "") || d.url.trim() !== (item.url || "") || d.img.trim() !== (item.img || "") || d.material.trim() !== (item.material || "")
     || d.dimW !== s(dm.w) || d.dimD !== s(dm.d) || d.dimH !== s(dm.h) || d.leadWeeks !== s(item.leadWeeks));
   // живой итог на вкладке «Финансы» — считаем ровно тем же FFE.clientPricing, что UI/PDF/
@@ -1727,11 +1741,12 @@ function PosEditor({ item, cats, sups, isNew, onSave, onDelete, onCancel, librar
   // округление цены/шт). Синтетический снимок из одной позиции, чтобы превью не разъезжалось
   // с реальной строкой при будущих правках формулы.
   const FFE = window.LedgerFFE;
-  const previewItem = { price, qty, cat: d.cat.trim(), wastePct: wastePct || 0 };
+  const previewItem = { price, qty, cat: d.cat.trim(), wastePct: wastePct || 0, rrp: rrp || 0 };
   const unitLabel = d.unit && d.unit !== "шт" ? " " + d.unit : "";
   const cpPreview = FFE.clientPricing({ rooms: [{ items: [previewItem] }], markup, catMarkup });
   const costUnitPreview = cpPreview.costUnit(previewItem);
   const unitClientPreview = cpPreview.unitClient(previewItem);
+  const savingsPreview = cpPreview.lineSavings(previewItem);   // выгода клиента от розницы (RRP), может быть ≤0
   // dirty, но невалидно (например, стёрли название) — не топим правку молча: держим редактор
   // на месте, пусть починят или явно жмут «Отмена» (кнопки честно обещают «правки сохранятся»)
   const goNav = (j) => {
@@ -1793,7 +1808,7 @@ function PosEditor({ item, cats, sups, isNew, onSave, onDelete, onCancel, librar
 
       {tab === "fin" && (
         <div className="view-enter" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          <div className="pe-grid" style={{ display: "grid", gridTemplateColumns: "76px 72px 116px 1fr 84px", gap: 10 }}>
+          <div className="pe-grid" style={{ display: "grid", gridTemplateColumns: "76px 72px 108px 108px 1fr 76px", gap: 10 }}>
             <label style={lab}>Кол-во
               <input style={{ ...fld, fontFamily: "var(--font-mono)" }} type="number" min="1" max="999" step="1" inputMode="numeric" value={d.qty} onChange={(e) => setD((x) => ({ ...x, qty: e.target.value }))} />
             </label>
@@ -1804,6 +1819,9 @@ function PosEditor({ item, cats, sups, isNew, onSave, onDelete, onCancel, librar
             </label>
             <label style={lab}>Цена/ед., ₽
               <input style={{ ...fld, fontFamily: "var(--font-mono)" }} type="number" min="1" step="100" inputMode="numeric" value={d.price} onChange={(e) => setD((x) => ({ ...x, price: e.target.value }))} />
+            </label>
+            <label style={lab} title="Розничная цена в магазине (РРЦ) за единицу — клиент увидит свою выгоду от работы с вами">Розница, ₽
+              <input style={{ ...fld, fontFamily: "var(--font-mono)" }} type="number" min="0" step="100" inputMode="numeric" value={d.rrp} placeholder="—" onChange={(e) => setD((x) => ({ ...x, rrp: e.target.value }))} />
             </label>
             <label style={lab}>Поставщик
               <input style={fld} list="pe-sup-list" value={d.sup} placeholder="точка закупки" onChange={(e) => setD((x) => ({ ...x, sup: e.target.value }))} />
@@ -1823,6 +1841,15 @@ function PosEditor({ item, cats, sups, isNew, onSave, onDelete, onCancel, librar
                 <span>Клиенту</span>
                 <span>{fmtMoney(unitClientPreview)} × {qty}{unitLabel} = {fmtMoney(unitClientPreview * qty)}</span>
               </span>
+              {/* RRP-слой (п.17): выгода клиента от розницы; ≤0 — честно предупреждаем, а не прячем молча */}
+              {rrp > 0 && (savingsPreview > 0 ? (
+                <span style={{ display: "flex", justifyContent: "space-between", color: "var(--accent-2-ink)" }}>
+                  <span>Выгода клиента (розница {fmtMoney(cpPreview.rrpUnit(previewItem))})</span>
+                  <span>{fmtMoney(savingsPreview)}</span>
+                </span>
+              ) : (
+                <span style={{ color: "var(--accent-ink)" }}>Розница не выше цены клиенту — выгода в смете не показывается</span>
+              ))}
             </div>
           )}
         </div>
@@ -1958,7 +1985,7 @@ function AddPositionsModal({ excludeId, roomNames, initialTab, initialRoom, onCl
   const [clipErr, setClipErr] = usePD("");
   const [clipHtmlMode, setClipHtmlMode] = usePD(false); // CORS-блок → ручная вставка HTML
   const [clipHtml, setClipHtml] = usePD("");
-  const [clipForm, setClipForm] = usePD(null);          // {title, price, qty, sup, room, note}
+  const [clipForm, setClipForm] = usePD(null);          // {title, price, rrp, qty, sup, room, note}
 
   usePDE(() => {
     // источники: только проекты со сметой по комнатам (каталожные демо-проекты отпадают)
@@ -1987,9 +2014,9 @@ function AddPositionsModal({ excludeId, roomNames, initialTab, initialRoom, onCl
     items: r.items.filter((_, ii) => sel[k(ri, ii)]).map((it) => {
       // копируем только данные позиции (без геометрии комнаты); давность цены:
       // своя пометка позиции сохраняется, иначе — дата проекта-источника
-      const { title, qty, price, cat, sup, priceDate } = it;
+      const { title, qty, price, cat, sup, priceDate, rrp } = it;
       const pd = priceDate || src.stamp;
-      return { title, qty: qty || 1, price, ...(cat ? { cat } : {}), ...(sup ? { sup } : {}), ...(pd ? { priceDate: pd } : {}) };
+      return { title, qty: qty || 1, price, ...(cat ? { cat } : {}), ...(sup ? { sup } : {}), ...(pd ? { priceDate: pd } : {}), ...(rrp ? { rrp } : {}) };
     }),
   })).filter((e) => e.items.length) : [];
   const nSel = chosen.reduce((s, e) => s + e.items.length, 0);
@@ -2005,6 +2032,8 @@ function AddPositionsModal({ excludeId, roomNames, initialTab, initialRoom, onCl
     setClipForm({
       title: f.title || "",
       price: f.price != null ? String(Math.round(f.price)) : "",
+      // розница (RRP-слой, п.17) — извлечённая «старая цена», если санити extractFromHtml её пропустила
+      rrp: f.oldPrice != null && f.oldPrice > 0 ? String(Math.round(f.oldPrice)) : "",
       qty: "1",
       sup: f.supplier || "",
       room: initialRoom || (roomNames && roomNames[0]) || "Гостиная",
@@ -2033,6 +2062,7 @@ function AddPositionsModal({ excludeId, roomNames, initialTab, initialRoom, onCl
     else clipPrefill(ex, "html");
   };
   const clipPrice = clipForm ? Math.round(+clipForm.price || 0) : 0;
+  const clipRrp = clipForm ? Math.round(+clipForm.rrp || 0) : 0;   // розница (RRP-слой, п.17) — необязательна
   const clipQty = clipForm ? Math.max(1, Math.round(+clipForm.qty || 1)) : 1;
   const clipOk = clipForm && clipForm.title.trim() && clipPrice > 0 && clipForm.room.trim();
   const clipAdd = () => {
@@ -2040,6 +2070,7 @@ function AddPositionsModal({ excludeId, roomNames, initialTab, initialRoom, onCl
     const item = {
       title: clipForm.title.trim(), qty: clipQty, price: clipPrice,
       ...(clipForm.sup.trim() ? { sup: clipForm.sup.trim() } : {}),
+      ...(clipRrp > 0 ? { rrp: clipRrp } : {}),
       priceDate: new Date().toISOString().slice(0, 10), // цена свежая — извлечена сейчас
     };
     onAdd([{ name: clipForm.room.trim(), items: [item] }], "по ссылке");
@@ -2132,6 +2163,11 @@ function AddPositionsModal({ excludeId, roomNames, initialTab, initialRoom, onCl
                       <input style={{ ...clipField, marginTop: 4 }} value={clipForm.sup} onChange={(e) => setClipForm((f) => ({ ...f, sup: e.target.value }))} />
                     </label>
                   </div>
+                  {/* розница (RRP-слой, п.17) — клиппер иногда находит зачёркнутую цену магазина; необязательна,
+                      показываем только когда что-то извлеклось или дизайнер сам решит её вписать */}
+                  <label style={{ fontSize: "var(--fs-12)", color: "var(--muted)" }} title="Розничная цена в магазине — клиент увидит свою выгоду от работы с вами">Розница, ₽ (необязательно)
+                    <input style={{ ...clipField, marginTop: 4, fontFamily: "var(--font-mono)" }} type="number" min="0" placeholder="—" value={clipForm.rrp} onChange={(e) => setClipForm((f) => ({ ...f, rrp: e.target.value }))} />
+                  </label>
                   <label style={{ fontSize: "var(--fs-12)", color: "var(--muted)" }}>Комната
                     <input style={{ ...clipField, marginTop: 4 }} list="clip-rooms" value={clipForm.room} onChange={(e) => setClipForm((f) => ({ ...f, room: e.target.value }))} />
                     <datalist id="clip-rooms">{(roomNames || []).map((n) => <option key={n} value={n} />)}</datalist>

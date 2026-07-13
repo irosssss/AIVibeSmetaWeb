@@ -239,6 +239,8 @@
       title: g("og:title", "twitter:title"),
       img: g("og:image:secure_url", "og:image", "twitter:image", "twitter:image:src"),
       price: parsePrice(g("product:price:amount", "og:price:amount", "product:sale_price:amount")),
+      // розница до скидки (RRP-слой, п.17): og-теги «старой» цены; санити old>price — в extractFromHtml
+      oldPrice: parsePrice(g("product:original_price:amount", "og:price:standard_amount")),
       currency: g("product:price:currency", "og:price:currency"),
       sku: g("product:retailer_item_id", "product:retailer_part_no"),
       supplier: g("og:brand", "product:brand"), // настоящий бренд — структурный (STRONG)
@@ -288,7 +290,32 @@
 
   /* ----------------------------- СЛИЯНИЕ ИСТОЧНИКОВ ----------------------------- */
   // Поля по приоритету источников; для каждого поля запоминаем, откуда взято.
-  const FIELDS = ["title", "price", "currency", "img", "sku", "supplier", "material"];
+  const FIELDS = ["title", "price", "currency", "img", "sku", "supplier", "material", "oldPrice"];
+
+  /* Зачёркнутая «старая цена» магазина (RRP-слой, роадмап п.17) — текстовая эвристика:
+     <del>/<s> или элемент с классом old/crossed-price. Узкое окно (до 80 симв.) — чтобы
+     не съесть цену соседнего товара из листинга; санити «старая ВЫШЕ текущей» — на выходе. */
+  function oldPriceFromHtml(html) {
+    // «похоже на деньги», а не случайный зачёркнутый текст (год, номер версии, бейдж «хит»):
+    // валюта, разрядный пробел («189 000», в т.ч. nbsp) или ≥5 цифр подряд
+    const looksMoney = (t) => /₽|руб|\$|€/i.test(t) || /\d{1,3}[  ]\d{3}/.test(t) || /\d{5,}/.test(t);
+    // В каждом источнике перебираем ВСЕ совпадения и берём первое, похожее на деньги: первый
+    // зачёркнутый элемент часто НЕ цена (бейдж, старое название) — прежний .match() без /g брал
+    // только его и молча терял розницу из следующего элемента (найдено ревью). Регэкспы —
+    // локальные: с флагом /g их lastIndex нельзя переживать вызов функции.
+    const SRC = [
+      { re: /<(del|s)\b[^>]*>([\s\S]{0,80}?)<\/\1>/gi, g: 2 },   // симметричные теги (\1) — не сшиваем <del>…</s>
+      { re: /<[^>]*class\s*=\s*["'][^"']*(?:old[-_]?price|price[-_]?old|crossed[-_]?price)[^"']*["'][^>]*>([\s\S]{0,80}?)<\//gi, g: 1 },
+    ];
+    for (const { re, g } of SRC) {
+      let m;
+      while ((m = re.exec(html)) !== null) {
+        const txt = String(m[g] || "").replace(/<[^>]+>/g, "");
+        if (looksMoney(txt)) return parsePrice(txt);
+      }
+    }
+    return null;
+  }
 
   function extractFromHtml(html, url) {
     html = String(html || "");
@@ -317,6 +344,11 @@
 
     // заголовок-фолбэк из <h1>/<title>
     if (!fields.title) { const t = titleFromHtml(html); if (t) { fields.title = t; sources.title = "text"; } }
+
+    // «старая цена» (RRP): og-тег → текстовая эвристика <del>/<s>/old-price; санити —
+    // старая цена обязана быть ВЫШЕ текущей, иначе это не «розница до скидки», выкидываем
+    if (fields.oldPrice == null) { const op = oldPriceFromHtml(html); if (op != null) { fields.oldPrice = op; sources.oldPrice = "text"; } }
+    if (fields.oldPrice != null && !(fields.price != null && fields.oldPrice > fields.price)) { delete fields.oldPrice; delete sources.oldPrice; }
 
     // материал-эвристика из текста (если структурно не нашли)
     if (!fields.material) {
@@ -371,6 +403,7 @@
       material: f.material || "",
       img: safeImg(f.img),
     };
+    if (f.oldPrice != null && f.oldPrice > 0) over.rrp = f.oldPrice;   // розница (RRP-слой, п.17)
     if (f.dims) over.dims = f.dims;
     if (f._category) over.cat = f._category;
     return window.LedgerFFE ? window.LedgerFFE.blankPosition(over) : over;
@@ -385,7 +418,7 @@
   const STRONG_SOURCES = new Set(["json-ld", "microdata", "og"]);
   // [ключ-позиции, подпись, ключ-источника?] — у поставщика ключ позиции `sup` (канон схемы),
   // а sources из экстракции зовёт его `supplier`, поэтому 3-й элемент разводит их
-  const FIELD_LABELS = [["title", "имя"], ["price", "цена"], ["sup", "поставщик", "supplier"], ["sku", "артикул"], ["material", "материал"], ["img", "фото"]];
+  const FIELD_LABELS = [["title", "имя"], ["price", "цена"], ["rrp", "розница", "oldPrice"], ["sup", "поставщик", "supplier"], ["sku", "артикул"], ["material", "материал"], ["img", "фото"]];
 
   function mergeIntoPosition(current, extracted) {
     const pos = mapToPosition(extracted);

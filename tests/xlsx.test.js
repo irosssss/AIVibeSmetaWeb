@@ -359,3 +359,85 @@ describe("закупочный лист: стадии, платежи, трек 
     expect(res.extras).toBeUndefined();
   });
 });
+
+describe("RRP-слой: розница/выгода в выгрузке и обратном импорте (роадмап п.17)", () => {
+  const rooms = [{ name: "Гостиная", items: [
+    { title: "Диван «Морти»", cat: "Мебель", price: 129000, rrp: 189000, qty: 1 },
+    { title: "Стол", cat: "Мебель", price: 60000, qty: 1 },   // без розницы — ячейки пустые, поля нет
+  ] }];
+
+  it("рабочий режим: rrp — сырая величина, переживает round-trip; колонка розницы не подменяет цену", async () => {
+    const c = calc(rooms, 25);
+    const res = await roundTrip({ project: "RRP", rooms, grand: c.grand, clientTotal: c.clientTotal,
+      markupPct: 25, budget: 500000, mode: "work" });
+    expect(byTitle(res, "Диван «Морти»").rrp).toBe(189000);
+    expect(byTitle(res, "Диван «Морти»").price).toBe(129000);   // «Розница/ед., ₽» не съедена как cPrice
+    expect(byTitle(res, "Стол").rrp).toBeUndefined();
+  });
+
+  it("клиентский режим: розница видна клиенту, клиентские цены не наценяются второй раз", async () => {
+    const c = calc(rooms, 25);
+    const res = await roundTrip({ project: "RRP клиенту", rooms, grand: c.grand, clientTotal: c.clientTotal,
+      markupPct: 25, budget: 500000, mode: "client" });
+    expect(byTitle(res, "Диван «Морти»").rrp).toBe(189000);
+    expect(byTitle(res, "Диван «Морти»").price).toBe(161250);   // unitClient 129000×1.25, наценка не задвоена
+    expect(res.markupPct).toBe(0);                              // клиентский файл — 0% сильнее «Свода»
+  });
+
+  it("rrp + запас: розница в файле сырая, запас не задваивается при переэкспорте", async () => {
+    const rr = [{ name: "К", items: [{ title: "Плитка", price: 1000, rrp: 1500, qty: 10, wastePct: 10 }] }];
+    const c = calc(rr, 0);
+    const res = await roundTrip({ project: "RRP запас", rooms: rr, grand: c.grand, clientTotal: c.clientTotal,
+      markupPct: 0, budget: 0, mode: "work" });
+    expect(byTitle(res, "Плитка").rrp).toBe(1500);
+    expect(FFE.rrpLine(byTitle(res, "Плитка"))).toBe(16500);    // 1500 × 1.10 × 10 — запас считается из полей
+  });
+});
+
+describe("RRP-слой: столбец «Выгода» бьётся со своим «Итого» (net, не клип >0) — найдено ревью", () => {
+  // одна позиция с розницей ВЫШЕ цены клиенту (выгода +), одна — где наценка вывела клиента
+  // ВЫШЕ розницы (выгода −). Глобальная выгода всё ещё > 0 → «Итого» показывается; построчные
+  // ячейки должны суммироваться ровно в него (net), а не в завышенный клип-итог.
+  const rooms = [{ name: "Гостиная", items: [
+    { title: "Диван", cat: "Мебель", price: 100000, rrp: 189000, qty: 1 },   // +64000 при 25% (125000 < 189000)
+    { title: "Люстра", cat: "Свет",  price: 100000, rrp: 110000, qty: 1 },   // −15000 при 25% (125000 > 110000)
+  ] }];
+  let master, roomSheet, cp;
+  beforeAll(() => {
+    cp = FFE.clientPricing({ rooms, markup: 25 });
+    captured = null;
+    expect(X.exportRoomSpec({ project: "RRP net", rooms, grand: calc(rooms, 25).grand,
+      clientTotal: cp.client, markupPct: 25, budget: 500000, mode: "work" })).toBe(true);
+    master = XLSXReal.utils.sheet_to_json(captured.wb.Sheets["Все позиции"], { header: 1, raw: true });
+    roomSheet = XLSXReal.utils.sheet_to_json(captured.wb.Sheets["Гостиная"], { header: 1, raw: true });
+  });
+
+  const colSum = (aoa, headerRowIdx, colName, totalTitle) => {
+    const head = aoa[headerRowIdx];
+    const cv = head.indexOf(colName), cn = head.indexOf("Наименование");
+    const total = aoa.find((r) => r[cn] === totalTitle);
+    const data = aoa.slice(headerRowIdx + 1).filter((r) => r[cn] && r[cn] !== totalTitle);
+    const sum = data.reduce((s, r) => s + (typeof r[cv] === "number" ? r[cv] : 0), 0);
+    return { total: total[cv], sum, cv, cn, data };
+  };
+
+  it("глобальная выгода положительна, но одна позиция ушла в минус — данные согласованы", () => {
+    expect(cp.savings).toBe(49000);          // 64000 − 15000
+    expect(cp.lineSavings(rooms[0].items[1])).toBe(-15000);   // Люстра: клиент выше розницы
+  });
+
+  it("мастер-таблица «Все позиции»: Σ построчной «Выгоды» = ячейка «Итого» = FFE.savings", () => {
+    const { total, sum, cv, cn, data } = colSum(master, 0, "Выгода, ₽", "Итого по позициям");
+    expect(sum).toBe(total);                 // столбец сходится со своим итогом
+    expect(total).toBe(cp.savings);          // и это честный net из FFE, а не завышенный клип
+    // отрицательная строка присутствует КАК ЕСТЬ (net), а не спрятана пустой ячейкой
+    expect(data.find((r) => r[cn] === "Люстра")[cv]).toBe(-15000);
+  });
+
+  it("лист комнаты «Гостиная»: тот же инвариант — столбец «Выгода» = «Итого по комнате»", () => {
+    const hi = roomSheet.findIndex((r) => Array.isArray(r) && r.includes("Выгода, ₽"));
+    const { total, sum } = colSum(roomSheet, hi, "Выгода, ₽", "Итого по комнате");
+    expect(sum).toBe(total);
+    expect(total).toBe(cp.savings);
+  });
+});
