@@ -428,12 +428,12 @@ function ShareLinkModal({ share, onClose }) {
                 </label>
               ))}
             </div>
-            <div style={{ fontSize: "var(--fs-11)", color: "var(--faint)", marginTop: 9, lineHeight: 1.5 }}>
+            <div style={{ fontSize: "var(--fs-11)", color: "var(--muted)", marginTop: 9, lineHeight: 1.5 }}>
               Цена и итог видны клиенту всегда — без них он не сможет согласовать смету. Материал и габариты видны по умолчанию.
             </div>
           </div>
         )}
-        <div style={{ fontSize: "var(--fs-12)", color: "var(--faint)", lineHeight: 1.55, display: "flex", gap: 9, alignItems: "flex-start", marginTop: 2 }}>
+        <div style={{ fontSize: "var(--fs-12)", color: "var(--muted)", lineHeight: 1.55, display: "flex", gap: 9, alignItems: "flex-start", marginTop: 2 }}>
           <I.info size={15} style={{ color: "var(--accent)", flex: "none", marginTop: 1 }} />
           <span>Пока это демо-ссылка — она работает в этом браузере. Доступ клиента с его устройства подключится вместе с доменом студии и облаком (Worker + KV), без изменений в интерфейсе.</span>
         </div>

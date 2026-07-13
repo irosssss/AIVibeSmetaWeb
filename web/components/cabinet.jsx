@@ -132,7 +132,7 @@ function AuthScreen({ onAuthed, go }) {
 
           {/* вход по e-mail появится вместе с реальной аутентификацией — декоративную форму убрали (честность превыше «полноты» экрана) */}
 
-          <p style={{ color: "var(--faint)", fontSize: "var(--fs-12)", marginTop: 26, textAlign: "center", lineHeight: 1.5 }}>
+          <p style={{ color: "var(--muted)", fontSize: "var(--fs-12)", marginTop: 26, textAlign: "center", lineHeight: 1.5 }}>
             Продолжая, вы соглашаетесь с условиями и политикой конфиденциальности Design Ledger.
           </p>
           <div style={{ textAlign: "center", marginTop: 14 }}>

@@ -45,7 +45,7 @@ function NewsAdmin() {
               <div style={{ width: 46, height: 46, borderRadius: 10, overflow: "hidden", flex: "none" }}><Img src={PHOTOS[n.cover] || PHOTOS.warm} label={"Обложка: " + n.title} /></div>
               <div style={{ minWidth: 0 }}>
                 <div style={{ fontWeight: 600, fontSize: "var(--fs-14)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{n.title}</div>
-                <div style={{ fontSize: "var(--fs-12)", color: "var(--faint)" }}>{n.author}</div>
+                <div style={{ fontSize: "var(--fs-12)", color: "var(--muted)" }}>{n.author}</div>
               </div>
             </div>
             <span style={{ color: "var(--muted)", fontSize: "var(--fs-13)" }}>{n.category}</span>
@@ -138,7 +138,7 @@ function UsersAdmin() {
               <Avatar user={u} size={38} />
               <div style={{ minWidth: 0 }}>
                 <div style={{ fontWeight: 600, fontSize: "var(--fs-14)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{u.name}</div>
-                <div style={{ fontSize: "var(--fs-12)", color: "var(--faint)" }}>{u.email}</div>
+                <div style={{ fontSize: "var(--fs-12)", color: "var(--muted)" }}>{u.email}</div>
               </div>
             </div>
             <span style={{ display: "inline-flex", alignItems: "center", gap: 7, fontSize: "var(--fs-13)", color: "var(--muted)" }}>

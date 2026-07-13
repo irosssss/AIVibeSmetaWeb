@@ -221,7 +221,7 @@ function ProductEditor({ draft, onClose, onSaved }) {
 
         <LibFld label="Артикул фида фабрик (SKU)">
           <input className="fld" value={d.feedSku || ""} onChange={(e) => set({ feedSku: e.target.value })} placeholder="пока вводится вручную" />
-          <span style={{ display: "block", fontSize: "var(--fs-12)", color: "var(--faint)", marginTop: 5, lineHeight: 1.5 }}>
+          <span style={{ display: "block", fontSize: "var(--fs-12)", color: "var(--muted)", marginTop: 5, lineHeight: 1.5 }}>
             Задел под фид фабрик: когда он подключится, цены по этому артикулу начнут обновляться сами.
           </span>
         </LibFld>
