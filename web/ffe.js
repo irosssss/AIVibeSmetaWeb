@@ -577,7 +577,16 @@
      БЕЗ переписывания UI — // → API: POST/GET/PATCH /api/portal/:id (Worker + KV).
      Ответ клиента = изменённое поле approve прямо в позициях снимка (тот же словарь A1). */
   const PKEY = (id) => "aivibe:portal:" + id;
-  const genShareId = () => "shr_" + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+  // shareId — capability-токен: с живым API (portal-api.js) ссылка публична, поэтому
+  // энтропия криптографическая (~93 бита), а не Date+Math.random (подбираемо по времени);
+  // формат прежний shr_[a-z0-9]+ — старые мок-ссылки остаются валидными
+  const genShareId = () => {
+    if (typeof crypto !== "undefined" && crypto.getRandomValues) {
+      const a = crypto.getRandomValues(new Uint8Array(18));
+      return "shr_" + Array.from(a, (b) => (b % 36).toString(36)).join("");
+    }
+    return "shr_" + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+  };
   function createPortalShare(o) {
     const src = o || {};
     const rec = {

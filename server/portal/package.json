@@ -1,0 +1,11 @@
+{
+  "name": "designledger-portal-api",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Design Ledger — API клиентского портала (Yandex Cloud Function + YDB); деплой — docs/PORTAL_DEPLOY_YC.md",
+  "main": "index.mjs",
+  "dependencies": {
+    "ydb-sdk": "^5.11.0"
+  }
+}
