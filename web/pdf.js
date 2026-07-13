@@ -42,6 +42,8 @@
     if (mode === "procure") return exportProcurePDF({ project, area, rooms: rooms || [], grand, budget, studioName, studioContact });
     const clientMode = mode === "client";
     const FFE = window.LedgerFFE || null;
+    // док-коды позиций (K1) — проставляем производно тем же assignDocCodes, что UI/Excel/портал
+    if (FFE && FFE.assignDocCodes) rooms = FFE.assignDocCodes(rooms || []);
     const fresh = FFE && FFE.priceFreshness ? FFE.priceFreshness(rooms) : null;
     const fmtD = (d) => { const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(d || "")); return m ? m[3] + "." + m[2] + "." + m[1] : ""; };
     // итог структурой: скидка округляется до рубля от подытога — та же формула, что в UI/Excel
@@ -80,8 +82,10 @@
           // FF&E-детали (артикул/материал/габариты/срок) — подстрокой под названием, той же
           // конвенцией, что в UI: артикул/срок только в рабочей версии (ffeMeta(client))
           const meta = FFE && FFE.ffeMeta ? FFE.ffeMeta(it, { client: clientMode }) : "";
+          // код позиции (K1) — серым перед названием, виден и клиенту (в отличие от артикула)
+          const titleLine = it.code ? { text: [{ text: it.code + "   ", color: PDF.muted, fontSize: 8 }, { text: it.title }] } : { text: it.title };
           return [
-          meta ? { stack: [{ text: it.title }, { text: meta, fontSize: 8, color: PDF.muted, margin: [0, 1, 0, 0] }] } : it.title,
+          meta ? { stack: [titleLine, { text: meta, fontSize: 8, color: PDF.muted, margin: [0, 1, 0, 0] }] } : titleLine,
           { text: it.cat || "Прочее", color: PDF.muted, fontSize: 9 },
           { text: FFE && FFE.qtyLabel ? FFE.qtyLabel(it) : "×" + (it.qty || 1), alignment: "right", fontSize: 9, color: PDF.muted },
           { text: money(clientMode ? lineClient(it) : lineCost(it)), alignment: "right" },

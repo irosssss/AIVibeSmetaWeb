@@ -441,3 +441,34 @@ describe("RRP-слой: столбец «Выгода» бьётся со сво
     expect(total).toBe(cp.savings);
   });
 });
+
+describe("Док-коды позиций (K1): колонка «Код» — экспорт и round-trip", () => {
+  const rooms = [{ name: "Гостиная", items: [
+    { title: "Диван", cat: "Мебель", price: 100000, qty: 1 },
+    { title: "Люстра", cat: "Освещение", price: 20000, qty: 1, code: "СВ-99" },   // ручной override
+  ] }];
+  let master, res;
+  beforeAll(async () => {
+    captured = null;
+    const c = calc(rooms, 20);
+    expect(X.exportRoomSpec({ project: "Коды", rooms, grand: c.grand, clientTotal: c.clientTotal,
+      markupPct: 20, budget: 0, mode: "work" })).toBe(true);
+    master = XLSXReal.utils.sheet_to_json(captured.wb.Sheets["Все позиции"], { header: 1, raw: true });
+    res = await roundTrip({ project: "Коды", rooms, grand: c.grand, clientTotal: c.clientTotal,
+      markupPct: 20, budget: 0, mode: "work" });
+  });
+
+  it("экспорт добавляет колонку «Код» с авто-кодом и уважает ручной override", () => {
+    const head = master[0];
+    const cCode = head.indexOf("Код");
+    expect(cCode).toBeGreaterThanOrEqual(0);
+    const codeOfTitle = (t) => { const row = master.find((r) => r.includes(t)); return row[cCode]; };
+    expect(codeOfTitle("Диван")).toBe("МБ-01");    // авто по разделу «Мебель»
+    expect(codeOfTitle("Люстра")).toBe("СВ-99");   // ручной override сохранён
+  });
+
+  it("round-trip: коды возвращаются в позиции (импорт читает колонку «Код»)", () => {
+    expect(byTitle(res, "Диван").code).toBe("МБ-01");
+    expect(byTitle(res, "Люстра").code).toBe("СВ-99");
+  });
+});
