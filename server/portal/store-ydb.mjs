@@ -77,8 +77,12 @@ export function createYdbStore() {
     // (клиент ставит решение, дизайнер отвечает в треде) не затирают друг друга
     async update(id, fn) {
       return withSession(async (s) => {
-        const tx = await s.beginTransaction({ serializableReadWrite: {} });
+        // beginTransaction — тоже RPC, может упасть (конфликт/сессия/транспорт) —
+        // ловим её ВНУТРИ try, иначе исключение уходит необработанным (не только
+        // commit подвержен конфликту serializable-изоляции, начало транзакции тоже)
+        let tx = null;
         try {
+          tx = await s.beginTransaction({ serializableReadWrite: {} });
           const r = await s.executeQuery(q.get, { $id: TypedValues.utf8(id) }, { txId: tx.id });
           const rec = recOf(r.resultSets);
           if (!rec) { await s.rollbackTransaction(tx.id); return null; }
@@ -87,7 +91,7 @@ export function createYdbStore() {
           await s.commitTransaction(tx.id);
           return rec;
         } catch (e) {
-          try { await s.rollbackTransaction(tx.id); } catch {}
+          if (tx) { try { await s.rollbackTransaction(tx.id); } catch {} }
           throw e;
         }
       });

@@ -39,8 +39,9 @@ function memStore() {
   };
 }
 
+// байты, не .length (UTF-16 code units) — кириллица иначе занижала бы размер вдвое (найдено ревью)
 const call = (store, method, path, body) =>
-  handleRequest({ method, path, body, rawBodyLength: body ? JSON.stringify(body).length : 0 }, store);
+  handleRequest({ method, path, body, rawBodyLength: body ? Buffer.byteLength(JSON.stringify(body), "utf8") : 0 }, store);
 const parse = (res) => JSON.parse(res.body);
 
 const share = (over) => ({
@@ -144,6 +145,56 @@ describe("операции: approve / comment / visit", () => {
     expect((await call(st, "POST", "/portal/shares/shr_missing0000/ops", { op: "visit" })).status).toBe(404);
     expect((await call(st, "PUT", "/portal/shares/shr_abc123def456")).status).toBe(405);
     expect((await call(st, "OPTIONS", OPS)).status).toBe(204);
+  });
+  it("comment: повтор с ТЕМ ЖЕ id (outbox-ретрай после потерянного ответа) не дублирует запись (найдено ревью)", async () => {
+    const st = await setup();
+    const body = { op: "comment", ri: 0, ii: 1, author: "client", text: "Можно дешевле?", id: "cm_test123abc" };
+    const r1 = parse(await call(st, "POST", OPS, body));
+    expect(r1.rec.snapshot.rooms[0].items[1].comments).toHaveLength(1);
+    // тот же id прилетает снова (клиент решил, что первый POST не дошёл)
+    const r2 = parse(await call(st, "POST", OPS, body));
+    expect(r2.applied).toBe(true);   // идемпотентный повтор — не ошибка, но и не дубль
+    expect(r2.rec.snapshot.rooms[0].items[1].comments).toHaveLength(1);
+  });
+  it("approve/comment: клиентский таймстемп уважается (не штампуется заново временем сервера) — найдено ревью", async () => {
+    const st = await setup();
+    const past = new Date(Date.now() - 3 * 3600 * 1000).toISOString();   // 3 часа назад — «отправилось после офлайна»
+    const pastDate = past.slice(0, 10);
+    const rA = parse(await call(st, "POST", OPS, { op: "approve", ri: 0, ii: 0, approveId: "ok", approveAt: pastDate, respondedAt: past }));
+    expect(rA.rec.snapshot.rooms[0].items[0].approveAt).toBe(pastDate);
+    expect(rA.rec.respondedAt).toBe(past);
+    const rC = parse(await call(st, "POST", OPS, { op: "comment", ri: 0, ii: 1, author: "client", text: "Отвечаю из офлайна", id: "cm_offline0001", at: past, respondedAt: past }));
+    expect(rC.rec.snapshot.rooms[0].items[1].comments[0].at).toBe(past);
+    expect(rC.rec.respondedAt).toBe(past);
+  });
+  it("approve/comment: неправдоподобный клиентский таймстемп (будущее/мусор) игнорируется — сервер берёт своё время", async () => {
+    const st = await setup();
+    const future = new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10);
+    const rA = parse(await call(st, "POST", OPS, { op: "approve", ri: 0, ii: 0, approveId: "ok", approveAt: future }));
+    expect(rA.rec.snapshot.rooms[0].items[0].approveAt).not.toBe(future);
+    expect(rA.rec.snapshot.rooms[0].items[0].approveAt).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    const rC = parse(await call(st, "POST", OPS, { op: "comment", ri: 0, ii: 1, author: "client", text: "x", at: "не дата" }));
+    expect(rC.rec.snapshot.rooms[0].items[1].comments[0].at).toMatch(/^\d{4}-\d{2}-\d{2}T/);
+  });
+  it("исключение store.* (напр. конфликт транзакции YDB) — структурированный 500 с CORS, не необработанный краш (найдено ревью)", async () => {
+    const st = await setup();
+    const boom = { ...st, update: async () => { throw new Error("serializable transaction conflict"); } };
+    const res = await call(boom, "POST", OPS, { op: "visit" });
+    expect(res.status).toBe(500);
+    expect(res.headers["Access-Control-Allow-Origin"]).toBeTruthy();
+    expect(parse(res).error).toBeTruthy();
+  });
+  it("MAX_BODY считается в БАЙТАХ — кириллический снапшот у границы 1МБ по .length не проскакивает мимо лимита (найдено ревью)", async () => {
+    const st = memStore();
+    // «Диван угловой большой» — 21 символ (.length), но 40 байт UTF-8 (см. верификацию ревью);
+    // строим тело, чьи .length и байтовый размер по разные стороны границы MAX_BODY
+    const bigTitle = "Диван угловой большой раскладной модульный".repeat(20000);   // ~860K code units, ~1.6МБ UTF-8
+    const big = share({ snapshot: { mode: "client", markup: 0, rooms: [{ name: "К", items: [{ title: bigTitle, price: 1, qty: 1 }] }] } });
+    const bodyStr = JSON.stringify(big);
+    expect(bodyStr.length).toBeLessThan(1024 * 1024);            // по .length — под лимитом
+    expect(Buffer.byteLength(bodyStr, "utf8")).toBeGreaterThan(1024 * 1024);   // по факту — над лимитом
+    const res = await handleRequest({ method: "POST", path: "/portal/shares", body: big, rawBodyLength: Buffer.byteLength(bodyStr, "utf8") }, st);
+    expect(res.status).toBe(413);
   });
 });
 

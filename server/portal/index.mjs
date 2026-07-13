@@ -18,6 +18,8 @@ export async function handler(event) {
   const rawBody = event.body ? (event.isBase64Encoded ? Buffer.from(event.body, "base64").toString("utf8") : event.body) : "";
   if (rawBody) { try { body = JSON.parse(rawBody); } catch { body = null; } }
 
-  const res = await handleRequest({ method, path, body, rawBodyLength: rawBody.length }, store, { origin: ORIGIN });
+  // rawBody.length — UTF-16 code units, не байты: кириллица (норм для этого приложения)
+  // 2 байта в UTF-8 = 1 code unit — .length занижал бы фактический размер тела вдвое
+  const res = await handleRequest({ method, path, body, rawBodyLength: Buffer.byteLength(rawBody, "utf8") }, store, { origin: ORIGIN });
   return { statusCode: res.status, headers: res.headers, body: res.body };
 }
