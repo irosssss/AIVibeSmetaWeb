@@ -149,7 +149,7 @@ function RoomSpecOverlay({ data, nav, onClose, onSaved }) {
   const [poBusy, setPoBusy] = usePD(false);   // guard: двойной клик «Заказ (PDF)» не должен скачать документ дважды (withLib без своей блокировки)
   const poBusyRef = usePDR(false);   // синхронный замок для той же гонки, что savingRef у «Сохранить»: два click() в один тик React ещё не перерендерил disabled
   const [savedId, setSavedId] = usePD(data.id || null);
-  const [settings, setSettings] = usePD(null);   // мои нормы — для проверки эргономики по комнатам
+  const [settings, setSettings] = usePD(null);   // реквизиты студии — брендинг портала/протокола/PDF
   usePDE(() => { LedgerAPI.settings.get().then(setSettings); }, []);
   const [me, setMe] = usePD(null);               // аккаунт — фолбэк имени студии для брендинга портала (волна A5)
   usePDE(() => { LedgerAPI.profile.get().then(setMe); }, []);
