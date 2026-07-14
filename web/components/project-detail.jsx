@@ -165,6 +165,14 @@ function RoomSpecOverlay({ data, nav, onClose, onSaved }) {
   const [supBook, setSupBook] = usePD([]);
   const reloadSupBook = () => LedgerAPI.suppliers.list().then(setSupBook);
   usePDE(() => { reloadSupBook(); }, []);
+  // стиль проекта («стили ожили», 14.07): запись реестра по ИМЕНИ из data.style (проект хранит
+  // строку-название — та же связь по имени, что supplierMatch у поставщиков); питает буст
+  // подбора аналогов, паспорт стиля в портале и клиентском PDF. null = стиль не задан/удалён
+  const [stylesAll, setStylesAll] = usePD([]);
+  usePDE(() => { LedgerAPI.styles.list().then((xs) => setStylesAll(xs || [])); }, []);
+  const projStyle = React.useMemo(
+    () => (data.style ? stylesAll.find((s) => s.name === data.style) || null : null),
+    [stylesAll, data.style]);
 
   /* --- профили наценки «мой стандарт» (роадмап п.4): применить одним кликом
      на новый проект или сохранить текущую настройку под именем --- */
@@ -557,7 +565,8 @@ function RoomSpecOverlay({ data, nav, onClose, onSaved }) {
   const markupLabel = ovrCount > 0 ? "≈ +" + effPct + "%" : "+" + markup + "%";
   const margin = client - discountAmt - grand;   // транзитные доставка/монтаж/сборы в марже не участвуют
   const totalClient = client - discountAmt + delivery + install + extrasAmt;
-  const specArgs = () => ({ project: data.name, area: data.area, rooms, grand, markupPct: markup, catMarkupPct: catMarkup, clientTotal: client, discountPct: discount, deliveryCost: delivery, installCost: install, extras, budget: data.budget, mode, studioName, studioContact });
+  const specArgs = () => ({ project: data.name, area: data.area, rooms, grand, markupPct: markup, catMarkupPct: catMarkup, clientTotal: client, discountPct: discount, deliveryCost: delivery, installCost: install, extras, budget: data.budget, mode, studioName, studioContact,
+    style: projStyle ? { name: projStyle.name, palette: projStyle.palette, materials: projStyle.materials } : null });
   const exportPDF = () => { if (window.LedgerPDF && LedgerPDF.exportRoomSpec) withLib("pdf", () => LedgerPDF.exportRoomSpec(specArgs())); };
   const exportXLSX = () => { if (window.LedgerXLSX) withLib("xlsx", () => LedgerXLSX.exportRoomSpec(specArgs())); };
 
@@ -658,7 +667,8 @@ function RoomSpecOverlay({ data, nav, onClose, onSaved }) {
   const shareVersion = (v) => {
     let rec = v.shareId ? FFE.loadPortalShare(v.shareId) : null;
     if (!rec) {
-      rec = FFE.createPortalShare({ projectId: savedId, projectName: data.name, versionId: v.id, versionLabel: v.label, snapshot: v.snapshot, studioName, studioCity: settings && settings.studioCity, studioPhone: settings && settings.studioPhone, studioEmail: settings && settings.studioEmail });
+      rec = FFE.createPortalShare({ projectId: savedId, projectName: data.name, versionId: v.id, versionLabel: v.label, snapshot: v.snapshot, studioName, studioCity: settings && settings.studioCity, studioPhone: settings && settings.studioPhone, studioEmail: settings && settings.studioEmail,
+        style: projStyle ? { name: projStyle.name, palette: projStyle.palette, materials: projStyle.materials } : null });
       patchVersion(v.id, { shareId: rec.shareId, status: v.status === "draft" ? "sent" : v.status, statusAt: FFE.today() });
       // «Первые шаги» на «Сегодня» (волна W3.1): честный флаг — первая настоящая выдача
       // ссылки клиенту (не повторная, см. `if (!rec)` выше)
@@ -1329,11 +1339,12 @@ function RoomSpecOverlay({ data, nav, onClose, onSaved }) {
         <VersionsModal versions={versions} current={{ project: data.name, studioName, studioContact, rooms, grand, totalClient, itemsCount }}
           onSave={saveVersion} onRestore={restoreVersion} onSetStatus={setVersionStatus}
           onPatch={patchVersion} onRemove={removeVersion} onShare={shareVersion} onClose={closeVersions}
-          projectId={savedId} onReplacePos={replaceFromAlternative} iterLimit={data.iterLimit || 0} />
+          projectId={savedId} onReplacePos={replaceFromAlternative} iterLimit={data.iterLimit || 0}
+          styleMaterials={projStyle ? projStyle.materials : null} />
       )}
       {shareModal && <ShareLinkModal share={shareModal} onClose={() => setShareModal(null)} />}
       {pickerRoom != null && rooms[pickerRoom] && (
-        <LibraryPickerModal roomName={rooms[pickerRoom].name} onClose={() => setPickerRoom(null)}
+        <LibraryPickerModal roomName={rooms[pickerRoom].name} styleMaterials={projStyle ? projStyle.materials : null} onClose={() => setPickerRoom(null)}
           onAdd={(products) => addLibToRoom(pickerRoom, products)} />
       )}
     </div>
@@ -1351,7 +1362,7 @@ function RoomSpecOverlay({ data, nav, onClose, onSaved }) {
    LedgerFFE.suggestAlternatives; фид фабрик подключится тем же интерфейсом, роадмап §2).
    «Заменить» правит рабочую смету через onReplace (RoomSpecOverlay.replaceFromAlternative);
    снимок отправленной версии не трогаем — он исторический документ. */
-function AlternativesModal({ rejected, projectId, onReplace, onClose }) {
+function AlternativesModal({ rejected, projectId, onReplace, onClose, styleMaterials = null }) {
   const FFE = window.LedgerFFE;
   const [cands, setCands] = usePD(null);   // null = грузим; [] = источники пусты
   const [done, setDone] = usePD({});       // room¶title → название замены (в этой сессии)
@@ -1377,9 +1388,9 @@ function AlternativesModal({ rejected, projectId, onReplace, onClose }) {
   const scored = React.useMemo(() => {
     if (!cands) return {};
     const out = {};
-    rejected.forEach((rj) => { out[rj.room + "¶" + rj.title + "¶" + rj.ordinal] = FFE.suggestAlternatives(rj, cands, 4); });
+    rejected.forEach((rj) => { out[rj.room + "¶" + rj.title + "¶" + rj.ordinal] = FFE.suggestAlternatives(rj, cands, 4, { styleMaterials }); });
     return out;
-  }, [cands, rejected]);
+  }, [cands, rejected, styleMaterials]);
   return (
     <Modal onClose={onClose} label="Замены по ответу клиента" maxWidth={680}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, padding: "20px 24px", borderBottom: "1px solid var(--hairline)" }}>
@@ -1426,6 +1437,8 @@ function AlternativesModal({ rejected, projectId, onReplace, onClose }) {
                         <div style={{ fontSize: "var(--fs-13)", fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{s.product.title}</div>
                         <div className="mono" style={{ fontSize: "var(--fs-11)", color: "var(--spec-meta)", marginTop: 2 }}>
                           {s.product._src}{s.product.sup ? " · " + s.product.sup : ""}
+                          {/* материал товара совпал с материалами стиля проекта — скоринг уже поднял его выше */}
+                          {s.styleMatch && <span style={{ color: "var(--accent-2-ink)", fontWeight: 700 }}> · в стиле проекта</span>}
                         </div>
                       </div>
                       {s.priceDeltaPct != null && s.priceDeltaPct !== 0 && (
@@ -1450,7 +1463,7 @@ function AlternativesModal({ rejected, projectId, onReplace, onClose }) {
   );
 }
 
-function VersionsModal({ versions, current, onSave, onRestore, onSetStatus, onPatch, onRemove, onShare, onClose, projectId, onReplacePos, iterLimit = 0 }) {
+function VersionsModal({ versions, current, onSave, onRestore, onSetStatus, onPatch, onRemove, onShare, onClose, projectId, onReplacePos, iterLimit = 0, styleMaterials = null }) {
   const FFE = window.LedgerFFE;
   const [label, setLabel] = usePD("");
   // счётчик итераций (шаг D «Стола комплектатора» — против боли «бесконечные правки»):
@@ -1653,7 +1666,7 @@ function VersionsModal({ versions, current, onSave, onRestore, onSetStatus, onPa
           );
         })}
       </div>
-      {altList && <AlternativesModal rejected={altList} projectId={projectId} onReplace={onReplacePos} onClose={() => setAltList(null)} />}
+      {altList && <AlternativesModal rejected={altList} projectId={projectId} onReplace={onReplacePos} onClose={() => setAltList(null)} styleMaterials={styleMaterials} />}
     </Modal>
   );
 }
@@ -2673,6 +2686,11 @@ function ProjectSettings({ data, onClose, onSaved }) {
   // дизайнеры защищаются от бесконечных правок пунктом «N итераций, дальше платно» —
   // счётчик против лимита показывают «Версии». 0/пусто = лимит не задан
   const [iterLimit, setIterLimit] = usePD(data.iterLimit || "");
+  // стиль проекта («стили ожили», 14.07): хранится ИМЯ из реестра стилей (связь по имени,
+  // как supplierMatch); влияет на буст подбора аналогов и паспорт стиля в портале/PDF
+  const [style, setStyle] = usePD(data.style || "");
+  const [stylesAll, setStylesAll] = usePD([]);
+  usePDE(() => { LedgerAPI.styles.list().then((xs) => setStylesAll(xs || [])); }, []);
   const [saving, setSaving] = usePD(false);
   const [archiving, setArchiving] = usePD(false);
   const goSection = (s2) => setRoute("cabinet", "projects", data.id, s2);
@@ -2682,7 +2700,7 @@ function ProjectSettings({ data, onClose, onSaved }) {
     setSaving(true);
     const cleanName = name.trim() || data.name;
     try {
-      const updated = await LedgerAPI.projects.update(data.id, { name: cleanName, address: address.trim(), dateStart, dateEnd, summaryShort: summaryShort.trim(), cover, iterLimit: Math.max(0, Math.floor(+iterLimit || 0)) });
+      const updated = await LedgerAPI.projects.update(data.id, { name: cleanName, address: address.trim(), dateStart, dateEnd, summaryShort: summaryShort.trim(), cover, iterLimit: Math.max(0, Math.floor(+iterLimit || 0)), style });
       onSaved(updated);   // Обзор держит отдельную копию data — без мержа показал бы старое
       setName(cleanName);
       setTitle("cabinet", cleanName);
@@ -2747,6 +2765,16 @@ function ProjectSettings({ data, onClose, onSaved }) {
               <label style={fld}>
                 <span style={lbl}>Адрес объекта</span>
                 <input className="fld" value={address} onChange={(e) => setAddress(e.target.value)} placeholder="Напр. Москва, ул. Тверская, 12" aria-label="Адрес объекта" />
+              </label>
+
+              <label style={fld}>
+                <span style={lbl}>Стиль проекта <span style={{ color: "var(--muted)", fontWeight: 400 }}>(влияет на подбор аналогов; клиент видит палитру и материалы)</span></span>
+                <select className="fld" value={style} onChange={(e) => setStyle(e.target.value)} aria-label="Стиль проекта">
+                  <option value="">Без стиля</option>
+                  {stylesAll.map((s) => <option key={s.id} value={s.name}>{s.name}{s.owner ? " · мой" : ""}</option>)}
+                  {/* стиль удалён из библиотеки, но записан в проекте — не теряем выбор молча */}
+                  {style && !stylesAll.some((s) => s.name === style) && <option value={style}>{style} · удалён из библиотеки</option>}
+                </select>
               </label>
 
               <label style={fld}>

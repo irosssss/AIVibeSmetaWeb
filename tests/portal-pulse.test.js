@@ -42,6 +42,26 @@ describe("suggestAlternatives — скоринг замен (Ч2)", () => {
     expect(out.length).toBe(1);
     expect(out[0].priceDeltaPct).toBe(-23);
   });
+  it("материал стиля проекта — буст ранга (+1) и флаг styleMatch, но НЕ квалификация", () => {
+    // «стили ожили» 14.07: два равных кандидата (раздел+коридор) — совпавший
+    // с материалами стиля обгоняет; товар ТОЛЬКО со стилевым материалом,
+    // без раздела/слов, в выдачу по-прежнему не попадает
+    const opts = { styleMaterials: ["велюр", "латунь", "тёплое дерево"] };
+    const out = FFE.suggestAlternatives(target, [
+      { title: "Диван компакт", cat: "Мебель", price: 95000 },
+      { title: "Диван оттоман", cat: "Мебель", price: 95000, material: "велюр" },
+      { title: "Полка настенная", cat: "Декор", price: 95000, material: "латунь" },  // только стиль — нет пропуска
+    ], 4, opts);
+    expect(out[0].product.title).toBe("Диван оттоман");
+    expect(out[0].styleMatch).toBe(true);
+    expect(out.map((s) => s.product.title)).not.toContain("Полка настенная");
+    // «тёплое дерево» матчится токеном по названию, не только по полю material
+    const byTitle = FFE.suggestAlternatives(target, [{ title: "Кресло, тёплое дерево", cat: "Мебель", price: 95000 }], 4, opts);
+    expect(byTitle[0].styleMatch).toBe(true);
+    // без opts — прежнее поведение, styleMatch=false
+    const plain = FFE.suggestAlternatives(target, [{ title: "Диван оттоман", cat: "Мебель", price: 95000, material: "велюр" }], 4);
+    expect(plain[0].styleMatch).toBe(false);
+  });
   it("дубли (товар и в библиотеке, и в проекте) схлопываются; топ-n режет", () => {
     const c = { title: "Кресло велюр", cat: "Мебель", price: 90000 };
     const out = FFE.suggestAlternatives(target, [c, { ...c }, { title: "Кресло лён", cat: "Мебель", price: 91000 }], 1);

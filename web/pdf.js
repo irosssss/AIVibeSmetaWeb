@@ -37,7 +37,7 @@
   //       "client" — только цена клиента, без себестоимости/наценки/бюджета;
   //       "procure" — закупочный лист: группировка по поставщикам, только себестоимость.
   // catMarkupPct: {раздел: %} — свои наценки поверх базовой markupPct (как на экране сметы).
-  function exportRoomSpec({ project, area, rooms, grand, markupPct, catMarkupPct, clientTotal, discountPct, deliveryCost, installCost, extras, budget, mode, studioName, studioContact }) {
+  function exportRoomSpec({ project, area, rooms, grand, markupPct, catMarkupPct, clientTotal, discountPct, deliveryCost, installCost, extras, budget, mode, studioName, studioContact, style }) {
     if (!window.pdfMake) { (window.toast ? toast("PDF-модуль ещё загружается — попробуйте через секунду.", "info") : 0); return false; }
     if (mode === "procure") return exportProcurePDF({ project, area, rooms: rooms || [], grand, budget, studioName, studioContact });
     const clientMode = mode === "client";
@@ -74,7 +74,23 @@
       { canvas: [{ type: "line", x1: 0, y1: 0, x2: 515, y2: 0, lineWidth: 1, lineColor: "#B7502C" }], margin: [0, 8, 0, 0] },
       { text: project || "Проект", style: "h1", margin: [0, 14, 0, 2] },
       ...studioHeaderBlock(studioName, studioContact),
-      { text: "Комплектация по дизайн-проекту · " + (area || "—") + " м²", style: "muted", margin: [0, 0, 0, 14] },
+      { text: "Комплектация по дизайн-проекту · " + (area || "—") + " м²", style: "muted", margin: [0, 0, 0, style && style.name && clientMode ? 4 : 14] },
+      // паспорт стиля проекта («стили ожили», 14.07) — только в клиентской выгрузке:
+      // палитра-свотчи + материалы направления; в рабочей/спецификации это шум
+      ...(clientMode && style && style.name ? [{
+        columns: [
+          ...(Array.isArray(style.palette) && style.palette.length ? [{
+            width: style.palette.slice(0, 6).length * 15,
+            canvas: style.palette.slice(0, 6).map((c, i) => ({ type: "rect", x: i * 15, y: 0, w: 11, h: 11, r: 2.5, color: c })),
+            margin: [0, 1, 0, 0],
+          }] : []),
+          { width: "*", text: [
+            { text: "Стиль: ", color: PDF.muted, fontSize: 9 },
+            { text: style.name, bold: true, fontSize: 9 },
+            ...(Array.isArray(style.materials) && style.materials.length ? [{ text: "  ·  " + style.materials.slice(0, 5).join(", "), color: PDF.muted, fontSize: 9 }] : []),
+          ], margin: [6, 1, 0, 0] },
+        ], margin: [0, 0, 0, 12],
+      }] : []),
     ];
     (rooms || []).forEach((r) => {
       const sub = r.items.reduce((s, it) => s + lineCost(it), 0);

@@ -305,14 +305,20 @@ function ProductEditor({ draft, onClose, onSaved }) {
 /* ---------------- ПИКЕР-КАТАЛОГ ДЛЯ КОМНАТЫ ----------------
    Открывается из строки комнаты в смете: поиск + мультивыбор → onAdd(товары[]).
    Вызывающий сам маппит записи в позиции (LedgerFFE.positionFromProduct). */
-function LibraryPickerModal({ roomName, onClose, onAdd }) {
+function LibraryPickerModal({ roomName, onClose, onAdd, styleMaterials = null }) {
   const [rows, setRows] = useL(null);
   const [q, setQ] = useL("");
   const [sel, setSel] = useL({});   // { id: true }
   useLE(() => { LedgerAPI.library.list().then(setRows); }, []);
 
   const norm = (s) => (s || "").toLowerCase();
-  const all = (rows || []).slice().sort((a, b) => (a.title || "").localeCompare(b.title || "", "ru"));
+  // «стили ожили» (14.07): товары, чей материал/название совпали с материалами стиля
+  // проекта, всплывают наверх с пометкой «в стиле» — внутри групп алфавит сохраняется
+  const stk = (Array.isArray(styleMaterials) ? styleMaterials : [])
+    .flatMap((m) => norm(m).split(/[^a-zа-яё0-9]+/)).filter((w) => w.length > 2);
+  const inStyle = (p) => stk.length > 0 && stk.some((tk) => (norm(p.material) + " " + norm(p.title)).includes(tk));
+  const all = (rows || []).slice()
+    .sort((a, b) => (inStyle(b) - inStyle(a)) || (a.title || "").localeCompare(b.title || "", "ru"));
   const qq = norm(q.trim());
   const shown = qq ? all.filter((p) => [p.title, p.cat, p.sup, p.article].some((f) => norm(f).includes(qq))) : all;
   const toggle = (id) => setSel((s) => ({ ...s, [id]: !s[id] }));
@@ -365,7 +371,10 @@ function LibraryPickerModal({ roomName, onClose, onAdd }) {
                 {on && <I.check size={13} />}
               </span>
               <span style={{ minWidth: 0, flex: 1 }}>
-                <span style={{ display: "block", fontWeight: 600, fontSize: "var(--fs-13)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.title}</span>
+                <span style={{ display: "block", fontWeight: 600, fontSize: "var(--fs-13)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  {p.title}
+                  {inStyle(p) && <span className="mono" style={{ marginLeft: 8, fontSize: "var(--fs-10)", fontWeight: 700, letterSpacing: ".04em", textTransform: "uppercase", color: "var(--accent-2-ink)", background: "var(--accent-2-tint)", padding: "2px 7px", borderRadius: 99, verticalAlign: "1px" }}>в стиле</span>}
+                </span>
                 {(p.cat || meta) && <span style={{ display: "block", fontSize: "var(--fs-12)", color: "var(--muted)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{[p.cat, meta].filter(Boolean).join(" · ")}</span>}
               </span>
               <span className="mono" style={{ fontSize: "var(--fs-13)", fontWeight: 700, color: "var(--accent-2)", flex: "none" }}>{fmtMoney(p.price || 0)}</span>

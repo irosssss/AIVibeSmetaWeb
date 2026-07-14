@@ -306,6 +306,21 @@ function ClientPortal({ shareId }) {
       {fmtRelTime(rec.createdAt) && (
         <div className="mono" style={{ fontSize: "var(--fs-11)", color: "var(--spec-meta)", marginTop: 3 }}>Обновлено {fmtRelTime(rec.createdAt)}</div>
       )}
+      {/* паспорт стиля проекта («стили ожили», 14.07) — снимок на момент публикации, как studioName:
+         клиент видит направление (палитра + материалы), по которому собрана комплектация */}
+      {rec.style && rec.style.name && (
+        <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", marginTop: 12 }}>
+          {rec.style.palette && rec.style.palette.length > 0 && (
+            <span style={{ display: "inline-flex", gap: 3 }} aria-hidden="true">
+              {rec.style.palette.map((c, i) => <span key={i} style={{ width: 16, height: 16, borderRadius: 5, background: c, border: "1px solid var(--hairline)" }} />)}
+            </span>
+          )}
+          <span style={{ fontSize: "var(--fs-13)", fontWeight: 700 }}>{rec.style.name}</span>
+          {rec.style.materials && rec.style.materials.length > 0 && (
+            <span style={{ fontSize: "var(--fs-12)", color: "var(--muted)" }}>{rec.style.materials.slice(0, 5).join(" · ")}</span>
+          )}
+        </div>
+      )}
       {itemsCount > 0 && (
         <div style={{ marginTop: 10, maxWidth: 340 }}>
           <div className="budget-bar" style={{ height: 6 }}>
