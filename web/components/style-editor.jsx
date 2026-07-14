@@ -65,8 +65,8 @@ function StylesLibrary() {
     <div className="reveal in" ref={useReveal()}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: 22, flexWrap: "wrap", gap: 14 }}>
         <div>
-          <span style={{ fontFamily: "var(--font-mono)", fontSize: "var(--fs-12)", letterSpacing: ".12em", textTransform: "uppercase", color: "var(--accent)", display: "inline-flex", alignItems: "center", gap: 9 }}>
-            <I.spark size={15} />Библиотека стилей
+          <span style={{ fontFamily: "var(--font-mono)", fontSize: "var(--fs-12)", letterSpacing: ".12em", textTransform: "uppercase", color: "var(--accent)" }}>
+            Библиотека стилей
           </span>
           <h1 className="display" style={{ fontSize: "var(--fs-30)", marginTop: 10 }}>Мои стили</h1>
           <p style={{ color: "var(--muted)", fontSize: "var(--fs-14)", marginTop: 8, maxWidth: 640, lineHeight: 1.6 }}>
