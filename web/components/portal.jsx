@@ -69,13 +69,17 @@ function PortalCommentThread({ comments, onSend }) {
 /* K5c: фото-бокс карточки галереи с листанием мультифото — большое фото + ряд
    мини-тумбнейлов ([главное, ...доп.], клик меняет большое). Отдельный компонент,
    потому что renderItem — функция, а не компонент (стейту листания нужен хук). */
-function PortalPhotoBox({ it }) {
+function PortalPhotoBox({ it, onZoom }) {
   const all = [it.img, ...(Array.isArray(it.images) ? it.images : [])].filter(Boolean);
   const [cur, setCur] = useP(0);
   const shown = all[Math.min(cur, all.length - 1)] || it.img;
   return (
     <React.Fragment>
-      <div style={{ position: "relative", aspectRatio: "4 / 3", background: "var(--surface-2)", overflow: "hidden" }}>
+      {/* onZoom (лайтбокс, 14.07): и в галерее фото кропится cover'ом — клик открывает целиком */}
+      <div style={{ position: "relative", aspectRatio: "4 / 3", background: "var(--surface-2)", overflow: "hidden", cursor: onZoom ? "zoom-in" : undefined }}
+        onClick={onZoom || undefined} role={onZoom ? "button" : undefined} tabIndex={onZoom ? 0 : undefined}
+        onKeyDown={onZoom ? ((e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onZoom(); } }) : undefined}
+        aria-label={onZoom ? "Показать фото крупно: " + (it.title || "") : undefined}>
         <Img src={shown} label="" style={{ position: "absolute", inset: 0 }} />
       </div>
       {all.length > 1 && (
@@ -91,6 +95,45 @@ function PortalPhotoBox({ it }) {
         </div>
       )}
     </React.Fragment>
+  );
+}
+
+/* Лайтбокс фото позиции (14.07, жалоба владельца: тумбнейл 46px в «Списке» не рассмотреть):
+   клик по фото → крупный просмотр с листалкой мультифото. Esc/клик по фону закрывают.
+   <img> с object-fit:contain, НЕ общий Img: тот кропит cover'ом — для разглядывания
+   товара нужна вся фотография целиком. */
+function PortalLightbox({ it, onClose }) {
+  const all = [it.img, ...(Array.isArray(it.images) ? it.images : [])].filter(Boolean);
+  const [cur, setCur] = useP(0);
+  usePE(() => {
+    const onKey = (e) => { if (e.key === "Escape") onClose(); };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, []);
+  const shown = all[Math.min(cur, all.length - 1)] || it.img;
+  return (
+    <div role="dialog" aria-modal="true" aria-label={"Фото: " + (it.title || "позиция")} onClick={onClose}
+      style={{ position: "fixed", inset: 0, zIndex: 300, background: "rgba(46,42,38,.8)", backdropFilter: "blur(4px)",
+        display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 14, padding: 24, cursor: "zoom-out" }}>
+      <button className="icon-btn" onClick={onClose} aria-label="Закрыть фото"
+        style={{ position: "absolute", top: 18, right: 18 }}><I.close size={18} /></button>
+      <img src={shown} alt={it.title || ""} onClick={(e) => e.stopPropagation()}
+        style={{ maxWidth: "min(92vw, 900px)", maxHeight: "72vh", objectFit: "contain", borderRadius: 12,
+          background: "var(--surface)", boxShadow: "var(--shadow-pop)", cursor: "default" }} />
+      <div style={{ color: "#F7F2EA", fontSize: "var(--fs-14)", fontWeight: 600, textAlign: "center", maxWidth: 640 }}>{it.title}</div>
+      {all.length > 1 && (
+        <div style={{ display: "flex", gap: 8 }} role="group" aria-label="Фото позиции" onClick={(e) => e.stopPropagation()}>
+          {all.map((u, i) => (
+            <button key={i} type="button" onClick={() => setCur(i)} aria-pressed={i === cur}
+              aria-label={"Фото " + (i + 1) + " из " + all.length}
+              style={{ width: 52, height: 52, flex: "none", borderRadius: 8, overflow: "hidden", padding: 0, cursor: "pointer",
+                border: i === cur ? "2px solid var(--accent-2)" : "2px solid rgba(247,242,234,.4)", opacity: i === cur ? 1 : 0.7 }}>
+              <Img src={u} label="" radius={6} />
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -111,6 +154,7 @@ function ClientPortal({ shareId }) {
   // своё — подтягивает свежие ответы; пока грузится, не пугаем «ссылка недействительна»
   const [hydrating, setHydrating] = useP(live);
   const [view, setView] = useP("list");   // K1: Список / Галерея (галерея — крупные фото сеткой)
+  const [zoom, setZoom] = useP(null);      // позиция с открытым лайтбоксом фото | null
   usePE(() => {
     if (!live) return;
     let alive = true;
@@ -231,7 +275,7 @@ function ClientPortal({ shareId }) {
       return (
         <div key={ii} className="glass" style={{ borderRadius: 12, overflow: "hidden", border: "1px solid var(--hairline)", display: "flex", flexDirection: "column" }}>
           {/* K5c: мультифото — большое фото + мини-тумбнейлы листания (если фото больше одного) */}
-          <PortalPhotoBox it={it} />
+          <PortalPhotoBox it={it} onZoom={() => setZoom(it)} />
           <div style={{ padding: "12px 14px", display: "flex", flexDirection: "column", gap: 5, flex: 1 }}>
             <div style={{ fontSize: "var(--fs-14)", fontWeight: 600, lineHeight: 1.35 }}>{codeTitle}</div>
             {metaTxt && <div className="mono" style={{ fontSize: "var(--fs-11)", color: "var(--spec-meta)", overflowWrap: "anywhere" }}>{metaTxt}</div>}
@@ -253,7 +297,11 @@ function ClientPortal({ shareId }) {
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 12 }}>
           <div style={{ display: "flex", gap: 12, minWidth: 0 }}>
             {anyPhoto && (it.img
-              ? <span style={{ width: 46, height: 46, flex: "none", borderRadius: 8, overflow: "hidden", border: "1px solid var(--hairline)" }} aria-hidden="true"><Img src={it.img} label="" radius={8} /></span>
+              ? <button type="button" onClick={() => setZoom(it)} aria-label={"Показать фото крупно: " + it.title}
+                  title="Показать фото крупно"
+                  style={{ width: 46, height: 46, flex: "none", borderRadius: 8, overflow: "hidden", padding: 0, cursor: "zoom-in", border: "1px solid var(--hairline)" }}>
+                  <Img src={it.img} label="" radius={8} />
+                </button>
               : <span style={{ width: 46, flex: "none" }} aria-hidden="true" />)}
             <div style={{ minWidth: 0 }}>
               <div style={{ fontSize: "var(--fs-14)", fontWeight: 600 }}>{codeTitle}</div>
@@ -391,6 +439,7 @@ function ClientPortal({ shareId }) {
       <p style={{ textAlign: "center", color: "var(--muted)", fontSize: "var(--fs-12)", marginTop: 22, lineHeight: 1.6 }}>
         {answered > 0 ? "Ваши решения сохранены (" + answered + " из " + itemsCount + "). " : ""}Дизайнер увидит ответы и свяжется с вами. · Design Ledger
       </p>
+      {zoom && <PortalLightbox it={zoom} onClose={() => setZoom(null)} />}
     </PortalWrap>
   );
 }
