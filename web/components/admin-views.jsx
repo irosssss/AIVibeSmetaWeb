@@ -32,7 +32,7 @@ function NewsAdmin() {
   return (
     <div>
       <PageHead title="Новости дизайна" sub="Создание, редактирование и публикация материалов журнала"
-        right={<button className="btn btn-primary" onClick={() => setEditing({ title: "", category: "Тренды 2026", excerpt: "", cover: "warm", status: "draft", date: new Date().toISOString().slice(0, 10), views: 0 })}><I.plus size={17} /> Новая новость</button>} />
+        right={<button className="btn btn-primary" onClick={() => setEditing({ title: "", category: "Смета", excerpt: "", body: "", cover: "warm", status: "draft", date: new Date().toISOString().slice(0, 10), views: 0 })}><I.plus size={17} /> Новая новость</button>} />
 
       <div className="glass" style={{ borderRadius: "var(--r-lg)", overflow: "hidden" }}>
         <div className="tbl-head news-cols">
@@ -70,7 +70,7 @@ function NewsAdmin() {
 function NewsModal({ initial, onClose, onSave, busy }) {
   const [form, setForm] = useAV(initial);
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
-  const cats = ["Тренды 2026", "Технологии", "Стили", "Гайды", "Идеи", "Кейсы"];
+  const cats = ["Наценка", "Смета", "Комплектация", "Портал", "Технологии", "Гайды", "Кейсы"];
   const covers = ["warm", "ar", "deco", "market", "light", "studio", "living"];
   return (
     <Modal onClose={onClose} label={form.id ? "Редактировать новость" : "Новая новость"}>
@@ -87,6 +87,7 @@ function NewsModal({ initial, onClose, onSave, busy }) {
           <label><span className="lbl">Дата</span><input type="date" className="fld" value={form.date} onChange={(e) => set("date", e.target.value)} /></label>
         </div>
         <label><span className="lbl">Краткое описание</span><textarea className="fld" rows={3} value={form.excerpt} onChange={(e) => set("excerpt", e.target.value)} placeholder="Анонс в ленте" style={{ resize: "vertical" }} /></label>
+        <label><span className="lbl">Текст статьи</span><textarea className="fld" rows={10} value={form.body || ""} onChange={(e) => set("body", e.target.value)} placeholder={"Полный текст материала.\n\nПустая строка — новый абзац. Строка «## Подзаголовок» — заголовок раздела."} style={{ resize: "vertical", fontFamily: "var(--font-mono)", fontSize: "var(--fs-13)", lineHeight: 1.6 }} /></label>
         <div>
           <span className="lbl">Обложка</span>
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>

@@ -822,6 +822,7 @@ function ClientPortalPromo() {
 function NewsFeed() {
   const ref = useReveal();
   const [rows, setRows] = useS2(null);
+  const Card = window.JournalCard;   // общая карточка журнала (site-github.jsx) — клик ведёт на статью
   useE2(() => { LedgerAPI.news.list({ status: "published" }).then((r) => setRows(r.slice(0, 4))); }, []);
   return (
     <section id="news" style={{ paddingBlock: "clamp(60px,9vh,110px)" }} ref={ref}>
@@ -829,28 +830,13 @@ function NewsFeed() {
         <div className="reveal" style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", flexWrap: "wrap", gap: 20, marginBottom: 44 }}>
           <div>
             <div className="eyebrow info" style={{ marginBottom: 18 }}>ЖУРНАЛ</div>
-            <h2 className="display" style={{ fontSize: "clamp(30px,4vw,50px)" }}>Новости дизайна</h2>
+            <h2 className="display" style={{ fontSize: "clamp(30px,4vw,50px)" }}>Смета и комплектация: практика</h2>
           </div>
-          <a className="btn btn-ghost" href="#" onClick={(e) => e.preventDefault()}>Все материалы <I.arrow size={16} /></a>
+          <a className="btn btn-ghost" href="#journal" onClick={(e) => { e.preventDefault(); location.hash = "#journal"; }}>Все материалы <I.arrow size={16} /></a>
         </div>
         <div className="news-grid reveal">
           {!rows && Array.from({ length: 4 }).map((_, i) => <div key={i} className="glass skel" style={{ borderRadius: "var(--r-lg)", height: 320 }} />)}
-          {rows && rows.map((n, i) => (
-            <article key={n.id} className="glass news-card" style={{ borderRadius: "var(--r-lg)", overflow: "hidden", display: "flex", flexDirection: "column", boxShadow: "var(--shadow-card)", gridColumn: i === 0 ? "span 2" : "span 1" }}>
-              <div style={{ position: "relative", aspectRatio: i === 0 ? "16/8" : "16/10", overflow: "hidden" }}>
-                <Img src={PHOTOS[n.cover] || PHOTOS.warm} label={n.category} />
-                <span style={{ position: "absolute", top: 13, left: 13, padding: "5px 11px", borderRadius: 99, fontSize: "var(--fs-11)", fontWeight: 700, color: "#FCF6EE", background: "rgba(46,42,38,.6)", backdropFilter: "blur(6px)", border: "1px solid rgba(252,246,238,.25)" }}>{n.category}</span>
-              </div>
-              <div style={{ padding: 22, display: "flex", flexDirection: "column", gap: 10, flex: 1 }}>
-                <h3 style={{ fontFamily: "var(--font-display)", fontSize: i === 0 ? 25 : 20, fontWeight: 600, lineHeight: 1.22, letterSpacing: "-0.01em" }}>{n.title}</h3>
-                <p style={{ color: "var(--muted)", fontSize: "var(--fs-14)", lineHeight: 1.55, flex: 1 }}>{n.excerpt}</p>
-                <div className="mono" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", color: "var(--spec-meta)", fontSize: "var(--fs-12)", marginTop: 4 }}>
-                  <span>{new Date(n.date).toLocaleDateString("ru-RU", { day: "numeric", month: "long" })}</span>
-                  <span>{fmt(n.views)} просмотров</span>
-                </div>
-              </div>
-            </article>
-          ))}
+          {rows && Card && rows.map((n, i) => <Card key={n.id} n={n} big={i === 0} />)}
         </div>
       </div>
     </section>
