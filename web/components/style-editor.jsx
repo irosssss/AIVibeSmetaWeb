@@ -23,6 +23,25 @@ const PRESET_COLORS = [
 const DECOR = [["min", "Минимум"], ["mid", "Середина"], ["rich", "Насыщенно"]];
 const DECOR_LABEL = { min: "Минимум декора", mid: "Средний декор", rich: "Насыщенный декор" };
 const factorDelta = (f) => { const d = Math.round(((f || 1) - 1) * 100); return d === 0 ? "базовый бюджет" : d > 0 ? "≈ дороже на " + d + "%" : "≈ дешевле на " + Math.abs(d) + "%"; };
+const moodLine = (s) => s.mood || DECOR_LABEL[s.decorLevel] || "";
+
+/* переиспользуются карточкой библиотеки и живым превью редактора — один вид палитры/чипов везде */
+function PaletteBar({ palette, height }) {
+  return (
+    <div style={{ display: "flex", height, borderRadius: 9, overflow: "hidden", border: "1px solid var(--hairline)" }}>
+      {(palette || []).map((c, i) => <span key={i} title={c} style={{ flex: 1, background: c }} />)}
+    </div>
+  );
+}
+function MaterialChips({ materials, limit, tone }) {
+  return (
+    <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+      {(materials || []).slice(0, limit).map((m, i) => (
+        <span key={i} style={{ fontSize: "var(--fs-11)", fontWeight: 600, color: "var(--muted)", padding: "3px 9px", borderRadius: 99, background: tone, border: "1px solid var(--hairline)" }}>{m}</span>
+      ))}
+    </div>
+  );
+}
 
 function StylesLibrary() {
   const [rows, setRows] = useS(null);
@@ -94,14 +113,14 @@ function StyleLibCard({ s, system, onEdit, onDuplicate, onRemove }) {
       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 10 }}>
         <div style={{ minWidth: 0 }}>
           <div style={{ fontWeight: 800, fontFamily: "var(--font-display)", fontSize: "var(--fs-18)", letterSpacing: "-0.01em", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{s.name}</div>
-          <div style={{ fontSize: "var(--fs-12)", color: "var(--muted)", marginTop: 3, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{s.mood || DECOR_LABEL[s.decorLevel] || ""}</div>
+          <div style={{ fontSize: "var(--fs-12)", color: "var(--muted)", marginTop: 3, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{moodLine(s)}</div>
         </div>
-        {/* действия наверху карточки: системный пресет → «дублировать в свой» (форк),
-           свой стиль → шестерёнка (правка) + удалить; бейдж-идентичность справа */}
+        {/* действия наверху карточки: копия — доступна всегда (системный пресет
+           форкается в свой, свой стиль клонируется как отправная точка для нового);
+           свой стиль дополнительно даёт шестерёнку (правка) и удалить */}
         <div style={{ display: "flex", alignItems: "center", gap: 5, flex: "none" }}>
-          {system
-            ? <button className="icon-btn sm" title="Дублировать в свой стиль" aria-label="Дублировать в свой стиль" onClick={onDuplicate}><I.copy size={15} /></button>
-            : <React.Fragment>
+          <button className="icon-btn sm" title="Дублировать в свой стиль" aria-label="Дублировать в свой стиль" onClick={onDuplicate}><I.copy size={15} /></button>
+          {!system && <React.Fragment>
                 <button className="icon-btn sm" title="Редактировать стиль" aria-label="Редактировать стиль" onClick={onEdit}><I.gear size={15} /></button>
                 <button className="icon-btn sm" title="Удалить стиль" aria-label="Удалить стиль" onClick={onRemove}><I.trash size={15} /></button>
               </React.Fragment>}
@@ -109,15 +128,8 @@ function StyleLibCard({ s, system, onEdit, onDuplicate, onRemove }) {
         </div>
       </div>
 
-      <div style={{ display: "flex", height: 40, borderRadius: 9, overflow: "hidden", border: "1px solid var(--hairline)" }}>
-        {(s.palette || []).map((c, i) => <span key={i} title={c} style={{ flex: 1, background: c }} />)}
-      </div>
-
-      <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-        {(s.materials || []).slice(0, 5).map((m, i) => (
-          <span key={i} style={{ fontSize: "var(--fs-11)", fontWeight: 600, color: "var(--muted)", padding: "3px 9px", borderRadius: 99, background: "var(--glass-2)", border: "1px solid var(--hairline)" }}>{m}</span>
-        ))}
-      </div>
+      <PaletteBar palette={s.palette} height={40} />
+      <MaterialChips materials={s.materials} limit={5} tone="var(--glass-2)" />
     </div>
   );
 }
@@ -133,7 +145,7 @@ function StyleEditor({ draft, onClose, onSaved }) {
   const set = (patch) => setD((x) => ({ ...x, ...patch }));
 
   const setColor = (i, v) => setD((x) => { const p = [...x.palette]; p[i] = v; return { ...x, palette: p }; });
-  const addColor = () => setD((x) => x.palette.length >= 8 ? x : { ...x, palette: [...x.palette, "#B79B82"] });
+  const addColor = () => setD((x) => x.palette.length >= 8 ? x : { ...x, palette: [...x.palette, PRESET_COLORS[14]] }); // #B79B84 — есть в PRESET_COLORS, подсвечивается активным сразу
   const rmColor = (i) => setD((x) => x.palette.length <= 2 ? x : { ...x, palette: x.palette.filter((_, j) => j !== i) });
   const addMat = () => { const v = mat.trim(); if (!v) return; setD((x) => x.materials.includes(v) ? x : { ...x, materials: [...x.materials, v] }); setMat(""); };
   const rmMat = (i) => setD((x) => ({ ...x, materials: x.materials.filter((_, j) => j !== i) }));
@@ -170,18 +182,12 @@ function StyleEditor({ draft, onClose, onSaved }) {
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 8 }}>
               <div style={{ minWidth: 0 }}>
                 <div style={{ fontWeight: 800, fontFamily: "var(--font-display)", fontSize: "var(--fs-18)", letterSpacing: "-0.01em", color: d.name ? "var(--text)" : "var(--faint)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{d.name || "Название стиля"}</div>
-                <div style={{ fontSize: "var(--fs-12)", color: "var(--muted)", marginTop: 3, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{d.mood || DECOR_LABEL[d.decorLevel]}</div>
+                <div style={{ fontSize: "var(--fs-12)", color: "var(--muted)", marginTop: 3, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{moodLine(d)}</div>
               </div>
               <span style={{ fontFamily: "var(--font-mono)", fontSize: "var(--fs-11)", letterSpacing: ".08em", textTransform: "uppercase", color: "var(--muted)", flex: "none" }}>превью</span>
             </div>
-            <div style={{ display: "flex", height: 46, borderRadius: 9, overflow: "hidden", border: "1px solid var(--hairline)" }}>
-              {d.palette.map((c, i) => <span key={i} title={c} style={{ flex: 1, background: c }} />)}
-            </div>
-            {d.materials.length > 0 && (
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-                {d.materials.slice(0, 6).map((m, i) => <span key={i} style={{ fontSize: "var(--fs-11)", fontWeight: 600, color: "var(--muted)", padding: "3px 9px", borderRadius: 99, background: "var(--surface)", border: "1px solid var(--hairline)" }}>{m}</span>)}
-              </div>
-            )}
+            <PaletteBar palette={d.palette} height={46} />
+            {d.materials.length > 0 && <MaterialChips materials={d.materials} limit={6} tone="var(--surface)" />}
             <div style={{ display: "flex", justifyContent: "space-between", fontSize: "var(--fs-11)", color: "var(--muted)" }}>
               <span>{DECOR_LABEL[d.decorLevel]}</span>
               <span style={{ fontWeight: 700, color: delta > 0 ? "var(--accent)" : delta < 0 ? "var(--accent-2)" : "var(--muted)" }}>{factorDelta(d.factor)}</span>
