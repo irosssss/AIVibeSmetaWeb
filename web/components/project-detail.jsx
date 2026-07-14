@@ -2135,6 +2135,8 @@ function AddPositionsModal({ excludeId, roomNames, initialTab, initialRoom, onCl
   const [clipHtmlMode, setClipHtmlMode] = usePD(false); // CORS-блок → ручная вставка HTML
   const [clipHtml, setClipHtml] = usePD("");
   const [clipForm, setClipForm] = usePD(null);          // {title, price, rrp, qty, sup, room, note}
+  const [clipSaved, setClipSaved] = usePD(false);       // «URL → библиотека» (п.19-2): товар уже сохранён в мастер-запись
+  const clipSaveRef = usePDR(false);                    // синхронный замок против двойного клика (как savingRef/poBusyRef)
 
   usePDE(() => {
     // источники: только проекты со сметой по комнатам (каталожные демо-проекты отпадают)
@@ -2171,7 +2173,7 @@ function AddPositionsModal({ excludeId, roomNames, initialTab, initialRoom, onCl
   const nSel = chosen.reduce((s, e) => s + e.items.length, 0);
   const sumSel = chosen.reduce((s, e) => s + cost(e.items), 0);
 
-  const switchTab = (t) => { setTab(t); setSrc(null); setSel({}); setClipErr(""); setClipForm(null); setClipHtmlMode(false); };
+  const switchTab = (t) => { setTab(t); setSrc(null); setSel({}); setClipErr(""); setClipForm(null); setClipHtmlMode(false); setClipSaved(false); };
   const rowBtn = { display: "flex", alignItems: "center", gap: 12, padding: 12, borderRadius: 12, border: "1px solid var(--hairline)", background: "var(--surface)", textAlign: "left" };
 
   /* --- клиппер: извлечение и форма-превью --- */
@@ -2189,8 +2191,15 @@ function AddPositionsModal({ excludeId, roomNames, initialTab, initialRoom, onCl
       // низкая уверенность или отсутствие цены → предупреждение в форме
       warnPrice: f.price == null || (conf.price != null && conf.price < 0.7),
       via: via || "",
+      // «URL → сразу в библиотеку» (п.19-2): поля, которые форма-превью не показывает, но
+      // мастер-запись библиотеки должна сохранить — артикул/ссылка/габариты/раздел из извлечения
+      article: f.sku || "",
+      url: f.url || "",
+      dims: f.dims && typeof f.dims === "object" ? f.dims : null,
+      cat: f._category || "",
     });
     setClipErr("");
+    setClipSaved(false);
   };
   const doClip = async () => {
     const u = clipUrl.trim();
@@ -2223,6 +2232,36 @@ function AddPositionsModal({ excludeId, roomNames, initialTab, initialRoom, onCl
       priceDate: new Date().toISOString().slice(0, 10), // цена свежая — извлечена сейчас
     };
     onAdd([{ name: clipForm.room.trim(), items: [item] }], "по ссылке");
+  };
+  // «URL → сразу в библиотеку» (п.19-2, паритет с Programa): помимо «в смету» кладём
+  // извлечённый товар мастер-записью в библиотеку студии — чтобы переиспользовать в других
+  // проектах, не пересобирая. Название/цена — обязательны (как для сметы); артикул/ссылка/
+  // габариты/раздел берём из извлечения (форма их не показывает, но библиотека хранит).
+  const clipSaveToLib = async () => {
+    if (!clipOk || clipSaveRef.current || !(FFE && FFE.blankProduct)) return;
+    clipSaveRef.current = true;
+    try {
+      const key = clipForm.title.trim().toLowerCase();
+      const lib = await LedgerAPI.library.list().catch(() => []);
+      if ((lib || []).some((p) => (p.title || "").trim().toLowerCase() === key)) {
+        toast("«" + clipForm.title.trim() + "» уже есть в библиотеке студии."); setClipSaved(true); return;
+      }
+      const product = FFE.blankProduct({
+        title: clipForm.title.trim(),
+        price: clipPrice,
+        cat: clipForm.cat || "",
+        sup: clipForm.sup.trim(),
+        article: clipForm.article || "",
+        url: clipForm.url || "",
+        dims: clipForm.dims || {},
+        priceDate: new Date().toISOString().slice(0, 10), // цена извлечена сейчас
+      });
+      await LedgerAPI.library.create(product);
+      setClipSaved(true);
+      toast("«" + clipForm.title.trim() + "» добавлен в библиотеку студии.", "ok");
+    } catch (_e) {
+      toast("Не удалось сохранить в библиотеку — попробуйте ещё раз.", "warn", 5000);
+    } finally { clipSaveRef.current = false; }
   };
   const clipField = { width: "100%", padding: "10px 12px", borderRadius: 10, border: "1px solid var(--hairline)", background: "var(--surface)", fontSize: "var(--fs-14)", color: "var(--text)" };
 
@@ -2328,7 +2367,13 @@ function AddPositionsModal({ excludeId, roomNames, initialTab, initialRoom, onCl
                     <span className="mono" style={{ fontSize: "var(--fs-12)", color: clipOk ? "var(--text)" : "var(--faint)" }}>
                       {clipOk ? "+" + fmtMoney(clipPrice * clipQty) + " · цена от " + fmtDateRu(new Date().toISOString().slice(0, 10)) : "заполните название и цену"}
                     </span>
-                    <button className="btn btn-primary" disabled={!clipOk} onClick={clipAdd}><I.plus size={16} />Добавить в смету</button>
+                    <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                      <button className="btn btn-ghost" disabled={!clipOk || clipSaved} onClick={clipSaveToLib}
+                        title="Сохранить товар в библиотеку студии — переиспользуется в других проектах">
+                        {clipSaved ? <I.check size={16} /> : <I.layers size={16} />}{clipSaved ? "В библиотеке" : "В библиотеку"}
+                      </button>
+                      <button className="btn btn-primary" disabled={!clipOk} onClick={clipAdd}><I.plus size={16} />Добавить в смету</button>
+                    </div>
                   </div>
                 </div>
               )}

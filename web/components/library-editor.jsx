@@ -319,6 +319,17 @@ function LibraryPickerModal({ roomName, onClose, onAdd }) {
   const chosen = all.filter((p) => sel[p.id]);
   const sum = chosen.reduce((s, p) => s + (p.price || 0), 0);
   const add = () => { if (chosen.length) onAdd(chosen); };
+  // Drag&drop из поиска в смету (п.19-3, паритет с Programa): перетащить карточку товара
+  // на зону-приёмник → быстрый одиночный add в комнату. Клик-выбор (мультивыбор + «Добавить»)
+  // остаётся основным путём — drag это дополнение (a11y: не единственный способ, gesture-alternative).
+  const [dropOn, setDropOn] = useL(false);
+  const onRowDragStart = (e, id) => { e.dataTransfer.setData("text/plain", id); e.dataTransfer.effectAllowed = "copy"; };
+  const onDrop = (e) => {
+    e.preventDefault(); setDropOn(false);
+    const id = e.dataTransfer.getData("text/plain");
+    const p = all.find((x) => String(x.id) === String(id));
+    if (p) onAdd([p]);
+  };
 
   return (
     <Modal onClose={onClose} label="Добавить из библиотеки" maxWidth={560}>
@@ -347,7 +358,8 @@ function LibraryPickerModal({ roomName, onClose, onAdd }) {
           const meta = libMeta(p);
           return (
             <button key={p.id} onClick={() => toggle(p.id)} aria-pressed={on}
-              style={{ display: "flex", alignItems: "center", gap: 12, width: "100%", textAlign: "left", padding: "10px 12px", borderRadius: 12, marginBottom: 6,
+              draggable onDragStart={(e) => onRowDragStart(e, p.id)}
+              style={{ display: "flex", alignItems: "center", gap: 12, width: "100%", textAlign: "left", padding: "10px 12px", borderRadius: 12, marginBottom: 6, cursor: "grab",
                 border: "1px solid " + (on ? "rgba(94,107,91,.5)" : "var(--hairline)"), background: on ? "var(--accent-2-tint)" : "var(--surface)" }}>
               <span aria-hidden="true" style={{ width: 20, height: 20, flex: "none", borderRadius: 6, border: "1.5px solid " + (on ? "var(--accent-2)" : "var(--hairline-2)"), background: on ? "var(--accent-2)" : "transparent", display: "grid", placeItems: "center", color: "var(--on-accent)" }}>
                 {on && <I.check size={13} />}
@@ -362,8 +374,21 @@ function LibraryPickerModal({ roomName, onClose, onAdd }) {
         })}
       </div>
 
+      {rows && all.length > 0 && (
+        <div style={{ padding: "0 24px 4px" }}
+          onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = "copy"; if (!dropOn) setDropOn(true); }}
+          onDragLeave={(e) => { if (!e.currentTarget.contains(e.relatedTarget)) setDropOn(false); }}
+          onDrop={onDrop}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: "10px 12px", borderRadius: 12, textAlign: "center",
+            border: "1.5px dashed " + (dropOn ? "var(--accent-2)" : "var(--hairline-2)"), background: dropOn ? "var(--accent-2-tint)" : "transparent",
+            color: dropOn ? "var(--accent-2)" : "var(--muted)", fontSize: "var(--fs-12)", transition: "background .12s, border-color .12s, color .12s" }}>
+            <I.plus size={14} />Перетащите товар сюда{roomName ? " — в «" + roomName + "»" : ""}
+          </div>
+        </div>
+      )}
+
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, padding: "14px 24px", borderTop: "1px solid var(--hairline)" }}>
-        <span style={{ fontSize: "var(--fs-13)", color: "var(--muted)" }}>{chosen.length ? "Выбрано " + chosen.length + " · " + fmtMoney(sum) : "Отметьте товары"}</span>
+        <span style={{ fontSize: "var(--fs-13)", color: "var(--muted)" }}>{chosen.length ? "Выбрано " + chosen.length + " · " + fmtMoney(sum) : "Отметьте или перетащите товары"}</span>
         <div style={{ display: "flex", gap: 10 }}>
           <button className="btn btn-ghost" onClick={onClose}>Отмена</button>
           <button className="btn btn-primary" onClick={add} disabled={!chosen.length}><I.plus size={16} />Добавить{chosen.length ? " · " + chosen.length : ""}</button>

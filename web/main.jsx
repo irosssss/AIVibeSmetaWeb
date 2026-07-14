@@ -45,6 +45,7 @@ import "./xlsx.js";
 import "./ffe.js";
 import "./portal-api.js";   // сетевой слой портала — патчит portal-функции LedgerFFE, грузить сразу после ffe.js
 import "./clipper.js";
+import "./web-analogs.js";   // AI-подбор аналогов по вебу (п.19-2): КАРКАС, дремлет без LLM-транспорта
 import "./lottie-assets.js";
 
 // UI-примитивы и экраны (порядок важен — компоненты ссылаются друг на друга через window)
