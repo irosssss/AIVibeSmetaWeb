@@ -11,7 +11,7 @@ function Footer({ go }) {
      Колонка «Продукт» — из единого LANDING_SECTIONS (site-hero.jsx), одного порядка с навбаром и скроллом. */
   const cols = [
     ["Продукт", window.footLinksFrom(window.LANDING_SECTIONS)],
-    ["Технологии", [["Движок эргономики", "#how"], ["Каталог фабрик", "#komplektacia"], ["YandexGPT 5", "#features"], ["Выгрузка сметы", "#komplektacia"]]],
+    ["Технологии", [["Смета из ссылки", "#how"], ["Каталог фабрик", "#komplektacia"], ["YandexGPT 5", "#features"], ["Выгрузка сметы", "#komplektacia"]]],
     ["Компания", [["Что нового", "#changelog"], ["О проекте", null], ["Контакты", null], ["Политика", null], ["Оферта", null]]],
   ];
   return (
@@ -22,7 +22,7 @@ function Footer({ go }) {
           <div style={{ position: "absolute", width: 600, height: 360, left: "50%", top: "50%", transform: "translate(-50%,-50%)", background: "radial-gradient(circle, rgba(183,80,44,.22), transparent 70%)", filter: "blur(40px)" }} />
           <div style={{ position: "relative" }}>
             <h2 className="display" style={{ fontSize: "clamp(34px,5vw,72px)", lineHeight: 0.95 }}>Первая смета —<br />сегодня и бесплатно</h2>
-            <p style={{ color: "var(--muted)", maxWidth: 540, margin: "24px auto 36px", fontSize: "var(--fs-18)" }}>Design Ledger соберёт спецификацию с ценами, посчитает вашу наценку и проверит эргономику по нормам — документ готов к отправке клиенту.</p>
+            <p style={{ color: "var(--muted)", maxWidth: 540, margin: "24px auto 36px", fontSize: "var(--fs-18)" }}>Design Ledger соберёт спецификацию с ценами и посчитает вашу наценку — документ готов к отправке клиенту.</p>
             <div style={{ display: "flex", gap: 14, justifyContent: "center", flexWrap: "wrap" }}>
               <button className="btn btn-primary" style={{ padding: "16px 30px", fontSize: "var(--fs-16)" }} onClick={() => go("auth")}><I.layers size={19} /> Начать бесплатно</button>
               <button className="btn btn-ghost" style={{ padding: "16px 30px", fontSize: "var(--fs-16)" }} onClick={() => document.querySelector("#komplektacia")?.scrollIntoView({ behavior: motionOK() ? "smooth" : "auto" })}>Посмотреть пример сметы</button>
@@ -40,7 +40,7 @@ function Footer({ go }) {
           <div>
             <Logo size={26} />
             <p style={{ color: "var(--muted)", maxWidth: 360, marginTop: 18, fontSize: "var(--fs-14)", lineHeight: 1.6 }}>
-              Смета и проверка норм для дизайнеров интерьера. Каталог фабрик-партнёров и российский AI.
+              Смета-комплектация для дизайнеров интерьера. Каталог фабрик-партнёров и российский AI.
             </p>
             <div style={{ display: "flex", gap: 10, marginTop: 22 }}>
               {window.DEV_MODE && <button className="btn btn-ghost" style={{ padding: "10px 16px", fontSize: "var(--fs-13)" }} onClick={() => go("admin")}>Админка</button>}
@@ -185,7 +185,7 @@ const CHANGELOG_RECENT = [
   { date: "2026-07-08", tag: "Библиотека", title: "Библиотека товаров студии", text: "Сохраняйте проверенные позиции с артикулом, поставщиком и ценой — добавляйте в новые сметы одним кликом." },
   { date: "2026-07-07", tag: "Закупка", title: "Закупочный лист по поставщикам", text: "Позиции группируются по поставщикам — отдельный лист на каждого в Excel и PDF, готовый к отправке." },
   { date: "2026-07-07", tag: "Смета", title: "Из прошлого проекта и готовые шаблоны", text: "Копируйте комнаты и позиции из прошлых смет или начните с готовой комплектации — санузел, спальня, прихожая, кухня." },
-  { date: "2026-07-06", tag: "Эргономика", title: "Проверка норм и стадии работы", text: "Смета проверяет проходы и расстановку по нормам NKBA/Neufert. Проект идёт по стадиям: Сбор → Согласование → Закупка → Сдача." },
+  { date: "2026-07-06", tag: "Процесс", title: "Стадии работы над проектом", text: "Проект идёт по стадиям: Сбор → Согласование → Закупка → Сдача — на каждой видно, что уже сделано и что дальше." },
   { date: "2026-06-29", tag: "Экспорт", title: "Импорт из Excel и два режима выгрузки", text: "Загружайте готовую комплектацию из Excel. Выгрузка бывает рабочей (с себестоимостью) и для клиента (только его цена)." },
 ];
 
