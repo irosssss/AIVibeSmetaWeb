@@ -878,7 +878,9 @@ function BudgetCalc({ go }) {
     // без id: «Сохранить смету» создаст новый проект (канал Excel-импорта)
     F.setPendingDraft({ name: d.name, area: d.area, budget: d.budget, rooms: d.rooms,
       markupPct: d.markupPct, deliveryCost, summaryShort: d.summaryShort, generated: true });
-    go && go("cabinet");
+    // прямо на «Проекты» — черновик подхватывает эффект внутри Projects; дефолтная
+    // вкладка «Сегодня» его не открывает, обещание «бюджет за 20 секунд» иначе теряло шаг
+    go && go("cabinet", "projects");
   };
   return (
     <section id="calc" style={{ paddingBlock: "clamp(60px,9vh,110px)" }} ref={ref}>

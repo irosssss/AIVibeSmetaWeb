@@ -59,10 +59,14 @@ function App() {
   // без guardSmetaLeave вокруг ВСЕГО тела спрошенный setRoute внутри опоздал бы
   // (тот же класс бага, что был у closeProject/changeTab, долг W2/W6). applyRoute —
   // не setRoute: guardSmetaLeave уже спросил/сохранил, повторный вопрос был бы гонкой.
-  const go = (v) => {
+  const go = (v, tab) => {
     guardSmetaLeave(() => {
       if (v === "cabinet") {
-        if (user) { setView("cabinet"); applyRoute("cabinet", parseRoute().tab); }
+        // tab — необязательный целевой таб (сейчас только «Собрать смету-черновик»
+        // калькулятора на лендинге: без него садится на дефолт «Сегодня», где черновик
+        // не виден — его подхватывает эффект внутри Projects); без tab — прежнее
+        // поведение (сохранить текущий таб адреса, дефолт решает Cabinet при монтировании).
+        if (user) { setView("cabinet"); applyRoute("cabinet", tab || parseRoute().tab); }
         else { setView("auth"); applyRoute("auth"); }
         return;
       }
