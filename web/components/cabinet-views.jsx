@@ -54,9 +54,9 @@ function Profile({ user }) {
           <button className="btn btn-ghost btn-block" style={{ marginTop: 24 }} onClick={() => toast("Редактирование профиля появится вместе с настоящими аккаунтами — в бете данные приходят из Яндекс/VK ID.", "info", 5000)}>Редактировать профиль</button>
         </div>
 
-        {/* KPI 2×2 с дельтами */}
+        {/* KPI 2× с дельтами */}
         <div className="cab-stats" style={{ display: "grid", gridTemplateColumns: "repeat(2,1fr)", gap: 14 }}>
-          {!an && Array.from({ length: 4 }).map((_, i) => <div key={i} className="glass skel" style={{ borderRadius: "var(--r-lg)", height: 110 }} />)}
+          {!an && Array.from({ length: 3 }).map((_, i) => <div key={i} className="glass skel" style={{ borderRadius: "var(--r-lg)", height: 110 }} />)}
           {an && an.kpis.map((k) => <KpiCard key={k.key} k={k} />)}
         </div>
       </div>
@@ -84,11 +84,10 @@ function Profile({ user }) {
       <div className="glass" style={{ borderRadius: "var(--r-xl)", padding: 30 }}>
         <h3 style={{ fontSize: "var(--fs-18)", fontWeight: 700, marginBottom: 6 }}>Рабочее место</h3>
         <p style={{ color: "var(--muted)", fontSize: "var(--fs-13)", lineHeight: 1.5, marginBottom: 18, maxWidth: 640 }}>
-          Ваши нормы эргономики, библиотека стилей и товары студии применяются к каждой смете. Уведомления и синхронизация между устройствами появятся вместе с реальными аккаунтами.
+          Библиотека стилей и товары студии применяются к каждой смете. Уведомления и синхронизация между устройствами появятся вместе с реальными аккаунтами.
         </p>
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
           <button className="btn btn-ghost" onClick={() => setRoute("cabinet", "workshop", "products")}><I.layers size={16} />Мои товары</button>
-          <button className="btn btn-ghost" onClick={() => setRoute("cabinet", "workshop", "norms")}><I.sliders size={16} />Мои нормы</button>
           <button className="btn btn-ghost" onClick={() => setRoute("cabinet", "workshop", "styles")}><I.spark size={16} />Мои стили</button>
         </div>
       </div>
@@ -409,7 +408,7 @@ function Today({ user, onNewProject, onOpenProjects }) {
       )}
       {rows && rows.length === 0 && (
         <EmptyState icon="layers" title="Пока нет проектов"
-          text="Создайте первый проект — задайте комнату и бюджет, дальше Design Ledger соберёт смету и проверит эргономику."
+          text="Создайте первый проект — задайте комнату и бюджет, дальше Design Ledger соберёт смету и посчитает наценку."
           action={<button className="btn btn-primary" onClick={onNewProject}><I.plus size={17} />Создать первый проект</button>} />
       )}
     </div>
@@ -629,7 +628,7 @@ function Projects() {
 
       {rows && rows.length === 0 && (
         <EmptyState icon="layers" title="Пока нет проектов"
-          text="Создайте первый проект — задайте комнату и бюджет, дальше Design Ledger соберёт смету и проверит эргономику."
+          text="Создайте первый проект — задайте комнату и бюджет, дальше Design Ledger соберёт смету и посчитает наценку."
           action={<button className="btn btn-primary" onClick={() => setNewOpen(true)}><I.plus size={17} />Создать первый проект</button>} />
       )}
 

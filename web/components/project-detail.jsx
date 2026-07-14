@@ -8,8 +8,6 @@ const { useState: usePD, useEffect: usePDE, useRef: usePDR } = React;
 // единая точка канона наценки (web/ffe.js) — не дублировать литерал 25 по файлам
 const PD_DEFAULT_MARKUP = (window.LedgerFFE && window.LedgerFFE.DEFAULT_MARKUP_PCT) || 25;
 
-const FIND_ICON = { plus: (p) => <I.check {...p} />, warn: (p) => <I.info {...p} />, idea: (p) => <I.spark {...p} /> };
-
 /* дата в приемлемом для дизайнера формате (документ сметы, история цен) */
 const fmtDateRu = (d) => { const t = new Date(d + "T00:00:00"); return isNaN(t.getTime()) ? String(d) : t.toLocaleDateString("ru-RU"); };
 /* давность цены позиции, скопированной из прошлого проекта — тултип свой, геометрия чипа общая (PriceAgeChip, ui.jsx) */
@@ -559,14 +557,6 @@ function RoomSpecOverlay({ data, nav, onClose, onSaved }) {
   const markupLabel = ovrCount > 0 ? "≈ +" + effPct + "%" : "+" + markup + "%";
   const margin = client - discountAmt - grand;   // транзитные доставка/монтаж/сборы в марже не участвуют
   const totalClient = client - discountAmt + delivery + install + extrasAmt;
-  // эргономика по комнатам: там, где в РД есть план расстановки (plan+layout); мои нормы учитываются.
-  // До прихода settings не считаем — иначе первый кадр показан по канону и «мигает» при загрузке моих норм
-  const effNorms = settings ? { ...(settings.normsOverride || {}), enabled: settings.enabledNorms || {} } : undefined;
-  const ergo = window.LedgerEngine && settings
-    ? rooms.filter((r) => r.plan && r.layout).map((r) => ({ name: r.name, res: LedgerEngine.checkErgonomics({ plan: r.layout }, r.plan, effNorms) }))
-    : [];
-  const ergoWarns = ergo.reduce((s, e) => s + e.res.warns, 0);
-  const ergoSkipped = rooms.length - ergo.length;
   const specArgs = () => ({ project: data.name, area: data.area, rooms, grand, markupPct: markup, catMarkupPct: catMarkup, clientTotal: client, discountPct: discount, deliveryCost: delivery, installCost: install, extras, budget: data.budget, mode, studioName, studioContact });
   const exportPDF = () => { if (window.LedgerPDF && LedgerPDF.exportRoomSpec) withLib("pdf", () => LedgerPDF.exportRoomSpec(specArgs())); };
   const exportXLSX = () => { if (window.LedgerXLSX) withLib("xlsx", () => LedgerXLSX.exportRoomSpec(specArgs())); };
@@ -716,7 +706,7 @@ function RoomSpecOverlay({ data, nav, onClose, onSaved }) {
       {/* solo: у сметы нет правого чат-рейла — грид 1fr, контент центрируется */}
       <div className="pd-body solo">
         <div className="pd-main">
-          <section className="pd-section" style={ergo.length ? undefined : { borderBottom: "none" }}>
+          <section className="pd-section" style={{ borderBottom: "none" }}>
             <div className="eyebrow jade" style={{ marginBottom: 14 }}>Спецификация-комплектация</div>
             <h3 className="pd-h">Смета по комнатам</h3>
             <p style={{ color: "var(--muted)", fontSize: "var(--fs-14)", marginTop: 4, marginBottom: 14, maxWidth: 820, lineHeight: 1.6 }}>{data.summaryShort}</p>
@@ -958,7 +948,7 @@ function RoomSpecOverlay({ data, nav, onClose, onSaved }) {
                     : <div style={{ display: "flex", gap: 8, marginTop: 10, flexWrap: "wrap" }}>
                         {/* Д1 (W6): инлайн-панель добавления в контексте комнаты — паттерн Programa
                            «строка вставки между секциями»; «По ссылке» первым с искоркой (клиппер) */}
-                        <button className="btn-ws" onClick={() => setAddOpen({ tab: "clip", room: r.name })}
+                        <button className="btn-ws btn-ws-clip" onClick={() => setAddOpen({ tab: "clip", room: r.name })}
                           title={"Вставить ссылку на товар — клиппер извлечёт название и цену сразу в комнату «" + r.name + "»"}>
                           <I.spark size={14} style={{ color: "var(--accent)" }} />По ссылке</button>
                         {FFE && <button className="btn-ws" onClick={() => setPickerRoom(ri)}><I.layers size={14} />Из библиотеки</button>}
@@ -1272,51 +1262,6 @@ function RoomSpecOverlay({ data, nav, onClose, onSaved }) {
               )}
             </div>}
           </section>
-
-          {/* проверка норм: эргономика по помещениям с планом расстановки из РД */}
-          {ergo.length > 0 && (
-            <section className="pd-section" style={{ borderBottom: "none" }}>
-              <div className="eyebrow jade" style={{ marginBottom: 14 }}>Проверка норм · движок эргономики</div>
-              <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
-                <h3 className="pd-h" style={{ marginBottom: 0 }}>Эргономика по помещениям</h3>
-                <span className="glass" style={{ display: "inline-flex", alignItems: "center", gap: 7, padding: "6px 12px", borderRadius: 99, fontSize: "var(--fs-12)", fontWeight: 700,
-                  color: ergoWarns === 0 ? "var(--accent-2-ink)" : "var(--accent-ink)", borderColor: ergoWarns === 0 ? "rgba(94,107,91,.4)" : "rgba(183,80,44,.4)" }}>
-                  <span style={{ width: 8, height: 8, borderRadius: "50%", background: ergoWarns === 0 ? "var(--accent-2)" : "var(--accent)", flex: "none" }} />
-                  {ergoWarns === 0 ? "Все нормы соблюдены" : ergoWarns + " " + plural(ergoWarns, ["замечание", "замечания", "замечаний"])}
-                </span>
-              </div>
-              <p style={{ color: "var(--muted)", fontSize: "var(--fs-14)", marginTop: 8, marginBottom: 4, maxWidth: 820, lineHeight: 1.6 }}>
-                Движок проверил проходы, дистанции и плотность по плану расстановки из дизайн-проекта — детерминированно, по тем же нормам, что и подбор (правки из «Моих норм» учтены).
-              </p>
-              {ergo.map((e) => (
-                <div key={e.name} style={{ marginTop: 16 }}>
-                  <div style={{ display: "flex", alignItems: "baseline", gap: 10, marginBottom: 9 }}>
-                    <span style={{ fontWeight: 800, fontFamily: "var(--font-display)", fontSize: "var(--fs-15)" }}>{e.name}</span>
-                    <span className="mono" style={{ fontSize: "var(--fs-11)", color: e.res.warns ? "var(--accent-ink)" : "var(--accent-2-ink)" }}>
-                      {e.res.warns ? e.res.warns + " " + plural(e.res.warns, ["замечание", "замечания", "замечаний"]) : "в норме"}
-                    </span>
-                  </div>
-                  <div style={{ display: "flex", flexDirection: "column", gap: 9 }}>
-                    {/* замечания первыми — иерархия критичности (терракотовое ребро), «в норме» подчинённо */}
-                    {[...e.res.findings].sort((a, b) => (a.kind === "warn" ? 0 : 1) - (b.kind === "warn" ? 0 : 1)).map((f, i) => {
-                      const Ico = FIND_ICON[f.kind] || FIND_ICON.idea;
-                      return (
-                        <div key={i} className={"find " + f.kind}>
-                          <span className="fi"><Ico size={15} /></span>
-                          <span style={{ fontSize: "var(--fs-14)", lineHeight: 1.5, color: "var(--text)" }}>{f.text}</span>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              ))}
-              {ergoSkipped > 0 && (
-                <div style={{ marginTop: 14, fontSize: "var(--fs-12)", color: "var(--muted)", maxWidth: 820, lineHeight: 1.55 }}>
-                  Ещё {ergoSkipped} {plural(ergoSkipped, ["помещение", "помещения", "помещений"])} без плана расстановки (мокрые зоны, хранение) — движок проверяет комнаты, где в проекте есть геометрия. Проверяются крупные напольные предметы с плана; примыкающие вплотную и настенные позиции — вне геометрической проверки.
-                </div>
-              )}
-            </section>
-          )}
 
           {/* итог (sticky); в пустой смете (0 комнат) не рендерим — полупрозрачная полоса
              перекрывала бы кнопку «Добавить первую комнату» пустого состояния (elementFromPoint).

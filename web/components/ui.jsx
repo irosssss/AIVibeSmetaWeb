@@ -591,7 +591,7 @@ function SmetaTotal({ amount, caption, icon = "layers", size = 22 }) {
 
 /* ============================================================
    ДАШБОРД-ПРИМИТИВЫ (роадмап П3) — вместо дублей по admin.jsx /
-   cabinet-views.jsx / library-editor.jsx / norms-editor.jsx /
+   cabinet-views.jsx / library-editor.jsx /
    project-detail.jsx / portal.jsx. Деньги — всегда mono+tabular,
    Spectral (display) — только нецифровым заголовкам.
    ============================================================ */

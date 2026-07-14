@@ -142,7 +142,7 @@
   /* гидрация из localStorage поверх дефолтов */
   // studioName — брендинг клиентского портала (волна A5); studioCity/Phone/Email/TaxId —
   // реквизиты студии (волна W4.1) — подставляются в портал, протокол и PDF-выгрузки клиенту
-  db.settings = LS.get("settings", { normsOverride: {}, enabledNorms: {}, studioName: "", studioCity: "", studioPhone: "", studioEmail: "", studioTaxId: "" });
+  db.settings = LS.get("settings", { studioName: "", studioCity: "", studioPhone: "", studioEmail: "", studioTaxId: "" });
   db.styles   = LS.get("styles", SEED_STYLES);
   db.library  = LS.get("library", []);   // библиотека товаров студии (волна B1) — пустая до первого товара
   db.suppliers = LS.get("suppliers", []); // адресная книга поставщиков (K5a) — пустая до первой карточки
@@ -183,7 +183,7 @@
       logout: async () => { await delay(120); db.session = null; LS.set("session", null); return { ok: true }; }, // → POST /api/auth/logout
     },
 
-    /* — Пользовательские настройки (нормы-override, тумблеры) — */
+    /* — Пользовательские настройки (реквизиты студии) — */
     settings: {
       get: async () => { await delay(120); return clone(db.settings); },              // → GET /api/profile/settings
       update: async (patch) => {                                                        // → PATCH /api/profile/settings
@@ -210,7 +210,7 @@
       get: async () => { await delay(LATENCY); return clone(db.session && db.session.user); }, // → GET /api/profile
 
       // → GET /api/profile/analytics  (персональная аналитика по проектам пользователя)
-      // Всё считается из реальных данных localStorage: проекты, стили, нормы.
+      // Всё считается из реальных данных localStorage: проекты, стили.
       // Дельт и «активности по неделям» нет — событий, из которых они считались бы,
       // пока не существует (появятся с версиями/статусами после слияния веток).
       analytics: async () => {
@@ -219,7 +219,6 @@
         const totalBudget = projects.reduce((s, p) => s + p.budget, 0);
         const totalItems = projects.reduce((s, p) => s + p.items, 0);
         const myStyles = db.styles.filter((s) => s.owner !== null).length;
-        const normsTouched = Object.keys(db.settings.normsOverride || {}).length;
 
         // доля бюджета по стилям (донат)
         const byStyle = {};
@@ -238,7 +237,6 @@
             { key: "proj", label: "Проектов сохранено", value: projects.length, unit: "abs" },
             { key: "items", label: "Предметов в сметах", value: totalItems, unit: "abs" },
             { key: "styles", label: "Своих стилей", value: myStyles, unit: "abs" },
-            { key: "norms", label: "Норм настроено", value: normsTouched, unit: "abs" },
           ],
           styleSplit,
           spendByProject,

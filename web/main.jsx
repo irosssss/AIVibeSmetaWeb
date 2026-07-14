@@ -36,10 +36,9 @@ import "@fontsource/spectral/latin-800.css";
 import "@fontsource/spectral/cyrillic-400-italic.css";
 import "@fontsource/spectral/latin-400-italic.css";
 
-// data + движок + выгрузки (пишут в window.Design Ledger*)
+// data + выгрузки (пишут в window.Design Ledger*)
 import "./mock.js";
 import "./project-data.js";
-import "./engine.js";
 import "./pdf.js";
 import "./xlsx.js";
 import "./ffe.js";
@@ -57,7 +56,6 @@ import "./components/cabinet.jsx";
 import "./components/cabinet-views.jsx";
 import "./components/style-quiz.jsx";
 import "./components/project-detail.jsx";
-import "./components/norms-editor.jsx";
 import "./components/style-editor.jsx";
 import "./components/library-editor.jsx";
 import "./components/suppliers-book.jsx";

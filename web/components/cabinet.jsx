@@ -15,8 +15,8 @@ const { useState: useC, useEffect: useCE } = React;
 const CAB_TABS = [["today", "Сегодня"], ["projects", "Проекты"], ["workshop", "Мастерская"], ["procure", "Закупка"], ["favorites", "Избранное"], ["profile", "Профиль"]];
 const CAB_TAB_IDS = CAB_TABS.map((t) => t[0]);
 /* старые адреса вкладок-редакторов живут как deep-links внутрь Мастерской:
-   #cabinet/styles → #cabinet/workshop/styles, #cabinet/norms → #cabinet/workshop/norms */
-const LEGACY_WORKSHOP = { styles: "styles", norms: "norms" };
+   #cabinet/styles → #cabinet/workshop/styles */
+const LEGACY_WORKSHOP = { styles: "styles" };
 function parseRoute() {
   const h = (location.hash || "").replace(/^#\/?/, "");
   const [view, tab, sub, s2] = h.split("/");
@@ -152,7 +152,7 @@ function AuthScreen({ onAuthed, go }) {
 
 /* конфиг сайдбара студии; Мастерская — группа с под-пунктами (те же адреса, что были) */
 const WS_ICONS = { today: "sun", projects: "layers", workshop: "sliders", procure: "truck", favorites: "heart", profile: "user" };
-const WS_SUB_ICONS = { styles: "spark", products: "sofa", suppliers: "truck", norms: "ruler" };
+const WS_SUB_ICONS = { styles: "spark", products: "sofa", suppliers: "truck" };
 /* разделы открытого проекта (s2 адреса); только для смет-комплектаций (data.rooms).
    W2: «Обзор» — лицо проекта и новый дефолт посадки (s2=''), смета переехала на
    'smeta' (паттерн Programa «клик по проекту = обзор, не сразу таблица»). */
@@ -184,7 +184,7 @@ const fmtAgo = (ts) => {
 };
 
 function Cabinet({ user, onLogout, go }) {
-  // старые адреса #cabinet/styles|norms сразу переписываем на Мастерскую
+  // старый адрес #cabinet/styles сразу переписываем на Мастерскую
   const normTab = (t) => (LEGACY_WORKSHOP[t] ? "workshop" : t);
   const r0 = parseRoute();   // один разбор адреса на все инициализаторы (useC-инициализатор выполняется единожды)
   const [tab, setTab] = useC(() => { const t = normTab(r0.tab); return CAB_TAB_IDS.includes(t) ? t : "today"; });
@@ -381,11 +381,11 @@ function WsSidebar({ user, onLogout, go, tab, onTab, proj, projS2, onNewProject,
   );
 }
 
-/* ---------------- МАСТЕРСКАЯ: стили + нормы под одной крышей ----------------
-   Редакторы недельного ритма (библиотека стилей, правила эргономики) собраны
+/* ---------------- МАСТЕРСКАЯ: стили + товары + поставщики под одной крышей ----------------
+   Редакторы недельного ритма (библиотека стилей, товары студии, поставщики) собраны
    в один раздел — топбар остаётся языку петли дня. Каждый редактор рендерит
    свою шапку сам, здесь только переключатель и sub-роут #cabinet/workshop/{sub}. */
-const WS_SUBS = [{ id: "styles", label: "Мои стили" }, { id: "products", label: "Товары" }, { id: "suppliers", label: "Поставщики" }, { id: "norms", label: "Нормы" }];
+const WS_SUBS = [{ id: "styles", label: "Мои стили" }, { id: "products", label: "Товары" }, { id: "suppliers", label: "Поставщики" }];
 function Workshop() {
   const [sub, setSub] = useC(() => { const s = parseRoute().sub; return WS_SUBS.some((x) => x.id === s) ? s : "styles"; });
   const change = (s) => { setSub(s); setRoute("cabinet", "workshop", s); };
@@ -399,7 +399,7 @@ function Workshop() {
     <div>
       {/* на десктопе разделы Мастерской ведёт сайдбар (W1); сег-табы остаются мобильной навигацией */}
       <SegTabs className="pd-seg ws-dup-tabs" items={WS_SUBS} value={sub} onChange={change} ariaLabel="Раздел мастерской" style={{ marginBottom: 22 }} />
-      {sub === "norms" ? <NormsSettings /> : sub === "products" ? <ProductsLibrary /> : sub === "suppliers" ? <SuppliersBook /> : <StylesLibrary />}
+      {sub === "products" ? <ProductsLibrary /> : sub === "suppliers" ? <SuppliersBook /> : <StylesLibrary />}
     </div>
   );
 }
@@ -526,7 +526,6 @@ function AccountMenu({ user, onLogout, onTab, up }) {
           </div>
           {item("Профиль", I.user, () => { setOpen(false); onTab("profile"); })}
           {item("Тариф и биллинг", I.wallet, billing)}
-          {item("Настройки норм", I.sliders, () => { setOpen(false); onTab("norms"); })}
           <div style={{ height: 1, background: "var(--hairline)", margin: "6px 4px" }} />
           {item("Выйти", I.logout, () => { setOpen(false); onLogout(); }, true)}
         </div>
