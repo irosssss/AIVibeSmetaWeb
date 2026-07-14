@@ -193,7 +193,7 @@ function Hero({ go }) {
           <span style={{ display: "block" }}>а не вечер в <span style={{ color: "var(--accent-ink)", fontStyle: "italic" }}>Excel</span></span>
         </h1>
         <p style={{ marginTop: 22, color: "var(--muted)", maxWidth: 540, fontSize: "var(--fs-16)", lineHeight: 1.65 }}>
-          Себестоимость фабрики и цена клиенту — в одном документе. Проверено по нормам, готово к отправке за минуту.
+          Себестоимость фабрики и цена клиенту — в одном документе. Наценка под контролем, готово к отправке за минуту.
         </p>
         <div style={{ marginTop: 30, display: "flex", gap: 14, flexWrap: "wrap", justifyContent: "center" }} id="download">
           <button className="btn btn-primary" style={{ padding: "16px 26px", fontSize: "var(--fs-16)" }} onClick={() => go("auth")}><I.layers size={19} /> Начать бесплатно</button>
@@ -220,7 +220,7 @@ function Hero({ go }) {
 function FactsMarquee() {
   const FACTS = [
     "две цены в одном документе", "наценка по разделам", "PDF · Excel · закупочный лист",
-    "проверка норм NKBA / Neufert", "портал согласования для клиента", "смета из ссылки на магазин",
+    "розница и выгода клиента", "портал согласования для клиента", "смета из ссылки на магазин",
     "библиотека позиций студии", "сбор → согласование → закупка → сдача",
   ];
   return (
@@ -294,7 +294,7 @@ function SmetaPlate() {
         <div className="pt-card b"><div className="lab">Цена клиенту</div><div className="val">{fmt(clientTotalShown)}</div></div>
       </div>
       <div className="plate-foot">
-        <span className="ergo"><I.check size={13} /> проверка эргономики по нормам NKBA / Neufert</span>
+        <span className="ergo"><I.check size={13} /> клиент видит только свою цену</span>
         <span className="exp"><span>PDF</span><span>Excel</span></span>
       </div>
     </div>
