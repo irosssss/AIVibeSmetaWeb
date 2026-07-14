@@ -173,7 +173,7 @@
   // studioName — брендинг клиентского портала (волна A5); studioCity/Phone/Email/TaxId —
   // реквизиты студии (волна W4.1) — подставляются в портал, протокол и PDF-выгрузки клиенту
   db.settings = LS.get("settings", { studioName: "", studioCity: "", studioPhone: "", studioEmail: "", studioTaxId: "" });
-  db.styles   = LS.get("styles", SEED_STYLES);
+  db.styles   = LS.get("styles", null) || clone(SEED_STYLES);   // clone: без алиаса на модульный SEED_STYLES — create/duplicate мутируют db.styles на месте
   /* миграция 14.07: новые системные пресеты (owner:null) долить в кэш localStorage
      по id, не трогая пользовательские стили и их правки существующих */
   (function mergeSeedStyles() {
