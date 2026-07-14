@@ -713,8 +713,23 @@ function RoomSpecOverlay({ data, nav, onClose, onSaved }) {
           </span>
         ) : null} />
 
+      {/* «Версии» — подвьюха контентной зоны (сайдбар снаружи, как у Настроек), а НЕ модалка
+         поверх всего экрана. Тело сметы прячем display:none, не размонтируем — несохранённые
+         правки/скролл/черновик позиции переживают заход в раздел и возврат «К смете» */}
+      {versionsOpen && (
+        <div className="pd-body solo">
+          <div className="pd-main">
+            <VersionsModal versions={versions} current={{ project: data.name, studioName, studioContact, rooms, grand, totalClient, itemsCount }}
+              onSave={saveVersion} onRestore={restoreVersion} onSetStatus={setVersionStatus}
+              onPatch={patchVersion} onRemove={removeVersion} onShare={shareVersion} onClose={closeVersions}
+              projectId={savedId} onReplacePos={replaceFromAlternative} iterLimit={data.iterLimit || 0}
+              styleMaterials={projStyle ? projStyle.materials : null} />
+          </div>
+        </div>
+      )}
+
       {/* solo: у сметы нет правого чат-рейла — грид 1fr, контент центрируется */}
-      <div className="pd-body solo">
+      <div className="pd-body solo" style={versionsOpen ? { display: "none" } : undefined}>
         <div className="pd-main">
           <section className="pd-section" style={{ borderBottom: "none" }}>
             <div className="eyebrow jade" style={{ marginBottom: 14 }}>Спецификация-комплектация</div>
@@ -1335,13 +1350,6 @@ function RoomSpecOverlay({ data, nav, onClose, onSaved }) {
       </div>
       {addOpen && <AddPositionsModal excludeId={savedId} roomNames={rooms.map((r) => r.name)}
         initialTab={addOpen.tab} initialRoom={addOpen.room} onClose={() => setAddOpen(null)} onAdd={addFrom} />}
-      {versionsOpen && (
-        <VersionsModal versions={versions} current={{ project: data.name, studioName, studioContact, rooms, grand, totalClient, itemsCount }}
-          onSave={saveVersion} onRestore={restoreVersion} onSetStatus={setVersionStatus}
-          onPatch={patchVersion} onRemove={removeVersion} onShare={shareVersion} onClose={closeVersions}
-          projectId={savedId} onReplacePos={replaceFromAlternative} iterLimit={data.iterLimit || 0}
-          styleMaterials={projStyle ? projStyle.materials : null} />
-      )}
       {shareModal && <ShareLinkModal share={shareModal} onClose={() => setShareModal(null)} />}
       {pickerRoom != null && rooms[pickerRoom] && (
         <LibraryPickerModal roomName={rooms[pickerRoom].name} styleMaterials={projStyle ? projStyle.materials : null} onClose={() => setPickerRoom(null)}
@@ -1533,16 +1541,23 @@ function VersionsModal({ versions, current, onSave, onRestore, onSetStatus, onPa
   const submit = (e) => { e.preventDefault(); onSave(label); setLabel(""); };
 
   return (
-    <Modal onClose={onClose} label="Версии и согласование" maxWidth={680}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, padding: "20px 24px", borderBottom: "1px solid var(--hairline)" }}>
+    /* страница-подвьюха контентной зоны (не Modal): пункт сайдбара «Версии и согласование»
+       обязан открывать раздел, как «Настройки», а не диалог, наезжающий на сайдбар
+       (жалоба владельца 14.07 «заходит на панель»). Диалоги внутри (ссылка/аналоги/confirm)
+       остаются модалками — это точечные действия, не раздел. */
+    <section className="pd-section" style={{ borderBottom: "none" }} aria-label="Версии и согласование">
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, flexWrap: "wrap", marginBottom: 18 }}>
         <div>
-          <h3 className="display" style={{ fontSize: "var(--fs-21)" }}>Версии и согласование</h3>
-          <div style={{ fontSize: "var(--fs-13)", color: "var(--muted)", marginTop: 3 }}>Снимки сметы и статус согласования с клиентом</div>
+          <div className="eyebrow jade" style={{ marginBottom: 14 }}>Согласование</div>
+          <h3 className="pd-h">Версии и согласование</h3>
+          <div style={{ fontSize: "var(--fs-13)", color: "var(--muted)", marginTop: 4 }}>Снимки сметы и статус согласования с клиентом</div>
         </div>
-        <button className="icon-btn" onClick={onClose} aria-label="Закрыть"><I.close size={18} /></button>
+        <button className="btn btn-ghost" style={{ padding: "8px 14px", fontSize: "var(--fs-13)", flex: "none" }} onClick={onClose}>
+          <I.arrow size={14} style={{ transform: "rotate(180deg)" }} />К смете
+        </button>
       </div>
 
-      <div style={{ padding: "16px 24px 20px", display: "flex", flexDirection: "column", gap: 12, maxHeight: "62vh", overflow: "auto" }}>
+      <div style={{ display: "flex", flexDirection: "column", gap: 12, maxWidth: 680 }}>
         {/* сохранить текущую смету как версию */}
         <form onSubmit={submit} style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
           <input className="fld" style={{ flex: "1 1 240px" }} value={label} onChange={(e) => setLabel(e.target.value)}
@@ -1667,7 +1682,7 @@ function VersionsModal({ versions, current, onSave, onRestore, onSetStatus, onPa
         })}
       </div>
       {altList && <AlternativesModal rejected={altList} projectId={projectId} onReplace={onReplacePos} onClose={() => setAltList(null)} styleMaterials={styleMaterials} />}
-    </Modal>
+    </section>
   );
 }
 
