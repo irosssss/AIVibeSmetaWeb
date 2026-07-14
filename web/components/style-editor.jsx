@@ -77,7 +77,6 @@ function SectionLabel({ icon: Ico, text, sub }) {
 }
 
 function StyleLibCard({ s, system, onEdit, onDuplicate, onRemove }) {
-  const delta = Math.round(((s.factor || 1) - 1) * 100);
   return (
     <div className="glass" style={{ borderRadius: "var(--r-lg)", padding: 20, display: "flex", flexDirection: "column", gap: 12 }}>
       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 10 }}>
@@ -100,8 +99,7 @@ function StyleLibCard({ s, system, onEdit, onDuplicate, onRemove }) {
         ))}
       </div>
 
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, paddingTop: 12, marginTop: "auto", borderTop: "1px solid var(--hairline)" }}>
-        <span style={{ fontSize: "var(--fs-12)", fontWeight: 700, color: delta > 0 ? "var(--accent)" : delta < 0 ? "var(--accent-2)" : "var(--muted)" }}>{factorDelta(s.factor)}</span>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 8, paddingTop: 12, marginTop: "auto", borderTop: "1px solid var(--hairline)" }}>
         <div style={{ display: "flex", gap: 6 }}>
           <button className="btn btn-ghost" style={{ padding: "7px 12px", fontSize: "var(--fs-12)" }} onClick={onDuplicate} title="Дублировать в свой"><I.layers size={14} />Дублировать</button>
           {!system && <button className="icon-btn sm" title="Редактировать" aria-label="Редактировать" onClick={onEdit}><I.edit size={15} /></button>}
