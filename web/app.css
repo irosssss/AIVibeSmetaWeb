@@ -295,6 +295,13 @@ body:has(.pd-overlay) .proto-switch { display: none; }
 .ws-scrim { display: none; }
 /* открытый проект: полотно сметы = такой же «лист» на канвасе, сайдбар проекта остаётся */
 .ws .pd-overlay { inset: 8px 8px 8px var(--ws-w); border-radius: 12px; overflow: hidden; box-shadow: var(--ring); }
+/* поля листа (8px) обязаны показывать ЧИСТЫЙ канвас, а не кабинет под ним: ws-content
+   выше вьюпорта — без подложки в нижнем поле просвечивали карточки «Моих проектов»
+   (жалоба владельца 14.07); z: подложка 149 < лист 150 < сайдбар 160 */
+.ws:has(.pd-overlay:not(.pd-fullscreen))::before { content: ""; position: fixed; inset: 0 0 0 var(--ws-w); z-index: 149; background: var(--bg-base); }
+/* и фоновый скролл под фикс-листом гасим — иначе кабинет за полями листа ездит
+   (тот же приём body:has, что у .proto-switch выше) */
+body:has(.ws .pd-overlay) { overflow: hidden; }
 /* смета вне роутинга (Excel-импорт, черновик калькулятора) — сайдбар не при делах:
    на весь экран и выше него, как жила до W1. z ниже 200: confirm/promptDialog
    монтируются в body (.modal-back, z 200) и обязаны оставаться поверх */
