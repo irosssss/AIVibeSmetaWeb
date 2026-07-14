@@ -1329,7 +1329,7 @@ function RoomSpecOverlay({ data, nav, onClose, onSaved }) {
         <VersionsModal versions={versions} current={{ project: data.name, studioName, studioContact, rooms, grand, totalClient, itemsCount }}
           onSave={saveVersion} onRestore={restoreVersion} onSetStatus={setVersionStatus}
           onPatch={patchVersion} onRemove={removeVersion} onShare={shareVersion} onClose={closeVersions}
-          projectId={savedId} onReplacePos={replaceFromAlternative} />
+          projectId={savedId} onReplacePos={replaceFromAlternative} iterLimit={data.iterLimit || 0} />
       )}
       {shareModal && <ShareLinkModal share={shareModal} onClose={() => setShareModal(null)} />}
       {pickerRoom != null && rooms[pickerRoom] && (
@@ -1450,9 +1450,14 @@ function AlternativesModal({ rejected, projectId, onReplace, onClose }) {
   );
 }
 
-function VersionsModal({ versions, current, onSave, onRestore, onSetStatus, onPatch, onRemove, onShare, onClose, projectId, onReplacePos }) {
+function VersionsModal({ versions, current, onSave, onRestore, onSetStatus, onPatch, onRemove, onShare, onClose, projectId, onReplacePos, iterLimit = 0 }) {
   const FFE = window.LedgerFFE;
   const [label, setLabel] = usePD("");
+  // счётчик итераций (шаг D «Стола комплектатора» — против боли «бесконечные правки»):
+  // итерация = версия, ушедшая клиенту (есть ссылка портала ИЛИ статус не «Черновик»);
+  // черновики «для себя» не считаются. Лимит — из Настроек проекта (договор дизайнера)
+  const iterCount = versions.filter((v) => v.shareId || v.status !== "draft").length;
+  const overLimit = iterLimit > 0 && iterCount >= iterLimit;
   const [compareId, setCompareId] = usePD(null);
   const [cmtOpenId, setCmtOpenId] = usePD(null);   // id версии, у которой раскрыты комментарии-треды
   const [cmtTick, setCmtTick] = usePD(0);          // бампается после ответа студии — форсирует перечитать shareId из хранилища
@@ -1534,6 +1539,20 @@ function VersionsModal({ versions, current, onSave, onRestore, onSetStatus, onPa
         <div style={{ fontSize: "var(--fs-12)", color: "var(--muted)", marginTop: -4 }}>
           Сейчас: себестоимость <b className="mono" style={{ color: "var(--text)", fontWeight: 600 }}>{fmtMoney(current.grand)}</b> · итог клиенту <b className="mono" style={{ color: "var(--accent-2-ink)", fontWeight: 600 }}>{fmtMoney(current.totalClient)}</b> · {current.itemsCount} {plural(current.itemsCount, ["позиция", "позиции", "позиций"])}. Снимок включает позиции, наценки, скидку и доставку/монтаж.
         </div>
+
+        {/* счётчик итераций против лимита по договору (шаг D): аргумент дизайнера,
+            когда правки клиента выходят за договор — «третья итерация из трёх» */}
+        {iterCount > 0 && (
+          <div className="glass" style={{ borderRadius: "var(--r-md)", padding: "10px 14px", display: "flex", alignItems: "center", gap: 9, flexWrap: "wrap", ...(overLimit ? { borderColor: "rgba(183,80,44,.4)" } : {}) }}>
+            <I.send size={15} style={{ color: overLimit ? "var(--accent-ink)" : "var(--muted)", flex: "none" }} />
+            <span style={{ fontSize: "var(--fs-13)", fontWeight: 600, color: overLimit ? "var(--accent-ink)" : "var(--text)" }}>
+              {plural(iterCount, ["Отправлена", "Отправлены", "Отправлено"])} {iterCount} {plural(iterCount, ["итерация", "итерации", "итераций"])} согласования
+              {iterLimit > 0 ? " из " + iterLimit + " по договору" : ""}
+            </span>
+            {overLimit && <span style={{ fontSize: "var(--fs-12)", color: "var(--muted)" }}>— лимит договора исчерпан, дальнейшие правки — повод обсудить доплату</span>}
+            {!iterLimit && <span style={{ fontSize: "var(--fs-12)", color: "var(--muted)" }}>— лимит по договору задаётся в Настройках проекта</span>}
+          </div>
+        )}
 
         {!versions.length && (
           <EmptyState compact icon="news" text={<React.Fragment>Пока нет сохранённых версий.<br />Сохраните снимок перед отправкой клиенту — и отмечайте статус согласования по ответу.</React.Fragment>} />
@@ -2650,6 +2669,10 @@ function ProjectSettings({ data, onClose, onSaved }) {
   const [dateEnd, setDateEnd] = usePD(data.dateEnd || "");
   const [summaryShort, setSummaryShort] = usePD(data.summaryShort || "");
   const [cover, setCover] = usePD(data.cover || "living");
+  // лимит итераций согласования по договору (шаг D концепта «Стол комплектатора»):
+  // дизайнеры защищаются от бесконечных правок пунктом «N итераций, дальше платно» —
+  // счётчик против лимита показывают «Версии». 0/пусто = лимит не задан
+  const [iterLimit, setIterLimit] = usePD(data.iterLimit || "");
   const [saving, setSaving] = usePD(false);
   const [archiving, setArchiving] = usePD(false);
   const goSection = (s2) => setRoute("cabinet", "projects", data.id, s2);
@@ -2659,7 +2682,7 @@ function ProjectSettings({ data, onClose, onSaved }) {
     setSaving(true);
     const cleanName = name.trim() || data.name;
     try {
-      const updated = await LedgerAPI.projects.update(data.id, { name: cleanName, address: address.trim(), dateStart, dateEnd, summaryShort: summaryShort.trim(), cover });
+      const updated = await LedgerAPI.projects.update(data.id, { name: cleanName, address: address.trim(), dateStart, dateEnd, summaryShort: summaryShort.trim(), cover, iterLimit: Math.max(0, Math.floor(+iterLimit || 0)) });
       onSaved(updated);   // Обзор держит отдельную копию data — без мержа показал бы старое
       setName(cleanName);
       setTitle("cabinet", cleanName);
@@ -2724,6 +2747,15 @@ function ProjectSettings({ data, onClose, onSaved }) {
               <label style={fld}>
                 <span style={lbl}>Адрес объекта</span>
                 <input className="fld" value={address} onChange={(e) => setAddress(e.target.value)} placeholder="Напр. Москва, ул. Тверская, 12" aria-label="Адрес объекта" />
+              </label>
+
+              <label style={fld}>
+                <span style={lbl}>Лимит итераций согласования <span style={{ color: "var(--muted)", fontWeight: 400 }}>(по договору; пусто — без лимита)</span></span>
+                <input className="fld" type="number" min="0" step="1" value={iterLimit} onChange={(e) => setIterLimit(e.target.value)}
+                  placeholder="Напр. 3" style={{ maxWidth: 160 }} aria-label="Лимит итераций согласования по договору" />
+                <span style={{ display: "block", fontSize: "var(--fs-12)", color: "var(--muted)", marginTop: 6, lineHeight: 1.5 }}>
+                  Итерация — версия сметы, отправленная клиенту. Счётчик против лимита виден в «Версиях» — аргумент, когда правки выходят за договор.
+                </span>
               </label>
 
               <label style={fld}>
