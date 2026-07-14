@@ -5,20 +5,22 @@
    ============================================================ */
 const { useState: useStateS, useEffect: useEffectS, useRef: useRefS } = React;
 
-/* нейтральные стоковые фото интерьеров (с graceful fallback на плейсхолдер) */
-const U = (id, w = 1100) => `https://images.unsplash.com/${id}?q=80&w=${w}&auto=format&fit=crop`;
+/* нейтральные стоковые фото интерьеров — SELF-HOST в web/public/img (ph-*.jpg),
+   как рендеры лендинга: раньше хотлинк Unsplash — обложки журнала/проектов зависели
+   от чужого CDN (хрупко для SEO-журнала + внешняя сетевая зависимость). Источник —
+   Unsplash (лицензия позволяет), скачаны 14.07 q=75 w=1100. Ключ hero удалён —
+   потребителей не осталось (hero-баннер давно свой: img/hero-banner.jpg). */
 const PHOTOS = {
-  hero:    U("photo-1618221195710-dd6b41faaea6", 1300),
-  living:  U("photo-1586023492125-27b2c045efd7"),
-  bedroom: U("photo-1505693416388-ac5ce068fe85"),
-  kitchen: U("photo-1556911220-bff31c812dba"),
-  office:  U("photo-1593476550610-87baa860004a"),
-  deco:    U("photo-1618220179428-22790b461013"),
-  studio:  U("photo-1502672260266-1c1ef2d93688"),
-  light:   U("photo-1540932239986-30128078f3c5"),
-  market:  U("photo-1540574163026-643ea20ade25"),
-  warm:    U("photo-1567016432779-094069958ea5"),
-  ar:      U("photo-1631679706909-1844bbd07221"),
+  living:  "img/ph-living.jpg",
+  bedroom: "img/ph-bedroom.jpg",
+  kitchen: "img/ph-kitchen.jpg",
+  office:  "img/ph-office.jpg",
+  deco:    "img/ph-deco.jpg",
+  studio:  "img/ph-studio.jpg",
+  light:   "img/ph-light.jpg",
+  market:  "img/ph-market.jpg",
+  warm:    "img/ph-warm.jpg",
+  ar:      "img/ph-ar.jpg",
 };
 window.PHOTOS = PHOTOS;
 

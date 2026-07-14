@@ -62,21 +62,20 @@
       { id: "p_kirova", name: "Кирова 17к1", room: "3 комнаты · 87,59 м²", style: "По дизайн-проекту", area: 87.59, items: 50, budget: 2700000, updated: "2025-01-30", cover: "living", status: "Закупка" },
     ],
 
-    // избранные товары (мудборд + шоп-лист)
-    favorites: (function () {
-      const fu = (id, w = 600) => `https://images.unsplash.com/${id}?q=80&w=${w}&auto=format&fit=crop`;
-      return [
-        { id: "f_1", title: "Модульный диван, букле", mp: "f2", price: 164900, old: 219000, room: "Гостиная", tag: "Neo Deco", img: fu("photo-1555041469-a586c61ea9bc") },
-        { id: "f_2", title: "Люстра латунь + бра", mp: "f2", price: 57000, old: 79000, room: "Гостиная", tag: "Neo Deco", img: fu("photo-1524758631624-e2822e304c36") },
-        { id: "f_3", title: "Ковёр шерсть, геометрия", mp: "f1", price: 41900, old: 58000, room: "Гостиная", tag: "Neo Deco", img: fu("photo-1531837763904-5b1b2f6c1b59") },
-        { id: "f_4", title: "Кровать с мягким изголовьем", mp: "f2", price: 58900, old: 79000, room: "Спальня", tag: "Тёплый минимализм", img: fu("photo-1522771739844-6a9f6d5f14af") },
-        { id: "f_5", title: "Лён: шторы, плед, подушки", mp: "f2", price: 32900, old: 45000, room: "Спальня", tag: "Тёплый минимализм", img: fu("photo-1616486338812-3dadae4b4ace") },
-        { id: "f_6", title: "Стол дуб шпон, 160 см", mp: "f2", price: 44900, old: 61000, room: "Кухня", tag: "Сканди", img: fu("photo-1530018607912-eff2daa1bac4") },
-        { id: "f_7", title: "Кресло, эргономика", mp: "f1", price: 32900, old: 45000, room: "Кабинет", tag: "Индустриальный", img: fu("photo-1505740420928-5e560c06d30e") },
-        { id: "f_8", title: "Стол мрамор + металл", mp: "f1", price: 37900, old: 52000, room: "Гостиная", tag: "Neo Deco", img: fu("photo-1567538096630-e0c55bd6374c") },
-        { id: "f_9", title: "Стеллаж лофт, металл + дерево", mp: "f2", price: 27900, old: 38000, room: "Кабинет", tag: "Индустриальный", img: fu("photo-1558997519-83ea9252edf8") },
-      ];
-    })(),
+    // избранные товары (мудборд + шоп-лист) — фото SELF-HOST в web/public/img
+    // (ph-fav-*.jpg, источник Unsplash, скачаны 14.07): хотлинк был хрупким —
+    // id ковра (f_3) на их CDN уже умер (404), тумбнейл в демо был битым
+    favorites: [
+      { id: "f_1", title: "Модульный диван, букле", mp: "f2", price: 164900, old: 219000, room: "Гостиная", tag: "Neo Deco", img: "img/ph-fav-1.jpg" },
+      { id: "f_2", title: "Люстра латунь + бра", mp: "f2", price: 57000, old: 79000, room: "Гостиная", tag: "Neo Deco", img: "img/ph-fav-2.jpg" },
+      { id: "f_3", title: "Ковёр шерсть, геометрия", mp: "f1", price: 41900, old: 58000, room: "Гостиная", tag: "Neo Deco", img: "img/ph-fav-3.jpg" },
+      { id: "f_4", title: "Кровать с мягким изголовьем", mp: "f2", price: 58900, old: 79000, room: "Спальня", tag: "Тёплый минимализм", img: "img/ph-fav-4.jpg" },
+      { id: "f_5", title: "Лён: шторы, плед, подушки", mp: "f2", price: 32900, old: 45000, room: "Спальня", tag: "Тёплый минимализм", img: "img/ph-fav-5.jpg" },
+      { id: "f_6", title: "Стол дуб шпон, 160 см", mp: "f2", price: 44900, old: 61000, room: "Кухня", tag: "Сканди", img: "img/ph-fav-6.jpg" },
+      { id: "f_7", title: "Кресло, эргономика", mp: "f1", price: 32900, old: 45000, room: "Кабинет", tag: "Индустриальный", img: "img/ph-fav-7.jpg" },
+      { id: "f_8", title: "Стол мрамор + металл", mp: "f1", price: 37900, old: 52000, room: "Гостиная", tag: "Neo Deco", img: "img/ph-fav-8.jpg" },
+      { id: "f_9", title: "Стеллаж лофт, металл + дерево", mp: "f2", price: 27900, old: 38000, room: "Кабинет", tag: "Индустриальный", img: "img/ph-fav-9.jpg" },
+    ],
   };
 
   /* ----------------------------- localStorage-адаптер -----------------------------
@@ -164,7 +163,14 @@
   db.suppliers = LS.get("suppliers", []); // адресная книга поставщиков (K5a) — пустая до первой карточки
   db.markupProfiles = LS.get("markupProfiles", []);   // сохранённые профили наценки — пусто до первого «мой стандарт»
   const _lsProjects = LS.get("projects", null); if (_lsProjects) db.projects = _lsProjects;
-  const _lsFav = LS.get("favorites", null); if (_lsFav) db.favorites = _lsFav;
+  const _lsFav = LS.get("favorites", null);
+  if (_lsFav) {
+    // миграция 14.07 (self-host фото): в старом localStorage сид-избранное заморожено
+    // с Unsplash-URL (id ковра f_3 у них уже 404 — тумбнейл был битым); демо-записям
+    // по id подставляем локальный путь, пользовательские (f_<timestamp>) не трогаем
+    const _seedImg = Object.fromEntries(db.favorites.map((f) => [f.id, f.img]));
+    db.favorites = _lsFav.map((f) => (_seedImg[f.id] && /unsplash/.test(f.img || "") ? { ...f, img: _seedImg[f.id] } : f));
+  }
   db.session  = LS.get("session", null);
 
   /* миграция статусов проектов → стадии петли (06.07): старые значения из
