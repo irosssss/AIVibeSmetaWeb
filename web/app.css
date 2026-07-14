@@ -333,31 +333,11 @@ body:has(.pd-overlay) .proto-switch { display: none; }
 /* .pd-eyebrow слит в .eyebrow.jade (П2/T7 — единый надзаголовок) */
 .pd-h { font-family: var(--font-display); font-weight: 800; letter-spacing: -0.02em; font-size: clamp(22px,3vw,30px); margin-bottom: 6px; }
 
-/* — мини-планы = фрагмент рабочего чертежа: тушь-стены, миллиметровка (не штриховка) — */
-.plan-box { position: relative; border: 2px solid var(--text); border-radius: 3px;
-  background:
-    linear-gradient(var(--hairline-2) 1px, transparent 1px),
-    linear-gradient(90deg, var(--hairline-2) 1px, transparent 1px),
-    var(--surface);
-  background-size: 18px 18px, 18px 18px, auto; }
-/* окно: разрыв в стене + двойная линия остекления */
-.plan-box .pl-win { position: absolute; top: -5px; height: 8px; background: var(--surface);
-  border-top: 1.4px solid var(--info); border-bottom: 1.4px solid var(--info); }
-/* дверь: проём в стене + полотно (солид, справа) + дуга открывания (пунктир); квадрат через aspect-ratio */
-.plan-box .pl-door { position: absolute; bottom: 0; aspect-ratio: 1; border-right: 1.4px solid var(--accent-ink); }
-.plan-box .pl-door::before { content: ""; position: absolute; left: 0; right: 0; bottom: -2px; height: 2px; background: var(--surface); }
-.plan-box .pl-door::after { content: ""; position: absolute; inset: 0; border-top: 1.2px dashed rgba(183,80,44,.55); border-left: 1.2px dashed rgba(183,80,44,.55); border-radius: 100% 0 0 0; }
-
 /* фикс-3 колонки: «бордюры» тут — трюк gap+фон, auto-fit оставлял пустые ячейки сплошным hairline-блоком при 4–5 колонках */
 .metric-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 1px; background: var(--hairline); border: 1px solid var(--hairline); border-radius: var(--r-lg); overflow: hidden; }
 .metric-grid .m { background: var(--surface); padding: 15px 16px; }
 .metric-grid .m .k { font-size: var(--fs-12); color: var(--muted); }
 .metric-grid .m .v { font-family: var(--font-mono); font-weight: 500; font-size: var(--fs-18); font-variant-numeric: tabular-nums; margin-top: 3px; }
-
-/* инсоляция = охра-солнце, один семантический цвет (радуга-градиент читалась как случайность,
-   а терракота на конце — как «плохо», хотя высокая инсоляция — хорошо) */
-.light-meter { height: 6px; border-radius: 99px; background: var(--glass-2); overflow: hidden; }
-.light-meter > i { display: block; height: 100%; border-radius: 99px; background: var(--chart); }
 
 .find { display: flex; gap: 12px; padding: 13px 15px; border-radius: 12px; border: 1px solid var(--hairline); background: var(--glass-2); }
 .find.warn { border-left: 3px solid var(--accent); }   /* критичное — с терракотовым ребром */
@@ -511,18 +491,9 @@ body:has(.pd-overlay) .proto-switch { display: none; }
   .rs-prow .rs-st { width: 104px !important; }  /* селект стадии ужимается рядом с поставщиком */
 }
 
-/* ---- Редактор норм: success-пульс сохранения + адаптив ---- */
+/* ---- success-пульс сохранения (library-editor/suppliers-book/style-editor) ---- */
 .save-pulse { animation: savePulse .5s var(--ease); }
 @keyframes savePulse { 0% { transform: scale(.92); opacity: .4; } 60% { transform: scale(1.04); } 100% { transform: scale(1); opacity: 1; } }
-
-@media (max-width: 880px) {
-  .norms-layout { grid-template-columns: 1fr !important; }       /* колонки → столбец */
-  .norms-aside { position: static !important; }                   /* снять sticky у проверки */
-}
-@media (max-width: 560px) {
-  .norm-row { grid-template-columns: 1fr !important; }            /* правило → один столбец */
-  .norm-ctrl { align-items: flex-start !important; min-width: 0 !important; }
-}
 
 @media (prefers-contrast: more) {
   .style-card, .prod-card, .find, .metric-grid { border-width: 1.5px; }
