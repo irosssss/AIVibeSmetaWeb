@@ -8,6 +8,18 @@
    ============================================================ */
 const { useState: useS, useEffect: useSE } = React;
 
+/* готовая палитра для интерактивного выбора — тёплые нейтрали, дерево, терракота,
+   зелень, синь, вино, графит (выверены по палитрам системных пресетов) */
+const PRESET_COLORS = [
+  "#FAF7F1", "#F2EFE9", "#EFE9DC", "#E7DFD3", "#EAE0CC", "#C9C6BE",
+  "#DCCBB0", "#D9C4A3", "#D8C7AE", "#C9A66B", "#C99A3F", "#C29B3B",
+  "#B5892E", "#A88C5F", "#B79B84", "#8A6E4B", "#7A5A3A", "#4E3524",
+  "#C57B57", "#C06A4B", "#A9542E", "#7A3B32", "#7C2D3A", "#7B2E33",
+  "#6E3B52", "#9FB3A6", "#8F9E77", "#6E7B5B", "#6E7145", "#2F4A3C",
+  "#A7C4C2", "#2E6E8E", "#2C4A63", "#B9BEC4", "#8A8175", "#3A3D42",
+  "#2E2A28", "#17181A",
+];
+
 const DECOR = [["min", "Минимум"], ["mid", "Середина"], ["rich", "Насыщенно"]];
 const DECOR_LABEL = { min: "Минимум декора", mid: "Средний декор", rich: "Насыщенный декор" };
 const factorDelta = (f) => { const d = Math.round(((f || 1) - 1) * 100); return d === 0 ? "базовый бюджет" : d > 0 ? "≈ дороже на " + d + "%" : "≈ дешевле на " + Math.abs(d) + "%"; };
@@ -77,17 +89,24 @@ function SectionLabel({ icon: Ico, text, sub }) {
 }
 
 function StyleLibCard({ s, system, onEdit, onDuplicate, onRemove }) {
-  const delta = Math.round(((s.factor || 1) - 1) * 100);
   return (
     <div className="glass" style={{ borderRadius: "var(--r-lg)", padding: 20, display: "flex", flexDirection: "column", gap: 12 }}>
       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 10 }}>
         <div style={{ minWidth: 0 }}>
-          <div style={{ fontWeight: 800, fontFamily: "var(--font-display)", fontSize: "var(--fs-18)", letterSpacing: "-0.01em" }}>{s.name}</div>
-          <div style={{ fontSize: "var(--fs-12)", color: "var(--muted)", marginTop: 3 }}>{s.mood || DECOR_LABEL[s.decorLevel] || ""}</div>
+          <div style={{ fontWeight: 800, fontFamily: "var(--font-display)", fontSize: "var(--fs-18)", letterSpacing: "-0.01em", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{s.name}</div>
+          <div style={{ fontSize: "var(--fs-12)", color: "var(--muted)", marginTop: 3, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{s.mood || DECOR_LABEL[s.decorLevel] || ""}</div>
         </div>
-        {system
-          ? <span style={{ fontSize: "var(--fs-11)", fontWeight: 700, padding: "3px 9px", borderRadius: 99, background: "var(--surface-2)", color: "var(--muted)", flex: "none" }}>база</span>
-          : <span style={{ fontSize: "var(--fs-11)", fontWeight: 700, padding: "3px 9px", borderRadius: 99, background: "rgba(94,107,91,.14)", color: "var(--accent-2)", flex: "none" }}>мой</span>}
+        {/* действия наверху карточки: системный пресет → «дублировать в свой» (форк),
+           свой стиль → шестерёнка (правка) + удалить; бейдж-идентичность справа */}
+        <div style={{ display: "flex", alignItems: "center", gap: 5, flex: "none" }}>
+          {system
+            ? <button className="icon-btn sm" title="Дублировать в свой стиль" aria-label="Дублировать в свой стиль" onClick={onDuplicate}><I.copy size={15} /></button>
+            : <React.Fragment>
+                <button className="icon-btn sm" title="Редактировать стиль" aria-label="Редактировать стиль" onClick={onEdit}><I.gear size={15} /></button>
+                <button className="icon-btn sm" title="Удалить стиль" aria-label="Удалить стиль" onClick={onRemove}><I.trash size={15} /></button>
+              </React.Fragment>}
+          <span style={{ fontSize: "var(--fs-11)", fontWeight: 700, padding: "3px 9px", borderRadius: 99, background: system ? "var(--surface-2)" : "rgba(94,107,91,.14)", color: system ? "var(--muted)" : "var(--accent-2)" }}>{system ? "база" : "мой"}</span>
+        </div>
       </div>
 
       <div style={{ display: "flex", height: 40, borderRadius: 9, overflow: "hidden", border: "1px solid var(--hairline)" }}>
@@ -98,15 +117,6 @@ function StyleLibCard({ s, system, onEdit, onDuplicate, onRemove }) {
         {(s.materials || []).slice(0, 5).map((m, i) => (
           <span key={i} style={{ fontSize: "var(--fs-11)", fontWeight: 600, color: "var(--muted)", padding: "3px 9px", borderRadius: 99, background: "var(--glass-2)", border: "1px solid var(--hairline)" }}>{m}</span>
         ))}
-      </div>
-
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, paddingTop: 12, marginTop: "auto", borderTop: "1px solid var(--hairline)" }}>
-        <span style={{ fontSize: "var(--fs-12)", fontWeight: 700, color: delta > 0 ? "var(--accent)" : delta < 0 ? "var(--accent-2)" : "var(--muted)" }}>{factorDelta(s.factor)}</span>
-        <div style={{ display: "flex", gap: 6 }}>
-          <button className="btn btn-ghost" style={{ padding: "7px 12px", fontSize: "var(--fs-12)" }} onClick={onDuplicate} title="Дублировать в свой"><I.layers size={14} />Дублировать</button>
-          {!system && <button className="icon-btn sm" title="Редактировать" aria-label="Редактировать" onClick={onEdit}><I.edit size={15} /></button>}
-          {!system && <button className="icon-btn sm" title="Удалить" aria-label="Удалить" onClick={onRemove}><I.trash size={15} /></button>}
-        </div>
       </div>
     </div>
   );
@@ -119,10 +129,11 @@ function StyleEditor({ draft, onClose, onSaved }) {
   const [done, setDone] = useS(false);   // короткая галочка «Сохранено» перед закрытием
   const [mat, setMat] = useS("");
   const [nameErr, setNameErr] = useS("");  // валидация: имя обязательно и уникально
+  const [pickIdx, setPickIdx] = useS(-1);  // индекс свотча с открытой палитрой выбора | -1
   const set = (patch) => setD((x) => ({ ...x, ...patch }));
 
   const setColor = (i, v) => setD((x) => { const p = [...x.palette]; p[i] = v; return { ...x, palette: p }; });
-  const addColor = () => setD((x) => x.palette.length >= 6 ? x : { ...x, palette: [...x.palette, "#B79B82"] });
+  const addColor = () => setD((x) => x.palette.length >= 8 ? x : { ...x, palette: [...x.palette, "#B79B82"] });
   const rmColor = (i) => setD((x) => x.palette.length <= 2 ? x : { ...x, palette: x.palette.filter((_, j) => j !== i) });
   const addMat = () => { const v = mat.trim(); if (!v) return; setD((x) => x.materials.includes(v) ? x : { ...x, materials: [...x.materials, v] }); setMat(""); };
   const rmMat = (i) => setD((x) => ({ ...x, materials: x.materials.filter((_, j) => j !== i) }));
@@ -154,6 +165,29 @@ function StyleEditor({ draft, onClose, onSaved }) {
         </div>
 
         <div style={{ padding: 24, display: "flex", flexDirection: "column", gap: 20, maxHeight: "68vh", overflow: "auto" }}>
+          {/* живой предпросмотр — карточка стиля собирается на глазах, все цвета видны */}
+          <div style={{ borderRadius: "var(--r-lg)", border: "1px solid var(--hairline)", background: "var(--glass-2)", padding: 16, display: "flex", flexDirection: "column", gap: 11 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 8 }}>
+              <div style={{ minWidth: 0 }}>
+                <div style={{ fontWeight: 800, fontFamily: "var(--font-display)", fontSize: "var(--fs-18)", letterSpacing: "-0.01em", color: d.name ? "var(--text)" : "var(--faint)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{d.name || "Название стиля"}</div>
+                <div style={{ fontSize: "var(--fs-12)", color: "var(--muted)", marginTop: 3, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{d.mood || DECOR_LABEL[d.decorLevel]}</div>
+              </div>
+              <span style={{ fontFamily: "var(--font-mono)", fontSize: "var(--fs-11)", letterSpacing: ".08em", textTransform: "uppercase", color: "var(--muted)", flex: "none" }}>превью</span>
+            </div>
+            <div style={{ display: "flex", height: 46, borderRadius: 9, overflow: "hidden", border: "1px solid var(--hairline)" }}>
+              {d.palette.map((c, i) => <span key={i} title={c} style={{ flex: 1, background: c }} />)}
+            </div>
+            {d.materials.length > 0 && (
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                {d.materials.slice(0, 6).map((m, i) => <span key={i} style={{ fontSize: "var(--fs-11)", fontWeight: 600, color: "var(--muted)", padding: "3px 9px", borderRadius: 99, background: "var(--surface)", border: "1px solid var(--hairline)" }}>{m}</span>)}
+              </div>
+            )}
+            <div style={{ display: "flex", justifyContent: "space-between", fontSize: "var(--fs-11)", color: "var(--muted)" }}>
+              <span>{DECOR_LABEL[d.decorLevel]}</span>
+              <span style={{ fontWeight: 700, color: delta > 0 ? "var(--accent)" : delta < 0 ? "var(--accent-2)" : "var(--muted)" }}>{factorDelta(d.factor)}</span>
+            </div>
+          </div>
+
           <Fld label="Название">
             <input className="fld" value={d.name} aria-invalid={nameErr ? "true" : undefined}
               onChange={(e) => { set({ name: e.target.value }); if (nameErr) setNameErr(""); }} placeholder="Например: Тёплый лофт" />
@@ -163,20 +197,49 @@ function StyleEditor({ draft, onClose, onSaved }) {
             <input className="fld" value={d.mood} onChange={(e) => set({ mood: e.target.value })} placeholder="Терракота, металл, дерево" />
           </Fld>
 
-          {/* палитра: свотч + HEX-ввод (точные бренд-цвета, не только пипетка) */}
+          {/* палитра: клик по свотчу раскрывает интерактивную палитру выбора
+             (готовые цвета + пипетка + HEX) инлайн-панелью — не обрезается скроллом */}
           <div>
             <FldLabel>Палитра</FldLabel>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 10, alignItems: "flex-start" }}>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 10, alignItems: "center" }}>
               {d.palette.map((c, i) => (
-                <div key={i} style={{ position: "relative", display: "flex", flexDirection: "column", gap: 6, alignItems: "center" }}>
-                  <input type="color" value={c} onChange={(e) => setColor(i, e.target.value)}
-                    style={{ width: 46, height: 46, border: "1px solid var(--hairline)", borderRadius: 10, padding: 0, background: "none", cursor: "pointer" }} title={c} />
-                  <HexInput value={c} onSet={(v) => setColor(i, v)} />
-                  {d.palette.length > 2 && <button onClick={() => rmColor(i)} aria-label="Убрать цвет" style={{ position: "absolute", top: -7, right: -7, width: 20, height: 20, borderRadius: "50%", background: "var(--surface)", border: "1px solid var(--hairline)", color: "var(--muted)", display: "grid", placeItems: "center", boxShadow: "var(--shadow-card)" }}><I.close size={11} /></button>}
+                <div key={i} style={{ position: "relative" }}>
+                  <button type="button" onClick={() => setPickIdx(pickIdx === i ? -1 : i)}
+                    title={c} aria-label={"Цвет " + (i + 1) + ", " + c} aria-expanded={pickIdx === i}
+                    style={{ width: 46, height: 46, borderRadius: 10, background: c, cursor: "pointer",
+                      border: pickIdx === i ? "2px solid var(--accent)" : "1px solid var(--hairline)",
+                      boxShadow: pickIdx === i ? "var(--shadow-lift)" : undefined }} />
+                  {d.palette.length > 2 && <button onClick={() => { rmColor(i); if (pickIdx >= i) setPickIdx(-1); }} aria-label="Убрать цвет" style={{ position: "absolute", top: -7, right: -7, width: 20, height: 20, borderRadius: "50%", background: "var(--surface)", border: "1px solid var(--hairline)", color: "var(--muted)", display: "grid", placeItems: "center", boxShadow: "var(--shadow-card)" }}><I.close size={11} /></button>}
                 </div>
               ))}
-              {d.palette.length < 6 && <button onClick={addColor} style={{ width: 46, height: 46, borderRadius: 10, border: "1.5px dashed var(--hairline)", color: "var(--muted)", display: "grid", placeItems: "center" }} title="Добавить цвет"><I.plus size={18} /></button>}
+              {d.palette.length < 8 && <button onClick={() => { const n = d.palette.length; addColor(); setPickIdx(n); }} style={{ width: 46, height: 46, borderRadius: 10, border: "1.5px dashed var(--hairline)", color: "var(--muted)", display: "grid", placeItems: "center" }} title="Добавить цвет" aria-label="Добавить цвет"><I.plus size={18} /></button>}
             </div>
+
+            {pickIdx >= 0 && pickIdx < d.palette.length && (
+              <div style={{ marginTop: 12, padding: 12, borderRadius: 12, border: "1px solid var(--hairline)", background: "var(--glass-2)" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+                  <span style={{ fontSize: "var(--fs-12)", fontWeight: 600, color: "var(--muted)" }}>Цвет {pickIdx + 1} — выберите из палитры или задайте свой</span>
+                  <button className="icon-btn sm" aria-label="Свернуть выбор цвета" onClick={() => setPickIdx(-1)}><I.close size={14} /></button>
+                </div>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(26px, 1fr))", gap: 6 }}>
+                  {PRESET_COLORS.map((pc) => {
+                    const active = (d.palette[pickIdx] || "").toLowerCase() === pc.toLowerCase();
+                    return <button key={pc} type="button" onClick={() => setColor(pickIdx, pc)} title={pc} aria-label={pc} aria-pressed={active}
+                      style={{ aspectRatio: "1", borderRadius: 7, background: pc, cursor: "pointer",
+                        border: active ? "2px solid var(--accent)" : "1px solid var(--hairline)",
+                        boxShadow: active ? "var(--shadow-lift)" : undefined }} />;
+                  })}
+                </div>
+                <div style={{ display: "flex", gap: 10, alignItems: "center", marginTop: 12, paddingTop: 12, borderTop: "1px solid var(--hairline)" }}>
+                  <label style={{ display: "inline-flex", alignItems: "center", gap: 7, fontSize: "var(--fs-12)", color: "var(--muted)", cursor: "pointer" }}>
+                    <input type="color" value={d.palette[pickIdx]} onChange={(e) => setColor(pickIdx, e.target.value)}
+                      style={{ width: 34, height: 34, border: "1px solid var(--hairline)", borderRadius: 8, padding: 0, background: "none", cursor: "pointer" }} title="Свой цвет" />
+                    Свой цвет
+                  </label>
+                  <HexInput value={d.palette[pickIdx]} onSet={(v) => setColor(pickIdx, v)} />
+                </div>
+              </div>
+            )}
           </div>
 
           {/* материалы */}
