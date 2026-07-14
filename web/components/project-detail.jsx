@@ -958,7 +958,7 @@ function RoomSpecOverlay({ data, nav, onClose, onSaved }) {
                     : <div style={{ display: "flex", gap: 8, marginTop: 10, flexWrap: "wrap" }}>
                         {/* Д1 (W6): инлайн-панель добавления в контексте комнаты — паттерн Programa
                            «строка вставки между секциями»; «По ссылке» первым с искоркой (клиппер) */}
-                        <button className="btn-ws" onClick={() => setAddOpen({ tab: "clip", room: r.name })}
+                        <button className="btn-ws btn-ws-clip" onClick={() => setAddOpen({ tab: "clip", room: r.name })}
                           title={"Вставить ссылку на товар — клиппер извлечёт название и цену сразу в комнату «" + r.name + "»"}>
                           <I.spark size={14} style={{ color: "var(--accent)" }} />По ссылке</button>
                         {FFE && <button className="btn-ws" onClick={() => setPickerRoom(ri)}><I.layers size={14} />Из библиотеки</button>}

@@ -52,6 +52,12 @@ select.fld { appearance: none; cursor: pointer;
 .btn-ws:active { transform: translateY(1px); }
 .btn-ws:disabled, .btn-ws[aria-disabled="true"] { opacity: .55; cursor: not-allowed; }
 .btn-ws[aria-pressed="true"] { color: var(--accent-ink); }
+/* «По ссылке» — фирменное действие клиппера, подсвечено как у Programa: терракотовый
+   тинт + акцентный текст + тонкое кольцо, чтобы вести взгляд среди нейтральных соседей */
+.btn-ws-clip { color: var(--accent-ink); background: var(--accent-tint);
+  box-shadow: inset 0 0 0 1px rgba(183, 80, 44, .28), var(--shadow-ctl); }
+.btn-ws-clip:hover { background: rgba(183, 80, 44, .13);
+  box-shadow: inset 0 0 0 1px rgba(183, 80, 44, .42), var(--shadow-lift); }
 
 /* мини-кнопка 20×20 (prev/next в шапке драуэра — §5.7) */
 .btn-mini { width: 22px; height: 22px; border-radius: 6px; display: grid; place-items: center;
