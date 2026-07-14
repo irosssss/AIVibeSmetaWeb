@@ -50,7 +50,7 @@ function Footer({ go }) {
   const cols = [
     ["Продукт", window.footLinksFrom(window.LANDING_SECTIONS)],
     ["Технологии", [["Смета из ссылки", "#how"], ["Каталог фабрик", "#komplektacia"], ["YandexGPT 5", "#features"], ["Выгрузка сметы", "#komplektacia"]]],
-    ["Компания", [["Что нового", "#changelog"], ["О проекте", null], ["Контакты", null], ["Политика", null], ["Оферта", null]]],
+    ["Компания", [["Что нового", "#changelog"], ["О проекте", null], ["Контакты", null], ["Политика", "#policy"], ["Оферта", "#offer"]]],
   ];
   return (
     <footer style={{ marginTop: 40 }}>
