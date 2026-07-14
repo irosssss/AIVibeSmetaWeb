@@ -747,6 +747,11 @@
       // контакты студии для клиента (волна W4.1) — тот же снимок-на-момент-публикации;
       // ИНН намеренно не сюда — он для будущих счетов (волна D), не для клиентского портала
       studioCity: str(src.studioCity), studioPhone: str(src.studioPhone), studioEmail: str(src.studioEmail),
+      // паспорт стиля проекта («стили ожили», 14.07) — снимок на момент публикации,
+      // как studioName: клиент видит палитру и материалы направления; null = стиль не задан
+      style: src.style && str(src.style.name)
+        ? { name: str(src.style.name), palette: Array.isArray(src.style.palette) ? src.style.palette.slice(0, 6) : [], materials: Array.isArray(src.style.materials) ? src.style.materials.slice(0, 8) : [] }
+        : null,
       snapshot: JSON.parse(JSON.stringify(src.snapshot || {})),
       visibility: Object.assign(defaultShareVisibility(), src.visibility || {}),
       createdAt: new Date().toISOString(),
@@ -832,13 +837,24 @@
      позиции прошлых проектов), БЕЗ каталога фабрик — версия из своего; фид подключится
      тем же интерфейсом (роадмап §2 «Аналоги в один клик»). Чистый скоринг:
      совпадение раздела (+3) > пересечение слов названия (+1 за слово, максимум 2) >
-     цена в коридоре ±40% (+1). Кандидаты без пересечений отбрасываются; сам товар
-     (одинаковое название) исключён. Возврат: топ-n с дельтой цены в процентах. */
+     цена в коридоре ±40% (+1) > материал стиля проекта (+1, opts.styleMaterials —
+     «стили ожили», 14.07: буст, НЕ квалификация — стиль не пропуск в выдачу).
+     Кандидаты без пересечений отбрасываются; сам товар (одинаковое название) исключён.
+     Возврат: топ-n с дельтой цены в процентах + styleMatch для чипа «в стиле» в UI. */
   const altWords = (s) => str(s).toLowerCase().split(/[^a-zа-яё0-9]+/).filter((w) => w.length > 2);
-  function suggestAlternatives(target, candidates, n) {
+  // токены материалов стиля («тёплое дерево» → ["тёплое","дерево"]) против материала/названия товара
+  const styleTokens = (materials) => (Array.isArray(materials) ? materials : [])
+    .flatMap((m) => altWords(m));
+  const matchesStyle = (c, tokens) => {
+    if (!tokens.length) return false;
+    const hay = (str(c.material) + " " + str(c.title)).toLowerCase();
+    return tokens.some((tk) => hay.includes(tk));
+  };
+  function suggestAlternatives(target, candidates, n, opts) {
     const t = target || {};
     const tw = altWords(t.title);
     const tPrice = Math.max(0, num(t.price, 0));
+    const stk = styleTokens(opts && opts.styleMaterials);
     const seen = new Set();
     const scored = [];
     (candidates || []).forEach((c) => {
@@ -857,9 +873,11 @@
       if (score <= 0) return;
       const cPrice = Math.max(0, num(c.price, 0));
       if (tPrice > 0 && cPrice > 0 && Math.abs(cPrice - tPrice) / tPrice <= 0.4) score += 1;
+      const styleMatch = matchesStyle(c, stk);
+      if (styleMatch) score += 1;
       seen.add(key);
       const priceDeltaPct = tPrice > 0 && cPrice > 0 ? Math.round(((cPrice - tPrice) / tPrice) * 100) : null;
-      scored.push({ product: c, score, priceDeltaPct });
+      scored.push({ product: c, score, priceDeltaPct, styleMatch });
     });
     return scored
       .sort((a, b) => b.score - a.score || num(a.product.price, 0) - num(b.product.price, 0))

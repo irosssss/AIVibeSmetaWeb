@@ -751,11 +751,16 @@ function NewProjectModal({ onClose, onCreate, onExample }) {
   const [area, setArea] = useCV(24);
   const [budget, setBudget] = useCV(420000);
   const [busy, setBusy] = useCV(false);
+  // стиль проекта («стили ожили», 14.07) — по желанию: раньше создание вовсе не спрашивало
+  // стиль (style:""), и библиотека стилей была островом; хранится имя из реестра
+  const [style, setStyle] = useCV("");
+  const [stylesAll, setStylesAll] = useCV([]);
+  useCVE(() => { LedgerAPI.styles.list().then((xs) => setStylesAll(xs || [])); }, []);
   const rooms = ["Гостиная", "Спальня", "Кухня", "Кабинет", "Детская", "Прихожая", "Ванная"];
   const submit = async () => {
     if (busy) return;
     setBusy(true);
-    const p = await LedgerAPI.projects.create({ name: name.trim() || (room + " — новый проект"), room, area: +area || 0, budget: +budget || 0, style: "" });
+    const p = await LedgerAPI.projects.create({ name: name.trim() || (room + " — новый проект"), room, area: +area || 0, budget: +budget || 0, style });
     setBusy(false);
     onCreate(p);
   };
@@ -780,6 +785,13 @@ function NewProjectModal({ onClose, onCreate, onExample }) {
               <input className="fld" type="number" min="1" value={area} onChange={(e) => setArea(e.target.value)} />
             </label>
           </div>
+          <label style={{ display: "block" }}>
+            <span style={{ display: "block", fontSize: "var(--fs-13)", color: "var(--muted)", marginBottom: 7, fontWeight: 600 }}>Стиль <span style={{ fontWeight: 400 }}>(по желанию — влияет на подбор аналогов)</span></span>
+            <select className="fld" value={style} onChange={(e) => setStyle(e.target.value)} style={{ cursor: "pointer" }}>
+              <option value="">Без стиля — выберу позже</option>
+              {stylesAll.map((s) => <option key={s.id} value={s.name}>{s.name}{s.owner ? " · мой" : ""}</option>)}
+            </select>
+          </label>
           <label style={{ display: "block" }}>
             <span style={{ display: "flex", justifyContent: "space-between", fontSize: "var(--fs-13)", color: "var(--muted)", marginBottom: 7, fontWeight: 600 }}>Бюджет<b className="mono" style={{ color: "var(--accent)", fontWeight: 600, fontSize: "var(--fs-15)" }}>{fmtMoney(budget)}</b></span>
             <input type="range" min="120000" max="1500000" step="20000" value={budget} onChange={(e) => setBudget(+e.target.value)} style={{ width: "100%", accentColor: "var(--accent)", cursor: "pointer" }} />
