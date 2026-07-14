@@ -403,6 +403,21 @@
      БЕЗ количества/стадии закупки/согласования: они рождаются в смете, а не в каталоге.
      Поставщик хранится в поле `sup` (как в строке сметы и выгрузках), НЕ `supplier`
      полной FF&E-схемы — так маппинг товар↔позиция идёт без трения. */
+  /* Варианты товара: цвет со своим артикулом (+ опционально своя цена и HEX для свотча) —
+     «option → variant» по Medusa (PRD портала поставщиков §5, срез 1). Вариант без цвета
+     И без артикула — пустая строка формы, отбрасываем. HEX строгий #RRGGBB, иначе "". */
+  function normProductVariants(list) {
+    return (Array.isArray(list) ? list : []).map((v) => {
+      const o = v || {};
+      const hex = /^#[0-9a-f]{6}$/i.test(str(o.colorHex).trim()) ? str(o.colorHex).trim().toUpperCase() : "";
+      return {
+        color:    str(o.color),                 // Цвет / отделка варианта («Графит», «Дуб натуральный»)
+        colorHex: hex,                          // Свотч для карточки/пикера; "" = показать нейтральный
+        article:  str(o.article || o.sku),      // Свой артикул варианта
+        price:    o.price != null && o.price !== "" ? Math.max(0, Math.round(num(o.price, 0))) : "", // "" = базовая цена товара
+      };
+    }).filter((v) => v.color || v.article);
+  }
   function blankProduct(over) {
     const o = over || {};
     const dims = o.dims || {};
@@ -413,13 +428,28 @@
       unit:    o.unit || "шт",                  // Единица измерения
       price:   Math.max(0, Math.round(num(o.price, 0))), // Цена за единицу, ₽ (ориентир студии)
       sup:     str(o.sup || o.supplier),        // Поставщик / фабрика / магазин
-      article: str(o.article || o.sku),         // Артикул
+      brand:   str(o.brand),                    // Бренд/марка (≠ поставщик: дилер продаёт чужой бренд) — портал поставщиков, срез 1
+      article: str(o.article || o.sku),         // Артикул (базовый; у варианта может быть свой)
       url:     str(o.url),                       // Ссылка на товар
       note:    str(o.note),                      // Примечание
       dims: { w: d(dims.w), d: d(dims.d), h: d(dims.h) }, // Габариты, см (Ш×Г×В)
       priceDate: str(o.priceDate),               // Дата последней проверки цены (свежесть — волна B3); "" = неизвестно
       feedSku:   str(o.feedSku),                 // Артикул фида фабрик (волна B4, мостик) — пусто, пока фида нет
+      variants:  normProductVariants(o.variants), // Варианты цвета со своим артикулом (портал поставщиков, срез 1)
     };
+  }
+  /* Вариант → транзиентная мастер-запись для пикера/positionFromProduct: артикул и цена
+     варианта перекрывают базовые, цвет уезжает в material позиции («Отделка / материал» —
+     поле видно и клиенту, как colour/finish у Programa). Название НЕ трогаем: цвет живёт
+     в material, а не в «Диван — Графит». В хранилище такой товар не пишется. */
+  function productWithVariant(p, v) {
+    const o = p || {}, w = v || {};
+    const out = { ...o };
+    if (str(w.article)) out.article = str(w.article);
+    if (w.price !== "" && w.price != null) out.price = Math.max(0, Math.round(num(w.price, 0)));
+    if (str(w.color)) out.material = str(w.color);
+    delete out.variants;
+    return out;
   }
   /* Демо-товары для пустой библиотеки (K4, паттерн Programa «Add demo products»):
      один клик наполняет пустой реестр реалистичными записями, чтобы новый дизайнер
@@ -430,7 +460,13 @@
      сегмент (как в сид-проектах). Схему нормализует blankProduct на library.create;
      priceDate ставит сам API (сегодня). «Поставщики» — обобщённые, не реальные бренды. */
   const DEMO_LIBRARY_PRODUCTS = [
-    { title: "Диван 3-местный, велюр", cat: "Мягкая мебель", price: 164900, sup: "Фабрика мягкой мебели", article: "SF-3200", dims: { w: 220, d: 95, h: 78 } },
+    { title: "Диван 3-местный, велюр", cat: "Мягкая мебель", price: 164900, sup: "Фабрика мягкой мебели", article: "SF-3200", dims: { w: 220, d: 95, h: 78 },
+      // витрина вариантов (портал поставщиков, срез 1): цвет со своим артикулом, у одного — своя цена
+      variants: [
+        { color: "Графит", colorHex: "#4A4E57", article: "SF-3200-GR" },
+        { color: "Бежевый", colorHex: "#CBB89D", article: "SF-3200-BG" },
+        { color: "Зелёный", colorHex: "#2F4A3C", article: "SF-3200-GN", price: 172900 },
+      ] },
     { title: "Кресло с деревянным каркасом", cat: "Мягкая мебель", price: 58000, sup: "Фабрика мягкой мебели", article: "AR-118", dims: { w: 74, d: 80, h: 82 } },
     { title: "Обеденный стол, дуб массив", cat: "Мебель", price: 92000, sup: "Столярная мастерская", article: "TB-160", dims: { w: 160, d: 90, h: 75 } },
     { title: "Люстра подвесная, латунь", cat: "Освещение", price: 38000, sup: "Салон света", article: "LM-05", dims: { w: 60, d: 60, h: 45 } },
@@ -456,6 +492,14 @@
     const pos = { title: str(o.title), qty: 1, price: Math.max(0, Math.round(num(o.price, 0))) };
     if (str(o.cat)) pos.cat = str(o.cat);
     if (str(o.sup)) pos.sup = str(o.sup);
+    // FF&E-детали мастер-записи доезжают до позиции (портал поставщиков, срез 1:
+    // «свой артикул» и цвет варианта — через productWithVariant → article/material)
+    if (str(o.article)) pos.sku = str(o.article);
+    if (str(o.material)) pos.material = str(o.material);
+    if (str(o.url)) pos.url = str(o.url);
+    if (o.unit && o.unit !== "шт") pos.unit = o.unit;
+    const dm = o.dims || {};
+    if (["w", "d", "h"].some((k) => dm[k] !== "" && dm[k] != null)) pos.dims = { w: dm.w, d: dm.d, h: dm.h };
     pos.priceDate = str(o.priceDate) || date || today();
     return pos;
   };
@@ -924,7 +968,7 @@
     blankPosition, normalizePosition, dimsLabel, ffeMeta, qtyLabel, costUnit, lineTotal, rrpUnit, rrpLine,
     docCodePrefix, assignDocCodes,
     blankComment, addComment,
-    blankProduct, productFromPosition, positionFromProduct, DEMO_LIBRARY_PRODUCTS,
+    blankProduct, productFromPosition, positionFromProduct, productWithVariant, DEMO_LIBRARY_PRODUCTS,
     blankSupplier, supplierMatch,
     blankExtra, extraAmount, extrasTotal,
     BENCHMARK, estimateBudget, generateEstimate, setPendingDraft, takePendingDraft,

@@ -11,15 +11,21 @@
    ============================================================ */
 const { useState: useL, useEffect: useLE } = React;
 
-/* поставщик + артикул одной строкой карточки/пикера */
-const libMeta = (p) => [p.sup, p.article ? "арт. " + p.article : ""].filter(Boolean).join(" · ");
-const libBlankDraft = () => ({ __new: true, title: "", cat: "", unit: "шт", price: "", sup: "", article: "", url: "", note: "", feedSku: "", dims: { w: "", d: "", h: "" } });
+/* бренд + поставщик + артикул одной строкой карточки/пикера */
+const libMeta = (p) => [p.brand, p.sup, p.article ? "арт. " + p.article : ""].filter(Boolean).join(" · ");
+const libBlankDraft = () => ({ __new: true, title: "", cat: "", unit: "шт", price: "", sup: "", brand: "", article: "", url: "", note: "", feedSku: "", dims: { w: "", d: "", h: "" }, variants: [] });
 // запись из хранилища → черновик редактора (числа → строки для полей ввода)
 const libToDraft = (p) => {
   const s = (v) => (v === "" || v == null ? "" : String(v));
   const d = p.dims || {};
-  return { ...p, price: s(p.price), dims: { w: s(d.w), d: s(d.d), h: s(d.h) } };
+  return { ...p, price: s(p.price), dims: { w: s(d.w), d: s(d.d), h: s(d.h) },
+    variants: (p.variants || []).map((v) => ({ ...v, price: s(v.price) })) };
 };
+/* нейтральный свотч, когда HEX варианта не задан */
+const libSwatch = (hex, size) => (
+  <span aria-hidden="true" style={{ width: size, height: size, flex: "none", borderRadius: "50%",
+    background: hex || "var(--glass-2)", border: "1px solid var(--hairline-2)", display: "inline-block" }} />
+);
 
 function ProductsLibrary() {
   const [rows, setRows] = useL(null);
@@ -171,6 +177,16 @@ function ProductCard({ p, onEdit, onRemove }) {
         </div>
       )}
 
+      {(p.variants || []).length > 0 && (
+        <div style={{ display: "flex", alignItems: "center", gap: 5 }}
+          title={"Варианты: " + p.variants.map((v) => [v.color, v.article].filter(Boolean).join(" ")).join(" · ")}>
+          {p.variants.slice(0, 6).map((v, i) => <React.Fragment key={i}>{libSwatch(v.colorHex, 14)}</React.Fragment>)}
+          <span style={{ fontSize: "var(--fs-11)", color: "var(--muted)", marginLeft: 3 }}>
+            {p.variants.length} {p.variants.length === 1 ? "вариант" : p.variants.length < 5 ? "варианта" : "вариантов"}
+          </span>
+        </div>
+      )}
+
       {(p.priceDate || p.feedSku) && (
         <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
           {p.priceDate && <PriceAgeChip d={p.priceDate} />}
@@ -200,6 +216,7 @@ function ProductEditor({ draft, onClose, onSaved }) {
   const [nameErr, setNameErr] = useL("");
   const set = (patch) => setD((x) => ({ ...x, ...patch }));
   const setDim = (k, v) => setD((x) => ({ ...x, dims: { ...x.dims, [k]: v } }));
+  const setVar = (i, patch) => setD((x) => ({ ...x, variants: (x.variants || []).map((v, j) => (j === i ? { ...v, ...patch } : v)) }));
   const F = window.LedgerFFE;
   const cats = (F && F.FFE_CATEGORIES) || [];
   const units = (F && F.FFE_UNITS) || ["шт"];
@@ -213,7 +230,7 @@ function ProductEditor({ draft, onClose, onSaved }) {
       setNameErr("Товар «" + title + "» уже есть в библиотеке — назовите этот иначе или отредактируйте существующий.");
       return;
     }
-    const payload = { title, cat: d.cat, unit: d.unit, price: d.price, sup: d.sup, article: d.article, url: d.url, note: d.note, feedSku: d.feedSku, dims: d.dims };
+    const payload = { title, cat: d.cat, unit: d.unit, price: d.price, sup: d.sup, brand: d.brand, article: d.article, url: d.url, note: d.note, feedSku: d.feedSku, dims: d.dims, variants: d.variants };
     setBusy(true);
     if (d.__new) await LedgerAPI.library.create(payload);
     else await LedgerAPI.library.update(d.id, payload);
@@ -255,13 +272,46 @@ function ProductEditor({ draft, onClose, onSaved }) {
           <div style={{ marginTop: -10 }}><PriceAgeChip d={d.priceDate} /></div>
         )}
 
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
           <LibFld label="Поставщик / фабрика">
             <input className="fld" value={d.sup} onChange={(e) => set({ sup: e.target.value })} placeholder="точка закупки" />
+          </LibFld>
+          <LibFld label="Бренд">
+            <input className="fld" value={d.brand || ""} onChange={(e) => set({ brand: e.target.value })} placeholder="если ≠ поставщику" />
           </LibFld>
           <LibFld label="Артикул">
             <input className="fld" value={d.article} onChange={(e) => set({ article: e.target.value })} placeholder="SKU / код" />
           </LibFld>
+        </div>
+
+        {/* Варианты цвета (портал поставщиков, срез 1): цвет со своим артикулом и опционально
+            своей ценой. При добавлении из пикера в смету выбирается конкретный вариант:
+            его артикул → sku позиции, цвет → «Отделка / материал». */}
+        <div>
+          <LibFldLabel>Варианты цвета — свой артикул у каждого</LibFldLabel>
+          {(d.variants || []).map((v, i) => (
+            <div key={i} style={{ display: "grid", gridTemplateColumns: "34px 1.2fr 1fr 88px 30px", gap: 8, alignItems: "center", marginBottom: 8 }}>
+              <input type="color" value={v.colorHex || "#C9BFB2"} aria-label={"Цвет свотча варианта " + (i + 1)}
+                onChange={(e) => setVar(i, { colorHex: e.target.value })}
+                style={{ width: 34, height: 34, padding: 2, border: "1px solid var(--hairline)", borderRadius: 9, background: "var(--surface)", cursor: "pointer" }} />
+              <input className="fld" value={v.color} aria-label={"Название цвета варианта " + (i + 1)}
+                onChange={(e) => setVar(i, { color: e.target.value })} placeholder="Цвет: Графит, Дуб…" />
+              <input className="fld" value={v.article} aria-label={"Артикул варианта " + (i + 1)}
+                onChange={(e) => setVar(i, { article: e.target.value })} placeholder="Артикул" />
+              <input className="fld" style={{ fontFamily: "var(--font-mono)" }} type="number" min="0" step="100" inputMode="numeric"
+                value={v.price} aria-label={"Цена варианта " + (i + 1) + ", ₽ (пусто — базовая)"}
+                onChange={(e) => setVar(i, { price: e.target.value })} placeholder="базовая" />
+              <button className="icon-btn sm" title="Убрать вариант" aria-label={"Убрать вариант " + (i + 1)}
+                onClick={() => setD((x) => ({ ...x, variants: x.variants.filter((_, j) => j !== i) }))}><I.close size={14} /></button>
+            </div>
+          ))}
+          <button className="btn btn-ghost" style={{ padding: "7px 12px", fontSize: "var(--fs-12)" }}
+            onClick={() => setD((x) => ({ ...x, variants: [...(x.variants || []), { color: "", colorHex: "", article: "", price: "" }] }))}>
+            <I.plus size={14} />Добавить вариант
+          </button>
+          <span style={{ display: "block", fontSize: "var(--fs-12)", color: "var(--muted)", marginTop: 6, lineHeight: 1.5 }}>
+            В пикере комнаты каждый цвет — отдельная строка; в позицию сметы уедут артикул варианта и цвет (в «Отделку / материал»). Цена пустая — берётся базовая.
+          </span>
         </div>
 
         <LibFld label="Артикул фида фабрик (SKU)">
@@ -320,21 +370,31 @@ function LibraryPickerModal({ roomName, onClose, onAdd, styleMaterials = null })
   const all = (rows || []).slice()
     .sort((a, b) => (inStyle(b) - inStyle(a)) || (a.title || "").localeCompare(b.title || "", "ru"));
   const qq = norm(q.trim());
-  const shown = qq ? all.filter((p) => [p.title, p.cat, p.sup, p.article].some((f) => norm(f).includes(qq))) : all;
-  const toggle = (id) => setSel((s) => ({ ...s, [id]: !s[id] }));
-  const chosen = all.filter((p) => sel[p.id]);
-  const sum = chosen.reduce((s, p) => s + (p.price || 0), 0);
-  const add = () => { if (chosen.length) onAdd(chosen); };
+  const shown = qq ? all.filter((p) =>
+    [p.title, p.cat, p.sup, p.brand, p.article].some((f) => norm(f).includes(qq)) ||
+    (p.variants || []).some((v) => [v.color, v.article].some((f) => norm(f).includes(qq)))) : all;
+  // портал поставщиков, срез 1: товар с вариантами разворачивается в строку на каждый цвет —
+  // в смету уезжает КОНКРЕТНЫЙ вариант (его артикул → sku позиции, цвет → «Отделка / материал»)
+  const F2 = window.LedgerFFE;
+  const expand = (list) => list.flatMap((p) => ((p.variants || []).length && F2 && F2.productWithVariant)
+    ? p.variants.map((v, i) => ({ key: p.id + "::" + i, p: F2.productWithVariant(p, v), v, base: p }))
+    : [{ key: String(p.id), p, v: null, base: p }]);
+  const allEntries = expand(all);           // выбор живёт по всем записям — смена запроса не сбрасывает отметки
+  const shownEntries = expand(shown);
+  const toggle = (key) => setSel((s) => ({ ...s, [key]: !s[key] }));
+  const chosen = allEntries.filter((e) => sel[e.key]);
+  const sum = chosen.reduce((s, e) => s + (e.p.price || 0), 0);
+  const add = () => { if (chosen.length) onAdd(chosen.map((e) => e.p)); };
   // Drag&drop из поиска в смету (п.19-3, паритет с Programa): перетащить карточку товара
   // на зону-приёмник → быстрый одиночный add в комнату. Клик-выбор (мультивыбор + «Добавить»)
   // остаётся основным путём — drag это дополнение (a11y: не единственный способ, gesture-alternative).
   const [dropOn, setDropOn] = useL(false);
-  const onRowDragStart = (e, id) => { e.dataTransfer.setData("text/plain", id); e.dataTransfer.effectAllowed = "copy"; };
+  const onRowDragStart = (e, key) => { e.dataTransfer.setData("text/plain", key); e.dataTransfer.effectAllowed = "copy"; };
   const onDrop = (e) => {
     e.preventDefault(); setDropOn(false);
-    const id = e.dataTransfer.getData("text/plain");
-    const p = all.find((x) => String(x.id) === String(id));
-    if (p) onAdd([p]);
+    const key = e.dataTransfer.getData("text/plain");
+    const entry = allEntries.find((x) => x.key === key);
+    if (entry) onAdd([entry.p]);
   };
 
   return (
@@ -358,22 +418,24 @@ function LibraryPickerModal({ roomName, onClose, onAdd, styleMaterials = null })
             Библиотека пуста. Наполните её в разделе «Мастерская → Товары» или кнопкой «В библиотеку» на позициях сметы — потом сможете добавлять товары в комнаты в один клик.
           </p>
         )}
-        {rows && all.length > 0 && shown.length === 0 && <p style={{ color: "var(--muted)", fontSize: "var(--fs-14)", padding: "16px 0" }}>По запросу «{q.trim()}» ничего не нашлось.</p>}
-        {rows && shown.map((p) => {
-          const on = !!sel[p.id];
+        {rows && all.length > 0 && shownEntries.length === 0 && <p style={{ color: "var(--muted)", fontSize: "var(--fs-14)", padding: "16px 0" }}>По запросу «{q.trim()}» ничего не нашлось.</p>}
+        {rows && shownEntries.map((entry) => {
+          const { key, p, v, base } = entry;
+          const on = !!sel[key];
           const meta = libMeta(p);
           return (
-            <button key={p.id} onClick={() => toggle(p.id)} aria-pressed={on}
-              draggable onDragStart={(e) => onRowDragStart(e, p.id)}
+            <button key={key} onClick={() => toggle(key)} aria-pressed={on}
+              draggable onDragStart={(e) => onRowDragStart(e, key)}
               style={{ display: "flex", alignItems: "center", gap: 12, width: "100%", textAlign: "left", padding: "10px 12px", borderRadius: 12, marginBottom: 6, cursor: "grab",
                 border: "1px solid " + (on ? "rgba(94,107,91,.5)" : "var(--hairline)"), background: on ? "var(--accent-2-tint)" : "var(--surface)" }}>
               <span aria-hidden="true" style={{ width: 20, height: 20, flex: "none", borderRadius: 6, border: "1.5px solid " + (on ? "var(--accent-2)" : "var(--hairline-2)"), background: on ? "var(--accent-2)" : "transparent", display: "grid", placeItems: "center", color: "var(--on-accent)" }}>
                 {on && <I.check size={13} />}
               </span>
               <span style={{ minWidth: 0, flex: 1 }}>
-                <span style={{ display: "block", fontWeight: 600, fontSize: "var(--fs-13)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                  {p.title}
-                  {inStyle(p) && <span className="mono" style={{ marginLeft: 8, fontSize: "var(--fs-10)", fontWeight: 700, letterSpacing: ".04em", textTransform: "uppercase", color: "var(--accent-2-ink)", background: "var(--accent-2-tint)", padding: "2px 7px", borderRadius: 99, verticalAlign: "1px" }}>в стиле</span>}
+                <span style={{ display: "flex", alignItems: "center", gap: 7, fontWeight: 600, fontSize: "var(--fs-13)", overflow: "hidden", whiteSpace: "nowrap" }}>
+                  <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>{p.title}</span>
+                  {v && <React.Fragment>{libSwatch(v.colorHex, 12)}<span style={{ color: "var(--muted)", fontWeight: 500, flex: "none" }}>{v.color}</span></React.Fragment>}
+                  {inStyle(base) && <span className="mono" style={{ flex: "none", fontSize: "var(--fs-10)", fontWeight: 700, letterSpacing: ".04em", textTransform: "uppercase", color: "var(--accent-2-ink)", background: "var(--accent-2-tint)", padding: "2px 7px", borderRadius: 99 }}>в стиле</span>}
                 </span>
                 {(p.cat || meta) && <span style={{ display: "block", fontSize: "var(--fs-12)", color: "var(--muted)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{[p.cat, meta].filter(Boolean).join(" · ")}</span>}
               </span>
