@@ -4,15 +4,15 @@
    ============================================================ */
 const { useState: useApp, useEffect: useAppE } = React;
 
-const VIEWS = ["site", "auth", "cabinet", "admin", "portal", "changelog", "journal", "article", "policy", "offer"];
+const VIEWS = ["site", "auth", "cabinet", "admin", "portal", "changelog", "journal", "article", "policy", "offer", "for-suppliers"];
 /* публичные страницы без кабинет-хрома и dev-свитчера (портал клиента + контент-страницы) */
-const PUBLIC_VIEWS = ["portal", "changelog", "journal", "article", "policy", "offer"];
+const PUBLIC_VIEWS = ["portal", "changelog", "journal", "article", "policy", "offer", "for-suppliers"];
 const routeView = () => { const v = parseRoute().view; return VIEWS.includes(v) ? v : "site"; };
 
 /* document.title раньше ставил только портал — кабинет/смета/админка жили с одним
    90-символьным SEO-тайтлом промо (вкладки в браузере неразличимы). sub — читаемая
    деталь (имя открытого проекта в смете); без неё — просто заголовок вкладки. */
-const VIEW_TITLE = { auth: "Вход", cabinet: "Кабинет", admin: "Админка", changelog: "Что нового", journal: "Журнал", article: "Журнал", policy: "Политика конфиденциальности", offer: "Публичная оферта" };
+const VIEW_TITLE = { auth: "Вход", cabinet: "Кабинет", admin: "Админка", changelog: "Что нового", journal: "Журнал", article: "Журнал", policy: "Политика конфиденциальности", offer: "Публичная оферта", "for-suppliers": "Поставщикам" };
 const SITE_TITLE = document.title;   // SEO-тайтл промо из index.html — захвачен один раз при загрузке
 function setTitle(view, sub) {
   if (view === "portal") return;               // портал ставит свой тайтл сам (ClientPortal)
@@ -104,6 +104,7 @@ function App() {
   else if (view === "article") screen = <ArticlePage id={parseRoute().tab} go={go} user={user} />;
   else if (view === "policy") screen = <PolicyPage go={go} user={user} />;
   else if (view === "offer") screen = <OfferPage go={go} user={user} />;
+  else if (view === "for-suppliers") screen = <ForSuppliersPage go={go} user={user} />;
   else if (view === "auth") screen = <AuthScreen onAuthed={onAuthed} go={go} />;
   else if (view === "cabinet") screen = user ? <Cabinet user={user} onLogout={onLogout} go={go} /> : <AuthScreen onAuthed={onAuthed} go={go} />;
   else if (view === "admin") screen = DEV_MODE ? <Admin user={user || ADMIN} onLogout={onLogout} go={go} /> : <SitePage go={go} />;

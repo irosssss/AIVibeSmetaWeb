@@ -396,6 +396,60 @@
     return (Array.isArray(list) ? list : []).find((s) => str(s && s.name).trim().toLowerCase() === key) || null;
   }
 
+  /* ----------------------------- КАБИНЕТ ПОСТАВЩИКА (превью, PRD портала поставщиков §6) -----------------------------
+     Спрос на товары поставщика из РЕАЛЬНЫХ смет дизайнера — формула Programa
+     «Specified, not just seen»: считаем спецификации, не показы. ИНВАРИАНТ «деньги
+     дизайнера — тайна» распространяется на третью аудиторию: НИКАКИХ сумм, цен и
+     наценки в этой сводке — только счёт позиций/штук. Связь — по имени, тем же
+     правилом, что supplierMatch (регистр и краевые пробелы нетерпимы, не нечёткая).
+     Сейчас сводку читает дизайнер (Мастерская → Поставщики); когда кабинеты
+     поставщиков заработают онлайн, та же математика поедет на сервер. → API: GET /api/supplier/:id/stats */
+  function supplierStats(projects, shares, name) {
+    const key = str(name).trim().toLowerCase();
+    const out = { projects: 0, positions: 0, qty: 0, approved: 0, inWork: 0, shared: 0, products: [] };
+    if (!key) return out;
+    const match = (it) => str(it && (it.sup || it.supplier)).trim().toLowerCase() === key;
+    const byProduct = new Map();   // товар = название+артикул (регистронезависимо)
+    (Array.isArray(projects) ? projects : []).forEach((p) => {
+      let hit = false;
+      ((p && p.rooms) || []).forEach((r) => ((r && r.items) || []).forEach((it) => {
+        if (!match(it)) return;
+        hit = true;
+        const q = Math.max(1, Math.round(num(it.qty, 1)));
+        out.positions++; out.qty += q;
+        if (it.approve === "ok") out.approved++;
+        if (statusMeta(it.status).order >= STATUS_BY_ID.ordered.order) out.inWork++; // «Заказано» и дальше
+        const k = str(it.title).trim().toLowerCase() + "␟" + str(it.sku).trim().toLowerCase();
+        const rec = byProduct.get(k) || { title: str(it.title), sku: str(it.sku), positions: 0, qty: 0, approved: 0 };
+        rec.positions++; rec.qty += q;
+        if (it.approve === "ok") rec.approved++;
+        byProduct.set(k, rec);
+      }));
+      if (hit) out.projects++;
+    });
+    // «ушло клиенту» — шары портала, в чьём снимке есть позиции поставщика (счёт по шарам, не по позициям)
+    (Array.isArray(shares) ? shares : []).forEach((s) => {
+      const rooms = (s && s.snapshot && Array.isArray(s.snapshot.rooms)) ? s.snapshot.rooms : [];
+      if (rooms.some((r) => ((r && r.items) || []).some(match))) out.shared++;
+    });
+    out.products = Array.from(byProduct.values())
+      .sort((a, b) => (b.positions - a.positions) || (b.qty - a.qty) || a.title.localeCompare(b.title, "ru"));
+    return out;
+  }
+  // все шары этого браузера — скан localStorage по префиксу PKEY (реестра шар нет,
+  // ключи и так адресные); битые записи пропускаем молча. → API: GET /api/shares
+  function listPortalShares() {
+    const out = [];
+    try {
+      for (let i = 0; i < localStorage.length; i++) {
+        const k = localStorage.key(i);
+        if (!k || k.indexOf("aivibe:portal:") !== 0) continue;
+        try { const r = JSON.parse(localStorage.getItem(k)); if (r && r.shareId) out.push(r); } catch {}
+      }
+    } catch {}
+    return out;
+  }
+
   /* ----------------------------- БИБЛИОТЕКА ТОВАРОВ СТУДИИ (волна B1, бенчмарк Programa) -----------------------------
      Мастер-запись товара студии — то, что дизайнер подбирает снова и снова (диван,
      смеситель, люстра). Живёт отдельно от сметы (localStorage, LedgerAPI.library),
@@ -969,7 +1023,7 @@
     docCodePrefix, assignDocCodes,
     blankComment, addComment,
     blankProduct, productFromPosition, positionFromProduct, productWithVariant, DEMO_LIBRARY_PRODUCTS,
-    blankSupplier, supplierMatch,
+    blankSupplier, supplierMatch, supplierStats, listPortalShares,
     blankExtra, extraAmount, extrasTotal,
     BENCHMARK, estimateBudget, generateEstimate, setPendingDraft, takePendingDraft,
     loadEstimate, saveEstimate, clearEstimate,

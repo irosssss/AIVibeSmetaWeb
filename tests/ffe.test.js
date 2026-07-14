@@ -69,6 +69,47 @@ describe("blankProduct — мастер-запись товара студии (
   });
 });
 
+describe("supplierStats — кабинет поставщика (превью, PRD §6)", () => {
+  const mkProjects = () => [
+    { id: "p1", rooms: [{ items: [
+      { title: "Диван", sku: "SF-1", sup: "Линея", qty: 2, price: 100000, approve: "ok", status: "ordered" },
+      { title: "Диван", sku: "SF-1", sup: " линея ", qty: 1, price: 100000, status: "specified" },   // регистр/пробелы — тот же поставщик
+      { title: "Кресло", sku: "", sup: "Дубрава", qty: 1, price: 50000, status: "specified" },        // чужой
+    ] }] },
+    { id: "p2", rooms: [{ items: [
+      { title: "Торшер", sku: "FL-2", sup: "Линея", qty: 3, price: 20000, status: "accepted" },
+    ] }] },
+  ];
+  it("считает спрос: позиции/штуки/проекты/согласовано/в работе, топ товаров по спецификациям", () => {
+    const s = FFE.supplierStats(mkProjects(), [], "Линея");
+    expect(s.positions).toBe(3);
+    expect(s.qty).toBe(6);
+    expect(s.projects).toBe(2);
+    expect(s.approved).toBe(1);
+    expect(s.inWork).toBe(2);                 // ordered + accepted (порядок ≥ «Заказано»)
+    expect(s.products[0]).toMatchObject({ title: "Диван", sku: "SF-1", positions: 2, qty: 3, approved: 1 });
+    expect(s.products[1]).toMatchObject({ title: "Торшер", positions: 1, qty: 3 });
+  });
+  it("ИНВАРИАНТ: в сводке нет денег дизайнера — ни сумм, ни цен, ни наценки", () => {
+    const s = FFE.supplierStats(mkProjects(), [], "Линея");
+    const flat = JSON.stringify(s);
+    expect(flat).not.toMatch(/price|total|markup|cost/i);
+    expect(flat).not.toContain("100000");     // цена позиции не протекла ни под каким именем
+  });
+  it("шары: счёт по шарам со товарами поставщика, не по позициям", () => {
+    const shares = [
+      { shareId: "s1", snapshot: { rooms: [{ items: [{ sup: "Линея" }, { sup: "Линея" }] }] } },  // 2 позиции = 1 шара
+      { shareId: "s2", snapshot: { rooms: [{ items: [{ sup: "Дубрава" }] }] } },
+      { shareId: "s3", snapshot: {} },                                                             // битая — молча мимо
+    ];
+    expect(FFE.supplierStats(mkProjects(), shares, "Линея").shared).toBe(1);
+  });
+  it("пустое имя и чужое имя — нулевая сводка", () => {
+    expect(FFE.supplierStats(mkProjects(), [], "").positions).toBe(0);
+    expect(FFE.supplierStats(mkProjects(), [], "Нет такого").positions).toBe(0);
+  });
+});
+
 describe("варианты товара — цвет со своим артикулом (портал поставщиков, срез 1)", () => {
   it("нормализует варианты: HEX строгий, цена целая, пустые строки формы отбрасываются", () => {
     const p = FFE.blankProduct({ title: "Диван", brand: "Loft&Co", variants: [

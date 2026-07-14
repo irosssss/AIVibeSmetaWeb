@@ -30,6 +30,7 @@ const splBlankDraft = (over) => ({ __new: true, name: "", contact: "", email: ""
 function SuppliersBook() {
   const [rows, setRows] = useSB(null);
   const [edit, setEdit] = useSB(null);   // редактируемая/создаваемая карточка (draft) | null
+  const [cab, setCab] = useSB(null);     // поставщик, чей кабинет-превью открыт | null
   const [q, setQ] = useSB("");
   const reload = () => LedgerAPI.suppliers.list().then(setRows);
   useSBE(() => { reload(); }, []);
@@ -71,18 +72,19 @@ function SuppliersBook() {
             ? <p style={{ color: "var(--muted)", fontSize: "var(--fs-14)", padding: "8px 2px" }}>По запросу «{q.trim()}» ничего не нашлось.</p>
             : (
               <div className="proj-grid" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(250px, 1fr))", gap: 16 }}>
-                {shown.map((s) => <SupplierCard key={s.id} s={s} onEdit={() => setEdit({ ...s })} onRemove={() => remove(s.id)} />)}
+                {shown.map((s) => <SupplierCard key={s.id} s={s} onEdit={() => setEdit({ ...s })} onRemove={() => remove(s.id)} onCabinet={() => setCab(s)} />)}
               </div>
             )}
         </React.Fragment>
       )}
 
       {edit && <SupplierEditor draft={edit} onClose={() => setEdit(null)} onSaved={() => { setEdit(null); reload(); }} />}
+      {cab && <SupplierCabinetModal s={cab} onClose={() => setCab(null)} />}
     </div>
   );
 }
 
-function SupplierCard({ s, onEdit, onRemove }) {
+function SupplierCard({ s, onEdit, onRemove, onCabinet }) {
   const meta = splMeta(s);
   return (
     <div className="glass" style={{ borderRadius: "var(--r-lg)", padding: 18, display: "flex", flexDirection: "column", gap: 10 }}>
@@ -100,6 +102,7 @@ function SupplierCard({ s, onEdit, onRemove }) {
 
       <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 6, paddingTop: 10, marginTop: "auto", borderTop: "1px solid var(--hairline)" }}>
         {s.url && <a className="btn btn-ghost" href={s.url} target="_blank" rel="noopener noreferrer" style={{ padding: "6px 11px", fontSize: "var(--fs-12)", marginRight: "auto" }} title="Открыть сайт поставщика"><I.arrow size={13} />Сайт</a>}
+        <button className="icon-btn sm" title="Кабинет поставщика: спрос на его товары в ваших сметах" aria-label={"Кабинет поставщика «" + s.name + "»"} onClick={onCabinet}><I.chart size={15} /></button>
         <button className="icon-btn sm" title="Редактировать" aria-label={"Редактировать «" + s.name + "»"} onClick={onEdit}><I.edit size={15} /></button>
         <button className="icon-btn sm" title="Удалить" aria-label={"Удалить «" + s.name + "»"} onClick={onRemove}><I.trash size={15} /></button>
       </div>
@@ -188,6 +191,97 @@ function SupplierEditor({ draft, onClose, onSaved }) {
   );
 }
 
+/* ---------------- КАБИНЕТ ПОСТАВЩИКА (превью, PRD портала поставщиков §6) ----------------
+   Спрос на товары поставщика из РЕАЛЬНЫХ смет этого дизайнера: сколько раз его товары
+   специфицированы, согласованы клиентом, ушли в шары. Формула Programa «Specified,
+   not just seen». Сейчас это рабочий инструмент дизайнера («на что я живу с этим
+   поставщиком»); когда кабинеты поставщиков заработают онлайн, ту же сводку — уже
+   агрегатом по всем дизайнерам — увидит сам поставщик. ДЕНЕГ В СВОДКЕ НЕТ (инвариант:
+   себестоимость/наценка — тайна дизайнера, в т.ч. от поставщика). */
+function SupplierCabinetModal({ s, onClose }) {
+  const [stats, setStats] = useSB(null);
+  useSBE(() => {
+    const F = window.LedgerFFE;
+    // list() отдаёт карточки без смет — комнаты живут в get(id) (project-data.js);
+    // тянем полные проекты параллельно, статистика ждёт все
+    LedgerAPI.projects.list()
+      .then((ps) => Promise.all(ps.map((p) => LedgerAPI.projects.get(p.id))))
+      .then((projects) => {
+        const shares = F && F.listPortalShares ? F.listPortalShares() : [];
+        setStats(F && F.supplierStats ? F.supplierStats(projects, shares, s.name) : null);
+      });
+  }, [s]);
+
+  const kpi = (label, value, hint) => (
+    <div className="glass" style={{ borderRadius: "var(--r-lg)", padding: "14px 16px", flex: 1, minWidth: 120 }} title={hint}>
+      <div className="mono" style={{ fontSize: "var(--fs-21)", fontWeight: 700, color: "var(--accent-2)", fontVariantNumeric: "tabular-nums", whiteSpace: "nowrap" }}>{value}</div>
+      <div style={{ fontSize: "var(--fs-12)", color: "var(--muted)", marginTop: 2 }}>{label}</div>
+    </div>
+  );
+
+  return (
+    <Modal onClose={onClose} label={"Кабинет поставщика «" + s.name + "»"} maxWidth={620}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10, padding: "20px 24px", borderBottom: "1px solid var(--hairline)" }}>
+        <div style={{ minWidth: 0 }}>
+          <div className="eyebrow" style={{ marginBottom: 6 }}>Кабинет поставщика · превью</div>
+          <h3 className="display" style={{ fontSize: "var(--fs-21)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{s.name}</h3>
+          {(s.city || splMeta(s)) && <div style={{ fontSize: "var(--fs-12)", color: "var(--muted)", marginTop: 4 }}>{[s.city, splMeta(s)].filter(Boolean).join(" · ")}</div>}
+        </div>
+        <button className="icon-btn" onClick={onClose} aria-label="Закрыть"><I.close size={18} /></button>
+      </div>
+
+      <div style={{ padding: 24, display: "flex", flexDirection: "column", gap: 18, maxHeight: "68vh", overflow: "auto" }}>
+        {!stats && <div className="skel" style={{ height: 120, borderRadius: 12 }} />}
+
+        {stats && stats.positions === 0 && (
+          <p style={{ color: "var(--muted)", fontSize: "var(--fs-14)", lineHeight: 1.6 }}>
+            Товары этого поставщика пока не встречаются в ваших сметах. Название карточки должно совпадать
+            с полем «Поставщик» у позиций — проверьте написание, если статистика кажется пустой зря.
+          </p>
+        )}
+
+        {stats && stats.positions > 0 && (
+          <React.Fragment>
+            <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+              {kpi("в сметах", stats.positions + (stats.qty > stats.positions ? " · ×" + stats.qty : ""), "Позиций поставщика в ваших сметах (и штук с учётом количества)")}
+              {kpi("проектов", stats.projects, "В скольких проектах есть его товары")}
+              {kpi("согласовано", stats.approved, "Позиций, одобренных клиентом")}
+              {kpi("ушло клиентам", stats.shared, "Шар-ссылок клиентам, где есть его товары")}
+            </div>
+
+            <div>
+              <SplFldLabel>Какие товары дизайнер ставит чаще</SplFldLabel>
+              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                {stats.products.slice(0, 8).map((p, i) => (
+                  <div key={i} style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 12px", borderRadius: 10, border: "1px solid var(--hairline)", background: "var(--surface)" }}>
+                    <span style={{ minWidth: 0, flex: 1 }}>
+                      <span style={{ display: "block", fontWeight: 600, fontSize: "var(--fs-13)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.title || "Без названия"}</span>
+                      {p.sku && <span className="mono" style={{ fontSize: "var(--fs-11)", color: "var(--muted)" }}>арт. {p.sku}</span>}
+                    </span>
+                    <span className="mono" style={{ flex: "none", fontSize: "var(--fs-12)", color: "var(--muted)", fontVariantNumeric: "tabular-nums" }}>
+                      {p.positions} поз. · ×{p.qty}{p.approved ? " · ✓" + p.approved : ""}
+                    </span>
+                  </div>
+                ))}
+                {stats.products.length > 8 && (
+                  <span style={{ fontSize: "var(--fs-12)", color: "var(--muted)" }}>…и ещё {stats.products.length - 8}</span>
+                )}
+              </div>
+            </div>
+          </React.Fragment>
+        )}
+
+        {/* честная рамка превью: что это и чем станет; денег дизайнера здесь нет по инварианту */}
+        <p style={{ fontSize: "var(--fs-12)", color: "var(--muted)", lineHeight: 1.6, borderTop: "1px solid var(--hairline)", paddingTop: 14 }}>
+          Это превью на данных ваших смет: так поставщик увидит спрос на свои товары, когда кабинеты
+          поставщиков заработают онлайн (агрегатом по всем дизайнерам, без ваших цен и наценки).
+          Поставщикам о подключении — страница <a href="#for-suppliers">«Поставщикам»</a>.
+        </p>
+      </div>
+    </Modal>
+  );
+}
+
 /* контакт-чип поставщика для закупки/редактора позиции: email/телефон из карточки,
    найденной по имени (supplierMatch); ничего не рендерит, если карточки нет */
 function SupplierContactChip({ book, name }) {
@@ -205,6 +299,7 @@ function SupplierContactChip({ book, name }) {
 }
 
 window.SuppliersBook = SuppliersBook;
+window.SupplierCabinetModal = SupplierCabinetModal;
 window.SupplierEditor = SupplierEditor;
 window.SupplierContactChip = SupplierContactChip;
 window.splBlankDraft = splBlankDraft;
