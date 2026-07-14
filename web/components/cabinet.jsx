@@ -191,6 +191,11 @@ function Cabinet({ user, onLogout, go }) {
   const [tab, setTab] = useC(() => { const t = normTab(r0.tab); return CAB_TAB_IDS.includes(t) ? t : "today"; });
   const [projId, setProjId] = useC((r0.tab === "projects" && r0.sub) || null);
   const [projS2, setProjS2] = useC(r0.s2 || "");
+  // подраздел Мастерской — СТЕЙТ, а не parseRoute() в рендере сайдбара: клик по подпункту
+  // менял только hash, а все сеттеры hashchange-обработчика получали прежние значения →
+  // React bail-out, Cabinet не ре-рендерился и подсветка сайдбара замирала на старом пункте
+  // (контент при этом переключался — у Workshop свой hashchange-слушатель)
+  const [wsSub, setWsSub] = useC(() => (WS_SUBS.some((x) => x.id === r0.sub) ? r0.sub : "styles"));
   const [proj, setProj] = useC(null);            // мета открытого проекта для сайдбара (имя, rooms?)
   const [drawer, setDrawer] = useC(false);       // мобильный сайдбар-drawer
   const [cmdk, setCmdk] = useC(false);           // W5.4: ⌘K-палитра поиска
@@ -224,6 +229,7 @@ function Cabinet({ user, onLogout, go }) {
       const r = parseRoute();
       if (LEGACY_WORKSHOP[r.tab]) { setRoute("cabinet", "workshop", LEGACY_WORKSHOP[r.tab]); return; }
       if (CAB_TAB_IDS.includes(r.tab)) setTab(r.tab);
+      if (r.tab === "workshop") setWsSub(WS_SUBS.some((x) => x.id === r.sub) ? r.sub : "styles");
       setProjId((r.view === "cabinet" && r.tab === "projects" && r.sub) || null);
       setProjS2(r.s2 || "");
       setDrawer(false);
@@ -278,7 +284,7 @@ function Cabinet({ user, onLogout, go }) {
   return (
     <div className="ws minh-screen">
       {cmdk && <CmdK onClose={() => setCmdk(false)} onTab={changeTab} />}
-      <WsSidebar user={user} onLogout={onLogout} go={go} tab={tab} onTab={changeTab}
+      <WsSidebar user={user} onLogout={onLogout} go={go} tab={tab} onTab={changeTab} wsSub={wsSub}
         proj={projId ? (proj || { id: projId, name: "", pending: true }) : null} projS2={projS2} onNewProject={newProject}
         onSearch={() => setCmdk(true)}
         open={drawer} onClose={() => setDrawer(false)} />
@@ -307,9 +313,9 @@ function Cabinet({ user, onLogout, go }) {
 /* ---------------- Сайдбар воркспейса (W1) ----------------
    Студийный уровень ↔ уровень проекта: при открытом проекте контент сайдбара
    полностью подменяется (паттерн Programa), «←» возвращает к списку проектов. */
-function WsSidebar({ user, onLogout, go, tab, onTab, proj, projS2, onNewProject, onSearch, open, onClose }) {
-  const r = parseRoute();
-  const wsSub = tab === "workshop" ? (WS_SUBS.some((x) => x.id === r.sub) ? r.sub : "styles") : null;
+function WsSidebar({ user, onLogout, go, tab, onTab, proj, projS2, onNewProject, onSearch, open, onClose, wsSub: wsSubProp }) {
+  // подсветка подпункта — из стейта Cabinet (см. wsSub там), НЕ из parseRoute() в рендере
+  const wsSub = tab === "workshop" ? wsSubProp : null;
   const goProjSection = (s2) => proj && setRoute("cabinet", "projects", proj.id, s2);
 
   const item = (key, label, icon, { on, onClick, sub } = {}) => {
