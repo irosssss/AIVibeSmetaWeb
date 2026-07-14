@@ -1,7 +1,45 @@
 /* ============================================================
    Design Ledger — футер + сборка промо-страницы
    ============================================================ */
-const { useEffect: useE3 } = React;
+const { useEffect: useE3, useState: useS3 } = React;
+
+/* карточка журнала — общая для ленты на лендинге (NewsFeed) и индекса /journal.
+   Клик ведёт на статью через hash (#article/<id>) — публичные страницы без guardSmetaLeave.
+   Просмотры не показываем: реального счётчика нет, честнее дата + автор. */
+function JournalCard({ n, big }) {
+  const open = () => { location.hash = "#article/" + n.id; };
+  return (
+    <article className="glass news-card" onClick={open} role="link" tabIndex={0}
+      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); open(); } }}
+      style={{ borderRadius: "var(--r-lg)", overflow: "hidden", display: "flex", flexDirection: "column", boxShadow: "var(--shadow-card)", cursor: "pointer", gridColumn: big ? "span 2" : "span 1" }}>
+      <div style={{ position: "relative", aspectRatio: big ? "16/8" : "16/10", overflow: "hidden" }}>
+        <Img src={(window.PHOTOS && PHOTOS[n.cover]) || (window.PHOTOS && PHOTOS.warm)} label={n.category} />
+        <span style={{ position: "absolute", top: 13, left: 13, padding: "5px 11px", borderRadius: 99, fontSize: "var(--fs-11)", fontWeight: 700, color: "#FCF6EE", background: "rgba(46,42,38,.6)", backdropFilter: "blur(6px)", border: "1px solid rgba(252,246,238,.25)" }}>{n.category}</span>
+      </div>
+      <div style={{ padding: 22, display: "flex", flexDirection: "column", gap: 10, flex: 1 }}>
+        <h3 style={{ fontFamily: "var(--font-display)", fontSize: big ? 25 : 20, fontWeight: 600, lineHeight: 1.22, letterSpacing: "-0.01em" }}>{n.title}</h3>
+        <p style={{ color: "var(--muted)", fontSize: "var(--fs-14)", lineHeight: 1.55, flex: 1 }}>{n.excerpt}</p>
+        <div className="mono" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", color: "var(--spec-meta)", fontSize: "var(--fs-12)", marginTop: 4 }}>
+          <span>{new Date(n.date + "T00:00:00").toLocaleDateString("ru-RU", { day: "numeric", month: "long" })}</span>
+          <span style={{ color: "var(--accent-ink)", fontWeight: 700 }}>Читать →</span>
+        </div>
+      </div>
+    </article>
+  );
+}
+window.JournalCard = JournalCard;
+
+/* body статьи: \n\n = абзац, строка «## …» = подзаголовок H2 */
+function ArticleBody({ text }) {
+  const blocks = String(text || "").split(/\n\n+/).map((b) => b.trim()).filter(Boolean);
+  return (
+    <div style={{ marginTop: 30, display: "flex", flexDirection: "column", gap: 18 }}>
+      {blocks.map((b, i) => b.startsWith("## ")
+        ? <h2 key={i} className="display" style={{ fontSize: "var(--fs-24)", marginTop: 12 }}>{b.slice(3)}</h2>
+        : <p key={i} style={{ fontSize: "var(--fs-16)", lineHeight: 1.7, color: "var(--text)" }}>{b}</p>)}
+    </div>
+  );
+}
 
 /* --------------------------------------------------------------
    CTA + FOOTER
@@ -396,6 +434,103 @@ function ChangelogPage({ go, user }) {
   );
 }
 
+/* шапка публичной страницы журнала (общая для индекса и статьи) */
+function JournalHead({ go, user }) {
+  return (
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, marginBottom: 40, flexWrap: "wrap" }}>
+      <Logo size={25} onClick={() => go("site")} />
+      <div style={{ display: "flex", gap: 10 }}>
+        {user
+          ? <button className="btn btn-ghost" style={{ padding: "9px 16px", fontSize: "var(--fs-13)" }} onClick={() => go("cabinet")}><I.arrow size={15} style={{ transform: "rotate(180deg)" }} /> В кабинет</button>
+          : <React.Fragment>
+              <button className="btn btn-ghost" style={{ padding: "9px 16px", fontSize: "var(--fs-13)" }} onClick={() => go("site")}>На главную</button>
+              <button className="btn btn-primary" style={{ padding: "9px 16px", fontSize: "var(--fs-13)" }} onClick={() => go("auth")}>Войти</button>
+            </React.Fragment>}
+      </div>
+    </div>
+  );
+}
+
+/* индекс журнала — все опубликованные материалы (открывается из «Все материалы») */
+function JournalPage({ go, user }) {
+  const [rows, setRows] = useS3(null);
+  useE3(() => { window.scrollTo({ top: 0 }); LedgerAPI.news.list({ status: "published" }).then(setRows); }, []);
+  return (
+    <React.Fragment>
+      <PortalWrap>
+        <JournalHead go={go} user={user} />
+        <div className="eyebrow info" style={{ marginBottom: 16 }}>ЖУРНАЛ</div>
+        <h1 className="display" style={{ fontSize: "clamp(32px,4.6vw,52px)" }}>Смета и комплектация: практика</h1>
+        <p style={{ color: "var(--muted)", fontSize: "var(--fs-15)", marginTop: 14, maxWidth: 560, lineHeight: 1.6 }}>
+          Как считать наценку, собирать спецификацию и согласовывать смету с клиентом — разборы для дизайнеров и комплектаторов.
+        </p>
+        <div className="news-grid" style={{ marginTop: 44 }}>
+          {!rows && Array.from({ length: 4 }).map((_, i) => <div key={i} className="glass skel" style={{ borderRadius: "var(--r-lg)", height: 320 }} />)}
+          {rows && rows.map((n, i) => <JournalCard key={n.id} n={n} big={i === 0} />)}
+        </div>
+      </PortalWrap>
+      <Footer go={go} />
+    </React.Fragment>
+  );
+}
+
+/* статья журнала — публичная страница #article/<id> (SEO: свой URL на материал) */
+function ArticlePage({ id, go, user }) {
+  const [article, setArticle] = useS3(undefined);   // undefined = грузим, null = не найдено
+  useE3(() => {
+    window.scrollTo({ top: 0 });
+    LedgerAPI.news.get(id).then((a) => {
+      setArticle(a && a.status === "published" ? a : null);
+      if (a && a.title) document.title = a.title + " — Журнал — Design Ledger";
+    });
+    return () => { if (window.setTitle) window.setTitle("site"); };
+  }, [id]);
+  return (
+    <React.Fragment>
+      <PortalWrap>
+        <JournalHead go={go} user={user} />
+        {article === undefined && <div className="glass skel" style={{ borderRadius: "var(--r-lg)", height: 420 }} />}
+        {article === null && (
+          <div style={{ textAlign: "center", padding: "40px 0" }}>
+            <h1 className="display" style={{ fontSize: "var(--fs-24)" }}>Материал не найден</h1>
+            <p style={{ color: "var(--muted)", marginTop: 12, fontSize: "var(--fs-15)" }}>Возможно, ссылка устарела.</p>
+            <button className="btn btn-ghost" style={{ marginTop: 20 }} onClick={() => { location.hash = "#journal"; }}>Все материалы</button>
+          </div>
+        )}
+        {article && (
+          <article>
+            <button className="btn btn-ghost" style={{ padding: "7px 13px", fontSize: "var(--fs-13)", marginBottom: 22 }} onClick={() => { location.hash = "#journal"; }}>
+              <I.arrow size={14} style={{ transform: "rotate(180deg)" }} /> Все материалы
+            </button>
+            <div className="mono" style={{ display: "flex", alignItems: "center", gap: 10, fontSize: "var(--fs-12)", color: "var(--accent-2-ink)", fontWeight: 700, textTransform: "uppercase", letterSpacing: ".06em", marginBottom: 14 }}>
+              <span>{article.category}</span><span style={{ color: "var(--spec-meta)" }}>·</span>
+              <span style={{ color: "var(--spec-meta)", textTransform: "none", letterSpacing: 0 }}>{new Date(article.date + "T00:00:00").toLocaleDateString("ru-RU", { day: "numeric", month: "long", year: "numeric" })}</span>
+            </div>
+            <h1 className="display" style={{ fontSize: "clamp(30px,4.4vw,48px)", lineHeight: 1.08 }}>{article.title}</h1>
+            {article.author && <div style={{ color: "var(--muted)", fontSize: "var(--fs-14)", marginTop: 12 }}>{article.author}</div>}
+            <div style={{ position: "relative", aspectRatio: "16/7", overflow: "hidden", borderRadius: "var(--r-lg)", marginTop: 26, boxShadow: "var(--shadow-card)" }}>
+              <Img src={(window.PHOTOS && PHOTOS[article.cover]) || (window.PHOTOS && PHOTOS.warm)} label={article.title} />
+            </div>
+            <div style={{ maxWidth: 680 }}>
+              <ArticleBody text={article.body} />
+              <div className="glass" style={{ marginTop: 40, borderRadius: "var(--r-lg)", padding: "24px 26px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, flexWrap: "wrap" }}>
+                <div>
+                  <div style={{ fontWeight: 700, fontSize: "var(--fs-16)", fontFamily: "var(--font-display)" }}>Соберите первую смету бесплатно</div>
+                  <div style={{ color: "var(--muted)", fontSize: "var(--fs-13)", marginTop: 4 }}>Две цены, наценка и портал для клиента — без карты.</div>
+                </div>
+                <button className="btn btn-primary" style={{ flex: "none" }} onClick={() => go("auth")}><I.layers size={17} /> Начать</button>
+              </div>
+            </div>
+          </article>
+        )}
+      </PortalWrap>
+      <Footer go={go} />
+    </React.Fragment>
+  );
+}
+
 window.Footer = Footer;
 window.SitePage = SitePage;
 window.ChangelogPage = ChangelogPage;
+window.JournalPage = JournalPage;
+window.ArticlePage = ArticlePage;

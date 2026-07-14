@@ -4,13 +4,13 @@
    ============================================================ */
 const { useState: useApp, useEffect: useAppE } = React;
 
-const VIEWS = ["site", "auth", "cabinet", "admin", "portal", "changelog"];
+const VIEWS = ["site", "auth", "cabinet", "admin", "portal", "changelog", "journal", "article"];
 const routeView = () => { const v = parseRoute().view; return VIEWS.includes(v) ? v : "site"; };
 
 /* document.title раньше ставил только портал — кабинет/смета/админка жили с одним
    90-символьным SEO-тайтлом промо (вкладки в браузере неразличимы). sub — читаемая
    деталь (имя открытого проекта в смете); без неё — просто заголовок вкладки. */
-const VIEW_TITLE = { auth: "Вход", cabinet: "Кабинет", admin: "Админка", changelog: "Что нового" };
+const VIEW_TITLE = { auth: "Вход", cabinet: "Кабинет", admin: "Админка", changelog: "Что нового", journal: "Журнал", article: "Журнал" };
 const SITE_TITLE = document.title;   // SEO-тайтл промо из index.html — захвачен один раз при загрузке
 function setTitle(view, sub) {
   if (view === "portal") return;               // портал ставит свой тайтл сам (ClientPortal)
@@ -98,6 +98,8 @@ function App() {
   // клиентский портал (волна A2): публичная страница-ссылка, без кабинет-хрома и авторизации
   if (view === "portal") screen = <ClientPortal shareId={parseRoute().tab} />;
   else if (view === "changelog") screen = <ChangelogPage go={go} user={user} />;
+  else if (view === "journal") screen = <JournalPage go={go} user={user} />;
+  else if (view === "article") screen = <ArticlePage id={parseRoute().tab} go={go} user={user} />;
   else if (view === "auth") screen = <AuthScreen onAuthed={onAuthed} go={go} />;
   else if (view === "cabinet") screen = user ? <Cabinet user={user} onLogout={onLogout} go={go} /> : <AuthScreen onAuthed={onAuthed} go={go} />;
   else if (view === "admin") screen = DEV_MODE ? <Admin user={user || ADMIN} onLogout={onLogout} go={go} /> : <SitePage go={go} />;
@@ -106,7 +108,7 @@ function App() {
   return (
     <React.Fragment>
       {screen}
-      {DEV_MODE && view !== "portal" && view !== "changelog" && <ProtoSwitch view={view} go={go} user={user} />}
+      {DEV_MODE && view !== "portal" && view !== "changelog" && view !== "journal" && view !== "article" && <ProtoSwitch view={view} go={go} user={user} />}
     </React.Fragment>
   );
 }
