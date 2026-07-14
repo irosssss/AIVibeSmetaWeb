@@ -665,5 +665,84 @@
     });
   }
 
-  window.LedgerXLSX = { exportRoomSpec, importRoomSpec };
+  // Bulk-импорт товаров в библиотеку студии (роадмап п.19, восьмой Programa-заход:
+  // «Import products from Excel» — прайс-лист/каталог поставщика пачкой, не по одному).
+  // Возвращает Promise<{products, skipped}> — products нормализованы к схеме blankProduct
+  // (title/cat/unit/price/sup/article/url/note/dims), вызывающий сам решает дедуп/сохранение
+  // (library-editor.jsx). Отдельная функция, не режим importRoomSpec: другая форма файла
+  // (плоский список товаров без помещений/разделов сметы) и другая целевая схема.
+  function importLibrary(file) {
+    return new Promise((resolve, reject) => {
+      if (!window.XLSX) { reject(new Error("Excel-библиотека ещё загружается")); return; }
+      const reader = new FileReader();
+      reader.onerror = () => reject(reader.error || new Error("Ошибка чтения файла"));
+      reader.onload = () => {
+        try {
+          const wb = XLSX.read(new Uint8Array(reader.result), { type: "array" });
+          const norm = (s) => String(s == null ? "" : s).toLowerCase();
+          const num = (v) => {
+            if (typeof v === "number") return v;
+            const n = parseFloat(norm(v).replace(/[^\d.,-]/g, "").replace(",", "."));
+            return isFinite(n) ? n : 0;
+          };
+          const colOf = (head, re) => head.findIndex((h) => re.test(norm(h)));
+          const parseDims = (v) => {
+            const s = String(v == null ? "" : v).replace(/см/gi, "").trim();
+            if (!s) return null;
+            const p = s.split(/[×xх*]/).map((x) => x.trim());
+            const val = (x) => (x && x !== "—" && isFinite(parseFloat(x.replace(",", "."))) ? Math.round(parseFloat(x.replace(",", "."))) : "");
+            const d = { w: val(p[0]), d: val(p[1]), h: val(p[2]) };
+            return d.w === "" && d.d === "" && d.h === "" ? null : d;
+          };
+
+          // ищем лист/строку-заголовок с «наименование/название/товар/предмет» (наш экспорт
+          // и большинство прайс-листов); первая найденная по всем листам — колонка «Наименование»
+          // определяется тем же маркером, так что без него строить нечего в любом случае
+          let best = null;
+          for (const sn of wb.SheetNames) {
+            const aoa = XLSX.utils.sheet_to_json(wb.Sheets[sn], { header: 1, blankrows: false });
+            const hr = aoa.findIndex((row) => Array.isArray(row) && row.some((c) => /наимен|назв|товар|предмет/.test(norm(c))));
+            if (hr >= 0) { best = { aoa, hr, head: aoa[hr] }; break; }
+          }
+          if (!best) { resolve({ products: [], skipped: 0 }); return; }
+          const { aoa, hr, head } = best;
+
+          const cTitle = colOf(head, /наимен|назв|товар|предмет/);
+          const cCat = colOf(head, /раздел|категор|тип/);
+          const cUnit = colOf(head, /^ед\.?$|ед\.?\s*изм|единиц|unit/);
+          const KNOWN_UNITS = (window.LedgerFFE && window.LedgerFFE.FFE_UNITS) || ["шт"];
+          const cPrice = colOf(head, /цена|стоим|price/);
+          const cSup = colOf(head, /поставщ|фабрик|производит|бренд|supplier|brand/);
+          const cArticle = colOf(head, /артикул|sku|код/);
+          const cUrl = colOf(head, /ссылка|сайт|url/);
+          const cNote = colOf(head, /примечан|коммент|описан|note/);
+          const cDims = colOf(head, /габарит|размер/);
+
+          const products = [];
+          let skipped = 0;
+          for (let i = hr + 1; i < aoa.length; i++) {
+            const row = aoa[i]; if (!Array.isArray(row)) continue;
+            const title = String(row[cTitle] == null ? "" : row[cTitle]).trim();
+            if (/^итог/.test(norm(title))) continue;   // ожидаемая строка-итог, не мусор — не считается в skipped
+            if (!title) { if (row.some((c) => c != null && String(c).trim())) skipped++; continue; }
+            let unit = cUnit >= 0 ? String(row[cUnit] == null ? "" : row[cUnit]).trim() : "";
+            if (unit && !KNOWN_UNITS.includes(unit)) unit = "";   // чужая единица не в словаре FFE_UNITS → дефолт «шт» (см. importRoomSpec)
+            products.push({
+              title, cat: cCat >= 0 ? String(row[cCat] == null ? "" : row[cCat]).trim() : "",
+              unit: unit || "шт", price: cPrice >= 0 ? Math.round(num(row[cPrice])) : 0,
+              sup: cSup >= 0 ? String(row[cSup] == null ? "" : row[cSup]).trim() : "",
+              article: cArticle >= 0 ? String(row[cArticle] == null ? "" : row[cArticle]).trim() : "",
+              url: cUrl >= 0 ? String(row[cUrl] == null ? "" : row[cUrl]).trim() : "",
+              note: cNote >= 0 ? String(row[cNote] == null ? "" : row[cNote]).trim() : "",
+              dims: cDims >= 0 ? parseDims(row[cDims]) : null,
+            });
+          }
+          resolve({ products, skipped });
+        } catch (err) { reject(err); }
+      };
+      reader.readAsArrayBuffer(file);
+    });
+  }
+
+  window.LedgerXLSX = { exportRoomSpec, importRoomSpec, importLibrary };
 })();

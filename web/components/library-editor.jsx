@@ -26,10 +26,48 @@ function ProductsLibrary() {
   const [edit, setEdit] = useL(null);   // редактируемый/создаваемый товар (draft) | null
   const [q, setQ] = useL("");
   const [seeding, setSeeding] = useL(false);
+  const [importing, setImporting] = useL(false);
   const reload = () => LedgerAPI.library.list().then(setRows);
   useLE(() => { reload(); }, []);
 
   const createNew = () => setEdit(libBlankDraft());
+  // п.19 (восьмой Programa-заход): «Import products from Excel» — прайс-лист/каталог
+  // поставщика пачкой. Дедуп по названию (регистронезависимо) — та же проверка, что
+  // ProductEditor.save() требует для ручного создания; дубли ВНУТРИ файла тоже не плодим
+  // (existingNames растёт по ходу цикла). Последовательный await — та же гонка id, что
+  // в seedDemo (library.create штампует id="lib_"+Date.now(), Promise.all столкнул бы id).
+  const onImportExcel = (e) => {
+    const f = e.target.files && e.target.files[0];
+    e.target.value = "";
+    if (!f || importing) return;
+    if (!(window.LedgerXLSX && LedgerXLSX.importLibrary)) return;
+    setImporting(true);
+    withLib("xlsx", () => LedgerXLSX.importLibrary(f)
+      .then(async (res) => {
+        const products = (res && res.products) || [];
+        if (!products.length) {
+          toast("Не удалось распознать товары в файле. Нужна колонка «Наименование» (+ опционально Раздел/Цена/Поставщик/Артикул).", "warn", 7000);
+          return;
+        }
+        const existing = await LedgerAPI.library.list();
+        const existingNames = new Set(existing.map((p) => (p.title || "").trim().toLowerCase()));
+        let created = 0, dup = 0;
+        for (const p of products) {
+          const key = p.title.trim().toLowerCase();
+          if (existingNames.has(key)) { dup++; continue; }
+          existingNames.add(key);
+          await LedgerAPI.library.create(p);
+          created++;
+        }
+        await reload();
+        const parts = ["Импортировано товаров: " + created];
+        if (dup) parts.push(dup + " пропущено (уже есть по названию)");
+        if (res.skipped) parts.push(res.skipped + " строк без названия пропущено");
+        toast(parts.join(" · "), created ? "ok" : "warn");
+      })
+      .catch(() => toast("Не удалось прочитать файл — нужен .xlsx, .xls или .csv.", "warn", 5000))
+    ).finally(() => setImporting(false));
+  };
   // K4: наполнить пустую библиотеку демо-товарами (Programa «Add demo products»).
   // Создаём ПОСЛЕДОВАТЕЛЬНО, а не Promise.all: library.create штампует id = "lib_"+Date.now(),
   // параллельные вызовы в одну миллисекунду дали бы одинаковый id (коллизия) — await по одному
@@ -65,7 +103,14 @@ function ProductsLibrary() {
     <div className="reveal in" ref={useReveal()}>
       <PageHead eyebrow="Библиотека товаров" eyebrowIcon="layers" title={"Мои товары" + (all.length ? " · " + all.length : "")}
         sub="Мастер-записи того, что вы ставите в сметы снова и снова. В смете название подставляет цену, раздел и поставщика; в комнате — пикер-каталог. Собрать библиотеку можно прямо из готовой сметы кнопкой «В библиотеку» на позиции."
-        right={<button className="btn btn-primary" onClick={createNew}><I.plus size={17} />Создать товар</button>} />
+        right={<div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+          <label className="btn btn-ghost" style={{ cursor: importing ? "default" : "pointer", opacity: importing ? .6 : 1 }}
+            title="Загрузить прайс-лист или каталог поставщика из Excel/CSV (колонки: Наименование + опционально Раздел/Цена/Поставщик/Артикул/Ссылка/Габариты)">
+            <I.grid size={16} />{importing ? "Импортируем…" : "Импорт из Excel"}
+            <input type="file" accept=".xlsx,.xls,.csv" hidden disabled={importing} onChange={onImportExcel} />
+          </label>
+          <button className="btn btn-primary" onClick={createNew}><I.plus size={17} />Создать товар</button>
+        </div>} />
 
       {!rows && <div className="proj-grid" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(250px, 1fr))", gap: 16 }}>{Array.from({ length: 4 }).map((_, i) => <div key={i} className="glass skel" style={{ borderRadius: "var(--r-lg)", height: 150 }} />)}</div>}
 
