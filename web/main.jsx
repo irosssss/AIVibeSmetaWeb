@@ -62,6 +62,7 @@ import "./components/suppliers-book.jsx";
 import "./components/admin.jsx";
 import "./components/admin-views.jsx";
 import "./components/portal.jsx";
+import "./components/legal-pages.jsx";   // #policy / #offer — политика 152-ФЗ и публичная оферта (PortalWrap/Footer берёт в рантайме)
 
 // последним — app.jsx: монтирует <App/> в #root
 import "./components/app.jsx";

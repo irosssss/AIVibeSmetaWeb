@@ -133,7 +133,8 @@ function AuthScreen({ onAuthed, go }) {
           {/* вход по e-mail появится вместе с реальной аутентификацией — декоративную форму убрали (честность превыше «полноты» экрана) */}
 
           <p style={{ color: "var(--muted)", fontSize: "var(--fs-12)", marginTop: 26, textAlign: "center", lineHeight: 1.5 }}>
-            Продолжая, вы соглашаетесь с условиями и политикой конфиденциальности Design Ledger.
+            Продолжая, вы принимаете <a href="#offer" style={{ color: "var(--muted)", textDecoration: "underline" }}>оферту</a> и{" "}
+            <a href="#policy" style={{ color: "var(--muted)", textDecoration: "underline" }}>политику конфиденциальности</a> Design Ledger.
           </p>
           <div style={{ textAlign: "center", marginTop: 14 }}>
             <button onClick={() => go("site")} style={{ color: "var(--muted)", fontSize: "var(--fs-13)", textDecoration: "underline" }}>← На главную</button>
