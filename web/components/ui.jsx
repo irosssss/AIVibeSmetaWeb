@@ -732,7 +732,10 @@ function PageHead({ eyebrow, eyebrowIcon, title, sub, right, style }) {
     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", gap: 16, flexWrap: "wrap", marginBottom: 26, ...style }}>
       <div>
         {eyebrow && (
-          <span style={{ fontFamily: "var(--font-mono)", fontSize: "var(--fs-12)", letterSpacing: ".12em", textTransform: "uppercase", color: "var(--accent)", display: "inline-flex", alignItems: "center", gap: 9 }}>
+          /* канон .eyebrow (styles.css) вместо инлайн-дубля: тот же mono/--tr-caps,
+             но цвет --accent-ink (заливочный --accent как текст на бумаге < 4.5:1);
+             .ico — иконка-лид вместо черты */
+          <span className={"eyebrow" + (EyeIco ? " ico" : "")}>
             {EyeIco && <EyeIco size={15} />}{eyebrow}
           </span>
         )}

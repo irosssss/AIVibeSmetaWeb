@@ -218,6 +218,14 @@ a { color: inherit; text-decoration: none; }
 .eyebrow.jade { color: var(--accent-2-ink); }
 .eyebrow.info { color: var(--info); }
 .eyebrow.wasabi { color: var(--chart-ink); }
+/* модификаторы контракта (дрейф PageHead/карточек сведён обратно в канон):
+   .ico — лид-иконка вместо черты (PageHead, фикс PR #43); двух лидов не бывает.
+   .sm — надзаголовок внутри карточки-данных (fs-10, без черты — 8 черт в сетке = шум).
+   .mut — категория/метаданные, а не голос страницы: muted вместо роли-цвета. */
+.eyebrow.ico::before, .eyebrow.sm::before { display: none; }
+.eyebrow.ico { gap: 9px; }
+.eyebrow.sm { font-size: var(--fs-10); font-weight: 600; }
+.eyebrow.mut { color: var(--muted); }
 
 .display {
   font-family: var(--font-display);
