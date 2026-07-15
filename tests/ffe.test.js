@@ -208,6 +208,25 @@ describe("мапперы позиция ↔ товар библиотеки", ()
     const back = FFE.positionFromProduct(FFE.productFromPosition(src), "2026-07-08");
     expect(back).toMatchObject({ title: "Стол дуб", qty: 1, price: 44900, cat: "Мебель", sup: "Дубрава" });
   });
+  it("фото товара: blankProduct нормализует img/images, и они текут в позицию и обратно", () => {
+    const prod = FFE.blankProduct({ title: "Диван", price: 100, img: "https://x.ru/a.jpg", images: ["https://x.ru/b.jpg", "  ", ""] });
+    expect(prod.img).toBe("https://x.ru/a.jpg");
+    expect(prod.images).toEqual(["https://x.ru/b.jpg"]); // пустые ракурсы отсеяны
+    const pos = FFE.positionFromProduct(prod, "2026-07-14");
+    expect(pos.img).toBe("https://x.ru/a.jpg");
+    expect(pos.images).toEqual(["https://x.ru/b.jpg"]);
+    const back = FFE.productFromPosition(pos); // сбор из сметы не теряет фото
+    expect(back.img).toBe("https://x.ru/a.jpg");
+    expect(back.images).toEqual(["https://x.ru/b.jpg"]);
+  });
+  it("товар без фото — img пустой, images пустой массив, в позицию поля не добавляются", () => {
+    const prod = FFE.blankProduct({ title: "Пуф", price: 100 });
+    expect(prod.img).toBe("");
+    expect(prod.images).toEqual([]);
+    const pos = FFE.positionFromProduct(prod, "2026-07-08");
+    expect("img" in pos).toBe(false);
+    expect("images" in pos).toBe(false);
+  });
   it("давность цены переезжает вместе с товаром — библиотека не «освежает» молча (волна B3)", () => {
     // позиция с известной (возможно старой) датой проверки цены → товар → обратно в позицию:
     // дата должна пережить обе стороны round-trip, а не молча замениться на «сегодня»

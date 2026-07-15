@@ -485,6 +485,8 @@
       brand:   str(o.brand),                    // Бренд/марка (≠ поставщик: дилер продаёт чужой бренд) — портал поставщиков, срез 1
       article: str(o.article || o.sku),         // Артикул (базовый; у варианта может быть свой)
       url:     str(o.url),                       // Ссылка на товар
+      img:      str(o.img),                      // Фото (URL) — ГЛАВНОЕ фото товара; узнавание в карточке/пикере (зеркало blankPosition)
+      images:   Array.isArray(o.images) ? o.images.map(str).map((s) => s.trim()).filter(Boolean) : [], // доп. ракурсы (мультифото)
       note:    str(o.note),                      // Примечание
       dims: { w: d(dims.w), d: d(dims.d), h: d(dims.h) }, // Габариты, см (Ш×Г×В)
       priceDate: str(o.priceDate),               // Дата последней проверки цены (свежесть — волна B3); "" = неизвестно
@@ -562,7 +564,7 @@
     const o = it || {};
     return blankProduct({ title: o.title, cat: o.cat, unit: o.unit, price: o.price,
       sup: o.sup || o.supplier, article: o.sku || o.article, url: o.url, note: o.note, dims: o.dims,
-      priceDate: o.priceDate });
+      img: o.img, images: o.images, priceDate: o.priceDate }); // фото переезжает в библиотеку — сбор из сметы его не теряет
   };
   // мастер-запись → черновик позиции сметы (кол-во 1). Давность цены наследуется
   // от товара (библиотека не «протухает» молча — волна B3); если у товара своей
@@ -577,6 +579,9 @@
     if (str(o.article)) pos.sku = str(o.article);
     if (str(o.material)) pos.material = str(o.material);
     if (str(o.url)) pos.url = str(o.url);
+    // фото товара доезжает до позиции → далее рендерится в строке, портале и PDF (там рендер уже есть)
+    if (str(o.img)) pos.img = str(o.img);
+    if (Array.isArray(o.images) && o.images.length) pos.images = o.images.slice();
     if (o.unit && o.unit !== "шт") pos.unit = o.unit;
     const dm = o.dims || {};
     if (["w", "d", "h"].some((k) => dm[k] !== "" && dm[k] != null)) pos.dims = { w: dm.w, d: dm.d, h: dm.h };
