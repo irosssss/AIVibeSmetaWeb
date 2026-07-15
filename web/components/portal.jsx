@@ -76,7 +76,7 @@ function PortalPhotoBox({ it, onZoom }) {
   return (
     <React.Fragment>
       {/* onZoom (лайтбокс, 14.07): и в галерее фото кропится cover'ом — клик открывает целиком */}
-      <div style={{ position: "relative", aspectRatio: "4 / 3", background: "var(--surface-2)", overflow: "hidden", cursor: onZoom ? "zoom-in" : undefined }}
+      <div style={{ position: "relative", aspectRatio: "4 / 3", background: "var(--surface-2)", overflow: "hidden", boxShadow: "inset var(--ring)", cursor: onZoom ? "zoom-in" : undefined }}
         onClick={onZoom || undefined} role={onZoom ? "button" : undefined} tabIndex={onZoom ? 0 : undefined}
         onKeyDown={onZoom ? ((e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onZoom(); } }) : undefined}
         aria-label={onZoom ? "Показать фото крупно: " + (it.title || "") : undefined}>
@@ -119,7 +119,7 @@ function PortalLightbox({ it, onClose }) {
         style={{ position: "absolute", top: 18, right: 18 }}><I.close size={18} /></button>
       <img src={shown} alt={it.title || ""} onClick={(e) => e.stopPropagation()}
         style={{ maxWidth: "min(92vw, 900px)", maxHeight: "72vh", objectFit: "contain", borderRadius: 12,
-          background: "var(--surface)", boxShadow: "var(--shadow-pop)", cursor: "default" }} />
+          background: "var(--surface)", boxShadow: "var(--shadow-pop), inset var(--ring)", cursor: "default" }} />
       <div style={{ color: "#F7F2EA", fontSize: "var(--fs-14)", fontWeight: 600, textAlign: "center", maxWidth: 640 }}>{it.title}</div>
       {all.length > 1 && (
         <div style={{ display: "flex", gap: 8 }} role="group" aria-label="Фото позиции" onClick={(e) => e.stopPropagation()}>
