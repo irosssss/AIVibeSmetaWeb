@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Роутинг приложения хэшевый (#cabinet, #journal…) — поисковики игнорируют
+     fragment, поэтому честно индексируется ровно одна страница: корень.
+     Хэш-маршруты сюда НЕ добавлять (создют мусорные дубли). -->
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url>
+    <loc>https://designledger.ru/</loc>
+    <changefreq>weekly</changefreq>
+  </url>
+</urlset>
