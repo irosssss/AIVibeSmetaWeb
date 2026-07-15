@@ -161,7 +161,7 @@ function ProductCard({ p, onEdit, onRemove }) {
     <div className="glass" style={{ borderRadius: "var(--r-lg)", padding: 18, display: "flex", flexDirection: "column", gap: 10 }}>
       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 10 }}>
         <div style={{ minWidth: 0 }}>
-          {p.cat && <div className="mono" style={{ fontSize: "var(--fs-10)", fontWeight: 600, letterSpacing: "var(--tr-caps)", textTransform: "uppercase", color: "var(--muted)", marginBottom: 6 }}>{p.cat}</div>}
+          {p.cat && <div className="eyebrow sm mut" style={{ marginBottom: 6 }}>{p.cat}</div>}
           <div style={{ fontWeight: 800, fontFamily: "var(--font-display)", fontSize: "var(--fs-16)", letterSpacing: "-0.01em", lineHeight: 1.25 }}>{p.title}</div>
         </div>
         <div style={{ textAlign: "right", flex: "none" }}>
