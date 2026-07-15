@@ -138,7 +138,7 @@ function SiteNav({ go }) {
 const HERO_FLEET = [
   ["fc1", { width: 158 }, (         // карточка товара из библиотеки
     <React.Fragment>
-      <div style={{ height: 62, borderRadius: 8, background: "linear-gradient(135deg, #C4886B, #8F5B41)" }} />
+      <div style={{ height: 62, borderRadius: 8, background: "linear-gradient(135deg, var(--accent-soft), var(--accent-strong))" }} />
       <div style={{ fontWeight: 600, fontSize: "var(--fs-13)", marginTop: 9, lineHeight: 1.3 }}>Диван «Милано»</div>
       <div className="mono" style={{ fontSize: "var(--fs-11)", color: "var(--spec-meta)", marginTop: 3 }}>128 000 ₽ · MIL-3</div>
     </React.Fragment>
