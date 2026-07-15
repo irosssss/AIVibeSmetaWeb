@@ -13,7 +13,7 @@ const { useState: useL, useEffect: useLE } = React;
 
 /* бренд + поставщик + артикул одной строкой карточки/пикера */
 const libMeta = (p) => [p.brand, p.sup, p.article ? "арт. " + p.article : ""].filter(Boolean).join(" · ");
-const libBlankDraft = () => ({ __new: true, title: "", cat: "", unit: "шт", price: "", sup: "", brand: "", article: "", url: "", note: "", feedSku: "", dims: { w: "", d: "", h: "" }, variants: [] });
+const libBlankDraft = () => ({ __new: true, title: "", cat: "", unit: "шт", price: "", sup: "", brand: "", article: "", url: "", img: "", note: "", feedSku: "", dims: { w: "", d: "", h: "" }, variants: [] });
 // запись из хранилища → черновик редактора (числа → строки для полей ввода)
 const libToDraft = (p) => {
   const s = (v) => (v === "" || v == null ? "" : String(v));
@@ -161,16 +161,27 @@ function ProductCard({ p, onEdit, onRemove }) {
   const F = window.LedgerFFE;
   const dims = F && F.dimsLabel ? F.dimsLabel(p.dims) : "";
   const meta = libMeta(p);
+  const [preview, setPreview] = useL(false);
   return (
     <div className="glass" style={{ borderRadius: "var(--r-lg)", padding: 18, display: "flex", flexDirection: "column", gap: 10 }}>
-      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 10 }}>
-        <div style={{ minWidth: 0 }}>
-          {p.cat && <div className="eyebrow sm mut" style={{ marginBottom: 6 }}>{p.cat}</div>}
-          <div style={{ fontWeight: 800, fontFamily: "var(--font-display)", fontSize: "var(--fs-16)", letterSpacing: "-0.01em", lineHeight: 1.25 }}>{p.title}</div>
-        </div>
-        <div style={{ textAlign: "right", flex: "none" }}>
-          <div className="mono" style={{ fontWeight: 700, fontSize: "var(--fs-15)", color: "var(--text)", whiteSpace: "nowrap" }}>{fmtMoney(p.price || 0)}</div>
-          <div style={{ fontSize: "var(--fs-11)", color: "var(--muted)" }}>за {p.unit || "шт"}</div>
+      <div style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
+        {/* A: тумбнейл слева — только при наличии фото (канон «слот только если есть фото»);
+            клик → крупный предпросмотр с листалкой и переключением цветов-вариантов */}
+        {p.img && (
+          <button type="button" onClick={() => setPreview(true)} aria-label={"Открыть фото «" + p.title + "»"}
+            style={{ width: 60, height: 60, flex: "none", borderRadius: 9, overflow: "hidden", border: "1px solid var(--hairline)", padding: 0, cursor: "zoom-in" }}>
+            <Img src={p.img} label="" radius={9} />
+          </button>
+        )}
+        <div style={{ flex: 1, minWidth: 0, display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 10 }}>
+          <div style={{ minWidth: 0 }}>
+            {p.cat && <div className="eyebrow sm mut" style={{ marginBottom: 6 }}>{p.cat}</div>}
+            <div style={{ fontWeight: 800, fontFamily: "var(--font-display)", fontSize: "var(--fs-16)", letterSpacing: "-0.01em", lineHeight: 1.25 }}>{p.title}</div>
+          </div>
+          <div style={{ textAlign: "right", flex: "none" }}>
+            <div className="mono" style={{ fontWeight: 700, fontSize: "var(--fs-15)", color: "var(--text)", whiteSpace: "nowrap" }}>{fmtMoney(p.price || 0)}</div>
+            <div style={{ fontSize: "var(--fs-11)", color: "var(--muted)" }}>за {p.unit || "шт"}</div>
+          </div>
         </div>
       </div>
 
@@ -208,6 +219,70 @@ function ProductCard({ p, onEdit, onRemove }) {
         <button className="icon-btn sm" title="Редактировать" aria-label={"Редактировать «" + p.title + "»"} onClick={onEdit}><I.edit size={15} /></button>
         <button className="icon-btn sm" title="Удалить" aria-label={"Удалить «" + p.title + "»"} onClick={onRemove}><I.trash size={15} /></button>
       </div>
+      {preview && p.img && <ProductPreview p={p} onClose={() => setPreview(false)} />}
+    </div>
+  );
+}
+
+/* Крупный предпросмотр фото товара (клик по тумбнейлу карточки). По образцу
+   PortalLightbox (portal.jsx): оверлей z-300, <img> object-fit:contain (разглядеть
+   товар целиком, не кроп), Esc/клик по фону закрывают, листалка мультифото. Плюс —
+   переключение цветов-вариантов: клик по свотчу выбирает цвет, показывает его артикул
+   и цену; если у варианта есть своё фото (variant.img, задел на будущее) — оно и
+   покажется, иначе остаётся главное фото (у нас per-variant фото пока нет — честно). */
+function ProductPreview({ p, onClose }) {
+  const S = (x) => (x == null ? "" : String(x).trim());   // str() живёт в ffe.js — тут недоступен
+  const photos = [p.img, ...(Array.isArray(p.images) ? p.images : [])].filter(Boolean);
+  const variants = Array.isArray(p.variants) ? p.variants : [];
+  const [cur, setCur] = useL(0);
+  const [sel, setSel] = useL(-1);   // выбранный вариант; -1 = базовый товар
+  useLE(() => {
+    const onKey = (e) => { if (e.key === "Escape") onClose(); };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, []);
+  const v = sel >= 0 ? variants[sel] : null;
+  const shown = (v && S(v.img)) || photos[Math.min(cur, photos.length - 1)] || p.img;
+  const article = (v && S(v.article)) || S(p.article);
+  const price = v && v.price !== "" && v.price != null ? v.price : p.price;
+  return (
+    <div role="dialog" aria-modal="true" aria-label={"Фото: " + (p.title || "товар")} onClick={onClose}
+      style={{ position: "fixed", inset: 0, zIndex: 300, background: "rgba(46,42,38,.8)", backdropFilter: "blur(4px)",
+        display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 14, padding: 24, cursor: "zoom-out" }}>
+      <button className="icon-btn" onClick={onClose} aria-label="Закрыть фото" style={{ position: "absolute", top: 18, right: 18 }}><I.close size={18} /></button>
+      <img src={shown} alt={p.title || ""} onClick={(e) => e.stopPropagation()}
+        style={{ maxWidth: "min(92vw, 820px)", maxHeight: "64vh", objectFit: "contain", borderRadius: 12, background: "var(--surface)", boxShadow: "var(--shadow-pop)", cursor: "default" }} />
+      <div onClick={(e) => e.stopPropagation()} style={{ textAlign: "center", color: "#F7F2EA", display: "flex", flexDirection: "column", gap: 4, maxWidth: 640 }}>
+        <div style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: "var(--fs-18)" }}>{p.title}</div>
+        <div className="mono" style={{ fontSize: "var(--fs-13)", color: "rgba(247,242,234,.75)" }}>
+          {[v ? S(v.color) : null, article ? "арт. " + article : null, fmtMoney(price || 0)].filter(Boolean).join("  ·  ")}
+        </div>
+      </div>
+      {photos.length > 1 && (
+        <div style={{ display: "flex", gap: 8 }} role="group" aria-label="Фото товара" onClick={(e) => e.stopPropagation()}>
+          {photos.map((u, i) => (
+            <button key={i} type="button" onClick={() => { setCur(i); setSel(-1); }} aria-pressed={i === cur && sel < 0}
+              aria-label={"Фото " + (i + 1) + " из " + photos.length}
+              style={{ width: 52, height: 52, flex: "none", borderRadius: 8, overflow: "hidden", padding: 0, cursor: "pointer",
+                border: i === cur && sel < 0 ? "2px solid var(--accent-2)" : "2px solid rgba(247,242,234,.4)", opacity: i === cur && sel < 0 ? 1 : 0.7 }}>
+              <Img src={u} label="" radius={6} />
+            </button>
+          ))}
+        </div>
+      )}
+      {variants.length > 0 && (
+        <div onClick={(e) => e.stopPropagation()} style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", justifyContent: "center" }}
+          role="group" aria-label="Цвета">
+          {variants.map((vt, i) => (
+            <button key={i} type="button" onClick={() => setSel(sel === i ? -1 : i)} aria-pressed={sel === i}
+              title={[S(vt.color), S(vt.article)].filter(Boolean).join(" · ")} aria-label={"Цвет: " + (S(vt.color) || "вариант " + (i + 1))}
+              style={{ width: 30, height: 30, flex: "none", borderRadius: "50%", padding: 0, cursor: "pointer",
+                background: S(vt.colorHex) || "var(--glass-2)",
+                border: sel === i ? "2px solid #F7F2EA" : "2px solid rgba(247,242,234,.4)",
+                boxShadow: sel === i ? "0 0 0 2px rgba(46,42,38,.8), 0 0 0 4px #F7F2EA" : "none" }} />
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -237,7 +312,7 @@ function ProductEditor({ draft, onClose, onSaved, api, supplierMode }) {
       setNameErr("Товар «" + title + "» уже есть в каталоге — назовите этот иначе или отредактируйте существующий.");
       return;
     }
-    const payload = { title, cat: d.cat, unit: d.unit, price: d.price, sup: d.sup, brand: d.brand, article: d.article, url: d.url, note: d.note, feedSku: d.feedSku, dims: d.dims, variants: d.variants };
+    const payload = { title, cat: d.cat, unit: d.unit, price: d.price, sup: d.sup, brand: d.brand, article: d.article, url: d.url, img: d.img, note: d.note, feedSku: d.feedSku, dims: d.dims, variants: d.variants };
     setBusy(true);
     if (d.__new) await store.create(payload);
     else await store.update(d.id, payload);
@@ -336,6 +411,15 @@ function ProductEditor({ draft, onClose, onSaved, api, supplierMode }) {
 
         <LibFld label="Ссылка на товар">
           <input className="fld" type="url" value={d.url} onChange={(e) => set({ url: e.target.value })} placeholder="https://…" />
+        </LibFld>
+
+        <LibFld label="Фото (URL)">
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <input className="fld" style={{ flex: 1, fontFamily: "var(--font-mono)", fontSize: "var(--fs-12)" }} type="url"
+              value={d.img || ""} onChange={(e) => set({ img: e.target.value })} placeholder="https://…/photo.jpg" />
+            {/* тумбнейл-превью URL — узнавание при заполнении; чужие фото не рехостим (ссылка на источник) */}
+            {(d.img || "").trim() && <span style={{ width: 44, height: 44, flex: "none", borderRadius: 8, overflow: "hidden", border: "1px solid var(--hairline)" }}><Img src={d.img.trim()} label="" radius={8} /></span>}
+          </div>
         </LibFld>
 
         <div>
@@ -492,6 +576,8 @@ function LibraryPickerModal({ roomName, onClose, onAdd, styleMaterials = null })
               <span aria-hidden="true" style={{ width: 20, height: 20, flex: "none", borderRadius: 6, border: "1.5px solid " + (on ? "var(--accent-2)" : "var(--hairline-2)"), background: on ? "var(--accent-2)" : "transparent", display: "grid", placeItems: "center", color: "var(--on-accent)" }}>
                 {on && <I.check size={13} />}
               </span>
+              {/* тумбнейл в пикере — узнавание при выборе в комнату; только при наличии фото */}
+              {p.img && <span aria-hidden="true" style={{ width: 34, height: 34, flex: "none", borderRadius: 7, overflow: "hidden", border: "1px solid var(--hairline)" }}><Img src={p.img} label="" radius={7} /></span>}
               <span style={{ minWidth: 0, flex: 1 }}>
                 <span style={{ display: "flex", alignItems: "center", gap: 7, fontWeight: 600, fontSize: "var(--fs-13)", overflow: "hidden", whiteSpace: "nowrap" }}>
                   <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>{p.title}</span>
