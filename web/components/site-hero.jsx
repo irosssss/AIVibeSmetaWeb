@@ -205,9 +205,11 @@ function Hero({ go }) {
           первая смета — бесплатно · без карты · 2 проекта на тарифе «Старт»
         </div>
       </div>
-      {/* «скриншот приложения» по-нашему: живая плита сметы, крупно и по центру */}
+      {/* «скриншот приложения» по-нашему: кадр кабинета — рабочее место целиком,
+          крупно и по центру (рецепт стартовой Programa: дашборд сразу под шапкой).
+          Плита сметы уехала ниже, в свою секцию (CabinetShot/SmetaPlate — window). */}
       <div className="container hero-plate-wrap" style={{ position: "relative", zIndex: 2 }}>
-        <SmetaPlate />
+        <CabinetShot />
       </div>
     </header>
   );
@@ -306,3 +308,4 @@ function SmetaPlate() {
 window.SiteNav = SiteNav;
 window.Hero = Hero;
 window.FactsMarquee = FactsMarquee;
+window.SmetaPlate = SmetaPlate;   // переехала из шапки в секцию «Смета» (site-sections.jsx)
