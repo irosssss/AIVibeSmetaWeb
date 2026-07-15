@@ -257,7 +257,7 @@ function ProductPreview({ p, onClose }) {
         <button className="icon-btn" onClick={onClose} aria-label="Закрыть фото"
           style={{ position: "absolute", top: 10, right: 10, zIndex: 1, background: "var(--surface-glass)", boxShadow: "var(--shadow-raise)" }}><I.close size={17} /></button>
         <img src={shown} alt={p.title || ""}
-          style={{ display: "block", width: "100%", maxHeight: "54vh", objectFit: "contain", background: "var(--bg-base)", borderRadius: 12 }} />
+          style={{ display: "block", width: "100%", maxHeight: "54vh", objectFit: "contain", background: "var(--bg-base)", borderRadius: 12, boxShadow: "inset var(--ring)" }} />
         <div style={{ textAlign: "center", display: "flex", flexDirection: "column", gap: 3 }}>
           <div className="display" style={{ fontSize: "var(--fs-18)", fontWeight: 700, color: "var(--text)" }}>{p.title}</div>
           <div className="mono" style={{ fontSize: "var(--fs-13)", color: "var(--muted)" }}>
