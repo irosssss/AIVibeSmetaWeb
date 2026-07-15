@@ -86,11 +86,15 @@ function VKBtn({ onClick, loading }) {
 /* ---------------- ЭКРАН ВХОДА / РЕГИСТРАЦИИ ---------------- */
 function AuthScreen({ onAuthed, go }) {
   const [mode, setMode] = useC("login");      // login | register
+  const [role, setRole] = useC("designer");   // designer | supplier — «кто вы» при регистрации
   const [loading, setLoading] = useC(null);   // 'yandex' | 'vk' | null
+  const isSupplier = mode === "register" && role === "supplier";
 
   const login = async (provider) => {
     setLoading(provider);
-    const ses = await (provider === "yandex" ? LedgerAPI.auth.loginWithYandex() : LedgerAPI.auth.loginWithVK());
+    // роль передаём только при регистрации (вход — по существующему аккаунту, роль в нём уже есть)
+    const roleArg = mode === "register" ? role : undefined;
+    const ses = await (provider === "yandex" ? LedgerAPI.auth.loginWithYandex(roleArg) : LedgerAPI.auth.loginWithVK(roleArg));
     setLoading(null);
     onAuthed(ses.user);
   };
@@ -103,9 +107,11 @@ function AuthScreen({ onAuthed, go }) {
         <div style={{ position: "absolute", inset: 0, background: "linear-gradient(160deg, rgba(46,42,38,.72), rgba(46,42,38,.9))" }} />
         <div style={{ position: "relative", zIndex: 2, color: "#FCF6EE" }}><Logo size={27} onClick={() => go("site")} /></div>
         <div style={{ position: "relative", zIndex: 2, color: "#FCF6EE" }}>
-          <h2 className="display" style={{ fontSize: "clamp(30px,3.4vw,46px)", lineHeight: 1 }}>С возвращением<br />в студию</h2>
+          <h2 className="display" style={{ fontSize: "clamp(30px,3.4vw,46px)", lineHeight: 1 }}>{isSupplier ? <>Ваши товары —<br />в сметах дизайнеров</> : <>С возвращением<br />в студию</>}</h2>
           <p style={{ color: "rgba(252,246,238,.82)", marginTop: 18, maxWidth: 380, fontSize: "var(--fs-15)", lineHeight: 1.6 }}>
-            Проекты, сметы-комплектации, свои нормы и стили — рабочее место дизайнера в одном месте.
+            {isSupplier
+              ? "Каталог с артикулами и вариантами цвета, статистика спроса: какие товары дизайнеры чаще ставят в сметы."
+              : "Проекты, сметы-комплектации, свои нормы и стили — рабочее место дизайнера в одном месте."}
           </p>
         </div>
       </div>
@@ -123,10 +129,34 @@ function AuthScreen({ onAuthed, go }) {
           <h1 className="display" style={{ fontSize: "var(--fs-30)", marginBottom: 8 }}>{mode === "login" ? "Вход в Design Ledger" : "Создать аккаунт"}</h1>
           <p style={{ color: "var(--muted)", fontSize: "var(--fs-14)", marginBottom: 26 }}>{mode === "login" ? "Войдите через российские сервисы — быстро и без пароля." : "Регистрация в один тап через Яндекс ID или VK ID."}</p>
 
+          {/* «Кто вы?» — выбор роли при регистрации: дизайнер и поставщик получают
+              РАЗНЫЕ кабинеты (студия смет vs каталог + статистика спроса) */}
+          {mode === "register" && (
+            <div style={{ marginBottom: 22 }}>
+              <div style={{ fontSize: "var(--fs-13)", color: "var(--muted)", fontWeight: 600, marginBottom: 10 }}>Кто вы?</div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                {[["designer", "sofa", "Дизайнер", "Собираю сметы клиентам"], ["supplier", "truck", "Поставщик", "Размещаю свои товары"]].map(([k, ic, t, sub]) => (
+                  <button key={k} onClick={() => setRole(k)} aria-pressed={role === k}
+                    style={{ textAlign: "left", padding: "14px 16px", borderRadius: "var(--r-lg)", border: "1.5px solid " + (role === k ? "var(--accent)" : "var(--hairline)"),
+                      background: role === k ? "var(--accent-tint, var(--glass-2))" : "var(--surface)", transition: "var(--dur-fast)" }}>
+                    {I[ic] && React.createElement(I[ic], { size: 20, style: { color: role === k ? "var(--accent)" : "var(--muted)" } })}
+                    <div style={{ fontWeight: 700, fontSize: "var(--fs-14)", marginTop: 8 }}>{t}</div>
+                    <div style={{ fontSize: "var(--fs-12)", color: "var(--muted)", marginTop: 2, lineHeight: 1.4 }}>{sub}</div>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
           <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
             <YandexBtn onClick={() => login("yandex")} loading={loading === "yandex"} />
             <VKBtn onClick={() => login("vk")} loading={loading === "vk"} />
           </div>
+          {isSupplier && (
+            <p style={{ fontSize: "var(--fs-12)", color: "var(--muted)", marginTop: 12, lineHeight: 1.5 }}>
+              Регистрация поставщика — это заявка: после проверки каталог станет виден дизайнерам. <a href="#for-suppliers" style={{ color: "var(--accent-2)" }}>Подробнее для поставщиков</a>.
+            </p>
+          )}
 
           {loading && <div style={{ marginTop: 16, fontSize: "var(--fs-13)", color: "var(--accent-2)", display: "flex", alignItems: "center", gap: 8 }}><span className="spin" />Авторизация через {loading === "yandex" ? "Яндекс ID" : "VK ID"}…</div>}
 

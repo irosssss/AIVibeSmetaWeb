@@ -208,8 +208,11 @@ function ProductCard({ p, onEdit, onRemove }) {
   );
 }
 
-/* ---------------- РЕДАКТОР ТОВАРА ---------------- */
-function ProductEditor({ draft, onClose, onSaved }) {
+/* ---------------- РЕДАКТОР ТОВАРА ----------------
+   api — стор товаров (по умолчанию библиотека дизайнера); кабинет поставщика
+   передаёт LedgerAPI.supplierCatalog (та же схема, другой стор). */
+function ProductEditor({ draft, onClose, onSaved, api, supplierMode }) {
+  const store = api || LedgerAPI.library;
   const [d, setD] = useL(() => ({ ...draft, dims: { ...(draft.dims || { w: "", d: "", h: "" }) } }));
   const [busy, setBusy] = useL(false);
   const [done, setDone] = useL(false);
@@ -225,15 +228,15 @@ function ProductEditor({ draft, onClose, onSaved }) {
     if (busy) return;
     const title = (d.title || "").trim();
     if (!title) { setNameErr("Дайте товару название — по нему он ищется в библиотеке и подставляется в смету."); return; }
-    const all = await LedgerAPI.library.list();
+    const all = await store.list();
     if (all.some((p) => p.id !== d.id && (p.title || "").trim().toLowerCase() === title.toLowerCase())) {
-      setNameErr("Товар «" + title + "» уже есть в библиотеке — назовите этот иначе или отредактируйте существующий.");
+      setNameErr("Товар «" + title + "» уже есть в каталоге — назовите этот иначе или отредактируйте существующий.");
       return;
     }
     const payload = { title, cat: d.cat, unit: d.unit, price: d.price, sup: d.sup, brand: d.brand, article: d.article, url: d.url, note: d.note, feedSku: d.feedSku, dims: d.dims, variants: d.variants };
     setBusy(true);
-    if (d.__new) await LedgerAPI.library.create(payload);
-    else await LedgerAPI.library.update(d.id, payload);
+    if (d.__new) await store.create(payload);
+    else await store.update(d.id, payload);
     setBusy(false); setDone(true);
     setTimeout(onSaved, 650);
   };
@@ -272,12 +275,16 @@ function ProductEditor({ draft, onClose, onSaved }) {
           <div style={{ marginTop: -10 }}><PriceAgeChip d={d.priceDate} /></div>
         )}
 
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
-          <LibFld label="Поставщик / фабрика">
-            <input className="fld" value={d.sup} onChange={(e) => set({ sup: e.target.value })} placeholder="точка закупки" />
-          </LibFld>
+        {/* в кабинете поставщика (supplierMode) поле «Поставщик» лишнее — это его
+            собственный каталог; остаются Бренд + Артикул */}
+        <div style={{ display: "grid", gridTemplateColumns: supplierMode ? "1fr 1fr" : "1fr 1fr 1fr", gap: 12 }}>
+          {!supplierMode && (
+            <LibFld label="Поставщик / фабрика">
+              <input className="fld" value={d.sup} onChange={(e) => set({ sup: e.target.value })} placeholder="точка закупки" />
+            </LibFld>
+          )}
           <LibFld label="Бренд">
-            <input className="fld" value={d.brand || ""} onChange={(e) => set({ brand: e.target.value })} placeholder="если ≠ поставщику" />
+            <input className="fld" value={d.brand || ""} onChange={(e) => set({ brand: e.target.value })} placeholder={supplierMode ? "марка, если есть" : "если ≠ поставщику"} />
           </LibFld>
           <LibFld label="Артикул">
             <input className="fld" value={d.article} onChange={(e) => set({ article: e.target.value })} placeholder="SKU / код" />
@@ -314,12 +321,14 @@ function ProductEditor({ draft, onClose, onSaved }) {
           </span>
         </div>
 
-        <LibFld label="Артикул фида фабрик (SKU)">
-          <input className="fld" value={d.feedSku || ""} onChange={(e) => set({ feedSku: e.target.value })} placeholder="пока вводится вручную" />
-          <span style={{ display: "block", fontSize: "var(--fs-12)", color: "var(--muted)", marginTop: 5, lineHeight: 1.5 }}>
-            Задел под фид фабрик: когда он подключится, цены по этому артикулу начнут обновляться сами.
-          </span>
-        </LibFld>
+        {!supplierMode && (
+          <LibFld label="Артикул фида фабрик (SKU)">
+            <input className="fld" value={d.feedSku || ""} onChange={(e) => set({ feedSku: e.target.value })} placeholder="пока вводится вручную" />
+            <span style={{ display: "block", fontSize: "var(--fs-12)", color: "var(--muted)", marginTop: 5, lineHeight: 1.5 }}>
+              Задел под фид фабрик: когда он подключится, цены по этому артикулу начнут обновляться сами.
+            </span>
+          </LibFld>
+        )}
 
         <LibFld label="Ссылка на товар">
           <input className="fld" type="url" value={d.url} onChange={(e) => set({ url: e.target.value })} placeholder="https://…" />
@@ -479,4 +488,7 @@ function LibFld({ label, children }) {
 
 window.ProductsLibrary = ProductsLibrary;
 window.ProductEditor = ProductEditor;
+window.ProductCard = ProductCard;         // переиспользуется в кабинете поставщика (срез 3)
 window.LibraryPickerModal = LibraryPickerModal;
+window.libToDraft = libToDraft;
+window.libBlankDraft = libBlankDraft;

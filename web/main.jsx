@@ -59,6 +59,7 @@ import "./components/project-detail.jsx";
 import "./components/style-editor.jsx";
 import "./components/library-editor.jsx";
 import "./components/suppliers-book.jsx";
+import "./components/supplier-cabinet.jsx"; // кабинет РОЛИ «поставщик» (портал поставщиков, срез 3) — берёт ProductEditor/ProductCard в рантайме
 import "./components/admin.jsx";
 import "./components/admin-views.jsx";
 import "./components/portal.jsx";

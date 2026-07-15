@@ -186,6 +186,7 @@
     }
   })();
   db.library  = LS.get("library", []);   // библиотека товаров студии (волна B1) — пустая до первого товара
+  db.supplierCatalog = LS.get("supplierCatalog", []); // каталог товаров поставщика (портал поставщиков, срез 3) — то, что публикует сам поставщик
   db.suppliers = LS.get("suppliers", []); // адресная книга поставщиков (K5a) — пустая до первой карточки
   db.markupProfiles = LS.get("markupProfiles", []);   // сохранённые профили наценки — пусто до первого «мой стандарт»
   const _lsProjects = LS.get("projects", null); if (_lsProjects) db.projects = _lsProjects;
@@ -211,8 +212,20 @@
 
   /* ----------------------------- AUTH ----------------------------- */
   // → API: POST /api/auth/oauth/{provider}  (обмен кода на токен → сессия/JWT)
-  async function oauth(provider) {
+  // role — выбор при регистрации «кто вы» (дизайнер | поставщик). Заглушка честная:
+  // OAuth не реальный, но роль определяет, В КАКОЙ кабинет садится пользователь
+  // (дизайнерский vs поставщика) — это разные рабочие места, не один интерфейс.
+  async function oauth(provider, role) {
     await delay(700);
+    if (role === "supplier") {
+      // демо-персона поставщика: имя компании совпадает с поставщиком из сид-смет
+      // («Мебельный салон» — 23 позиции спроса), чтобы дашборд спроса был не пустой.
+      // supplierName — ключ связи со сметами дизайнеров (то же правило, что supplierMatch)
+      const sup = { id: "sup_1", name: "Мебельный салон", email: "sales@meb-salon.ru", role: "supplier", supplierName: "Мебельный салон", city: "Москва", applied: "2026-07-14", moderation: "pending" };
+      db.session = { user: { ...sup, provider, avatar: "#7A5C3E" } };
+      LS.set("session", db.session);
+      return clone(db.session);
+    }
     const base = provider === "yandex"
       ? { id: "u_1", name: "Ирина Соколова", email: "irina@designledger.ru", role: "admin" }
       : { id: "u_2", name: "Максим Орлов", email: "max.orlov@vk.com", role: "user" };
@@ -225,8 +238,8 @@
   window.LedgerAPI = {
     /* — Аутентификация (OAuth Яндекс ID / VK ID) — */
     auth: {
-      loginWithYandex: () => oauth("yandex"),   // → POST /api/auth/oauth/yandex
-      loginWithVK: () => oauth("vk"),            // → POST /api/auth/oauth/vk
+      loginWithYandex: (role) => oauth("yandex", role),   // → POST /api/auth/oauth/yandex
+      loginWithVK: (role) => oauth("vk", role),            // → POST /api/auth/oauth/vk
       getSession: async () => { await delay(120); return clone(db.session); }, // → GET /api/auth/session
       logout: async () => { await delay(120); db.session = null; LS.set("session", null); return { ok: true }; }, // → POST /api/auth/logout
     },
@@ -429,6 +442,46 @@
         await delay(120);
         db.library = db.library.filter((p) => p.id !== id);
         LS.set("library", db.library);
+        return { ok: true };
+      },
+    },
+
+    /* — Каталог товаров ПОСТАВЩИКА (портал поставщиков, срез 3): то, что публикует
+         сам поставщик в своём кабинете (артикул, варианты цвета, габариты, цена).
+         Схема — та же LedgerFFE.blankProduct, что у библиотеки дизайнера (единый товар),
+         но стор отдельный: это витрина поставщика, не личная библиотека дизайнера.
+         → API: /api/supplier/catalog (скоуп по supplier_id из сессии). — */
+    supplierCatalog: {
+      list: async () => { await delay(120); return clone(db.supplierCatalog); },
+      get: async (id) => { await delay(70); return clone(db.supplierCatalog.find((p) => p.id === id)); },
+      create: async (patch = {}) => {
+        await delay(150);
+        const F = window.LedgerFFE;
+        const body = F && F.blankProduct ? F.blankProduct(patch) : patch;
+        if (F) body.priceDate = body.priceDate || today();
+        const row = { id: "sc_" + Date.now() + "_" + Math.random().toString(36).slice(2, 6), ...body, createdAt: today(), updatedAt: today() };
+        db.supplierCatalog.push(row);
+        LS.set("supplierCatalog", db.supplierCatalog);
+        return clone(row);
+      },
+      update: async (id, patch) => {
+        await delay(130);
+        const i = db.supplierCatalog.findIndex((p) => p.id === id);
+        if (i >= 0) {
+          const F = window.LedgerFFE;
+          const prev = db.supplierCatalog[i];
+          const body = F && F.blankProduct ? F.blankProduct({ ...prev, ...patch }) : { ...prev, ...patch };
+          const prevNorm = F && F.blankProduct ? F.blankProduct(prev) : prev;
+          if (F && body.price !== prevNorm.price) body.priceDate = today();
+          db.supplierCatalog[i] = { ...prev, ...body, updatedAt: today() };
+          LS.set("supplierCatalog", db.supplierCatalog);
+        }
+        return clone(db.supplierCatalog[i]);
+      },
+      remove: async (id) => {
+        await delay(120);
+        db.supplierCatalog = db.supplierCatalog.filter((p) => p.id !== id);
+        LS.set("supplierCatalog", db.supplierCatalog);
         return { ok: true };
       },
     },

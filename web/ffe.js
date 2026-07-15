@@ -530,6 +530,32 @@
     { title: "Шторы льняные, комплект", cat: "Текстиль", price: 24000, sup: "Текстильная мастерская", article: "CT-01" },
   ];
 
+  /* Демо-каталог поставщика (портал поставщиков, срез 3): стартовые товары для пустого
+     кабинета поставщика — «Мебельный салон» (демо-персона). Названия совпадают со
+     спросом в сид-сметах, чтобы дашборд «что специфицируют» и каталог сходились.
+     Бренд, варианты цвета со своим артикулом, габариты — витрина полей карточки товара
+     поставщика. Схему нормализует blankProduct на supplierCatalog.create. */
+  const DEMO_SUPPLIER_CATALOG = [
+    { title: "Диван 3-местный, велюр", cat: "Мягкая мебель", brand: "Meb Salon", price: 164900, article: "MS-DV-3200", dims: { w: 220, d: 95, h: 78 },
+      variants: [
+        { color: "Графит", colorHex: "#4A4E57", article: "MS-DV-3200-GR" },
+        { color: "Терракота", colorHex: "#B7502C", article: "MS-DV-3200-TR" },
+        { color: "Оливковый", colorHex: "#6B6B47", article: "MS-DV-3200-OL", price: 171900 },
+      ] },
+    { title: "Кресло, эргономика", cat: "Мягкая мебель", brand: "Meb Salon", price: 58000, article: "MS-AR-118", dims: { w: 74, d: 80, h: 82 },
+      variants: [
+        { color: "Бежевый букле", colorHex: "#CBB89D", article: "MS-AR-118-BG" },
+        { color: "Тёмно-синий", colorHex: "#33415C", article: "MS-AR-118-NV" },
+      ] },
+    { title: "Журнальный столик, латунь + стекло", cat: "Мебель", brand: "Meb Salon", price: 34000, article: "MS-CT-90", dims: { w: 90, d: 50, h: 42 } },
+    { title: "Тумбы прикроватные (пара)", cat: "Мебель", brand: "Meb Salon", price: 39000, article: "MS-NS-2", dims: { w: 50, d: 40, h: 48 } },
+    { title: "Стулья, ясень", cat: "Мебель", brand: "Meb Salon", price: 12500, unit: "шт", article: "MS-CH-44", dims: { w: 46, d: 52, h: 84 },
+      variants: [
+        { color: "Натуральный ясень", colorHex: "#C9A96A", article: "MS-CH-44-NT" },
+        { color: "Венге", colorHex: "#3B2C22", article: "MS-CH-44-WG" },
+      ] },
+  ];
+
   // позиция сметы → мастер-запись (собрать библиотеку из реальной работы); дата
   // проверки цены переезжает вместе с позицией — сбор в библиотеку не «освежает» цену
   const productFromPosition = (it) => {
@@ -1022,7 +1048,7 @@
     blankPosition, normalizePosition, dimsLabel, ffeMeta, qtyLabel, costUnit, lineTotal, rrpUnit, rrpLine,
     docCodePrefix, assignDocCodes,
     blankComment, addComment,
-    blankProduct, productFromPosition, positionFromProduct, productWithVariant, DEMO_LIBRARY_PRODUCTS,
+    blankProduct, productFromPosition, positionFromProduct, productWithVariant, DEMO_LIBRARY_PRODUCTS, DEMO_SUPPLIER_CATALOG,
     blankSupplier, supplierMatch, supplierStats, listPortalShares,
     blankExtra, extraAmount, extrasTotal,
     BENCHMARK, estimateBudget, generateEstimate, setPendingDraft, takePendingDraft,

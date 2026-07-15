@@ -106,7 +106,11 @@ function App() {
   else if (view === "offer") screen = <OfferPage go={go} user={user} />;
   else if (view === "for-suppliers") screen = <ForSuppliersPage go={go} user={user} />;
   else if (view === "auth") screen = <AuthScreen onAuthed={onAuthed} go={go} />;
-  else if (view === "cabinet") screen = user ? <Cabinet user={user} onLogout={onLogout} go={go} /> : <AuthScreen onAuthed={onAuthed} go={go} />;
+  // роль решает рабочее место: поставщик → свой кабинет (каталог + статистика спроса),
+  // дизайнер/админ → студийный кабинет. Разные интерфейсы, не один на двоих.
+  else if (view === "cabinet") screen = !user ? <AuthScreen onAuthed={onAuthed} go={go} />
+    : user.role === "supplier" ? <SupplierCabinet user={user} onLogout={onLogout} go={go} />
+    : <Cabinet user={user} onLogout={onLogout} go={go} />;
   else if (view === "admin") screen = DEV_MODE ? <Admin user={user || ADMIN} onLogout={onLogout} go={go} /> : <SitePage go={go} />;
   else screen = <SitePage go={go} />;
 
