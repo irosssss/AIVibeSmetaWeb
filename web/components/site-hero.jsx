@@ -187,21 +187,21 @@ function Hero({ go }) {
     <header style={{ position: "relative", overflow: "hidden", paddingTop: "calc(var(--nav-h) + clamp(44px, 9vh, 104px))" }}>
       <HeroFleet />
       <div className="container" style={{ position: "relative", zIndex: 2, display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center" }}>
-        <button type="button" className="hero-announce mono" onClick={() => go("changelog")}>
+        <button type="button" className="hero-announce mono hero-rise" style={{ "--d": ".05s" }} onClick={() => go("changelog")}>
           <i /> Новое: клиент согласует смету по ссылке <I.arrow size={13} />
         </button>
         <h1 className="display" style={{ fontSize: "clamp(40px, 6.4vw, 86px)", lineHeight: 1.0, letterSpacing: "-0.03em", marginTop: 26 }}>
-          <span style={{ display: "block" }}>Смета клиенту —</span>
-          <span style={{ display: "block" }}>а не вечер в <span style={{ color: "var(--accent-ink)", fontStyle: "italic" }}>Excel</span></span>
+          <span className="hero-rise" style={{ display: "block", "--d": ".18s" }}>Смета клиенту —</span>
+          <span className="hero-rise" style={{ display: "block", "--d": ".32s" }}>а не вечер в <span style={{ color: "var(--accent-ink)", fontStyle: "italic" }}>Excel</span></span>
         </h1>
-        <p style={{ marginTop: 22, color: "var(--muted)", maxWidth: 540, fontSize: "var(--fs-16)", lineHeight: 1.65 }}>
+        <p className="hero-rise" style={{ marginTop: 22, color: "var(--muted)", maxWidth: 540, fontSize: "var(--fs-16)", lineHeight: 1.65, "--d": ".48s" }}>
           Себестоимость фабрики и цена клиенту — в одном документе. Наценка под контролем, готово к отправке за минуту.
         </p>
-        <div style={{ marginTop: 30, display: "flex", gap: 14, flexWrap: "wrap", justifyContent: "center" }} id="download">
+        <div className="hero-rise" style={{ marginTop: 30, display: "flex", gap: 14, flexWrap: "wrap", justifyContent: "center", "--d": ".62s" }} id="download">
           <button className="btn btn-primary" style={{ padding: "16px 26px", fontSize: "var(--fs-16)" }} onClick={() => go("auth")}><I.layers size={19} /> Начать бесплатно</button>
           <a className="btn btn-ghost" style={{ padding: "16px 26px", fontSize: "var(--fs-16)" }} href="#how">Как это работает <I.arrow size={17} /></a>
         </div>
-        <div className="mono" style={{ marginTop: 14, fontSize: "var(--fs-12)", color: "var(--spec-meta)", letterSpacing: ".02em" }}>
+        <div className="mono hero-rise" style={{ marginTop: 14, fontSize: "var(--fs-12)", color: "var(--spec-meta)", letterSpacing: ".02em", "--d": ".74s" }}>
           первая смета — бесплатно · без карты · 2 проекта на тарифе «Старт»
         </div>
       </div>
