@@ -603,9 +603,14 @@ const RS_ROW = { display: "flex", justifyContent: "space-between", alignItems: "
 /* давность цены: чип «цене N дней» — терракота после 30 дней (RU-волатильность цен).
    note(days, stale) — кастомный текст тултипа; по умолчанию «цена проверена…» */
 const priceAgeDays = (d) => { const t = new Date(d + "T00:00:00").getTime(); return isNaN(t) ? null : Math.max(0, Math.floor((Date.now() - t) / 86400000)); };
-function PriceAgeChip({ d, note }) {
+/* hideFresh — для «паспорта свежести» библиотеки: «цена от сегодня» на только что
+   созданной записи тавтологична (само собой разумеется, сигнала нет) и на сетке
+   карточек множится в шум. В project-detail чип несёт другой смысл (провенанс
+   копии из прошлого проекта, свой note) — там hideFresh не передаём, day 0 значим. */
+function PriceAgeChip({ d, note, hideFresh }) {
   const days = priceAgeDays(d);
   if (days == null) return null;
+  if (hideFresh && days === 0) return null;
   const stale = days > 30;
   const title = note ? note(days, stale) : "Цена проверена " + (days === 0 ? "сегодня" : days + " " + plural(days, ["день", "дня", "дней"]) + " назад") + (stale ? " — стоит перепроверить" : "");
   return (
