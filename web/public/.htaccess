@@ -1,0 +1,39 @@
+# Design Ledger — статик-хостинг nic.ru (Apache).
+# Лежит в web/public → Vite копирует в корень dist/ при сборке.
+
+# ---- HTTP → HTTPS (включать ПОСЛЕ активации SSL в панели nic.ru) ----
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteCond %{HTTPS} !=on
+  RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+</IfModule>
+
+# ---- Скрытые файлы не отдаём (страховка: .env/.git при случайной заливке) ----
+<FilesMatch "^\.">
+  Require all denied
+</FilesMatch>
+# сам .htaccess Apache и так не отдаёт; правило шире — на любой dotfile
+
+# ---- Кэширование и минимальные security-заголовки ----
+<IfModule mod_headers.c>
+  Header set X-Content-Type-Options "nosniff"
+  Header set Referrer-Policy "strict-origin-when-cross-origin"
+
+  # Хэшированные ассеты Vite (assets/index-*.js и т.п.) — кэш навсегда
+  <FilesMatch "\.(js|css|woff2)$">
+    Header set Cache-Control "public, max-age=31536000, immutable"
+  </FilesMatch>
+
+  # Вход приложения — всегда перепроверять (иначе пользователи застрянут на старой сборке)
+  <FilesMatch "^index\.html$">
+    Header set Cache-Control "no-cache"
+  </FilesMatch>
+
+  # img/* НЕ хэшированы (рунтайм-пути) — кэш сутки, чтобы замена картинки доехала
+  <FilesMatch "\.(jpg|jpeg|png|webp|svg|ico)$">
+    Header set Cache-Control "public, max-age=86400"
+  </FilesMatch>
+</IfModule>
+
+# ---- Хэш-роутинг: серверных маршрутов нет, любой неизвестный путь — приложение ----
+ErrorDocument 404 /index.html
