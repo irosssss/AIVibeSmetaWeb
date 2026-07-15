@@ -369,6 +369,7 @@ function LibraryPickerModal({ roomName, onClose, onAdd, styleMaterials = null })
   const [libRows, setLibRows] = useL(null);
   const [supRows, setSupRows] = useL(null);
   const [q, setQ] = useL("");
+  const [pcat, setPcat] = useL("");   // фильтр по разделу ("" = все)
   const [sel, setSel] = useL({});   // { id: true } — общий на оба источника (id уникальны: lib_/sc_)
   useLE(() => {
     LedgerAPI.library.list().then(setLibRows);
@@ -385,10 +386,16 @@ function LibraryPickerModal({ roomName, onClose, onAdd, styleMaterials = null })
   const inStyle = (p) => stk.length > 0 && stk.some((tk) => (norm(p.material) + " " + norm(p.title)).includes(tk));
   const all = (rows || []).slice()
     .sort((a, b) => (inStyle(b) - inStyle(a)) || (a.title || "").localeCompare(b.title || "", "ru"));
+  // разделы активного источника (с числом) — тот же фильтр-чипами, что в каталоге поставщика
+  const catList = Array.from(all.reduce((m, p) => m.set(p.cat || "Прочее", (m.get(p.cat || "Прочее") || 0) + 1), new Map()))
+    .sort((a, b) => a[0].localeCompare(b[0], "ru"));
+  const activeCat = pcat && catList.some(([c]) => c === pcat) ? pcat : "";
   const qq = norm(q.trim());
-  const shown = qq ? all.filter((p) =>
-    [p.title, p.cat, p.sup, p.brand, p.article].some((f) => norm(f).includes(qq)) ||
-    (p.variants || []).some((v) => [v.color, v.article].some((f) => norm(f).includes(qq)))) : all;
+  const shown = all
+    .filter((p) => !activeCat || (p.cat || "Прочее") === activeCat)
+    .filter((p) => !qq ||
+      [p.title, p.cat, p.sup, p.brand, p.article].some((f) => norm(f).includes(qq)) ||
+      (p.variants || []).some((v) => [v.color, v.article].some((f) => norm(f).includes(qq))));
   // портал поставщиков, срез 1: товар с вариантами разворачивается в строку на каждый цвет —
   // в смету уезжает КОНКРЕТНЫЙ вариант (его артикул → sku позиции, цвет → «Отделка / материал»)
   const F2 = window.LedgerFFE;
@@ -426,7 +433,7 @@ function LibraryPickerModal({ roomName, onClose, onAdd, styleMaterials = null })
       {/* источник: моя библиотека vs каталог поставщиков (срез 4 — две стороны) */}
       <div style={{ display: "flex", gap: 4, padding: "12px 24px 0" }} role="tablist" aria-label="Источник товаров">
         {[["library", "Моя библиотека", libRows], ["suppliers", "Каталог поставщиков", supRows]].map(([k, t, r]) => (
-          <button key={k} role="tab" aria-selected={source === k} onClick={() => { setSource(k); setSel({}); setQ(""); }}
+          <button key={k} role="tab" aria-selected={source === k} onClick={() => { setSource(k); setSel({}); setQ(""); setPcat(""); }}
             style={{ padding: "8px 14px", fontSize: "var(--fs-13)", fontWeight: 600, borderRadius: 99,
               background: source === k ? "var(--accent-2-tint)" : "transparent", color: source === k ? "var(--accent-2-ink)" : "var(--muted)",
               border: "1px solid " + (source === k ? "rgba(94,107,91,.4)" : "var(--hairline)") }}>
@@ -439,7 +446,24 @@ function LibraryPickerModal({ roomName, onClose, onAdd, styleMaterials = null })
         <SearchField value={q} onChange={setQ} placeholder={source === "suppliers" ? "Поиск по каталогу поставщиков" : "Поиск по библиотеке"} ariaLabel="Поиск по товарам" />
       </div>
 
-      <div style={{ padding: "4px 24px", maxHeight: "48vh", overflow: "auto" }}>
+      {/* фильтр по разделам — как в каталоге поставщика; только при >1 разделе */}
+      {catList.length > 1 && (
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 7, padding: "0 24px 8px" }} role="group" aria-label="Фильтр по разделам">
+          {[["", "Все · " + all.length], ...catList.map(([c, n]) => [c, c + " · " + n])].map(([val, label]) => {
+            const on = activeCat === val;
+            return (
+              <button key={val || "__all"} onClick={() => setPcat(val)} aria-pressed={on}
+                style={{ padding: "5px 11px", fontSize: "var(--fs-12)", fontWeight: 600, borderRadius: 99,
+                  background: on ? "var(--accent-2-tint)" : "transparent", color: on ? "var(--accent-2-ink)" : "var(--muted)",
+                  border: "1px solid " + (on ? "rgba(94,107,91,.4)" : "var(--hairline)"), transition: "var(--dur-fast)" }}>
+                {label}
+              </button>
+            );
+          })}
+        </div>
+      )}
+
+      <div style={{ padding: "4px 24px", maxHeight: "44vh", overflow: "auto" }}>
         {!rows && <div className="skel" style={{ height: 120, borderRadius: 12 }} />}
         {rows && all.length === 0 && source === "library" && (
           <p style={{ color: "var(--muted)", fontSize: "var(--fs-14)", lineHeight: 1.6, padding: "20px 0" }}>
@@ -451,7 +475,7 @@ function LibraryPickerModal({ roomName, onClose, onAdd, styleMaterials = null })
             Пока ни один поставщик не опубликовал каталог. Здесь появятся товары фабрик и салонов, подключённых к Design Ledger, — с артикулами, вариантами цвета и габаритами.
           </p>
         )}
-        {rows && all.length > 0 && shownEntries.length === 0 && <p style={{ color: "var(--muted)", fontSize: "var(--fs-14)", padding: "16px 0" }}>По запросу «{q.trim()}» ничего не нашлось.</p>}
+        {rows && all.length > 0 && shownEntries.length === 0 && <p style={{ color: "var(--muted)", fontSize: "var(--fs-14)", padding: "16px 0" }}>{qq ? "По запросу «" + q.trim() + "»" : "В разделе «" + activeCat + "»"} ничего не нашлось.</p>}
         {rows && shownEntries.map((entry) => {
           const { key, p, v, base } = entry;
           const on = !!sel[key];
