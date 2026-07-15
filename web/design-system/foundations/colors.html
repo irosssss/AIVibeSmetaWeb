@@ -1,0 +1,59 @@
+<!-- @dsCard group="Основы" -->
+<!doctype html>
+<html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Палитра · Design Ledger</title>
+<style>
+:root{
+--bg-base:#F5F1EB;--bg-deep:#ECE3D5;--surface:#FBF8F2;--surface-2:#F1E8DA;
+--glass-2:#F3EBDD;--hairline:#E3D9C7;
+--accent:#B7502C;--accent-soft:#D9744B;--accent-strong:#A43E18;--accent-ink:#A6431F;
+--accent-2:#5E6B5B;--accent-2-ink:#556150;--info:#3E4A59;--chart:#C98A2E;--chart-ink:#8D6017;--price-accent:#E08A5E;
+--text:#2E2A26;--muted:rgba(46,42,38,.70);--spec-meta:rgba(46,42,38,.68);
+--font-display:"Spectral",Georgia,serif;--font-body:"Inter",system-ui,sans-serif;--font-mono:"JetBrains Mono",ui-monospace,Menlo,monospace;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg-base);color:var(--text);font-family:var(--font-body);padding:28px}
+h1{font-family:var(--font-display);letter-spacing:-.02em;font-weight:600;font-size:24px;margin:0 0 4px}
+.sub{color:var(--muted);font-size:13px;margin:0 0 22px}
+.grp{font-family:var(--font-mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--spec-meta);margin:22px 0 10px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px}
+.sw{background:var(--surface);border:1px solid var(--hairline);border-radius:12px;overflow:hidden}
+.chip{height:64px}
+.meta{padding:9px 11px}
+.nm{font-size:12px;font-weight:600}
+.hx{font-family:var(--font-mono);font-size:11px;color:var(--muted);margin-top:2px}
+.role{font-size:10px;color:var(--spec-meta);margin-top:3px;line-height:1.35}
+</style></head>
+<body>
+<h1 class="display">Палитра</h1>
+<p class="sub">Роль токена — одна. Заливка ≠ текст. WCAG-текстовые токены помечены.</p>
+
+<div class="grp">Поверхности (тёплая бумага)</div>
+<div class="grid">
+  <div class="sw"><div class="chip" style="background:#F5F1EB"></div><div class="meta"><div class="nm">--bg-base</div><div class="hx">#F5F1EB</div><div class="role">фон страницы</div></div></div>
+  <div class="sw"><div class="chip" style="background:#FBF8F2"></div><div class="meta"><div class="nm">--surface</div><div class="hx">#FBF8F2</div><div class="role">карточки</div></div></div>
+  <div class="sw"><div class="chip" style="background:#F1E8DA"></div><div class="meta"><div class="nm">--surface-2</div><div class="hx">#F1E8DA</div><div class="role">приподнятая / hover</div></div></div>
+  <div class="sw"><div class="chip" style="background:#ECE3D5"></div><div class="meta"><div class="nm">--bg-deep</div><div class="hx">#ECE3D5</div><div class="role">футер / провалы</div></div></div>
+  <div class="sw"><div class="chip" style="background:#E3D9C7"></div><div class="meta"><div class="nm">--hairline</div><div class="hx">#E3D9C7</div><div class="role">тонкая линия</div></div></div>
+</div>
+
+<div class="grp">Акценты</div>
+<div class="grid">
+  <div class="sw"><div class="chip" style="background:#B7502C"></div><div class="meta"><div class="nm">--accent</div><div class="hx">#B7502C</div><div class="role">Terracotta — CTA (заливка)</div></div></div>
+  <div class="sw"><div class="chip" style="background:#A6431F"></div><div class="meta"><div class="nm">--accent-ink</div><div class="hx">#A6431F</div><div class="role">терракота КАК ТЕКСТ ≥4.5:1</div></div></div>
+  <div class="sw"><div class="chip" style="background:#D9744B"></div><div class="meta"><div class="nm">--accent-soft</div><div class="hx">#D9744B</div><div class="role">ТОЛЬКО заливки/иллюстрации</div></div></div>
+  <div class="sw"><div class="chip" style="background:#A43E18"></div><div class="meta"><div class="nm">--accent-strong</div><div class="hx">#A43E18</div><div class="role">hover CTA</div></div></div>
+  <div class="sw"><div class="chip" style="background:#5E6B5B"></div><div class="meta"><div class="nm">--accent-2</div><div class="hx">#5E6B5B</div><div class="role">Olive — согласовано-ок</div></div></div>
+  <div class="sw"><div class="chip" style="background:#3E4A59"></div><div class="meta"><div class="nm">--info</div><div class="hx">#3E4A59</div><div class="role">Dusty Navy — инфо/ссылки</div></div></div>
+  <div class="sw"><div class="chip" style="background:#C98A2E"></div><div class="meta"><div class="nm">--chart</div><div class="hx">#C98A2E</div><div class="role">Ochre — заливки графиков</div></div></div>
+  <div class="sw"><div class="chip" style="background:#E08A5E"></div><div class="meta"><div class="nm">--price-accent</div><div class="hx">#E08A5E</div><div class="role">итог на тёмном ink</div></div></div>
+</div>
+
+<div class="grp">Текст (тёплый ink)</div>
+<div class="grid">
+  <div class="sw"><div class="chip" style="background:#2E2A26"></div><div class="meta"><div class="nm">--text</div><div class="hx">#2E2A26</div><div class="role">основной</div></div></div>
+  <div class="sw"><div class="chip" style="background:rgba(46,42,38,.70)"></div><div class="meta"><div class="nm">--muted</div><div class="hx">ink / .70</div><div class="role">вторичный ~4.7:1</div></div></div>
+  <div class="sw"><div class="chip" style="background:rgba(46,42,38,.68)"></div><div class="meta"><div class="nm">--spec-meta</div><div class="hx">ink / .68</div><div class="role">данные сметы ~4.6:1</div></div></div>
+  <div class="sw"><div class="chip" style="background:rgba(46,42,38,.40)"></div><div class="meta"><div class="nm">--faint</div><div class="hx">ink / .40</div><div class="role">ТОЛЬКО декор, не данные</div></div></div>
+</div>
+</body></html>

@@ -1,0 +1,42 @@
+<!-- @dsCard group="Основы" -->
+<!doctype html>
+<html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Радиусы и тени · Design Ledger</title>
+<style>
+:root{
+--bg-base:#F5F1EB;--surface:#FBF8F2;--hairline:#E3D9C7;
+--text:#2E2A26;--muted:rgba(46,42,38,.70);--spec-meta:rgba(46,42,38,.68);
+--r-sm:12px;--r-md:16px;--r-lg:22px;--r-xl:30px;--r-pill:999px;
+--shadow-card:0 16px 40px rgba(46,42,38,.10);--shadow-pop:0 26px 64px rgba(46,42,38,.16);
+--ring:0 0 0 1px rgba(46,42,38,.10);
+--shadow-raise:0 0 0 1px rgba(46,42,38,.09),0 1px 2px -1px rgba(46,42,38,.09),0 2px 4px rgba(46,42,38,.05);
+--font-display:"Spectral",Georgia,serif;--font-body:"Inter",system-ui,sans-serif;--font-mono:"JetBrains Mono",ui-monospace,Menlo,monospace;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg-base);color:var(--text);font-family:var(--font-body);padding:28px}
+h1{font-family:var(--font-display);letter-spacing:-.02em;font-weight:600;font-size:24px;margin:0 0 22px}
+.grp{font-family:var(--font-mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--spec-meta);margin:6px 0 12px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:16px;margin-bottom:26px}
+.box{background:var(--surface);height:74px;display:grid;place-items:end;padding:8px}
+.tag{font-family:var(--font-mono);font-size:11px;color:var(--muted)}
+</style></head>
+<body>
+<h1 class="display" style="font-family:var(--font-display)">Радиусы и тени</h1>
+
+<div class="grp">Радиусы</div>
+<div class="grid">
+  <div><div class="box" style="border:1px solid var(--hairline);border-radius:12px"></div><div class="tag">--r-sm · 12</div></div>
+  <div><div class="box" style="border:1px solid var(--hairline);border-radius:16px"></div><div class="tag">--r-md · 16</div></div>
+  <div><div class="box" style="border:1px solid var(--hairline);border-radius:22px"></div><div class="tag">--r-lg · 22</div></div>
+  <div><div class="box" style="border:1px solid var(--hairline);border-radius:30px"></div><div class="tag">--r-xl · 30</div></div>
+  <div><div class="box" style="border:1px solid var(--hairline);border-radius:999px"></div><div class="tag">--r-pill</div></div>
+</div>
+
+<div class="grp">Тени (тёплый ink, без неона)</div>
+<div class="grid">
+  <div><div class="box" style="border-radius:16px;box-shadow:var(--ring)"></div><div class="tag">--ring · кольцо 1px</div></div>
+  <div><div class="box" style="border-radius:16px;box-shadow:var(--shadow-raise)"></div><div class="tag">--shadow-raise</div></div>
+  <div><div class="box" style="border-radius:16px;box-shadow:var(--shadow-card)"></div><div class="tag">--shadow-card</div></div>
+  <div><div class="box" style="border-radius:16px;box-shadow:var(--shadow-pop)"></div><div class="tag">--shadow-pop</div></div>
+</div>
+</body></html>

@@ -1,0 +1,51 @@
+<!-- @dsCard group="Компоненты" -->
+<!doctype html>
+<html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>KPI и статус-чипы · Design Ledger</title>
+<style>
+:root{
+--bg-base:#F5F1EB;--surface:#FBF8F2;--glass-2:#F3EBDD;--hairline:#E3D9C7;
+--accent:#B7502C;--accent-ink:#A6431F;--accent-tint:rgba(183,80,44,.08);
+--accent-2:#5E6B5B;--accent-2-ink:#556150;--accent-2-tint:rgba(94,107,91,.08);
+--info:#3E4A59;--chart-ink:#8D6017;
+--text:#2E2A26;--muted:rgba(46,42,38,.70);--spec-meta:rgba(46,42,38,.68);
+--r-lg:22px;
+--font-display:"Spectral",Georgia,serif;--font-body:"Inter",system-ui,sans-serif;--font-mono:"JetBrains Mono",ui-monospace,Menlo,monospace;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg-base);color:var(--text);font-family:var(--font-body);padding:28px}
+h1{font-family:var(--font-display);letter-spacing:-.02em;font-weight:600;font-size:24px;margin:0 0 4px}
+.sub{color:var(--muted);font-size:13px;margin:0 0 22px}
+.grp{font-family:var(--font-mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--spec-meta);margin:20px 0 12px}
+.kpis{display:flex;gap:14px;flex-wrap:wrap}
+.kpi{background:var(--surface);border:1px solid var(--hairline);border-radius:var(--r-lg);padding:18px 20px;flex:1;min-width:150px}
+.kpi .v{font-family:var(--font-mono);font-size:26px;font-weight:700;color:var(--accent-2);font-variant-numeric:tabular-nums}
+.kpi .v.zero{color:var(--muted)}
+.kpi .l{font-size:13px;color:var(--muted);margin-top:4px}
+.chips{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.chip{font-family:var(--font-mono);font-size:10px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;padding:4px 10px;border-radius:999px}
+.chip.ok{color:var(--accent-2-ink);background:var(--accent-2-tint)}
+.chip.info{color:var(--info);background:rgba(62,74,89,.08)}
+.chip.warn{color:var(--chart-ink);background:rgba(201,138,46,.10)}
+.chip.acc{color:var(--accent-ink);background:var(--accent-tint)}
+</style></head>
+<body>
+<h1 class="display" style="font-family:var(--font-display)">KPI и статус-чипы</h1>
+<p class="sub">Цифра-метрика на оливе (tabular). Ноль — приглушён (--muted): реальные значения выделяются, пустые уходят назад.</p>
+
+<div class="grp">KPI-карточки</div>
+<div class="kpis">
+  <div class="kpi"><div class="v">23</div><div class="l">в сметах · ×27 шт</div></div>
+  <div class="kpi"><div class="v">5</div><div class="l">проектов</div></div>
+  <div class="kpi"><div class="v">7</div><div class="l">согласовано клиентом</div></div>
+  <div class="kpi"><div class="v zero">0</div><div class="l">ушло клиентам</div></div>
+</div>
+
+<div class="grp">Статус-чипы (строка сметы / согласование)</div>
+<div class="chips">
+  <span class="chip ok">Согласовано</span>
+  <span class="chip info">Обсуждается</span>
+  <span class="chip warn">На рассмотрении</span>
+  <span class="chip acc">просрочен 2 дня</span>
+</div>
+</body></html>

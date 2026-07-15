@@ -1,0 +1,43 @@
+<!-- @dsCard group="Основы" -->
+<!doctype html>
+<html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Типографика · Design Ledger</title>
+<style>
+:root{
+--bg-base:#F5F1EB;--surface:#FBF8F2;--hairline:#E3D9C7;--accent-ink:#A6431F;
+--text:#2E2A26;--muted:rgba(46,42,38,.70);--spec-meta:rgba(46,42,38,.68);
+--font-display:"Spectral",Georgia,"Times New Roman",serif;
+--font-body:"Inter",system-ui,-apple-system,sans-serif;
+--font-mono:"JetBrains Mono",ui-monospace,"SF Mono",Menlo,monospace;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg-base);color:var(--text);font-family:var(--font-body);padding:28px}
+h1{font-family:var(--font-display);letter-spacing:-.02em;font-weight:600;font-size:24px;margin:0 0 4px}
+.sub{color:var(--muted);font-size:13px;margin:0 0 22px}
+.grp{font-family:var(--font-mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--spec-meta);margin:22px 0 12px}
+.row{display:flex;align-items:baseline;gap:16px;padding:12px 0;border-top:1px solid var(--hairline)}
+.tag{font-family:var(--font-mono);font-size:11px;color:var(--muted);flex:0 0 130px}
+.disp{font-family:var(--font-display);letter-spacing:-.02em;font-weight:600}
+.body{font-family:var(--font-body)}
+.mono{font-family:var(--font-mono);font-variant-numeric:tabular-nums}
+.fam{background:var(--surface);border:1px solid var(--hairline);border-radius:12px;padding:16px 18px;margin-bottom:10px}
+.fam .nm{font-size:12px;color:var(--spec-meta);font-family:var(--font-mono)}
+.fam .ex{margin-top:6px;font-size:22px}
+</style></head>
+<body>
+<h1 class="display" style="font-family:var(--font-display)">Типографика</h1>
+<p class="sub">Spectral (display) · Inter (body) · JetBrains Mono (данные/цены). Кириллица — первый класс.</p>
+
+<div class="grp">Семейства</div>
+<div class="fam"><div class="nm">--font-display · Spectral</div><div class="ex disp">Смета клиенту — а не вечер в Excel</div></div>
+<div class="fam"><div class="nm">--font-body · Inter</div><div class="ex body">Себестоимость фабрики и цена клиенту — в одном документе.</div></div>
+<div class="fam"><div class="nm">--font-mono · JetBrains Mono · tabular-nums</div><div class="ex mono">164 900 ₽ · арт. MIL-3 · 220×95×78 см</div></div>
+
+<div class="grp">Шкала (--fs-*)</div>
+<div class="row"><span class="tag">--fs-42 / display</span><span class="disp" style="font-size:42px">Заголовок</span></div>
+<div class="row"><span class="tag">--fs-30 / h2</span><span class="disp" style="font-size:30px">Подзаголовок</span></div>
+<div class="row"><span class="tag">--fs-21 / card h3</span><span class="disp" style="font-size:21px">Смета с двумя ценами</span></div>
+<div class="row"><span class="tag">--fs-16 / body</span><span class="body" style="font-size:16px">Основной текст интерфейса</span></div>
+<div class="row"><span class="tag">--fs-14 / sub</span><span class="body" style="font-size:14px;color:var(--muted)">Вторичный текст, описания</span></div>
+<div class="row"><span class="tag">--fs-11 / meta</span><span class="mono" style="font-size:11px;color:var(--spec-meta)">данные · арт. · кол-во</span></div>
+</body></html>
