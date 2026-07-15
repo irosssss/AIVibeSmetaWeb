@@ -241,7 +241,8 @@ function SupplierCatalog() {
                 {qq ? "По запросу «" + q.trim() + "»" : "В разделе «" + activeCat + "»"} ничего не нашлось.
               </p>
             : (
-              <div className="proj-grid" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(250px, 1fr))", gap: 16 }}>
+              /* alignItems:start — та же правка, что library-editor.jsx (ProductCard общий) */
+              <div className="proj-grid" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(250px, 1fr))", gap: 16, alignItems: "start" }}>
                 {shown.map((p) => <ProductCard key={p.id} p={p} onEdit={() => setEdit(window.libToDraft(p))} onRemove={() => remove(p.id)} />)}
               </div>
             )}

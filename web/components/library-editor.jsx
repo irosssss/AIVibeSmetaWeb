@@ -141,7 +141,11 @@ function ProductsLibrary() {
           {shown.length === 0
             ? <p style={{ color: "var(--muted)", fontSize: "var(--fs-14)", padding: "8px 2px" }}>По запросу «{q.trim()}» ничего не нашлось.</p>
             : (
-              <div className="proj-grid" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(250px, 1fr))", gap: 16 }}>
+              /* alignItems:start — без него grid растягивает каждую карточку до высоты
+                 самой высокой в ряду, и marginTop:auto подвала ProductCard съедает
+                 разницу пустотой ВНУТРИ короткой карточки; так карточка занимает
+                 свою естественную высоту, а воздух уходит МЕЖДУ рядами (норм. gap) */
+              <div className="proj-grid" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(250px, 1fr))", gap: 16, alignItems: "start" }}>
                 {shown.map((p) => <ProductCard key={p.id} p={p} onEdit={() => setEdit(libToDraft(p))} onRemove={() => remove(p.id)} />)}
               </div>
             )}
