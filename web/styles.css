@@ -144,6 +144,7 @@ body {
   line-height: 1.65;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
+  text-wrap: pretty;          /* убирает «сирот» в тексте (наследуется во всё) */
   overflow-x: hidden;
 }
 
@@ -232,6 +233,7 @@ a { color: inherit; text-decoration: none; }
   font-weight: 600;
   letter-spacing: -0.02em;
   line-height: 1.0;
+  text-wrap: balance;         /* заголовки ломаются ровно, не «лесенкой» */
 }
 
 /* кнопки */
