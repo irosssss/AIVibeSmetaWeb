@@ -459,6 +459,12 @@
         const F = window.LedgerFFE;
         const body = F && F.blankProduct ? F.blankProduct(patch) : patch;
         if (F) body.priceDate = body.priceDate || today();
+        // штампуем владельца-поставщика: имя компании из сессии → поле sup товара.
+        // Так, когда дизайнер добавит товар из «Каталога поставщиков» в смету
+        // (positionFromProduct копирует sup), это учтётся в спросе поставщика
+        // (supplierStats по имени). Замыкает петлю поставщик↔дизайнер (срез 4).
+        const owner = db.session && db.session.user && (db.session.user.supplierName || db.session.user.name);
+        if (owner && !body.sup) body.sup = owner;
         const row = { id: "sc_" + Date.now() + "_" + Math.random().toString(36).slice(2, 6), ...body, createdAt: today(), updatedAt: today() };
         db.supplierCatalog.push(row);
         LS.set("supplierCatalog", db.supplierCatalog);

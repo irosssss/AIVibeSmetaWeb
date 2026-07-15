@@ -365,10 +365,17 @@ function ProductEditor({ draft, onClose, onSaved, api, supplierMode }) {
    Открывается из строки комнаты в смете: поиск + мультивыбор → onAdd(товары[]).
    Вызывающий сам маппит записи в позиции (LedgerFFE.positionFromProduct). */
 function LibraryPickerModal({ roomName, onClose, onAdd, styleMaterials = null }) {
-  const [rows, setRows] = useL(null);
+  const [source, setSource] = useL("library");   // library | suppliers (срез 4: две стороны)
+  const [libRows, setLibRows] = useL(null);
+  const [supRows, setSupRows] = useL(null);
   const [q, setQ] = useL("");
-  const [sel, setSel] = useL({});   // { id: true }
-  useLE(() => { LedgerAPI.library.list().then(setRows); }, []);
+  const [sel, setSel] = useL({});   // { id: true } — общий на оба источника (id уникальны: lib_/sc_)
+  useLE(() => {
+    LedgerAPI.library.list().then(setLibRows);
+    // «Каталог поставщиков» — то, что опубликовали поставщики (срез 4). → API: GET /api/catalog?published
+    (LedgerAPI.supplierCatalog ? LedgerAPI.supplierCatalog.list() : Promise.resolve([])).then(setSupRows);
+  }, []);
+  const rows = source === "suppliers" ? supRows : libRows;
 
   const norm = (s) => (s || "").toLowerCase();
   // «стили ожили» (14.07): товары, чей материал/название совпали с материалами стиля
@@ -408,23 +415,40 @@ function LibraryPickerModal({ roomName, onClose, onAdd, styleMaterials = null })
 
   return (
     <Modal onClose={onClose} label="Добавить из библиотеки" maxWidth={560}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "20px 24px", borderBottom: "1px solid var(--hairline)" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "20px 24px 16px", borderBottom: "1px solid var(--hairline)" }}>
         <div>
-          <h3 className="display" style={{ fontSize: "var(--fs-21)" }}>Из библиотеки</h3>
+          <h3 className="display" style={{ fontSize: "var(--fs-21)" }}>Добавить товары</h3>
           {roomName && <div style={{ fontSize: "var(--fs-12)", color: "var(--muted)", marginTop: 2 }}>в комнату «{roomName}»</div>}
         </div>
         <button className="icon-btn" onClick={onClose} aria-label="Закрыть"><I.close size={18} /></button>
       </div>
 
-      <div style={{ padding: "16px 24px 8px" }}>
-        <SearchField value={q} onChange={setQ} placeholder="Поиск по библиотеке" ariaLabel="Поиск по библиотеке" />
+      {/* источник: моя библиотека vs каталог поставщиков (срез 4 — две стороны) */}
+      <div style={{ display: "flex", gap: 4, padding: "12px 24px 0" }} role="tablist" aria-label="Источник товаров">
+        {[["library", "Моя библиотека", libRows], ["suppliers", "Каталог поставщиков", supRows]].map(([k, t, r]) => (
+          <button key={k} role="tab" aria-selected={source === k} onClick={() => { setSource(k); setSel({}); setQ(""); }}
+            style={{ padding: "8px 14px", fontSize: "var(--fs-13)", fontWeight: 600, borderRadius: 99,
+              background: source === k ? "var(--accent-2-tint)" : "transparent", color: source === k ? "var(--accent-2-ink)" : "var(--muted)",
+              border: "1px solid " + (source === k ? "rgba(94,107,91,.4)" : "var(--hairline)") }}>
+            {t}{r && r.length ? " · " + r.length : ""}
+          </button>
+        ))}
       </div>
 
-      <div style={{ padding: "4px 24px", maxHeight: "52vh", overflow: "auto" }}>
+      <div style={{ padding: "12px 24px 8px" }}>
+        <SearchField value={q} onChange={setQ} placeholder={source === "suppliers" ? "Поиск по каталогу поставщиков" : "Поиск по библиотеке"} ariaLabel="Поиск по товарам" />
+      </div>
+
+      <div style={{ padding: "4px 24px", maxHeight: "48vh", overflow: "auto" }}>
         {!rows && <div className="skel" style={{ height: 120, borderRadius: 12 }} />}
-        {rows && all.length === 0 && (
+        {rows && all.length === 0 && source === "library" && (
           <p style={{ color: "var(--muted)", fontSize: "var(--fs-14)", lineHeight: 1.6, padding: "20px 0" }}>
             Библиотека пуста. Наполните её в разделе «Мастерская → Товары» или кнопкой «В библиотеку» на позициях сметы — потом сможете добавлять товары в комнаты в один клик.
+          </p>
+        )}
+        {rows && all.length === 0 && source === "suppliers" && (
+          <p style={{ color: "var(--muted)", fontSize: "var(--fs-14)", lineHeight: 1.6, padding: "20px 0" }}>
+            Пока ни один поставщик не опубликовал каталог. Здесь появятся товары фабрик и салонов, подключённых к Design Ledger, — с артикулами, вариантами цвета и габаритами.
           </p>
         )}
         {rows && all.length > 0 && shownEntries.length === 0 && <p style={{ color: "var(--muted)", fontSize: "var(--fs-14)", padding: "16px 0" }}>По запросу «{q.trim()}» ничего не нашлось.</p>}
