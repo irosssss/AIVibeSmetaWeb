@@ -1,0 +1,49 @@
+<!-- @dsCard group="Компоненты" -->
+<!doctype html>
+<html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Eyebrow · Design Ledger</title>
+<style>
+:root{
+--bg-base:#F5F1EB;--surface:#FBF8F2;--hairline:#E3D9C7;
+--accent-ink:#A6431F;--accent-2-ink:#556150;--info:#3E4A59;--chart-ink:#8D6017;
+--text:#2E2A26;--muted:rgba(46,42,38,.70);--spec-meta:rgba(46,42,38,.68);
+--tr-caps:.14em;
+--font-display:"Spectral",Georgia,serif;--font-body:"Inter",system-ui,sans-serif;--font-mono:"JetBrains Mono",ui-monospace,Menlo,monospace;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg-base);color:var(--text);font-family:var(--font-body);padding:28px}
+h1{font-family:var(--font-display);letter-spacing:-.02em;font-weight:600;font-size:24px;margin:0 0 4px}
+.sub{color:var(--muted);font-size:13px;margin:0 0 22px}
+.grp{font-family:var(--font-mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--spec-meta);margin:20px 0 12px}
+.stack{display:flex;flex-direction:column;gap:14px;align-items:flex-start}
+.eyebrow{font-family:var(--font-mono);font-weight:500;font-size:12px;letter-spacing:var(--tr-caps);text-transform:uppercase;color:var(--accent-ink);display:inline-flex;align-items:center;gap:12px}
+.eyebrow::before{content:"";flex:none;width:26px;height:1px;background:currentColor}
+.eyebrow.jade{color:var(--accent-2-ink)}
+.eyebrow.info{color:var(--info)}
+.eyebrow.wasabi{color:var(--chart-ink)}
+.eyebrow.ico::before,.eyebrow.sm::before{display:none}
+.eyebrow.ico{gap:9px}
+.eyebrow.sm{font-size:10px;font-weight:600}
+.eyebrow.mut{color:var(--muted)}
+.eyebrow svg{width:15px;height:15px}
+.lbl{font-family:var(--font-mono);font-size:10px;color:var(--muted);margin-left:14px}
+.card{background:var(--surface);border:1px solid var(--hairline);border-radius:12px;padding:14px 16px}
+</style></head>
+<body>
+<h1 class="display" style="font-family:var(--font-display)">Eyebrow</h1>
+<p class="sub">Mono-надзаголовок с чертой-лидом. Роль-цвета и контракт-модификаторы (один лид, не два).</p>
+
+<div class="grp">Роли (черта-лид)</div>
+<div class="stack">
+  <span class="eyebrow">Спрос<span class="lbl">.eyebrow · --accent-ink</span></span>
+  <span class="eyebrow jade">Как это работает<span class="lbl">.jade · олива</span></span>
+  <span class="eyebrow info">Клиентский портал<span class="lbl">.info · navy</span></span>
+  <span class="eyebrow wasabi">Спецификация<span class="lbl">.wasabi · охра</span></span>
+</div>
+
+<div class="grp">Модификаторы контракта</div>
+<div class="stack">
+  <span class="eyebrow ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 13h4v6H3zM9 5h4v14H9zM15 9h4v10h-4z"/></svg>Спрос<span class="lbl">.ico · иконка-лид (PageHead)</span></span>
+  <div class="card"><span class="eyebrow sm mut">Мебель</span><span class="lbl">.sm.mut · надзаголовок в карточке-данных</span></div>
+</div>
+</body></html>

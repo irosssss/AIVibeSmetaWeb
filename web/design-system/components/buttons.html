@@ -1,0 +1,46 @@
+<!-- @dsCard group="Компоненты" -->
+<!doctype html>
+<html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Кнопки · Design Ledger</title>
+<style>
+:root{
+--bg-base:#F5F1EB;--surface:#FBF8F2;--surface-2:#F1E8DA;--hairline:#E3D9C7;
+--accent:#B7502C;--accent-strong:#A43E18;--on-accent:#FBF8F2;--faint:rgba(46,42,38,.40);
+--text:#2E2A26;--muted:rgba(46,42,38,.70);--spec-meta:rgba(46,42,38,.68);
+--r-pill:999px;--glow-accent:0 10px 26px rgba(183,80,44,.22);
+--ease:cubic-bezier(.22,1,.36,1);
+--font-display:"Spectral",Georgia,serif;--font-body:"Inter",system-ui,sans-serif;--font-mono:"JetBrains Mono",ui-monospace,Menlo,monospace;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg-base);color:var(--text);font-family:var(--font-body);padding:28px}
+h1{font-family:var(--font-display);letter-spacing:-.02em;font-weight:600;font-size:24px;margin:0 0 4px}
+.sub{color:var(--muted);font-size:13px;margin:0 0 22px}
+.grp{font-family:var(--font-mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--spec-meta);margin:20px 0 12px}
+.row{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:10px;border-radius:var(--r-pill);padding:14px 24px;font-weight:600;font-size:15px;white-space:nowrap;border:0;cursor:pointer;font-family:var(--font-body);transition:transform .25s var(--ease),background .25s var(--ease)}
+.btn svg{width:18px;height:18px}
+.btn-primary{background:var(--accent);color:var(--on-accent);box-shadow:var(--glow-accent)}
+.btn-primary:hover{transform:translateY(-2px);background:var(--accent-strong)}
+.btn-ghost{background:var(--surface);border:1px solid var(--hairline);color:var(--text)}
+.btn-ghost:hover{transform:translateY(-2px);border-color:var(--accent);background:var(--surface-2)}
+.btn:active{transform:translateY(0) scale(.98)}
+.btn:disabled{opacity:.55;box-shadow:none;cursor:not-allowed}
+.btn-primary:disabled{background:var(--surface-2);color:var(--faint)}
+</style></head>
+<body>
+<h1 class="display" style="font-family:var(--font-display)">Кнопки</h1>
+<p class="sub">Pill-радиус, tactile scale(.98) на нажатие. Primary затемняет на hover (контраст держится).</p>
+
+<div class="grp">Варианты</div>
+<div class="row">
+  <button class="btn btn-primary"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l9 5v8l-9 5-9-5V8z"/></svg>Собрать смету</button>
+  <button class="btn btn-ghost">Как это работает</button>
+</div>
+
+<div class="grp">Состояния</div>
+<div class="row">
+  <button class="btn btn-primary">Начать бесплатно</button>
+  <button class="btn btn-primary" disabled>Извлечь</button>
+  <button class="btn btn-ghost" disabled>Недоступно</button>
+</div>
+</body></html>

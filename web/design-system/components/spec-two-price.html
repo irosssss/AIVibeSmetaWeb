@@ -1,0 +1,50 @@
+<!-- @dsCard group="Компоненты" -->
+<!doctype html>
+<html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Спец-таблица «две цены» · Design Ledger</title>
+<style>
+:root{
+--bg-base:#F5F1EB;--surface:#FBF8F2;--hairline:#E3D9C7;
+--accent-2-ink:#556150;--accent-2-tint:rgba(94,107,91,.08);--price-accent:#E08A5E;
+--text:#2E2A26;--muted:rgba(46,42,38,.70);--spec-meta:rgba(46,42,38,.68);
+--r-lg:22px;--r-md:16px;--shadow-card:0 16px 40px rgba(46,42,38,.10);
+--font-display:"Spectral",Georgia,serif;--font-body:"Inter",system-ui,sans-serif;--font-mono:"JetBrains Mono",ui-monospace,Menlo,monospace;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg-base);color:var(--text);font-family:var(--font-body);padding:28px}
+h1{font-family:var(--font-display);letter-spacing:-.02em;font-weight:600;font-size:24px;margin:0 0 4px}
+.sub{color:var(--muted);font-size:13px;margin:0 0 22px;max-width:520px;line-height:1.5}
+.mono{font-family:var(--font-mono);font-variant-numeric:tabular-nums}
+.plate{background:var(--surface);border:1px solid var(--hairline);border-radius:var(--r-lg);box-shadow:var(--shadow-card);max-width:520px;padding:18px 20px}
+.pt{font-family:var(--font-display);font-weight:600;font-size:18px;letter-spacing:-.01em}
+.ps{font-family:var(--font-mono);font-size:11px;color:var(--spec-meta);margin-top:2px}
+.spec{display:grid;grid-template-columns:24px 1fr auto auto;gap:10px;align-items:center;padding:9px 0;border-top:1px solid var(--hairline)}
+.spec.head{border-top:0;margin-top:12px;font-family:var(--font-mono);font-size:10px;letter-spacing:.04em;text-transform:uppercase;color:var(--spec-meta)}
+.idx{font-family:var(--font-mono);font-size:12px;color:var(--spec-meta)}
+.pos{font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pos .art{font-family:var(--font-mono);font-weight:400;color:var(--spec-meta);font-size:12px}
+.r{text-align:right}
+.cost{font-family:var(--font-mono);font-size:12px;color:var(--muted)}
+.cli{font-family:var(--font-mono);font-size:13px;font-weight:700}
+.total{margin-top:14px;background:#2E2A26;border-radius:var(--r-md);padding:16px 18px;display:flex;align-items:baseline;justify-content:space-between}
+.total .lab{font-family:var(--font-mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:rgba(252,246,238,.66)}
+.total .val{font-family:var(--font-mono);font-weight:700;font-size:24px;color:var(--price-accent);font-variant-numeric:tabular-nums}
+.markup{margin-top:10px;display:flex;align-items:center;gap:8px;font-family:var(--font-mono);font-size:11px;color:var(--accent-2-ink);background:var(--accent-2-tint);border-radius:999px;padding:5px 12px;width:max-content}
+.note{margin-top:12px;font-family:var(--font-mono);font-size:11px;color:var(--spec-meta)}
+</style></head>
+<body>
+<h1 class="display" style="font-family:var(--font-display)">Спец-таблица «две цены»</h1>
+<p class="sub">Ядро продукта: себестоимость — дизайнеру, цена — клиенту. Наценка прозрачна поверх. Клиентские выгрузки — без себестоимости и наценки (инвариант).</p>
+
+<div class="plate">
+  <div class="pt">Смета-комплектация</div>
+  <div class="ps">№ 024 · от 01.07.2026</div>
+  <div class="spec head"><span>№</span><span>Позиция</span><span class="r">Себест.</span><span class="r">Клиенту</span></div>
+  <div class="spec"><span class="idx">01</span><span class="pos">Диван 3-местный, велюр <span class="art">· DV-2240</span></span><span class="r cost">112&nbsp;000&nbsp;₽</span><span class="r cli">147&nbsp;840&nbsp;₽</span></div>
+  <div class="spec"><span class="idx">02</span><span class="pos">Кресло лаунж, дуб/букле <span class="art">· KR-118</span></span><span class="r cost">73&nbsp;000&nbsp;₽</span><span class="r cli">96&nbsp;360&nbsp;₽</span></div>
+  <div class="spec"><span class="idx">03</span><span class="pos">Люстра подвесная, латунь <span class="art">· LT-905</span></span><span class="r cost">38&nbsp;600&nbsp;₽</span><span class="r cli">50&nbsp;952&nbsp;₽</span></div>
+  <div class="markup">наценка +32% · прибыль +212&nbsp;400&nbsp;₽</div>
+  <div class="total"><span class="lab">Цена клиенту</span><span class="val">1&nbsp;478&nbsp;400&nbsp;₽</span></div>
+  <div class="note">✓ клиент видит только свою цену</div>
+</div>
+</body></html>

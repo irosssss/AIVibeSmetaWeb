@@ -1,0 +1,65 @@
+<!-- @dsCard group="Компоненты" -->
+<!doctype html>
+<html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Карточка товара · Design Ledger</title>
+<style>
+:root{
+--bg-base:#F5F1EB;--surface:#FBF8F2;--glass-2:#F3EBDD;--hairline:#E3D9C7;
+--accent-2:#5E6B5B;--accent-2-tint:rgba(94,107,91,.08);
+--text:#2E2A26;--muted:rgba(46,42,38,.70);--spec-meta:rgba(46,42,38,.68);
+--r-lg:22px;--ring:0 0 0 1px rgba(46,42,38,.10);--shadow-card:0 16px 40px rgba(46,42,38,.10);--tr-caps:.14em;
+--font-display:"Spectral",Georgia,serif;--font-body:"Inter",system-ui,sans-serif;--font-mono:"JetBrains Mono",ui-monospace,Menlo,monospace;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg-base);color:var(--text);font-family:var(--font-body);padding:28px}
+h1{font-family:var(--font-display);letter-spacing:-.02em;font-weight:600;font-size:24px;margin:0 0 4px}
+.sub{color:var(--muted);font-size:13px;margin:0 0 22px;max-width:520px;line-height:1.5}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px;align-items:start;max-width:600px}
+.card{background:var(--surface);border:1px solid var(--hairline);border-radius:var(--r-lg);padding:18px;display:flex;flex-direction:column;gap:10px}
+.top{display:flex;align-items:flex-start;gap:12px}
+.thumb{width:60px;height:60px;flex:none;border-radius:9px;overflow:hidden;border:1px solid var(--hairline)}
+.thumb .ph{width:100%;height:100%;box-shadow:inset var(--ring)}
+.body{flex:1;min-width:0;display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
+.cat{font-family:var(--font-mono);font-size:10px;font-weight:600;letter-spacing:var(--tr-caps);text-transform:uppercase;color:var(--muted);margin-bottom:6px}
+.title{font-weight:800;font-family:var(--font-display);font-size:16px;letter-spacing:-.01em;line-height:1.25}
+.price{font-family:var(--font-mono);font-weight:700;font-size:16px;color:var(--text);white-space:nowrap;font-variant-numeric:tabular-nums}
+.unit{font-family:var(--font-mono);font-size:11px;color:var(--spec-meta);text-align:right;margin-top:2px}
+.meta{font-family:var(--font-mono);font-size:11px;color:var(--spec-meta)}
+.sw{display:flex;gap:6px;margin-top:2px}
+.sw i{width:14px;height:14px;border-radius:50%;border:1px solid var(--hairline);display:inline-block}
+</style></head>
+<body>
+<h1 class="display" style="font-family:var(--font-display)">Карточка товара</h1>
+<p class="sub">Библиотека студии: тумбнейл слева (кромка --ring, слот только при фото), надзаголовок-категория, цена mono. Варианты цвета — свотчи.</p>
+
+<div class="grid">
+  <div class="card">
+    <div class="top">
+      <div class="thumb"><div class="ph" style="background:linear-gradient(135deg,#C4744B,#9c4f2f)"></div></div>
+      <div class="body">
+        <div style="min-width:0">
+          <div class="cat">Мягкая мебель</div>
+          <div class="title">Диван 3-местный, велюр</div>
+        </div>
+        <div><div class="price">164 900 ₽</div><div class="unit">×1 шт</div></div>
+      </div>
+    </div>
+    <div class="meta">Фабрика мягкой мебели · арт. SF-3200</div>
+    <div class="sw"><i style="background:#3a4048"></i><i style="background:#cbb89b"></i><i style="background:#5E6B5B"></i></div>
+  </div>
+
+  <div class="card">
+    <div class="top">
+      <div class="thumb"><div class="ph" style="background:linear-gradient(135deg,#d8c7b0,#b7a988)"></div></div>
+      <div class="body">
+        <div style="min-width:0">
+          <div class="cat">Свет</div>
+          <div class="title">Люстра подвесная, латунь</div>
+        </div>
+        <div><div class="price">50 952 ₽</div><div class="unit">×1 шт</div></div>
+      </div>
+    </div>
+    <div class="meta">Citilux · арт. LT-905</div>
+  </div>
+</div>
+</body></html>
