@@ -59,10 +59,12 @@ import "./components/project-detail.jsx";
 import "./components/style-editor.jsx";
 import "./components/library-editor.jsx";
 import "./components/suppliers-book.jsx";
+import "./components/supplier-cabinet.jsx"; // кабинет РОЛИ «поставщик» (портал поставщиков, срез 3) — берёт ProductEditor/ProductCard в рантайме
 import "./components/admin.jsx";
 import "./components/admin-views.jsx";
 import "./components/portal.jsx";
 import "./components/legal-pages.jsx";   // #policy / #offer — политика 152-ФЗ и публичная оферта (PortalWrap/Footer берёт в рантайме)
+import "./components/supplier-landing.jsx"; // #for-suppliers — питч и заявка поставщика (PortalWrap/Footer берёт в рантайме)
 
 // последним — app.jsx: монтирует <App/> в #root
 import "./components/app.jsx";

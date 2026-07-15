@@ -396,6 +396,60 @@
     return (Array.isArray(list) ? list : []).find((s) => str(s && s.name).trim().toLowerCase() === key) || null;
   }
 
+  /* ----------------------------- КАБИНЕТ ПОСТАВЩИКА (превью, PRD портала поставщиков §6) -----------------------------
+     Спрос на товары поставщика из РЕАЛЬНЫХ смет дизайнера — формула Programa
+     «Specified, not just seen»: считаем спецификации, не показы. ИНВАРИАНТ «деньги
+     дизайнера — тайна» распространяется на третью аудиторию: НИКАКИХ сумм, цен и
+     наценки в этой сводке — только счёт позиций/штук. Связь — по имени, тем же
+     правилом, что supplierMatch (регистр и краевые пробелы нетерпимы, не нечёткая).
+     Сейчас сводку читает дизайнер (Мастерская → Поставщики); когда кабинеты
+     поставщиков заработают онлайн, та же математика поедет на сервер. → API: GET /api/supplier/:id/stats */
+  function supplierStats(projects, shares, name) {
+    const key = str(name).trim().toLowerCase();
+    const out = { projects: 0, positions: 0, qty: 0, approved: 0, inWork: 0, shared: 0, products: [] };
+    if (!key) return out;
+    const match = (it) => str(it && (it.sup || it.supplier)).trim().toLowerCase() === key;
+    const byProduct = new Map();   // товар = название+артикул (регистронезависимо)
+    (Array.isArray(projects) ? projects : []).forEach((p) => {
+      let hit = false;
+      ((p && p.rooms) || []).forEach((r) => ((r && r.items) || []).forEach((it) => {
+        if (!match(it)) return;
+        hit = true;
+        const q = Math.max(1, Math.round(num(it.qty, 1)));
+        out.positions++; out.qty += q;
+        if (it.approve === "ok") out.approved++;
+        if (statusMeta(it.status).order >= STATUS_BY_ID.ordered.order) out.inWork++; // «Заказано» и дальше
+        const k = str(it.title).trim().toLowerCase() + "␟" + str(it.sku).trim().toLowerCase();
+        const rec = byProduct.get(k) || { title: str(it.title), sku: str(it.sku), positions: 0, qty: 0, approved: 0 };
+        rec.positions++; rec.qty += q;
+        if (it.approve === "ok") rec.approved++;
+        byProduct.set(k, rec);
+      }));
+      if (hit) out.projects++;
+    });
+    // «ушло клиенту» — шары портала, в чьём снимке есть позиции поставщика (счёт по шарам, не по позициям)
+    (Array.isArray(shares) ? shares : []).forEach((s) => {
+      const rooms = (s && s.snapshot && Array.isArray(s.snapshot.rooms)) ? s.snapshot.rooms : [];
+      if (rooms.some((r) => ((r && r.items) || []).some(match))) out.shared++;
+    });
+    out.products = Array.from(byProduct.values())
+      .sort((a, b) => (b.positions - a.positions) || (b.qty - a.qty) || a.title.localeCompare(b.title, "ru"));
+    return out;
+  }
+  // все шары этого браузера — скан localStorage по префиксу PKEY (реестра шар нет,
+  // ключи и так адресные); битые записи пропускаем молча. → API: GET /api/shares
+  function listPortalShares() {
+    const out = [];
+    try {
+      for (let i = 0; i < localStorage.length; i++) {
+        const k = localStorage.key(i);
+        if (!k || k.indexOf("aivibe:portal:") !== 0) continue;
+        try { const r = JSON.parse(localStorage.getItem(k)); if (r && r.shareId) out.push(r); } catch {}
+      }
+    } catch {}
+    return out;
+  }
+
   /* ----------------------------- БИБЛИОТЕКА ТОВАРОВ СТУДИИ (волна B1, бенчмарк Programa) -----------------------------
      Мастер-запись товара студии — то, что дизайнер подбирает снова и снова (диван,
      смеситель, люстра). Живёт отдельно от сметы (localStorage, LedgerAPI.library),
@@ -403,6 +457,21 @@
      БЕЗ количества/стадии закупки/согласования: они рождаются в смете, а не в каталоге.
      Поставщик хранится в поле `sup` (как в строке сметы и выгрузках), НЕ `supplier`
      полной FF&E-схемы — так маппинг товар↔позиция идёт без трения. */
+  /* Варианты товара: цвет со своим артикулом (+ опционально своя цена и HEX для свотча) —
+     «option → variant» по Medusa (PRD портала поставщиков §5, срез 1). Вариант без цвета
+     И без артикула — пустая строка формы, отбрасываем. HEX строгий #RRGGBB, иначе "". */
+  function normProductVariants(list) {
+    return (Array.isArray(list) ? list : []).map((v) => {
+      const o = v || {};
+      const hex = /^#[0-9a-f]{6}$/i.test(str(o.colorHex).trim()) ? str(o.colorHex).trim().toUpperCase() : "";
+      return {
+        color:    str(o.color),                 // Цвет / отделка варианта («Графит», «Дуб натуральный»)
+        colorHex: hex,                          // Свотч для карточки/пикера; "" = показать нейтральный
+        article:  str(o.article || o.sku),      // Свой артикул варианта
+        price:    o.price != null && o.price !== "" ? Math.max(0, Math.round(num(o.price, 0))) : "", // "" = базовая цена товара
+      };
+    }).filter((v) => v.color || v.article);
+  }
   function blankProduct(over) {
     const o = over || {};
     const dims = o.dims || {};
@@ -413,13 +482,28 @@
       unit:    o.unit || "шт",                  // Единица измерения
       price:   Math.max(0, Math.round(num(o.price, 0))), // Цена за единицу, ₽ (ориентир студии)
       sup:     str(o.sup || o.supplier),        // Поставщик / фабрика / магазин
-      article: str(o.article || o.sku),         // Артикул
+      brand:   str(o.brand),                    // Бренд/марка (≠ поставщик: дилер продаёт чужой бренд) — портал поставщиков, срез 1
+      article: str(o.article || o.sku),         // Артикул (базовый; у варианта может быть свой)
       url:     str(o.url),                       // Ссылка на товар
       note:    str(o.note),                      // Примечание
       dims: { w: d(dims.w), d: d(dims.d), h: d(dims.h) }, // Габариты, см (Ш×Г×В)
       priceDate: str(o.priceDate),               // Дата последней проверки цены (свежесть — волна B3); "" = неизвестно
       feedSku:   str(o.feedSku),                 // Артикул фида фабрик (волна B4, мостик) — пусто, пока фида нет
+      variants:  normProductVariants(o.variants), // Варианты цвета со своим артикулом (портал поставщиков, срез 1)
     };
+  }
+  /* Вариант → транзиентная мастер-запись для пикера/positionFromProduct: артикул и цена
+     варианта перекрывают базовые, цвет уезжает в material позиции («Отделка / материал» —
+     поле видно и клиенту, как colour/finish у Programa). Название НЕ трогаем: цвет живёт
+     в material, а не в «Диван — Графит». В хранилище такой товар не пишется. */
+  function productWithVariant(p, v) {
+    const o = p || {}, w = v || {};
+    const out = { ...o };
+    if (str(w.article)) out.article = str(w.article);
+    if (w.price !== "" && w.price != null) out.price = Math.max(0, Math.round(num(w.price, 0)));
+    if (str(w.color)) out.material = str(w.color);
+    delete out.variants;
+    return out;
   }
   /* Демо-товары для пустой библиотеки (K4, паттерн Programa «Add demo products»):
      один клик наполняет пустой реестр реалистичными записями, чтобы новый дизайнер
@@ -430,7 +514,13 @@
      сегмент (как в сид-проектах). Схему нормализует blankProduct на library.create;
      priceDate ставит сам API (сегодня). «Поставщики» — обобщённые, не реальные бренды. */
   const DEMO_LIBRARY_PRODUCTS = [
-    { title: "Диван 3-местный, велюр", cat: "Мягкая мебель", price: 164900, sup: "Фабрика мягкой мебели", article: "SF-3200", dims: { w: 220, d: 95, h: 78 } },
+    { title: "Диван 3-местный, велюр", cat: "Мягкая мебель", price: 164900, sup: "Фабрика мягкой мебели", article: "SF-3200", dims: { w: 220, d: 95, h: 78 },
+      // витрина вариантов (портал поставщиков, срез 1): цвет со своим артикулом, у одного — своя цена
+      variants: [
+        { color: "Графит", colorHex: "#4A4E57", article: "SF-3200-GR" },
+        { color: "Бежевый", colorHex: "#CBB89D", article: "SF-3200-BG" },
+        { color: "Зелёный", colorHex: "#2F4A3C", article: "SF-3200-GN", price: 172900 },
+      ] },
     { title: "Кресло с деревянным каркасом", cat: "Мягкая мебель", price: 58000, sup: "Фабрика мягкой мебели", article: "AR-118", dims: { w: 74, d: 80, h: 82 } },
     { title: "Обеденный стол, дуб массив", cat: "Мебель", price: 92000, sup: "Столярная мастерская", article: "TB-160", dims: { w: 160, d: 90, h: 75 } },
     { title: "Люстра подвесная, латунь", cat: "Освещение", price: 38000, sup: "Салон света", article: "LM-05", dims: { w: 60, d: 60, h: 45 } },
@@ -438,6 +528,32 @@
     { title: "Смеситель для раковины", cat: "Сантехника", price: 18900, sup: "Салон сантехники", article: "MX-77" },
     { title: "Ковёр шерстяной, ручная работа", cat: "Декор", price: 46000, sup: "Ковровый дом", article: "RG-240" },
     { title: "Шторы льняные, комплект", cat: "Текстиль", price: 24000, sup: "Текстильная мастерская", article: "CT-01" },
+  ];
+
+  /* Демо-каталог поставщика (портал поставщиков, срез 3): стартовые товары для пустого
+     кабинета поставщика — «Мебельный салон» (демо-персона). Названия совпадают со
+     спросом в сид-сметах, чтобы дашборд «что специфицируют» и каталог сходились.
+     Бренд, варианты цвета со своим артикулом, габариты — витрина полей карточки товара
+     поставщика. Схему нормализует blankProduct на supplierCatalog.create. */
+  const DEMO_SUPPLIER_CATALOG = [
+    { title: "Диван 3-местный, велюр", cat: "Мягкая мебель", brand: "Meb Salon", price: 164900, article: "MS-DV-3200", dims: { w: 220, d: 95, h: 78 },
+      variants: [
+        { color: "Графит", colorHex: "#4A4E57", article: "MS-DV-3200-GR" },
+        { color: "Терракота", colorHex: "#B7502C", article: "MS-DV-3200-TR" },
+        { color: "Оливковый", colorHex: "#6B6B47", article: "MS-DV-3200-OL", price: 171900 },
+      ] },
+    { title: "Кресло, эргономика", cat: "Мягкая мебель", brand: "Meb Salon", price: 58000, article: "MS-AR-118", dims: { w: 74, d: 80, h: 82 },
+      variants: [
+        { color: "Бежевый букле", colorHex: "#CBB89D", article: "MS-AR-118-BG" },
+        { color: "Тёмно-синий", colorHex: "#33415C", article: "MS-AR-118-NV" },
+      ] },
+    { title: "Журнальный столик, латунь + стекло", cat: "Мебель", brand: "Meb Salon", price: 34000, article: "MS-CT-90", dims: { w: 90, d: 50, h: 42 } },
+    { title: "Тумбы прикроватные (пара)", cat: "Мебель", brand: "Meb Salon", price: 39000, article: "MS-NS-2", dims: { w: 50, d: 40, h: 48 } },
+    { title: "Стулья, ясень", cat: "Мебель", brand: "Meb Salon", price: 12500, unit: "шт", article: "MS-CH-44", dims: { w: 46, d: 52, h: 84 },
+      variants: [
+        { color: "Натуральный ясень", colorHex: "#C9A96A", article: "MS-CH-44-NT" },
+        { color: "Венге", colorHex: "#3B2C22", article: "MS-CH-44-WG" },
+      ] },
   ];
 
   // позиция сметы → мастер-запись (собрать библиотеку из реальной работы); дата
@@ -456,6 +572,14 @@
     const pos = { title: str(o.title), qty: 1, price: Math.max(0, Math.round(num(o.price, 0))) };
     if (str(o.cat)) pos.cat = str(o.cat);
     if (str(o.sup)) pos.sup = str(o.sup);
+    // FF&E-детали мастер-записи доезжают до позиции (портал поставщиков, срез 1:
+    // «свой артикул» и цвет варианта — через productWithVariant → article/material)
+    if (str(o.article)) pos.sku = str(o.article);
+    if (str(o.material)) pos.material = str(o.material);
+    if (str(o.url)) pos.url = str(o.url);
+    if (o.unit && o.unit !== "шт") pos.unit = o.unit;
+    const dm = o.dims || {};
+    if (["w", "d", "h"].some((k) => dm[k] !== "" && dm[k] != null)) pos.dims = { w: dm.w, d: dm.d, h: dm.h };
     pos.priceDate = str(o.priceDate) || date || today();
     return pos;
   };
@@ -924,8 +1048,8 @@
     blankPosition, normalizePosition, dimsLabel, ffeMeta, qtyLabel, costUnit, lineTotal, rrpUnit, rrpLine,
     docCodePrefix, assignDocCodes,
     blankComment, addComment,
-    blankProduct, productFromPosition, positionFromProduct, DEMO_LIBRARY_PRODUCTS,
-    blankSupplier, supplierMatch,
+    blankProduct, productFromPosition, positionFromProduct, productWithVariant, DEMO_LIBRARY_PRODUCTS, DEMO_SUPPLIER_CATALOG,
+    blankSupplier, supplierMatch, supplierStats, listPortalShares,
     blankExtra, extraAmount, extrasTotal,
     BENCHMARK, estimateBudget, generateEstimate, setPendingDraft, takePendingDraft,
     loadEstimate, saveEstimate, clearEstimate,

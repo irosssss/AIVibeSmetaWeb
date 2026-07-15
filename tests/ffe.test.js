@@ -69,6 +69,108 @@ describe("blankProduct — мастер-запись товара студии (
   });
 });
 
+describe("supplierStats — кабинет поставщика (превью, PRD §6)", () => {
+  const mkProjects = () => [
+    { id: "p1", rooms: [{ items: [
+      { title: "Диван", sku: "SF-1", sup: "Линея", qty: 2, price: 100000, approve: "ok", status: "ordered" },
+      { title: "Диван", sku: "SF-1", sup: " линея ", qty: 1, price: 100000, status: "specified" },   // регистр/пробелы — тот же поставщик
+      { title: "Кресло", sku: "", sup: "Дубрава", qty: 1, price: 50000, status: "specified" },        // чужой
+    ] }] },
+    { id: "p2", rooms: [{ items: [
+      { title: "Торшер", sku: "FL-2", sup: "Линея", qty: 3, price: 20000, status: "accepted" },
+    ] }] },
+  ];
+  it("считает спрос: позиции/штуки/проекты/согласовано/в работе, топ товаров по спецификациям", () => {
+    const s = FFE.supplierStats(mkProjects(), [], "Линея");
+    expect(s.positions).toBe(3);
+    expect(s.qty).toBe(6);
+    expect(s.projects).toBe(2);
+    expect(s.approved).toBe(1);
+    expect(s.inWork).toBe(2);                 // ordered + accepted (порядок ≥ «Заказано»)
+    expect(s.products[0]).toMatchObject({ title: "Диван", sku: "SF-1", positions: 2, qty: 3, approved: 1 });
+    expect(s.products[1]).toMatchObject({ title: "Торшер", positions: 1, qty: 3 });
+  });
+  it("ИНВАРИАНТ: в сводке нет денег дизайнера — ни сумм, ни цен, ни наценки", () => {
+    const s = FFE.supplierStats(mkProjects(), [], "Линея");
+    const flat = JSON.stringify(s);
+    expect(flat).not.toMatch(/price|total|markup|cost/i);
+    expect(flat).not.toContain("100000");     // цена позиции не протекла ни под каким именем
+  });
+  it("шары: счёт по шарам со товарами поставщика, не по позициям", () => {
+    const shares = [
+      { shareId: "s1", snapshot: { rooms: [{ items: [{ sup: "Линея" }, { sup: "Линея" }] }] } },  // 2 позиции = 1 шара
+      { shareId: "s2", snapshot: { rooms: [{ items: [{ sup: "Дубрава" }] }] } },
+      { shareId: "s3", snapshot: {} },                                                             // битая — молча мимо
+    ];
+    expect(FFE.supplierStats(mkProjects(), shares, "Линея").shared).toBe(1);
+  });
+  it("пустое имя и чужое имя — нулевая сводка", () => {
+    expect(FFE.supplierStats(mkProjects(), [], "").positions).toBe(0);
+    expect(FFE.supplierStats(mkProjects(), [], "Нет такого").positions).toBe(0);
+  });
+});
+
+describe("варианты товара — цвет со своим артикулом (портал поставщиков, срез 1)", () => {
+  it("нормализует варианты: HEX строгий, цена целая, пустые строки формы отбрасываются", () => {
+    const p = FFE.blankProduct({ title: "Диван", brand: "Loft&Co", variants: [
+      { color: "Графит", colorHex: "#4a4e57", article: "SF-GR", price: "172 900 ₽" },
+      { color: "Беж", colorHex: "не hex", sku: "SF-BG" },       // sku-алиас + битый hex
+      { color: "", colorHex: "", article: "", price: "" },       // пустая строка формы
+    ] });
+    expect(p.brand).toBe("Loft&Co");
+    expect(p.variants).toHaveLength(2);
+    expect(p.variants[0]).toEqual({ color: "Графит", colorHex: "#4A4E57", article: "SF-GR", price: 172900 });
+    expect(p.variants[1]).toEqual({ color: "Беж", colorHex: "", article: "SF-BG", price: "" });
+  });
+  it("вариантов и бренда нет по умолчанию — пустые", () => {
+    const p = FFE.blankProduct({ title: "Стол" });
+    expect(p.variants).toEqual([]);
+    expect(p.brand).toBe("");
+  });
+  it("productWithVariant: артикул/цена варианта перекрывают базовые, цвет → material, variants срезаны", () => {
+    const base = FFE.blankProduct({ title: "Диван", article: "SF-3200", price: 164900,
+      variants: [{ color: "Зелёный", colorHex: "#2F4A3C", article: "SF-3200-GN", price: 172900 }] });
+    const merged = FFE.productWithVariant(base, base.variants[0]);
+    expect(merged.article).toBe("SF-3200-GN");
+    expect(merged.price).toBe(172900);
+    expect(merged.material).toBe("Зелёный");
+    expect(merged.title).toBe("Диван");            // цвет живёт в material, название не трогаем
+    expect("variants" in merged).toBe(false);       // транзиентная запись — в хранилище не пишется
+  });
+  it("productWithVariant: вариант без своей цены/артикула — остаются базовые", () => {
+    const base = FFE.blankProduct({ title: "Диван", article: "SF-3200", price: 164900,
+      variants: [{ color: "Графит" }] });
+    const merged = FFE.productWithVariant(base, base.variants[0]);
+    expect(merged.article).toBe("SF-3200");
+    expect(merged.price).toBe(164900);
+    expect(merged.material).toBe("Графит");
+  });
+  it("вариант доезжает до позиции сметы: артикул → sku, цвет → material", () => {
+    const base = FFE.blankProduct({ title: "Диван", article: "SF-3200", price: 164900, sup: "Фабрика",
+      variants: [{ color: "Графит", article: "SF-3200-GR" }] });
+    const pos = FFE.positionFromProduct(FFE.productWithVariant(base, base.variants[0]), "2026-07-14");
+    expect(pos).toMatchObject({ title: "Диван", qty: 1, price: 164900, sup: "Фабрика", sku: "SF-3200-GR", material: "Графит" });
+  });
+});
+
+describe("DEMO_SUPPLIER_CATALOG — стартовый каталог поставщика (срез 3)", () => {
+  it("каждая запись проходит через blankProduct, варианты и бренд сохраняются", () => {
+    const demo = FFE.DEMO_SUPPLIER_CATALOG;
+    expect(Array.isArray(demo)).toBe(true);
+    expect(demo.length).toBeGreaterThan(0);
+    demo.forEach((raw) => {
+      const p = FFE.blankProduct(raw);
+      expect(p.title).toBeTruthy();
+      expect(p.brand).toBe("Meb Salon");
+      // если у демо-товара есть варианты — у каждого свой артикул и валидный HEX-свотч
+      (p.variants || []).forEach((v) => {
+        expect(v.article).toBeTruthy();
+        expect(v.colorHex).toMatch(/^#[0-9A-F]{6}$/);
+      });
+    });
+  });
+});
+
 describe("мапперы позиция ↔ товар библиотеки", () => {
   it("позиция сметы → мастер-запись (sup сохраняется)", () => {
     const prod = FFE.productFromPosition({ title: "Люстра", cat: "Освещение", price: 57000, sup: "Дубрава", qty: 3, approve: "ok" });
@@ -89,6 +191,17 @@ describe("мапперы позиция ↔ товар библиотеки", ()
     expect(pos.qty).toBe(1);
     expect("cat" in pos).toBe(false);
     expect("sup" in pos).toBe(false);
+    expect("sku" in pos).toBe(false);
+    expect("dims" in pos).toBe(false);
+    expect("unit" in pos).toBe(false);
+  });
+  it("FF&E-детали товара доезжают до позиции: артикул → sku, url/габариты/единица (срез 1 портала поставщиков)", () => {
+    const prod = FFE.blankProduct({ title: "Плитка", unit: "м²", article: "TL-88", url: "https://x.ru/t", dims: { w: 60, d: 60 }, price: 2900 });
+    const pos = FFE.positionFromProduct(prod, "2026-07-14");
+    expect(pos.sku).toBe("TL-88");
+    expect(pos.url).toBe("https://x.ru/t");
+    expect(pos.unit).toBe("м²");
+    expect(pos.dims).toEqual({ w: 60, d: 60, h: "" });
   });
   it("round-trip позиция → товар → позиция сохраняет название/цену/раздел/поставщика", () => {
     const src = { title: "Стол дуб", cat: "Мебель", price: 44900, sup: "Дубрава" };

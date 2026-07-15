@@ -84,15 +84,41 @@ function VKBtn({ onClick, loading }) {
 }
 
 /* ---------------- ЭКРАН ВХОДА / РЕГИСТРАЦИИ ---------------- */
+/* правила пароля для чек-листа регистрации по e-mail (кириллица учтена) */
+const AUTH_PW_RULES = [
+  { id: "len", label: "8+ символов", test: (v) => v.length >= 8 },
+  { id: "num", label: "цифра", test: (v) => /\d/.test(v) },
+  { id: "low", label: "строчная буква", test: (v) => /[a-zа-яё]/.test(v) },
+  { id: "spec", label: "спецсимвол", test: (v) => /[^A-Za-zА-Яа-яЁё0-9\s]/.test(v) },
+  { id: "up", label: "заглавная буква", test: (v) => /[A-ZА-ЯЁ]/.test(v) },
+];
+
 function AuthScreen({ onAuthed, go }) {
   const [mode, setMode] = useC("login");      // login | register
+  const [role, setRole] = useC("designer");   // designer | supplier — «кто вы» при регистрации
   const [loading, setLoading] = useC(null);   // 'yandex' | 'vk' | null
+  const [email, setEmail] = useC("");
+  const [pw, setPw] = useC("");
+  const [emailMsg, setEmailMsg] = useC("");   // честный ответ заглушки e-mail-входа
+  const isSupplier = mode === "register" && role === "supplier";
+  const emailOk = /.+@.+\..+/.test(email.trim());
+  const pwOk = AUTH_PW_RULES.every((r) => r.test(pw));
+  // вход: достаточно заполненности; регистрация: пароль должен пройти все правила
+  const emailFormReady = emailOk && (mode === "login" ? pw.length > 0 : pwOk);
 
   const login = async (provider) => {
     setLoading(provider);
-    const ses = await (provider === "yandex" ? LedgerAPI.auth.loginWithYandex() : LedgerAPI.auth.loginWithVK());
+    // роль передаём только при регистрации (вход — по существующему аккаунту, роль в нём уже есть)
+    const roleArg = mode === "register" ? role : undefined;
+    const ses = await (provider === "yandex" ? LedgerAPI.auth.loginWithYandex(roleArg) : LedgerAPI.auth.loginWithVK(roleArg));
     setLoading(null);
     onAuthed(ses.user);
+  };
+  // → API: POST /api/auth/email/{register|login}. Заглушка честная (как billing.createPayment):
+  // не имитируем успех — форма и живая проверка работают, но аккаунт заведёт бэкенд.
+  const emailSubmit = () => {
+    if (!emailFormReady) return;
+    setEmailMsg("Регистрация по e-mail подключится вместе с бэкендом. Пока войдите через Яндекс или VK — это быстро и без пароля.");
   };
 
   return (
@@ -103,9 +129,11 @@ function AuthScreen({ onAuthed, go }) {
         <div style={{ position: "absolute", inset: 0, background: "linear-gradient(160deg, rgba(46,42,38,.72), rgba(46,42,38,.9))" }} />
         <div style={{ position: "relative", zIndex: 2, color: "#FCF6EE" }}><Logo size={27} onClick={() => go("site")} /></div>
         <div style={{ position: "relative", zIndex: 2, color: "#FCF6EE" }}>
-          <h2 className="display" style={{ fontSize: "clamp(30px,3.4vw,46px)", lineHeight: 1 }}>С возвращением<br />в студию</h2>
+          <h2 className="display" style={{ fontSize: "clamp(30px,3.4vw,46px)", lineHeight: 1 }}>{isSupplier ? <>Ваши товары —<br />в сметах дизайнеров</> : <>С возвращением<br />в студию</>}</h2>
           <p style={{ color: "rgba(252,246,238,.82)", marginTop: 18, maxWidth: 380, fontSize: "var(--fs-15)", lineHeight: 1.6 }}>
-            Проекты, сметы-комплектации, свои нормы и стили — рабочее место дизайнера в одном месте.
+            {isSupplier
+              ? "Каталог с артикулами и вариантами цвета, статистика спроса: какие товары дизайнеры чаще ставят в сметы."
+              : "Проекты, сметы-комплектации, свои нормы и стили — рабочее место дизайнера в одном месте."}
           </p>
         </div>
       </div>
@@ -115,22 +143,92 @@ function AuthScreen({ onAuthed, go }) {
         <div style={{ width: "min(400px, 100%)" }}>
           <div style={{ display: "flex", gap: 4, padding: 4, background: "var(--glass-2)", border: "1px solid var(--hairline)", borderRadius: 99, marginBottom: 30 }}>
             {[["login", "Вход"], ["register", "Регистрация"]].map(([k, t]) => (
-              <button key={k} onClick={() => setMode(k)} style={{ flex: 1, padding: "10px", borderRadius: 99, fontWeight: 700, fontSize: "var(--fs-14)",
+              <button key={k} onClick={() => { setMode(k); setEmailMsg(""); }} style={{ flex: 1, padding: "10px", borderRadius: 99, fontWeight: 700, fontSize: "var(--fs-14)",
                 background: mode === k ? "var(--accent)" : "transparent", color: mode === k ? "var(--on-accent)" : "var(--muted)", transition: "var(--dur-fast)" }}>{t}</button>
             ))}
           </div>
 
           <h1 className="display" style={{ fontSize: "var(--fs-30)", marginBottom: 8 }}>{mode === "login" ? "Вход в Design Ledger" : "Создать аккаунт"}</h1>
-          <p style={{ color: "var(--muted)", fontSize: "var(--fs-14)", marginBottom: 26 }}>{mode === "login" ? "Войдите через российские сервисы — быстро и без пароля." : "Регистрация в один тап через Яндекс ID или VK ID."}</p>
+          <p style={{ color: "var(--muted)", fontSize: "var(--fs-14)", marginBottom: 26 }}>{mode === "login" ? "Войдите через e-mail или российские сервисы." : "По e-mail или в один тап через Яндекс ID / VK ID."}</p>
+
+          {/* «Кто вы?» — выбор роли при регистрации: дизайнер и поставщик получают
+              РАЗНЫЕ кабинеты (студия смет vs каталог + статистика спроса) */}
+          {mode === "register" && (
+            <div style={{ marginBottom: 22 }}>
+              <div style={{ fontSize: "var(--fs-13)", color: "var(--muted)", fontWeight: 600, marginBottom: 10 }}>Кто вы?</div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                {[["designer", "Дизайнер", "Собираю сметы клиентам"], ["supplier", "Поставщик", "Размещаю свои товары"]].map(([k, t, sub]) => (
+                  <button key={k} onClick={() => setRole(k)} aria-pressed={role === k}
+                    style={{ textAlign: "left", padding: "14px 16px", borderRadius: "var(--r-lg)", border: "1.5px solid " + (role === k ? "var(--accent)" : "var(--hairline)"),
+                      background: role === k ? "var(--accent-tint, var(--glass-2))" : "var(--surface)", transition: "var(--dur-fast)" }}>
+                    <div style={{ fontWeight: 700, fontSize: "var(--fs-15)", color: role === k ? "var(--accent)" : "var(--text)" }}>{t}</div>
+                    <div style={{ fontSize: "var(--fs-12)", color: "var(--muted)", marginTop: 4, lineHeight: 1.4 }}>{sub}</div>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* форма e-mail + пароль (паттерн Programa). Заглушка ЧЕСТНАЯ: живая проверка
+              пароля работает, но аккаунт заведёт бэкенд — по клику честный ответ (как
+              billing.createPayment), успех не имитируем (SOUL). */}
+          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            <label style={{ display: "block" }}>
+              <span style={{ display: "block", fontSize: "var(--fs-13)", color: "var(--muted)", fontWeight: 600, marginBottom: 6 }}>E-mail</span>
+              <input className="fld" type="email" autoComplete="email" value={email} placeholder="you@studio.ru"
+                onChange={(e) => { setEmail(e.target.value); if (emailMsg) setEmailMsg(""); }} />
+            </label>
+            <label style={{ display: "block" }}>
+              <span style={{ display: "block", fontSize: "var(--fs-13)", color: "var(--muted)", fontWeight: 600, marginBottom: 6 }}>Пароль</span>
+              <input className="fld" type="password" autoComplete={mode === "login" ? "current-password" : "new-password"} value={pw} placeholder={mode === "login" ? "ваш пароль" : "придумайте пароль"}
+                onChange={(e) => { setPw(e.target.value); if (emailMsg) setEmailMsg(""); }} />
+            </label>
+
+            {/* чек-лист требований к паролю — только при регистрации (как у Programa) */}
+            {mode === "register" && (
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "7px 14px", marginTop: 2 }}>
+                {AUTH_PW_RULES.map((r) => {
+                  const ok = r.test(pw);
+                  return (
+                    <span key={r.id} style={{ display: "flex", alignItems: "center", gap: 7, fontSize: "var(--fs-12)", color: ok ? "var(--accent-2)" : "var(--muted)" }}>
+                      {ok
+                        ? <I.check size={14} style={{ flex: "none" }} />
+                        : <span aria-hidden="true" style={{ width: 12, height: 12, flex: "none", borderRadius: "50%", border: "1.5px solid var(--hairline-2)" }} />}
+                      {r.label}
+                    </span>
+                  );
+                })}
+              </div>
+            )}
+
+            <button className="btn btn-primary btn-block" style={{ padding: "13px 20px" }} disabled={!emailFormReady} onClick={emailSubmit}>
+              {mode === "login" ? "Войти по e-mail" : "Создать по e-mail"}
+            </button>
+            {emailMsg && (
+              <div role="status" style={{ fontSize: "var(--fs-13)", color: "var(--muted)", lineHeight: 1.55, background: "var(--glass-2)", border: "1px solid var(--hairline)", borderRadius: "var(--r-md, 10px)", padding: "10px 12px", display: "flex", gap: 8 }}>
+                <I.info size={15} style={{ flex: "none", marginTop: 1, color: "var(--accent)" }} />{emailMsg}
+              </div>
+            )}
+          </div>
+
+          {/* разделитель «или» перед OAuth */}
+          <div style={{ display: "flex", alignItems: "center", gap: 12, margin: "20px 0" }} aria-hidden="true">
+            <span style={{ flex: 1, height: 1, background: "var(--hairline)" }} />
+            <span style={{ fontSize: "var(--fs-12)", color: "var(--muted)" }}>или</span>
+            <span style={{ flex: 1, height: 1, background: "var(--hairline)" }} />
+          </div>
 
           <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
             <YandexBtn onClick={() => login("yandex")} loading={loading === "yandex"} />
             <VKBtn onClick={() => login("vk")} loading={loading === "vk"} />
           </div>
+          {isSupplier && (
+            <p style={{ fontSize: "var(--fs-12)", color: "var(--muted)", marginTop: 12, lineHeight: 1.5 }}>
+              Регистрация поставщика — это заявка: после проверки каталог станет виден дизайнерам. <a href="#for-suppliers" style={{ color: "var(--accent-2)" }}>Подробнее для поставщиков</a>.
+            </p>
+          )}
 
           {loading && <div style={{ marginTop: 16, fontSize: "var(--fs-13)", color: "var(--accent-2)", display: "flex", alignItems: "center", gap: 8 }}><span className="spin" />Авторизация через {loading === "yandex" ? "Яндекс ID" : "VK ID"}…</div>}
-
-          {/* вход по e-mail появится вместе с реальной аутентификацией — декоративную форму убрали (честность превыше «полноты» экрана) */}
 
           <p style={{ color: "var(--muted)", fontSize: "var(--fs-12)", marginTop: 26, textAlign: "center", lineHeight: 1.5 }}>
             Продолжая, вы принимаете <a href="#offer" style={{ color: "var(--muted)", textDecoration: "underline" }}>оферту</a> и{" "}
