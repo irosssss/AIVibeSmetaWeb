@@ -246,12 +246,12 @@ function ProductPreview({ p, onClose }) {
   const article = (v && S(v.article)) || S(p.article);
   const price = v && v.price !== "" && v.price != null ? v.price : p.price;
   return (
-    <div role="dialog" aria-modal="true" aria-label={"Фото: " + (p.title || "товар")} onClick={onClose}
+    <div role="dialog" aria-modal="true" aria-label={"Фото: " + (p.title || "товар")} onClick={onClose} className="pop-fade"
       style={{ position: "fixed", inset: 0, zIndex: 300, background: "rgba(46,42,38,.55)", backdropFilter: "blur(10px)", WebkitBackdropFilter: "blur(10px)",
         display: "flex", alignItems: "center", justifyContent: "center", padding: 24, cursor: "zoom-out" }}>
       {/* фото + подпись + свотчи собраны в один бумажный «лист» (не голым на дым — канон
           premium-минимализм); фон — frosted-wash, а не мутная полупрозрачная заливка */}
-      <div onClick={(e) => e.stopPropagation()} style={{ position: "relative", cursor: "default",
+      <div onClick={(e) => e.stopPropagation()} className="pop-card" style={{ position: "relative", cursor: "default",
         background: "var(--surface)", borderRadius: 18, padding: 14, boxShadow: "var(--shadow-pop)",
         maxWidth: "min(92vw, 460px)", width: "100%", display: "flex", flexDirection: "column", gap: 12 }}>
         <button className="icon-btn" onClick={onClose} aria-label="Закрыть фото"

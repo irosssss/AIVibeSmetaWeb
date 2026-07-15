@@ -112,12 +112,12 @@ function PortalLightbox({ it, onClose }) {
   }, []);
   const shown = all[Math.min(cur, all.length - 1)] || it.img;
   return (
-    <div role="dialog" aria-modal="true" aria-label={"Фото: " + (it.title || "позиция")} onClick={onClose}
+    <div role="dialog" aria-modal="true" aria-label={"Фото: " + (it.title || "позиция")} onClick={onClose} className="pop-fade"
       style={{ position: "fixed", inset: 0, zIndex: 300, background: "rgba(46,42,38,.8)", backdropFilter: "blur(4px)",
         display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 14, padding: 24, cursor: "zoom-out" }}>
       <button className="icon-btn" onClick={onClose} aria-label="Закрыть фото"
         style={{ position: "absolute", top: 18, right: 18 }}><I.close size={18} /></button>
-      <img src={shown} alt={it.title || ""} onClick={(e) => e.stopPropagation()}
+      <img src={shown} alt={it.title || ""} onClick={(e) => e.stopPropagation()} className="pop-card"
         style={{ maxWidth: "min(92vw, 900px)", maxHeight: "72vh", objectFit: "contain", borderRadius: 12,
           background: "var(--surface)", boxShadow: "var(--shadow-pop), inset var(--ring)", cursor: "default" }} />
       <div style={{ color: "#F7F2EA", fontSize: "var(--fs-14)", fontWeight: 600, textAlign: "center", maxWidth: 640 }}>{it.title}</div>
