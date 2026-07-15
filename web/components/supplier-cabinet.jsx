@@ -159,6 +159,7 @@ function SupplierCatalog() {
   const [rows, setRows] = useSC(null);
   const [edit, setEdit] = useSC(null);
   const [q, setQ] = useSC("");
+  const [cat, setCat] = useSC("");   // активный фильтр по разделу ("" = все)
   const [seeding, setSeeding] = useSC(false);
   const api = LedgerAPI.supplierCatalog;
   const reload = () => api.list().then(setRows);
@@ -185,8 +186,15 @@ function SupplierCatalog() {
 
   const norm = (s) => (s || "").toLowerCase();
   const all = (rows || []).slice().sort((a, b) => (a.title || "").localeCompare(b.title || "", "ru"));
+  // разделы для фильтра — из самих товаров (с числом в каждом), алфавит
+  const catList = Array.from(all.reduce((m, p) => m.set(p.cat || "Прочее", (m.get(p.cat || "Прочее") || 0) + 1), new Map()))
+    .sort((a, b) => a[0].localeCompare(b[0], "ru"));
+  // выбранный раздел исчез (удалили последний товар в нём) — молча возвращаемся ко «Всем»
+  const activeCat = cat && catList.some(([c]) => c === cat) ? cat : "";
   const qq = norm(q.trim());
-  const shown = qq ? all.filter((p) => [p.title, p.cat, p.brand, p.article].some((f) => norm(f).includes(qq))) : all;
+  const shown = all
+    .filter((p) => !activeCat || (p.cat || "Прочее") === activeCat)
+    .filter((p) => !qq || [p.title, p.cat, p.brand, p.article].some((f) => norm(f).includes(qq)));
 
   return (
     <div className="reveal in" ref={useReveal()}>
@@ -209,9 +217,29 @@ function SupplierCatalog() {
 
       {rows && all.length > 0 && (
         <React.Fragment>
-          <SearchField value={q} onChange={setQ} placeholder="Поиск: название, раздел, бренд, артикул" ariaLabel="Поиск по каталогу" style={{ maxWidth: 360, marginBottom: 18 }} />
+          <SearchField value={q} onChange={setQ} placeholder="Поиск: название, раздел, бренд, артикул" ariaLabel="Поиск по каталогу" style={{ maxWidth: 360, marginBottom: 14 }} />
+
+          {/* фильтр по разделам — чипы (раздел · число). Один раздел — фильтр не нужен */}
+          {catList.length > 1 && (
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 18 }} role="group" aria-label="Фильтр по разделам">
+              {[["", "Все · " + all.length], ...catList.map(([c, n]) => [c, c + " · " + n])].map(([val, label]) => {
+                const on = activeCat === val;
+                return (
+                  <button key={val || "__all"} onClick={() => setCat(val)} aria-pressed={on}
+                    style={{ padding: "6px 13px", fontSize: "var(--fs-13)", fontWeight: 600, borderRadius: 99,
+                      background: on ? "var(--accent-2-tint)" : "transparent", color: on ? "var(--accent-2-ink)" : "var(--muted)",
+                      border: "1px solid " + (on ? "rgba(94,107,91,.4)" : "var(--hairline)"), transition: "var(--dur-fast)" }}>
+                    {label}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+
           {shown.length === 0
-            ? <p style={{ color: "var(--muted)", fontSize: "var(--fs-14)", padding: "8px 2px" }}>По запросу «{q.trim()}» ничего не нашлось.</p>
+            ? <p style={{ color: "var(--muted)", fontSize: "var(--fs-14)", padding: "8px 2px" }}>
+                {qq ? "По запросу «" + q.trim() + "»" : "В разделе «" + activeCat + "»"} ничего не нашлось.
+              </p>
             : (
               <div className="proj-grid" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(250px, 1fr))", gap: 16 }}>
                 {shown.map((p) => <ProductCard key={p.id} p={p} onEdit={() => setEdit(window.libToDraft(p))} onRemove={() => remove(p.id)} />)}
