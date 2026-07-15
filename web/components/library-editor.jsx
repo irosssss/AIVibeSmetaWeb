@@ -189,7 +189,7 @@ function ProductCard({ p, onEdit, onRemove }) {
 
       {(p.priceDate || p.feedSku) && (
         <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-          {p.priceDate && <PriceAgeChip d={p.priceDate} />}
+          {p.priceDate && <PriceAgeChip d={p.priceDate} hideFresh />}
           {p.feedSku && (
             <span className="mono" title={"Артикул фида: " + p.feedSku + " — автообновление цены подключится вместе с фидом фабрик"}
               style={{ fontSize: "var(--fs-10)", whiteSpace: "nowrap", padding: "1px 7px", borderRadius: 99, border: "1px solid var(--hairline)", color: "var(--info)" }}>
@@ -272,7 +272,7 @@ function ProductEditor({ draft, onClose, onSaved, api, supplierMode }) {
           </LibFld>
         </div>
         {!d.__new && d.priceDate && (
-          <div style={{ marginTop: -10 }}><PriceAgeChip d={d.priceDate} /></div>
+          <div style={{ marginTop: -10 }}><PriceAgeChip d={d.priceDate} hideFresh /></div>
         )}
 
         {/* в кабинете поставщика (supplierMode) поле «Поставщик» лишнее — это его
