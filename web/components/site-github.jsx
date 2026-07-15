@@ -78,13 +78,9 @@ function Footer({ go }) {
           <div>
             <Logo size={26} />
             <p style={{ color: "var(--muted)", maxWidth: 360, marginTop: 18, fontSize: "var(--fs-14)", lineHeight: 1.6 }}>
-              Смета-комплектация для дизайнеров интерьера. Каталог фабрик-партнёров и российский AI.
+              Смета-комплектация для дизайнеров интерьера. Две цены, клиентский портал и честные выгрузки.
             </p>
             <div style={{ display: "flex", gap: 10, marginTop: 22 }}>
-              {window.DEV_MODE && <button className="btn btn-ghost" style={{ padding: "10px 16px", fontSize: "var(--fs-13)" }} onClick={() => go("admin")}>Админка</button>}
-              <button className="btn btn-ghost" style={{ padding: "10px 16px", fontSize: "var(--fs-13)" }} onClick={() => go("auth")}>Войти</button>
-            </div>
-            <div style={{ display: "flex", gap: 10, marginTop: 16 }}>
               <a className="social-chip vk" href="#" onClick={(e) => e.preventDefault()} aria-label="Design Ledger во ВКонтакте" title="ВКонтакте">
                 <svg width="21" height="21" viewBox="0 0 256 256" aria-hidden="true"><path fill="currentColor" d="M136.21 184.43c-58.34 0-91.62-40-93.01-106.56h29.23c.96 48.85 22.5 69.54 39.57 73.81V77.87h27.52V120c16.85-1.81 34.56-21.01 40.53-42.13h27.52c-4.58 26.02-23.78 45.22-37.44 53.12 13.66 6.4 35.52 23.14 43.84 53.44h-30.29c-6.5-20.27-22.72-35.95-44.16-38.08v38.08h-3.3z" /></svg>
               </a>
@@ -107,7 +103,6 @@ function Footer({ go }) {
         </div>
         <div style={{ borderTop: "1px solid var(--hairline)", marginTop: 44, paddingTop: 26, display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 12, color: "var(--muted)", fontSize: "var(--fs-13)" }}>
           <span>© 2026 Design Ledger. Прототип интерфейса.</span>
-          <span>Сделано в России · Yandex Cloud</span>
         </div>
       </div>
     </footer>
