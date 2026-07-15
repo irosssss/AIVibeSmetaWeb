@@ -247,42 +247,49 @@ function ProductPreview({ p, onClose }) {
   const price = v && v.price !== "" && v.price != null ? v.price : p.price;
   return (
     <div role="dialog" aria-modal="true" aria-label={"Фото: " + (p.title || "товар")} onClick={onClose}
-      style={{ position: "fixed", inset: 0, zIndex: 300, background: "rgba(46,42,38,.8)", backdropFilter: "blur(4px)",
-        display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 14, padding: 24, cursor: "zoom-out" }}>
-      <button className="icon-btn" onClick={onClose} aria-label="Закрыть фото" style={{ position: "absolute", top: 18, right: 18 }}><I.close size={18} /></button>
-      <img src={shown} alt={p.title || ""} onClick={(e) => e.stopPropagation()}
-        style={{ maxWidth: "min(92vw, 820px)", maxHeight: "64vh", objectFit: "contain", borderRadius: 12, background: "var(--surface)", boxShadow: "var(--shadow-pop)", cursor: "default" }} />
-      <div onClick={(e) => e.stopPropagation()} style={{ textAlign: "center", color: "#F7F2EA", display: "flex", flexDirection: "column", gap: 4, maxWidth: 640 }}>
-        <div style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: "var(--fs-18)" }}>{p.title}</div>
-        <div className="mono" style={{ fontSize: "var(--fs-13)", color: "rgba(247,242,234,.75)" }}>
-          {[v ? S(v.color) : null, article ? "арт. " + article : null, fmtMoney(price || 0)].filter(Boolean).join("  ·  ")}
+      style={{ position: "fixed", inset: 0, zIndex: 300, background: "rgba(46,42,38,.55)", backdropFilter: "blur(10px)", WebkitBackdropFilter: "blur(10px)",
+        display: "flex", alignItems: "center", justifyContent: "center", padding: 24, cursor: "zoom-out" }}>
+      {/* фото + подпись + свотчи собраны в один бумажный «лист» (не голым на дым — канон
+          premium-минимализм); фон — frosted-wash, а не мутная полупрозрачная заливка */}
+      <div onClick={(e) => e.stopPropagation()} style={{ position: "relative", cursor: "default",
+        background: "var(--surface)", borderRadius: 18, padding: 14, boxShadow: "var(--shadow-pop)",
+        maxWidth: "min(92vw, 460px)", width: "100%", display: "flex", flexDirection: "column", gap: 12 }}>
+        <button className="icon-btn" onClick={onClose} aria-label="Закрыть фото"
+          style={{ position: "absolute", top: 10, right: 10, zIndex: 1, background: "var(--surface-glass)", boxShadow: "var(--shadow-raise)" }}><I.close size={17} /></button>
+        <img src={shown} alt={p.title || ""}
+          style={{ display: "block", width: "100%", maxHeight: "54vh", objectFit: "contain", background: "var(--bg-base)", borderRadius: 12 }} />
+        <div style={{ textAlign: "center", display: "flex", flexDirection: "column", gap: 3 }}>
+          <div className="display" style={{ fontSize: "var(--fs-18)", fontWeight: 700, color: "var(--text)" }}>{p.title}</div>
+          <div className="mono" style={{ fontSize: "var(--fs-13)", color: "var(--muted)" }}>
+            {[v ? S(v.color) : null, article ? "арт. " + article : null, fmtMoney(price || 0)].filter(Boolean).join("  ·  ")}
+          </div>
         </div>
+        {photos.length > 1 && (
+          <div style={{ display: "flex", gap: 8, justifyContent: "center" }} role="group" aria-label="Фото товара">
+            {photos.map((u, i) => (
+              <button key={i} type="button" onClick={() => { setCur(i); setSel(-1); }} aria-pressed={i === cur && sel < 0}
+                aria-label={"Фото " + (i + 1) + " из " + photos.length}
+                style={{ width: 46, height: 46, flex: "none", borderRadius: 8, overflow: "hidden", padding: 0, cursor: "pointer",
+                  border: i === cur && sel < 0 ? "2px solid var(--accent-2)" : "1px solid var(--hairline)", opacity: i === cur && sel < 0 ? 1 : 0.75 }}>
+                <Img src={u} label="" radius={7} />
+              </button>
+            ))}
+          </div>
+        )}
+        {variants.length > 0 && (
+          <div style={{ display: "flex", alignItems: "center", gap: 9, flexWrap: "wrap", justifyContent: "center", paddingTop: 10, borderTop: "1px solid var(--hairline)" }}
+            role="group" aria-label="Цвета">
+            {variants.map((vt, i) => (
+              <button key={i} type="button" onClick={() => setSel(sel === i ? -1 : i)} aria-pressed={sel === i}
+                title={[S(vt.color), S(vt.article)].filter(Boolean).join(" · ")} aria-label={"Цвет: " + (S(vt.color) || "вариант " + (i + 1))}
+                style={{ width: 28, height: 28, flex: "none", borderRadius: "50%", padding: 0, cursor: "pointer",
+                  background: S(vt.colorHex) || "var(--glass-2)",
+                  border: "2px solid " + (sel === i ? "var(--accent-2)" : "var(--hairline)"),
+                  boxShadow: sel === i ? "0 0 0 3px var(--accent-2-tint)" : "none" }} />
+            ))}
+          </div>
+        )}
       </div>
-      {photos.length > 1 && (
-        <div style={{ display: "flex", gap: 8 }} role="group" aria-label="Фото товара" onClick={(e) => e.stopPropagation()}>
-          {photos.map((u, i) => (
-            <button key={i} type="button" onClick={() => { setCur(i); setSel(-1); }} aria-pressed={i === cur && sel < 0}
-              aria-label={"Фото " + (i + 1) + " из " + photos.length}
-              style={{ width: 52, height: 52, flex: "none", borderRadius: 8, overflow: "hidden", padding: 0, cursor: "pointer",
-                border: i === cur && sel < 0 ? "2px solid var(--accent-2)" : "2px solid rgba(247,242,234,.4)", opacity: i === cur && sel < 0 ? 1 : 0.7 }}>
-              <Img src={u} label="" radius={6} />
-            </button>
-          ))}
-        </div>
-      )}
-      {variants.length > 0 && (
-        <div onClick={(e) => e.stopPropagation()} style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", justifyContent: "center" }}
-          role="group" aria-label="Цвета">
-          {variants.map((vt, i) => (
-            <button key={i} type="button" onClick={() => setSel(sel === i ? -1 : i)} aria-pressed={sel === i}
-              title={[S(vt.color), S(vt.article)].filter(Boolean).join(" · ")} aria-label={"Цвет: " + (S(vt.color) || "вариант " + (i + 1))}
-              style={{ width: 30, height: 30, flex: "none", borderRadius: "50%", padding: 0, cursor: "pointer",
-                background: S(vt.colorHex) || "var(--glass-2)",
-                border: sel === i ? "2px solid #F7F2EA" : "2px solid rgba(247,242,234,.4)",
-                boxShadow: sel === i ? "0 0 0 2px rgba(46,42,38,.8), 0 0 0 4px #F7F2EA" : "none" }} />
-          ))}
-        </div>
-      )}
     </div>
   );
 }
