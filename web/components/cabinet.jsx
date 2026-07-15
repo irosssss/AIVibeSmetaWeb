@@ -135,13 +135,12 @@ function AuthScreen({ onAuthed, go }) {
             <div style={{ marginBottom: 22 }}>
               <div style={{ fontSize: "var(--fs-13)", color: "var(--muted)", fontWeight: 600, marginBottom: 10 }}>Кто вы?</div>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-                {[["designer", "sofa", "Дизайнер", "Собираю сметы клиентам"], ["supplier", "truck", "Поставщик", "Размещаю свои товары"]].map(([k, ic, t, sub]) => (
+                {[["designer", "Дизайнер", "Собираю сметы клиентам"], ["supplier", "Поставщик", "Размещаю свои товары"]].map(([k, t, sub]) => (
                   <button key={k} onClick={() => setRole(k)} aria-pressed={role === k}
                     style={{ textAlign: "left", padding: "14px 16px", borderRadius: "var(--r-lg)", border: "1.5px solid " + (role === k ? "var(--accent)" : "var(--hairline)"),
                       background: role === k ? "var(--accent-tint, var(--glass-2))" : "var(--surface)", transition: "var(--dur-fast)" }}>
-                    {I[ic] && React.createElement(I[ic], { size: 20, style: { color: role === k ? "var(--accent)" : "var(--muted)" } })}
-                    <div style={{ fontWeight: 700, fontSize: "var(--fs-14)", marginTop: 8 }}>{t}</div>
-                    <div style={{ fontSize: "var(--fs-12)", color: "var(--muted)", marginTop: 2, lineHeight: 1.4 }}>{sub}</div>
+                    <div style={{ fontWeight: 700, fontSize: "var(--fs-15)", color: role === k ? "var(--accent)" : "var(--text)" }}>{t}</div>
+                    <div style={{ fontSize: "var(--fs-12)", color: "var(--muted)", marginTop: 4, lineHeight: 1.4 }}>{sub}</div>
                   </button>
                 ))}
               </div>
