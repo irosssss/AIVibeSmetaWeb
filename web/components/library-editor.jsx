@@ -161,11 +161,11 @@ function ProductCard({ p, onEdit, onRemove }) {
     <div className="glass" style={{ borderRadius: "var(--r-lg)", padding: 18, display: "flex", flexDirection: "column", gap: 10 }}>
       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 10 }}>
         <div style={{ minWidth: 0 }}>
+          {p.cat && <div className="mono" style={{ fontSize: "var(--fs-10)", fontWeight: 600, letterSpacing: "var(--tr-caps)", textTransform: "uppercase", color: "var(--muted)", marginBottom: 6 }}>{p.cat}</div>}
           <div style={{ fontWeight: 800, fontFamily: "var(--font-display)", fontSize: "var(--fs-16)", letterSpacing: "-0.01em", lineHeight: 1.25 }}>{p.title}</div>
-          {p.cat && <div style={{ marginTop: 6 }}><span style={{ fontSize: "var(--fs-11)", fontWeight: 700, padding: "3px 9px", borderRadius: 99, background: "var(--glass-2)", color: "var(--muted)", border: "1px solid var(--hairline)" }}>{p.cat}</span></div>}
         </div>
         <div style={{ textAlign: "right", flex: "none" }}>
-          <div className="mono" style={{ fontWeight: 700, fontSize: "var(--fs-15)", color: "var(--accent-2)", whiteSpace: "nowrap" }}>{fmtMoney(p.price || 0)}</div>
+          <div className="mono" style={{ fontWeight: 700, fontSize: "var(--fs-15)", color: "var(--text)", whiteSpace: "nowrap" }}>{fmtMoney(p.price || 0)}</div>
           <div style={{ fontSize: "var(--fs-11)", color: "var(--muted)" }}>за {p.unit || "шт"}</div>
         </div>
       </div>
