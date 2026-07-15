@@ -720,10 +720,8 @@ function FeatureGrid({ go }) {
           <p style={{ color: "var(--muted)", fontSize: "var(--fs-16)", marginTop: 16, lineHeight: 1.6 }}>
             Инструменты, которые ведут проект от первой ссылки до сданного объекта.
           </p>
-          <div style={{ marginTop: 26, display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap" }}>
-            <button className="btn btn-primary" onClick={() => go && go("auth")}>Начать бесплатно</button>
-            <a className="btn btn-ghost" href="#how">Как это работает</a>
-          </div>
+          {/* дубль геройской пары CTA убран (frontend-design): она отработала на скролл
+              выше, а контекстные InlineCta-банды ниже разнесены — здесь заголовок + сетка */}
         </div>
         <div className="feat-grid">
           {CARDS.map(([title, sub, Vis]) => (
