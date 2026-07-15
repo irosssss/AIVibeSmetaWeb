@@ -96,7 +96,7 @@ function SupplierDemand({ user, onGoCatalog }) {
 
   const kpi = (label, value, hint) => (
     <div className="glass" style={{ borderRadius: "var(--r-lg)", padding: "18px 20px", flex: 1, minWidth: 150 }} title={hint}>
-      <div className="mono" style={{ fontSize: "var(--fs-26)", fontWeight: 700, color: "var(--accent-2)", fontVariantNumeric: "tabular-nums", whiteSpace: "nowrap" }}>{value}</div>
+      <div className="mono" style={{ fontSize: "var(--fs-26)", fontWeight: 700, color: value ? "var(--accent-2)" : "var(--muted)", fontVariantNumeric: "tabular-nums", whiteSpace: "nowrap" }}>{value}</div>
       <div style={{ fontSize: "var(--fs-13)", color: "var(--muted)", marginTop: 4 }}>{label}</div>
     </div>
   );
@@ -126,25 +126,35 @@ function SupplierDemand({ user, onGoCatalog }) {
 
           <h3 className="display" style={{ fontSize: "var(--fs-18)", marginBottom: 12 }}>Что ставят чаще</h3>
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            {stats.products.map((p, i) => {
-              const max = stats.products[0].positions || 1;
-              return (
+            {(() => {
+              // полоска спроса — честный вес, монотонный сортировке (positions, затем qty):
+              // если positions у всех равны (частый ранний случай), берём qty — реальный
+              // различитель; рисуем ТОЛЬКО при реальном разбросе, иначе full-width полоска
+              // на каждой строке = декор, который ничего не решает (список 1–N самодостаточен).
+              const rows = stats.products;
+              const posUniform = rows.every((p) => p.positions === rows[0].positions);
+              const weightOf = (p) => (posUniform ? p.qty : p.positions);
+              const weights = rows.map(weightOf);
+              const maxW = Math.max(...weights), minW = Math.min(...weights);
+              const showBar = maxW > minW;
+              return rows.map((p, i) => (
                 <div key={i} className="glass" style={{ borderRadius: "var(--r-lg)", padding: "12px 16px", display: "flex", alignItems: "center", gap: 14 }}>
                   <span className="mono" style={{ flex: "none", width: 22, textAlign: "right", color: "var(--muted)", fontSize: "var(--fs-13)" }}>{i + 1}</span>
                   <span style={{ minWidth: 0, flex: 1 }}>
                     <span style={{ display: "block", fontWeight: 600, fontSize: "var(--fs-14)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.title || "Без названия"}</span>
                     {p.sku && <span className="mono" style={{ fontSize: "var(--fs-11)", color: "var(--muted)" }}>арт. {p.sku}</span>}
-                    {/* полоска спроса — доля от самого популярного */}
-                    <span aria-hidden="true" style={{ display: "block", height: 4, borderRadius: 99, background: "var(--glass-2)", marginTop: 6, overflow: "hidden" }}>
-                      <span style={{ display: "block", height: "100%", width: Math.round((p.positions / max) * 100) + "%", background: "var(--accent-2)" }} />
-                    </span>
+                    {showBar && (
+                      <span aria-hidden="true" style={{ display: "block", height: 4, borderRadius: 99, background: "var(--glass-2)", marginTop: 6, overflow: "hidden" }}>
+                        <span style={{ display: "block", height: "100%", width: Math.round((weightOf(p) / maxW) * 100) + "%", background: "var(--accent-2)" }} />
+                      </span>
+                    )}
                   </span>
                   <span className="mono" style={{ flex: "none", textAlign: "right", fontSize: "var(--fs-12)", color: "var(--muted)", fontVariantNumeric: "tabular-nums" }}>
                     {p.positions} поз. · ×{p.qty}{p.approved ? " · согл. " + p.approved : ""}
                   </span>
                 </div>
-              );
-            })}
+              ));
+            })()}
           </div>
         </React.Fragment>
       )}
