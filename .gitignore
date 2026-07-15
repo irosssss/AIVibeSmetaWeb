@@ -23,3 +23,8 @@ npm-debug.log*
 
 # Локальный запуск Claude Code через OmniRoute (личный инструмент)
 claude-omni.command
+
+# Скиллы агента, поставленные локально через `npx skills add` (личный инструмент)
+.agents/
+.claude/skills/
+skills-lock.json
