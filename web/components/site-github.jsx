@@ -137,6 +137,7 @@ function SitePage({ go }) {
         <Hero go={go} />
         <FactsMarquee />
         <FeatureGrid go={go} />
+        <SmetaSection />
         <ClipperDemo go={go} />
         <QuoteBand />
         <HowItWorks go={go} />

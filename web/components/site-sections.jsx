@@ -738,6 +738,90 @@ function FeatureGrid({ go }) {
 }
 
 /* --------------------------------------------------------------
+   ВИТРИНА КАБИНЕТА (рецепт стартовой Programa: широкий кадр продукта
+   под секцией-заголовком). Мокап кодом, НЕ скриншот — не устаревает
+   по стилю (тот же канон, что иллюстрации Clip/Fv). Затемнение —
+   скрим .cab-shot::after, тот же приём, что на .plate-banner.
+   Демо-данные помечены как пример: канон «пример, не факт».
+-------------------------------------------------------------- */
+function CabinetShot() {
+  const NAV = [["search", "Поиск"], ["sun", "Сегодня"], ["grid", "Проекты", true], ["sofa", "Мастерская"], ["truck", "Закупка"], ["heart", "Избранное"], ["user", "Профиль"]];
+  /* фото — наши локальные рендеры (web/public/img), чужое не рехостим;
+     кадр внутри карточки уже обрамлён её бордером — --ring тут был бы дублем */
+  const PROJECTS = [
+    ["Кирова, 17к1", "В работе", "38 позиций · 4 комнаты", "var(--accent-2-ink)", "var(--accent-2-tint)", "img/ph-living.jpg"],
+    ["ЖК «Прайм», 74 м²", "У клиента", "26 позиций · 3 комнаты", "var(--info)", "rgba(62,74,89,.08)", "img/ph-kitchen.jpg"],
+    ["Дом в Пестово", "Закупка", "51 позиция · 6 комнат", "var(--chart-ink)", "rgba(201,138,46,.10)", "img/ph-warm.jpg"],
+  ];
+  return (
+    <React.Fragment>
+        <div className="cab-shot">
+          <aside className="cab-side" aria-hidden="true">
+            <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "2px 4px 12px" }}>
+              <Logo size={20} />
+            </div>
+            <div className="btn btn-primary" style={{ padding: "8px 12px", fontSize: "var(--fs-12)", borderRadius: 10, justifyContent: "flex-start", gap: 7, marginBottom: 10 }}>
+              <I.plus size={14} />Новый проект
+            </div>
+            {NAV.map(([ico, label, on]) => {
+              const Ico = I[ico];
+              return <div key={label} className={"cab-nav" + (on ? " on" : "")}><Ico size={15} />{label}</div>;
+            })}
+          </aside>
+
+          <div className="cab-main" aria-hidden="true">
+            <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 12 }}>
+              <div>
+                <div style={{ fontFamily: "var(--font-display)", fontWeight: 600, fontSize: "var(--fs-21)", letterSpacing: "-.01em" }}>Проекты</div>
+                <div style={mockMono({ color: "var(--spec-meta)", marginTop: 3 })}>3 активных · тариф «Старт»</div>
+              </div>
+              <span style={mockMono({ color: "var(--muted)", border: "1px solid var(--hairline)", borderRadius: 99, padding: "5px 11px" })}>Все проекты</span>
+            </div>
+
+            <div className="cab-grid">
+              {PROJECTS.map(([name, status, meta, ink, tint, photo]) => (
+                <div key={name} style={{ ...mockCardCss, overflow: "hidden" }}>
+                  <div style={{ height: 74, background: "var(--glass-2)" }}><Img src={photo} label="" /></div>
+                  <div style={{ padding: "10px 12px 12px" }}>
+                    <div style={{ fontWeight: 600, fontSize: "var(--fs-13)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{name}</div>
+                    <div style={mockMono({ color: "var(--spec-meta)", marginTop: 3 })}>{meta}</div>
+                    <span style={{ ...mockTag, color: ink, background: tint, display: "inline-block", marginTop: 9 }}>{status}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <p style={mockMono({ color: "var(--spec-meta)", marginTop: 12, textAlign: "center" })}>пример кабинета — данные демонстрационные</p>
+    </React.Fragment>
+  );
+}
+
+/* Секция «Смета» — плита переехала сюда из шапки (её место занял кадр кабинета).
+   SmetaPlate живёт в site-hero.jsx и приезжает через window — вместе со своим
+   тумблером «Для клиента / Рабочая» и живым регулятором наценки. */
+function SmetaSection() {
+  const ref = useReveal();
+  return (
+    <section id="smeta-view" style={{ paddingBlock: "clamp(70px,10vh,120px)" }} ref={ref}>
+      <div className="container reveal">
+        <div className="catsec-head">
+          <div>
+            <div className="eyebrow">Смета-комплектация</div>
+            <h2 className="display" style={{ fontSize: "clamp(30px,4vw,50px)", marginTop: 14 }}>Две цены в одном документе</h2>
+          </div>
+          <p style={{ color: "var(--muted)", maxWidth: 340, fontSize: "var(--fs-14)" }}>
+            Себестоимость фабрики видите только вы. Переключите на «Рабочую» — появятся наценка и прибыль.
+          </p>
+        </div>
+        <div style={{ marginTop: "clamp(34px,5vh,56px)" }}><SmetaPlate /></div>
+      </div>
+    </section>
+  );
+}
+
+/* --------------------------------------------------------------
    БЛОК-ЦИТАТА на фото (аналог видео-цитаты Programa «For those of
    you still using spreadsheets…»). Отдельный голос — НЕ дублирует
    ни одну реплику из QUOTES SocialProof (иначе одна и та же цитата
@@ -927,6 +1011,8 @@ window.ClipperDemo = ClipperDemo;
 window.HowItWorks = HowItWorks;
 window.BudgetCalc = BudgetCalc;
 window.FeatureGrid = FeatureGrid;
+window.CabinetShot = CabinetShot;     // кадр кабинета — рендерится в шапке (site-hero.jsx)
+window.SmetaSection = SmetaSection;
 window.QuoteBand = QuoteBand;
 window.ClientPortalPromo = ClientPortalPromo;
 window.NewsFeed = NewsFeed;
