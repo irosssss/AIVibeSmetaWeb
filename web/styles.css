@@ -313,7 +313,7 @@ a { color: inherit; text-decoration: none; }
     transition-delay: 0s !important;
     scroll-behavior: auto !important;
   }
-  .reveal { opacity: 1; transform: none; }
+  .reveal, .hero-rise { opacity: 1; transform: none; }
   .skel::after { display: none; }
   /* функциональный индикатор «идёт процесс» — WCAG 2.3.3 допускает такое движение; не гасим совсем, замедляем */
   .spin { animation: rot 1.8s linear infinite !important; }
@@ -482,6 +482,12 @@ a { color: inherit; text-decoration: none; }
 
 .hero-plate-wrap { margin-top: clamp(44px, 7vh, 76px); }
 .hero-plate-wrap .plate { max-width: 780px; }
+
+/* вход центральной колонки hero — тот же стаггер, что fcIn у летающих карточек
+   (.15–.65s), чтобы вся шапка складывалась одним движением; 12px подъём,
+   мягкий выкат; под prefers-reduced-motion гасится ниже (как .reveal) */
+.hero-rise { opacity: 0; transform: translateY(12px); animation: heroRise .55s var(--ease) both; animation-delay: var(--d, 0s); }
+@keyframes heroRise { to { opacity: 1; transform: none; } }
 
 /* летающие артефакты: позиция+поворот на обёртке, бобинг на вкладыше
    (два transform не конфликтуют); вход — мягкий fade со стаггером */
