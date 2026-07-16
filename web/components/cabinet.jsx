@@ -55,8 +55,9 @@ function setRoute(view, tab, sub, s2) {
   }
   applyRoute(view, tab, sub, s2);
 }
-/* прототип-свитчер и синтетический вход в админку — только в dev-окружении */
-const DEV_MODE = location.hostname === "localhost" || location.hostname === "127.0.0.1" || /[?&]dev=1\b/.test(location.search);
+/* прототип-свитчер и синтетический вход в админку — ТОЛЬКО на localhost:
+   query-ветка ?dev=1 убрана 16.07 (Б3 аудита запуска) — на проде она открывала админку любому */
+const DEV_MODE = location.hostname === "localhost" || location.hostname === "127.0.0.1";
 window.parseRoute = parseRoute; window.setRoute = setRoute; window.applyRoute = applyRoute; window.guardSmetaLeave = guardSmetaLeave; window.DEV_MODE = DEV_MODE;
 
 /* провайдерские кнопки — фирменные SVG-логотипы (Яндекс / VK) */
