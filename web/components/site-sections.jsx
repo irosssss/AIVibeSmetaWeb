@@ -399,7 +399,7 @@ function PayoffCalc() {
               <b className="mono" style={{ fontSize: "clamp(22px,2.6vw,30px)", fontWeight: 600, color: "var(--accent-2-ink)", whiteSpace: "nowrap" }}>+{f(profit)} ₽</b>
             </div>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 14, paddingBlock: 12, borderBottom: "1px solid var(--hairline-2)" }}>
-              <span style={{ fontSize: "var(--fs-14)", color: "var(--muted)" }}>Подписка «Практика»</span>
+              <span style={{ fontSize: "var(--fs-14)", color: "var(--muted)" }}>Подписка «Студия»</span>
               <b className="mono" style={{ fontSize: "var(--fs-16)", fontWeight: 500, whiteSpace: "nowrap" }}>{f(SUB)} ₽ / мес</b>
             </div>
             {/* live-регион только на итоге и atomic — иначе скринридер читает
@@ -534,9 +534,11 @@ function PricingFaq() {
 function Pricing({ go }) {
   const ref = useReveal();
   const PLANS = [
-    { name: "Старт", price: 1490, note: "для первых проектов", feats: ["2 активных проекта", "Смета: две цены и наценка по разделам", "Экспорт PDF", "Канон норм Design Ledger"] },
-    { name: "Практика", price: 2900, hot: true, note: "выбор дизайнеров", feats: ["10 активных проектов", "Экспорт PDF + Excel: рабочая, клиенту, закупка", "Импорт смет из Excel", "Свои нормы и библиотека стилей"] },
-    { name: "Студия", price: 4900, note: "для команды", feats: ["Проекты без лимита", "Команда до 5 человек", "Смета под логотипом студии", "Приоритетная поддержка"] },
+    // имена — канон оферты (решение владельца 16.07, М4): Старт / Студия / Бюро;
+    // «нормы» из фич убраны (М5: стек выпилен 14.07) — только существующие фичи
+    { name: "Старт", price: 1490, note: "для первых проектов", feats: ["2 активных проекта", "Смета: две цены и наценка по разделам", "Экспорт PDF", "Портал согласования для клиента"] },
+    { name: "Студия", price: 2900, hot: true, note: "выбор дизайнеров", feats: ["10 активных проектов", "Экспорт PDF + Excel: рабочая, клиенту, закупка", "Импорт смет из Excel", "Библиотека товаров и стилей студии"] },
+    { name: "Бюро", price: 4900, note: "для команды", feats: ["Проекты без лимита", "Команда до 5 человек", "Смета под логотипом студии", "Приоритетная поддержка"] },
   ];
   return (
     <section id="pricing" style={{ paddingBlock: "clamp(70px,10vh,120px)" }} ref={ref}>

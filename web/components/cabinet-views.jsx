@@ -489,6 +489,10 @@ function Projects() {
     LedgerAPI.projects.summary().then(setSum);
   };
 
+  // демо-проекты — только по явной кнопке (М3): пустое состояние / «Открыть пример»
+  const seedDemo = () => LedgerAPI.projects.seedDemo().then(() => { refresh(); toast("Демо-проекты загружены. Они помечены «демо» — убрать можно одной кнопкой в тулбаре."); });
+  const clearDemo = () => LedgerAPI.projects.clearDemo().then(() => { refresh(); toast("Демо-проекты удалены"); });
+
   /* открытый проект живёт в адресе: #cabinet/projects/p_1 → F5 переоткрывает,
      «назад» закрывает оверлей, ссылкой можно поделиться (wayfinding UpRock) */
   const openProject = (id) => { setOpenId(id); setRoute("cabinet", "projects", id); };
@@ -620,6 +624,9 @@ function Projects() {
             <option value="budget">По бюджету</option>
             <option value="name">По названию</option>
           </select>
+          {rows.some((p) => p.demo) && (
+            <button className="btn btn-ghost" onClick={clearDemo} title="Удалить все проекты с пометкой «демо» — ваши проекты не тронет">Убрать демо</button>
+          )}
         </div>
       )}
 
@@ -628,8 +635,11 @@ function Projects() {
 
       {rows && rows.length === 0 && (
         <EmptyState icon="layers" title="Пока нет проектов"
-          text="Создайте первый проект — задайте комнату и бюджет, дальше Design Ledger соберёт смету и посчитает наценку."
-          action={<button className="btn btn-primary" onClick={() => setNewOpen(true)}><I.plus size={17} />Создать первый проект</button>} />
+          text="Создайте первый проект — задайте комнату и бюджет, дальше Design Ledger соберёт смету и посчитает наценку. Или сначала посмотрите, как выглядит рабочий кабинет, на демо-данных."
+          action={<div style={{ display: "flex", gap: 10, flexWrap: "wrap", justifyContent: "center" }}>
+            <button className="btn btn-primary" onClick={() => setNewOpen(true)}><I.plus size={17} />Создать первый проект</button>
+            <button className="btn btn-ghost" onClick={seedDemo}>Посмотреть на демо-данных</button>
+          </div>} />
       )}
 
       {shown && shown.length === 0 && rows.length > 0 && (
@@ -651,7 +661,8 @@ function Projects() {
 
       {openId && <ProjectDetail id={openId} nav={openNav} onClose={closeProject} />}
       {importData && <RoomSpecOverlay data={importData} onClose={() => { setImportData(null); refresh(); }} />}
-      {newOpen && <NewProjectModal onClose={() => setNewOpen(false)} onCreate={onCreated} onExample={() => { setNewOpen(false); openProject("p_1"); }} />}
+      {newOpen && <NewProjectModal onClose={() => setNewOpen(false)} onCreate={onCreated}
+        onExample={() => { setNewOpen(false); LedgerAPI.projects.seedDemo().then(() => { refresh(); openProject("p_1"); }); }} />}
       {quizOpen && <StyleQuiz onClose={() => { setQuizOpen(false); try { localStorage.setItem("aivibe_quiz_done", "1"); } catch (e) {} }} onDone={finishQuiz} />}
     </div>
   );
@@ -675,6 +686,8 @@ function ProjectCard({ p, menuOpen, onOpen, onMenu, onRename, onDuplicate, onSta
   return (
     <article className="glass news-card" style={{ position: "relative", borderRadius: "var(--r-lg)", display: "flex", flexDirection: "column", cursor: "pointer" }}>
       <div onClick={onOpen} style={{ position: "relative", aspectRatio: "2/1", overflow: "hidden", borderRadius: "var(--r-lg) var(--r-lg) 0 0" }}>
+        {/* нижний левый угол: верхний левый занят статус-чипом, верхний правый — меню ⋯ */}
+        {p.demo && <span className="mono" style={{ position: "absolute", bottom: 10, left: 10, zIndex: 1, fontSize: "var(--fs-10)", fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", background: "var(--surface)", border: "1px solid var(--hairline)", color: "var(--muted)", padding: "3px 9px", borderRadius: 99 }}>демо</span>}
         {p.items
           ? <Img src={PHOTOS[p.cover] || PHOTOS.living} label={p.room} />
           : <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", padding: 18, textAlign: "center", background: "var(--surface-2)" }}>
